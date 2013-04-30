@@ -1,0 +1,33 @@
+
+TODO:
+
+  - contexts!
+
+  - notifications!
+
+  - @expose decorator
+
+  - when shutting down a dispatcher, do we need to invoke
+    a cleanup method on the listener?
+
+Things I don't like:
+
+  - CallContext - we already abuse the term "context" enough
+
+  - There's something about using a context manager for prepare() that
+    I like:
+
+        with client.prepare(version='2.6') as cctxt:
+            cctxt.call('select_host',
+                       request_spec=request_spec,
+                       filter_properties=filter_properties)
+
+    but it seems a bit nonsensical
+
+  - "endpoints" - better than api_objs, callbacks, proxyobj, etc.
+
+  - we probably won't use BlockingRPCDispatcher anywhere, but I think
+    it does a good job of showing the basic job of a dispatcher
+    implementation
+
+

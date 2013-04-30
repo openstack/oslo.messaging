@@ -1,0 +1,67 @@
+
+
+Projects will need to do e.g.
+
+  -- nova.config:
+
+  from nova.openstack.common.messaging import transport
+
+  TRANSPORT_DRIVER = None
+
+
+  def parse_args(argv, ...):
+      transport.set_defaults(control_exchange='nova')
+      cfg.CONF(...)
+      TRANSPORT_DRIVER = transport.get_transport(cfg.CONF)
+
+  -- nova.scheduler.rpcapi:
+
+  from oslo.config import cfg
+
+  from nova import config
+  from nova.openstack.common.messaging.rpc import client
+  from nova.openstack.common.messaging import target
+
+  CONF = cfg.CONF
+
+
+  class SchedulerAPI(client.RPCClient):
+
+      def __init__(self):
+          target = target.Target(topic=CONF.scheduler_topic, version='2.0')
+          super(SchedulerAPI, self).__init__(config.TRANSPORT_DRIVER, target)
+
+      ....
+
+      def select_hosts(self, ctxt, request_spec, filter_properties):
+          # FIXME(markmc): ctxt
+          cctxt = self.prepare(version='2.6')
+          return ctxt.call('select_hosts',
+                           request_spec=request_spec,
+                           filter_properties=filter_properties)
+
+  -- nova.service:
+
+  from nova import baserpc
+  from nova import config
+  from nova.openstack.common.messaging.rpc import server as rpcserver
+  from nova.openstack.common.messaging.rpc import target
+
+      def start(self):
+          ...
+          target = target.Target(topic=self.topic, self.host)
+
+          base_rpc = baserpc.BaseRPCAPI(self.service_name, backdoor_port)
+
+          self.rpcserver = rpcserver.EventletRPCServer(config.TRANSPORT_DRIVER,
+                                                       target,
+                                                       [self.manager, base_rpc])
+
+          LOG.debug(_("Starting RPC server for %(topic)s on %(host)s") %
+                    dict(topic=self.topic, host=self.host))
+
+          self.rpcserver.start()
+
+          ...
+          self.rpcserver.stop()
+          self.rpcserver.wait()
