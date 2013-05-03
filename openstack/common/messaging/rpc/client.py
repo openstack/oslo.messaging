@@ -100,9 +100,9 @@ class RPCClient(object):
 
         super(RPCClient, self).__init__()
 
-    def prepare(self, host=None, version=None,
+    def prepare(self, server=None, version=None,
                 timeout=None, check_for_lock=None):
-        target = self.target(host=host, version=version)
+        target = self.target(server=server, version=version)
 
         if timeout is None:
             timeout = self.timeout
