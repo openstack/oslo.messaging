@@ -26,7 +26,7 @@ Things I don't like:
 
   - "endpoints" - better than api_objs, callbacks, proxyobj, etc.
 
-  - we probably won't use BlockingRPCDispatcher anywhere, but I think
+  - we probably won't use BlockingRPCExecutor anywhere, but I think
     it does a good job of showing the basic job of a dispatcher
     implementation
 

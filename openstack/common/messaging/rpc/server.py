@@ -50,7 +50,7 @@ class UnsupportedVersion(RPCServerError):
         return _("Endpoint does not support RPC version %s") % self.version
 
 
-class RPCDispatcher(object):
+class RPCExecutor(object):
 
     __metaclass__ = abc.ABCMeta
 
@@ -81,10 +81,10 @@ class RPCDispatcher(object):
         pass
 
 
-class BlockingRPCDispatcher(RPCDispatcher):
+class BlockingRPCExecutor(RPCExecutor):
 
     def __init__(self, conf, listener, callback):
-        super(BlockingRPCDispatcher, self).__init__(conf, listener, callback)
+        super(BlockingRPCExecutor, self).__init__(conf, listener, callback)
         self._running = False
 
     def start(self):
@@ -99,23 +99,23 @@ class BlockingRPCDispatcher(RPCDispatcher):
         pass
 
 
-class EventletRPCDispatcher(RPCDispatcher):
+class EventletRPCExecutor(RPCExecutor):
 
     def __init__(self, conf, listener, callback):
-        super(EventletRPCDispatcher, self).__init__(conf, listener, callback)
+        super(EventletRPCExecutor, self).__init__(conf, listener, callback)
         self._thread = None
 
     def start(self):
         if self._thread is not None:
             return
 
-        def _dispatcher_thread():
+        def _executor_thread():
             try:
                 while True:
             except greenlet.GreenletExit:
                 return
 
-        self._thread = eventlet.spawn(_dispatcher_thread)
+        self._thread = eventlet.spawn(_executor_thread)
 
     def stop(self):
         if self._thread is None:
@@ -134,15 +134,15 @@ class EventletRPCDispatcher(RPCDispatcher):
 
 class RPCServer(object):
 
-    def __init__(self, transport, target, endpoints, dispatcher_cls):
+    def __init__(self, transport, target, endpoints, executor_cls):
         self.conf = transport.conf
 
         self.transport = transport
         self.target = target
         self.endpoints = endpoints
 
-        self._dispatcher_cls = dispatcher_cls
-        self._dispatcher = None
+        self._executor_cls = executor_cls
+        self._executor = None
 
         super(RPCServer, self).__init__()
 
@@ -175,26 +175,26 @@ class RPCServer(object):
             raise UnsupportedVersion(version)
 
     def start():
-        if self._dispatcher is not None:
+        if self._executor is not None:
             return
         listener = self.transport.listen(self.target)
-        self._dispatcher = self._dispatcher_cls(self.conf, listener,
-                                                self._dispatch)
-        self._dispatcher.start()
+        self._executor = self._executor_cls(self.conf, listener,
+                                            self._dispatch)
+        self._executor.start()
 
     def stop(self):
-        if self._dispatcher is not None:
-            self._dispatcher.stop()
+        if self._executor is not None:
+            self._executor.stop()
 
     def wait(self):
-        if self._dispatcher is not None:
-            self._dispatcher.wait()
-        self._dispatcher = None
+        if self._executor is not None:
+            self._executor.wait()
+        self._executor = None
 
 
 def get_blocking_server(transport, target, endpoints):
-    return RPCServer(transport, target, endpoints, BlockingRPCDispatcher)
+    return RPCServer(transport, target, endpoints, BlockingRPCExecutor)
 
 
 def get_eventlet_server(transport, target, endpoints):
-    return RPCServer(transport, target, endpoints, EventletRPCDispatcher)
+    return RPCServer(transport, target, endpoints, EventletRPCExecutor)
