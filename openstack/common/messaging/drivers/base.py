@@ -20,8 +20,8 @@ class Listener(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, target):
-        self.conf = conf
+    def __init__(self, driver, target):
+        self.driver = driver
         self.target = target
 
     @abc.abstractmethod
