@@ -56,7 +56,7 @@ class _CallContext(object):
 
     def cast(self, method, **kwargs):
         msg = self._make_message(method, kwargs)
-        self.transport._send(target, msg)
+        self.transport.send(target, msg)
 
     def _check_for_lock():
         if not self.conf.debug:

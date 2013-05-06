@@ -47,11 +47,11 @@ class BaseDriver(object):
         self._default_exchange = _default_exchange
 
     @abc.abstractmethod
-    def _send(self, target, message, wait_for_reply=None, timeout=None):
+    def send(self, target, message, wait_for_reply=None, timeout=None):
         """Send a message to the given target."""
         return None
 
     @abc.abstractmethod
-    def _listen(self, target):
+    def listen(self, target):
         """Construct a Listener for the given target."""
         return None
