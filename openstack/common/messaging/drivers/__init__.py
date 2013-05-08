@@ -15,12 +15,14 @@
 
 NAMESPACE = 'openstack.common.messaging.drivers'
 
-def _driver(module, name):
-    return '%s.%s.%s' % (NAMESPACE, module, name)
 
-_RABBIT_DRIVER = _driver('rabbit', RabbitDriver)
-_QPID_DRIVER = _driver('qpid', QpidDriver)
-_ZMQ_DRIVER = _driver('zmq', ZmqDriver)
+def _driver(module, name):
+    return '%s.%s:%s' % (NAMESPACE, module, name)
+
+_RABBIT_DRIVER = _driver('rabbit', 'RabbitDriver')
+_QPID_DRIVER = _driver('qpid', 'QpidDriver')
+_ZMQ_DRIVER = _driver('zmq', 'ZmqDriver')
+
 
 TRANSPORT_DRIVERS = [
     'rabbit = ' + _RABBIT_DRIVER,
@@ -34,4 +36,4 @@ TRANSPORT_DRIVERS = [
     'openstack.common.rpc.impl_kombu = ' + _RABBIT_DRIVER,
     'openstack.common.rpc.impl_qpid = ' + _QPID_DRIVER,
     'openstack.common.rpc.impl_zmq = ' + _ZMQ_DRIVER,
-    ]
+]
