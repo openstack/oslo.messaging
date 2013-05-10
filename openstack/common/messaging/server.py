@@ -49,7 +49,7 @@ class MessageHandlingServer(object):
     def start():
         if self._executor is not None:
             return
-        listener = self.transport.listen(self.target)
+        listener = self.transport._listen(self.target)
         self._executor = self._executor_cls(self.conf, listener,
                                             self.dispatcher)
         self._executor.start()

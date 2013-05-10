@@ -52,12 +52,12 @@ class Transport(object):
         self.conf = driver.conf
         self._driver = driver
 
-    def send(self, target, message, wait_for_reply=None, timeout=None):
+    def _send(self, target, message, wait_for_reply=None, timeout=None):
         return self._driver.send(target, message,
                                  wait_for_reply=wait_for_reply,
                                  timeout=timeout)
 
-    def listen(self, target):
+    def _listen(self, target):
         return self._driver.listen(target)
 
 
