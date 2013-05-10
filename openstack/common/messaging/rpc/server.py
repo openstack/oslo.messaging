@@ -14,7 +14,7 @@
 #    under the License.
 
 from openstack.common.messaging import _server as server
-from openstack.common.messaging.executors import impl_blocking
+from openstack.common.messaging._executors import impl_blocking
 from openstack.common.messaging.rpc import dispatcher
 
 

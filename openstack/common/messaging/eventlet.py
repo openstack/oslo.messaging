@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging.executors import impl_eventlet
+from openstack.common.messaging._executors import impl_eventlet
 from openstack.common.messaging.rpc import server
 
 

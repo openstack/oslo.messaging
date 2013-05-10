@@ -13,40 +13,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
-import greenlet
-
-from openstack.common.messaging.executor import base
+from openstack.common.messaging._executors import base
 
 
-class EventletExecutor(base.ExecutorBase):
+class BlockingExecutor(base.ExecutorBase):
 
     def __init__(self, conf, listener, callback):
-        super(EventletExecutor, self).__init__(conf, listener, callback)
-        self._thread = None
+        super(BlockingExecutor, self).__init__(conf, listener, callback)
+        self._running = False
 
     def start(self):
-        if self._thread is not None:
-            return
-
-        def _executor_thread():
-            try:
-                while True:
-            except greenlet.GreenletExit:
-                return
-
-        self._thread = eventlet.spawn(_executor_thread)
+        self._running = True
+        while self._running:
+            self._process_one_message()
 
     def stop(self):
-        if self._thread is None:
-            return
-        self._thread.kill()
+        self._running = False
 
     def wait(self):
-        if self._thread is None:
-            return
-        try:
-            self._thread.wait()
-        except greenlet.GreenletExit:
-            pass
-        self._thread = None
+        pass
