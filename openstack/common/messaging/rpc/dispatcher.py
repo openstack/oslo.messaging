@@ -18,7 +18,7 @@
 
 from openstack.common.gettextutils import _
 from openstack.common import log as logging
-from openstack.common.messaging import server
+from openstack.common.messaging import _server as server
 from openstack.common.messaging import _utils as utils
 
 _LOG = logging.getLogger(__name__)
