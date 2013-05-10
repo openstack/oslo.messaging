@@ -24,7 +24,7 @@ from openstack.common.messaging import _utils as utils
 _LOG = logging.getLogger(__name__)
 
 
-class RPCDispatcherError(server.ServerError):
+class RPCDispatcherError(server.MessagingServerError):
     pass
 
 
