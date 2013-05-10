@@ -17,7 +17,7 @@ NAMESPACE = 'openstack.common.messaging.drivers'
 
 
 def _driver(module, name):
-    return '%s.%s:%s' % (NAMESPACE, module, name)
+    return 'openstack.common.messaging._drivers.%s:%s' % (module, name)
 
 _RABBIT_DRIVER = _driver('rabbit', 'RabbitDriver')
 _QPID_DRIVER = _driver('qpid', 'QpidDriver')

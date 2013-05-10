@@ -21,7 +21,7 @@ import urlparse
 from oslo.config import cfg
 from stevedore import driver
 
-from openstack.common.messaging import drivers
+from openstack.common.messaging import _drivers as drivers
 
 _transport_opts = [
     cfg.StrOpt('transport_url',
