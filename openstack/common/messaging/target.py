@@ -66,3 +66,13 @@ class Target(object):
         kwargs.setdefault('server', self.server)
         kwargs.setdefault('fanout', self.fanout)
         return Target(**kwargs)
+
+    def __repr__(self):
+        attrs = []
+        for a in ['exchange', 'topic', 'namespace',
+                  'version', 'server', 'fanout']:
+            v = getattr(self, a)
+            if v:
+                attrs.append((a, v))
+        values = ', '.join(['%s=%s' % i for i in attrs])
+        return '<Target ' + values + '>'

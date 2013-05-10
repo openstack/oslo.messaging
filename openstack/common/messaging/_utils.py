@@ -16,6 +16,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import urlparse
+
 
 def version_is_compatible(imp_version, version):
     """Determine whether versions are compatible.
@@ -30,3 +32,29 @@ def version_is_compatible(imp_version, version):
     if int(version_parts[1]) > int(imp_version_parts[1]):  # Minor
         return False
     return True
+
+
+def exchange_from_url(self, url, default_exchange=None):
+    """Parse an exchange name from a URL.
+
+    Assuming a URL takes the form of:
+
+      transport:///myexchange
+
+    then parse the URL and return the exchange name.
+
+    :param url: the URL to parse
+    :type url: str
+    :param default_exchange: what to return if no exchange found in URL
+    :type default_exchange: str
+    """
+    if not url:
+        return default_exchange
+
+    url = urlparse.urlparse(url)
+    if not url.path.startswith('/'):
+        return default_exchange
+
+    parts = u.path[1:].split('/')
+
+    return parts[0] if parts[0] else default_exchange

@@ -10,6 +10,14 @@ TODO:
   - when shutting down a dispatcher, do we need to invoke
     a cleanup method on the listener?
 
+  - ClientException - e.g. the executor should handle this being
+    raised by the dispatcher
+
+  - raising Timeout when a reply isn't received
+
+  - the InvalidTarget checks seem like they're generic preconditions
+    that all drivers would want enforced
+
 Things I don't like:
 
   - CallContext - we already abuse the term "context" enough
@@ -31,3 +39,32 @@ Things I don't like:
     implementation
 
 
+There's a bunch of places where what fields are used in a target
+is unclear:
+
+  - in driver.listen() and server.start():
+      - required: topic and server
+      - optional: exchange
+      - ignored: namespace, version, fanout
+
+  - in driver.send():
+      - required: topic
+      - optional: server, fanout and exchange
+      - ignored: namespace, version
+
+  - in client.call() and client.cast():
+      - required: (topic is required by send())
+      - optional: namespace, version (server, fanout, exchange optional to send())
+      - ignored: none
+
+driver porting guide:
+
+  - implement a BaseDriver subclass:
+
+      - send() should be similar to call()/cast()
+      - listen() should be similar to create_consumer()
+
+  - implement a base.Listener subclass
+
+      - poll() should pull a message off the queue
+      - done() should ack it
