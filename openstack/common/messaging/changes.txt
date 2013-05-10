@@ -44,10 +44,8 @@ Projects will need to do e.g.
 
   from nova import baserpc
   from nova import config
-  from nova.openstack.common.messaging import server
-  from nova.openstack.common.messaging.executors import impl_eventlet
-  from nova.openstack.common.messaging.rpc import dispatcher
-  from nova.openstack.common.messaging.rpc import target
+  from nova.openstack.common.messaging import eventlet
+  from nova.openstack.common.messaging import target
 
       def start(self):
           ...
@@ -55,12 +53,9 @@ Projects will need to do e.g.
 
           base_rpc = baserpc.BaseRPCAPI(self.service_name, backdoor_port)
 
-          self.rpcdispatcher = dispatcher.RPCDispatcher([self.manager, base_rpc])
-
-          self.rpcserver = server.MessageHandlingServer(config.TRANSPORT_DRIVER,
-                                                       target,
-                                                       self.rpcdispatcher,
-                                                       impl_eventlet.EventletExecutor)
+          self.rpcserver = eventlet.EventletRPCServer(config.TRANSPORT_DRIVER,
+                                                      target,
+                                                      [self.manager, base_rpc])
 
           LOG.debug(_("Starting RPC server for %(topic)s on %(server)s") %
                     dict(topic=self.topic, host=self.server))
