@@ -30,9 +30,9 @@ class ExecutorBase(object):
         self.callback = callback
 
     def _process_one_message(self):
-        (target, message) = self.listener.poll()
+        message = self.listener.poll()
         try:
-            self.callback(target, message)
+            self.callback(message)
         except Exception:
             _LOG.exception(_("Failed to process message... skipping it."))
         finally:

@@ -57,15 +57,15 @@ class RPCDispatcher(object):
         endpoint_version = endpoint.target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
 
-    def __call__(self, target, message):
+    def __call__(self, message):
         method = message.get('method')
         args = message.get('args', {})
-
-        version = target.version or '1.0'
+        namespace = message.get('namespace')
+        version = message.get('version', '1.0')
 
         found_compatible = False
         for endpoint in self.endpoints:
-            if target.namespace != endpoint.target.namespace:
+            if namespace != endpoint.target.namespace:
                 continue
 
             is_compatible = self._is_compatible(endpoint, version)

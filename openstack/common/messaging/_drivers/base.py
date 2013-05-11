@@ -26,9 +26,7 @@ class Listener(object):
 
     @abc.abstractmethod
     def poll(self):
-        # returns (target, message)
-        # target includes the (exchange, topic, namespace, version) which the
-        # message was sent to
+        # returns message
         pass
 
     @abc.abstractmethod
