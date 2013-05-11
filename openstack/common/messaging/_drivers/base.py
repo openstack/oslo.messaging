@@ -34,6 +34,10 @@ class Listener(object):
         # so the transport can ack the message
         pass
 
+    @abc.abstractmethod
+    def reply(self, reply=None, failure=None):
+        pass
+
 
 class BaseDriver(object):
 
