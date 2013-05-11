@@ -32,6 +32,7 @@ class EventletExecutor(base.ExecutorBase):
         def _executor_thread():
             try:
                 while True:
+                    self._process_one_message()
             except greenlet.GreenletExit:
                 return
 
