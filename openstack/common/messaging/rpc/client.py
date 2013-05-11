@@ -78,7 +78,7 @@ class _CallContext(object):
 
         timeout = self.timeout
         if self.timeout is None:
-            self.conf.rpc_response_timeout
+            timeout = self.conf.rpc_response_timeout
 
         if self.check_for_lock:
             self._check_for_lock()
