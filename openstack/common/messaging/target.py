@@ -61,7 +61,8 @@ class Target(object):
     def __call__(self, **kwargs):
         kwargs.setdefault('exchange', self.exchange)
         kwargs.setdefault('topic', self.topic)
-        kwargs.setdefault('namespace', self.version)
+        kwargs.setdefault('namespace', self.namespace)
+        kwargs.setdefault('version', self.version)
         kwargs.setdefault('server', self.server)
         kwargs.setdefault('fanout', self.fanout)
         return Target(**kwargs)
