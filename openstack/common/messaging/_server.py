@@ -46,7 +46,7 @@ class MessageHandlingServer(object):
 
         super(MessageHandlingServer, self).__init__()
 
-    def start():
+    def start(self):
         if self._executor is not None:
             return
         listener = self.transport._listen(self.target)
