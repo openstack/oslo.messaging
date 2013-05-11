@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from .exceptions import MessagingException
-from .exceptions import MessagingTimeout
-from .rpc.client import RPCClient
-from .rpc.server import BlockingRPCServer
-from .target import Target
-from .transport import get_transport
+class MessagingException(Exception):
+    pass
+
+
+class MessagingTimeout(MessagingException):
+    pass
