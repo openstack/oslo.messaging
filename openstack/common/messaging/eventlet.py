@@ -21,7 +21,7 @@ class EventletRPCServer(server.RPCServer):
 
     def __init__(self, transport, target, endpoints):
         executor_cls = impl_eventlet.EventletExecutor
-        super(BlockingingRPCServer, self).__init__(transport,
-                                                   target,
-                                                   endpoints,
-                                                   executor_cls)
+        super(EventletRPCServer, self).__init__(transport,
+                                                target,
+                                                endpoints,
+                                                executor_cls)

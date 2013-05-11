@@ -31,7 +31,7 @@ class BlockingRPCServer(RPCServer):
 
     def __init__(self, transport, target, endpoints):
         executor_cls = impl_blocking.BlockingExecutor
-        super(BlockingingRPCServer, self).__init__(transport,
-                                                   target,
-                                                   endpoints,
-                                                   executor_cls)
+        super(BlockingRPCServer, self).__init__(transport,
+                                                target,
+                                                endpoints,
+                                                executor_cls)
