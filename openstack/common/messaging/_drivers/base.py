@@ -42,7 +42,7 @@ class BaseDriver(object):
     def __init__(self, conf, url=None, default_exchange=None):
         self.conf = conf
         self._url = url
-        self._default_exchange = _default_exchange
+        self._default_exchange = default_exchange
 
     @abc.abstractmethod
     def send(self, target, message, wait_for_reply=None, timeout=None):
