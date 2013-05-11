@@ -44,7 +44,7 @@ class _CallContext(object):
         self.timeout = timeout
         self.check_for_lock = check_for_lock
 
-        super(CallContext, self).__init__()
+        super(_CallContext, self).__init__()
 
     def _make_message(self, method, args):
         msg = dict(method=method, args=args)
@@ -83,7 +83,7 @@ class _CallContext(object):
         if self.check_for_lock:
             self._check_for_lock()
 
-        return self.transport._send(target, msg,
+        return self.transport._send(self.target, msg,
                                     wait_for_reply=True, timeout=timeout)
 
 
