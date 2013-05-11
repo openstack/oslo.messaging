@@ -16,7 +16,7 @@
 import eventlet
 import greenlet
 
-from openstack.common.messaging._executor import base
+from openstack.common.messaging._executors import base
 
 
 class EventletExecutor(base.ExecutorBase):
