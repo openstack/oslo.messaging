@@ -33,20 +33,20 @@ class Target(object):
     :param namespace: Identifies a particular interface (i.e. set of methods)
       exposed by a server. The default interface has no namespace identifier
       and is referred to as the null namespace.
-    :type topic: str
+    :type namespace: str
     :param version: Interfaces have a major.minor version number associated
       with them. A minor number increment indicates a backwards compatible
       change and an incompatible change is indicated by a major number bump.
       Servers may implement multiple major versions and clients may require
       indicate that their message requires a particular minimum minor version.
-    :type topic: str
+    :type version: str
     :param server: Clients can request that a message be directed to a specific
       server, rather than just one of a pool of servers listening on the topic.
-    :type topic: str
+    :type server: str
     :param fanout: Clients may request that a message be directed to all
       servers listening on a topic by setting fanout to ``True``, rather than
       just one of them.
-    :type topic: bool
+    :type fanout: bool
     """
 
     def __init__(self, exchange=None, topic=None, namespace=None,
