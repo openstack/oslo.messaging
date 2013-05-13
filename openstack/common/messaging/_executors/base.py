@@ -31,19 +31,19 @@ class ExecutorBase(object):
         self.callback = callback
 
     def _process_one_message(self):
-        (ctxt, message) = self.listener.poll()
+        incoming = self.listener.poll()
         try:
-            reply = self.callback(ctxt, message)
+            reply = self.callback(incoming.ctxt, incoming.message)
             if reply:
-                self.listener.reply(ctxt, reply)
+                incoming.reply(reply)
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
             _LOG.error(_("Failed to process message... skipping it."),
                        exc_info=exc_info)
-            self.listener.reply(failure=exc_info)
+            incoming.reply(failure=exc_info)
         finally:
-            self.listener.done(ctxt, message)
+            incoming.done()
 
     @abc.abstractmethod
     def start(self):

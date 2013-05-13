@@ -16,26 +16,38 @@
 import abc
 
 
+class IncomingMessage(object):
+
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, listener, ctxt, message):
+        self.conf = listener.conf
+        self.listener = listener
+        self.ctxt = ctxt
+        self.message = message
+
+    @abc.abstractmethod
+    def reply(self, reply=None, failure=None):
+        pass
+
+    @abc.abstractmethod
+    def done(self):
+        # so the transport can ack the message
+        pass
+
+
 class Listener(object):
 
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, driver, target):
+        self.conf = driver.conf
         self.driver = driver
         self.target = target
 
     @abc.abstractmethod
     def poll(self):
-        # returns (ctxt, message)
-        pass
-
-    @abc.abstractmethod
-    def done(self, ctxt, message):
-        # so the transport can ack the message
-        pass
-
-    @abc.abstractmethod
-    def reply(self, ctxt, reply=None, failure=None):
+        # returns an IncomingMessage
         pass
 
 

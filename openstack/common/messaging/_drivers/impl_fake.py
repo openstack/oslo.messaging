@@ -35,6 +35,15 @@ class InvalidTarget(ValueError):
         return self.msg + ":" + str(self.target)
 
 
+class FakeIncomingMessage(base.IncomingMessage):
+
+    def reply(self, reply=None, failure=None):
+        self.listener._deliver_reply(reply, failure)
+
+    def done(self):
+        pass
+
+
 class FakeListener(base.Listener):
 
     def __init__(self, driver, target):
@@ -51,20 +60,18 @@ class FakeListener(base.Listener):
                 # FIXME(markmc): timeout exception
                 return None
 
+    def _deliver_reply(self, reply=None, failure=None):
+        # FIXME: handle failure
+        self._reply_queue.put(reply)
+
     def poll(self):
         while True:
             # sleeping allows keyboard interrupts
             try:
-                return self._queue.get(block=False)
+                (ctxt, message) = self._queue.get(block=False)
+                return FakeIncomingMessage(self, ctxt, message)
             except Queue.Empty:
                 time.sleep(.05)
-
-    def done(self, ctxt, message):
-        pass
-
-    def reply(self, ctxt, reply=None, failure=None):
-        # FIXME: handle failure
-        self._reply_queue.put(reply)
 
 
 class FakeDriver(base.BaseDriver):
