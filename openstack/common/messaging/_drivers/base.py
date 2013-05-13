@@ -26,16 +26,16 @@ class Listener(object):
 
     @abc.abstractmethod
     def poll(self):
-        # returns message
+        # returns (ctxt, message)
         pass
 
     @abc.abstractmethod
-    def done(self, message):
+    def done(self, ctxt, message):
         # so the transport can ack the message
         pass
 
     @abc.abstractmethod
-    def reply(self, reply=None, failure=None):
+    def reply(self, ctxt, reply=None, failure=None):
         pass
 
 
@@ -49,7 +49,7 @@ class BaseDriver(object):
         self._default_exchange = default_exchange
 
     @abc.abstractmethod
-    def send(self, target, message, wait_for_reply=None, timeout=None):
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
         """Send a message to the given target."""
         return None
 

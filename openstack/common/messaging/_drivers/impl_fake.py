@@ -42,8 +42,8 @@ class FakeListener(base.Listener):
         self._queue = Queue.Queue()
         self._reply_queue = Queue.Queue()
 
-    def _deliver_message(self, message, wait_for_reply=None, timeout=None):
-        self._queue.put(message)
+    def _deliver_message(self, ctxt, message, wait_for_reply=None, timeout=None):
+        self._queue.put((ctxt, message))
         if wait_for_reply:
             try:
                 return self._reply_queue.get(timeout=timeout)
@@ -59,10 +59,10 @@ class FakeListener(base.Listener):
             except Queue.Empty:
                 time.sleep(.05)
 
-    def done(self, message):
+    def done(self, ctxt, message):
         pass
 
-    def reply(self, reply=None, failure=None):
+    def reply(self, ctxt, reply=None, failure=None):
         # FIXME: handle failure
         self._reply_queue.put(reply)
 
@@ -88,7 +88,7 @@ class FakeDriver(base.BaseDriver):
         """
         json.dumps(message)
 
-    def send(self, target, message, wait_for_reply=None, timeout=None):
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
         if not target.topic:
             raise InvalidTarget(_('A topic is required to send'), target)
 
@@ -118,14 +118,14 @@ class FakeDriver(base.BaseDriver):
 
         if target.fanout:
             for listener in listeners:
-                ret = listener._deliver_message(message)
+                ret = listener._deliver_message(ctxt, message)
                 if ret:
                     return ret
             return
 
         # FIXME(markmc): implement round-robin delivery
         listener = listeners[0]
-        return listener._deliver_message(message, wait_for_reply, timeout)
+        return listener._deliver_message(ctxt, message, wait_for_reply, timeout)
 
     def listen(self, target):
         if not (target.topic and target.server):

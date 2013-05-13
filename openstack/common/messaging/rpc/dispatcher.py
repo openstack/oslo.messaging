@@ -57,7 +57,7 @@ class RPCDispatcher(object):
         endpoint_version = endpoint.target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
 
-    def __call__(self, message):
+    def __call__(self, ctxt, message):
         method = message.get('method')
         args = message.get('args', {})
         namespace = message.get('namespace')
@@ -71,7 +71,7 @@ class RPCDispatcher(object):
             is_compatible = self._is_compatible(endpoint, version)
 
             if is_compatible and hasattr(endpoint, method):
-                return getattr(endpoint, method)(**args)
+                return getattr(endpoint, method)(ctxt, **args)
 
             found_compatible = found_compatible or is_compatible
 

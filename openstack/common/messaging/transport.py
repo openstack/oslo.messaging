@@ -52,8 +52,8 @@ class Transport(object):
         self.conf = driver.conf
         self._driver = driver
 
-    def _send(self, target, message, wait_for_reply=None, timeout=None):
-        return self._driver.send(target, message,
+    def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+        return self._driver.send(target, ctxt, message,
                                  wait_for_reply=wait_for_reply,
                                  timeout=timeout)
 

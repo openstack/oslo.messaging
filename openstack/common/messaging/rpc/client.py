@@ -54,9 +54,9 @@ class _CallContext(object):
             msg['version'] = self.target.version
         return msg
 
-    def cast(self, method, **kwargs):
+    def cast(self, ctxt, method, **kwargs):
         msg = self._make_message(method, kwargs)
-        self.transport._send(target, msg)
+        self.transport._send(target, ctxt, msg)
 
     def _check_for_lock():
         if not self.conf.debug:
@@ -73,7 +73,7 @@ class _CallContext(object):
 
         return False
 
-    def call(self, method, **kwargs):
+    def call(self, ctxt, method, **kwargs):
         msg = self._make_message(method, kwargs)
 
         timeout = self.timeout
@@ -83,7 +83,7 @@ class _CallContext(object):
         if self.check_for_lock:
             self._check_for_lock()
 
-        return self.transport._send(self.target, msg,
+        return self.transport._send(self.target, ctxt, msg,
                                     wait_for_reply=True, timeout=timeout)
 
 
@@ -111,8 +111,8 @@ class RPCClient(object):
 
         return _CallContext(self.transport, target, timeout, check_for_lock)
 
-    def cast(self, method, **kwargs):
-        self.prepare().cast(method, **kwargs)
+    def cast(self, ctxt, method, **kwargs):
+        self.prepare().cast(ctxt, method, **kwargs)
 
-    def call(self, method, **kwargs):
-        return self.prepare().call(method, **kwargs)
+    def call(self, ctxt, method, **kwargs):
+        return self.prepare().call(ctxt, method, **kwargs)

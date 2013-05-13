@@ -31,11 +31,11 @@ class ExecutorBase(object):
         self.callback = callback
 
     def _process_one_message(self):
-        message = self.listener.poll()
+        (ctxt, message) = self.listener.poll()
         try:
-            reply = self.callback(message)
+            reply = self.callback(ctxt, message)
             if reply:
-                self.listener.reply(reply)
+                self.listener.reply(ctxt, reply)
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
@@ -43,7 +43,7 @@ class ExecutorBase(object):
                        exc_info=exc_info)
             self.listener.reply(failure=exc_info)
         finally:
-            self.listener.done(message)
+            self.listener.done(ctxt, message)
 
     @abc.abstractmethod
     def start(self):
