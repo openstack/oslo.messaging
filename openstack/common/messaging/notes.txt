@@ -1,7 +1,9 @@
 
 TODO:
 
-  - contexts!
+  - we need some way for the dispatcher to take the incoming
+    context dict and instantiate a user-supplied request context
+    object with it
 
   - notifications!
 
@@ -17,6 +19,20 @@ TODO:
 
   - the InvalidTarget checks seem like they're generic preconditions
     that all drivers would want enforced
+
+  - _safe_log() logs sanitized message data
+
+  - unique_id used to reject duplicate messages
+
+  - local.store.context used by common logging - basically, how to make
+    sure the context of the currently dispatching rpc is available to
+    logging. Need to abstract out the dependency on eventlet for this.
+
+  - the current rpc code dispatches each method in its own greenlet,
+    we need to do the same in the eventlet executor
+
+  - I'm not sure listener.done() is really needed - can't we ack the
+    message before returning it from poll() ?
 
 Things I don't like:
 
