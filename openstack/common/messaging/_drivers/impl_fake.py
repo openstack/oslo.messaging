@@ -95,7 +95,8 @@ class FakeDriver(base.BaseDriver):
         """
         json.dumps(message)
 
-    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+    def send(self, target, ctxt, message,
+             wait_for_reply=None, timeout=None, envelope=False):
         if not target.topic:
             raise InvalidTarget(_('A topic is required to send'), target)
 

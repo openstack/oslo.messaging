@@ -61,7 +61,8 @@ class BaseDriver(object):
         self._default_exchange = default_exchange
 
     @abc.abstractmethod
-    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+    def send(self, target, ctxt, message,
+             wait_for_reply=None, timeout=None, envelope=False):
         """Send a message to the given target."""
         return None
 

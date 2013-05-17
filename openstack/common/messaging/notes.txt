@@ -34,6 +34,12 @@ TODO:
   - I'm not sure listener.done() is really needed - can't we ack the
     message before returning it from poll() ?
 
+  - envelope=True/False really sucks - it's a transport driver specific
+    flag and we're only using it to communicate whether to use the new
+    or older on-the-wire notification message format. Maybe we should
+    have a high-level "notification message format version" which each
+    transport driver can map to an on-the-wire format. Meh.
+
 Things I don't like:
 
   - CallContext - we already abuse the term "context" enough
