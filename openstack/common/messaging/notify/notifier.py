@@ -36,33 +36,6 @@ _notifier_opts = [
 ]
 
 
-def _driver(module, name):
-    return 'openstack.common.messaging.notify._impl_%s:%s' % (module, name)
-
-_MESSAGING_V2_DRIVER = _driver('messaging', 'MessagingV2Driver')
-_MESSAGING_DRIVER = _driver('messaging', 'MessagingDriver')
-_LOG_DRIVER = _driver('log', 'LogDriver')
-_TEST_DRIVER = _driver('test', 'TestDriver')
-_NOOP_DRIVER = _driver('noop', 'NoOpDriver')
-
-NOTIFIER_DRIVERS = [
-    'messagingv2 = ' + _MESSAGING_V2_DRIVER,
-    'messaging = ' + _MESSAGING_DRIVER,
-    'log = ' + _LOG_DRIVER,
-    'test = ' + _TEST_DRIVER,
-    'noop = ' + _NOOP_DRIVER,
-
-    # For backwards compat
-    'openstack.common.notify.rpc2_notifier = ' + _MESSAGING_V2_DRIVER,
-    'openstack.common.notify.rpc_notifier = ' + _MESSAGING_DRIVER,
-    'openstack.common.notify.log_notifier = ' + _LOG_DRIVER,
-    'openstack.common.notify.test_notifier = ' + _TEST_DRIVER,
-    'openstack.common.notify.no_op_notifier = ' + _NOOP_DRIVER,
-]
-
-NAMESPACE = 'openstack.common.notify.drivers'
-
-
 class _Driver(object):
 
     __metaclass__ = abc.ABCMeta
@@ -102,7 +75,7 @@ class Notifier(object):
         kwargs = dict(topics=self._topics, transport=self._transport)
 
         for driver in self._driver_names:
-            mgr = driver.DriverManager(NAMESPACE,
+            mgr = driver.DriverManager('openstack.common.notify.drivers',
                                        driver,
                                        invoke_on_load=True,
                                        invoke_args=[self.conf],

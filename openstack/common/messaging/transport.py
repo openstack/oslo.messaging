@@ -21,8 +21,6 @@ import urlparse
 from oslo.config import cfg
 from stevedore import driver
 
-from openstack.common.messaging import drivers
-
 _transport_opts = [
     cfg.StrOpt('transport_url',
                default=None,
@@ -76,7 +74,7 @@ def get_transport(conf, url=None):
     if url is not None:
         kwargs['url'] = url
 
-    mgr = driver.DriverManager(drivers.NAMESPACE,
+    mgr = driver.DriverManager('openstack.common.messaging.drivers',
                                rpc_backend,
                                invoke_on_load=True,
                                invoke_args=[conf],
