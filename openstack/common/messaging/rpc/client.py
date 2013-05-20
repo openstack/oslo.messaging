@@ -58,7 +58,7 @@ class _CallContext(object):
         msg = self._make_message(method, kwargs)
         self.transport._send(target, ctxt, msg)
 
-    def _check_for_lock():
+    def _check_for_lock(self):
         if not self.conf.debug:
             return None
 
@@ -69,9 +69,6 @@ class _CallContext(object):
                         'currently held are %(locks)s. This is probably a bug. '
                         'Please report it. Include the following: [%(stack)s].'),
                       {'locks': local.strong_store.locks_held, 'stack': stack})
-            return True
-
-        return False
 
     def call(self, ctxt, method, **kwargs):
         msg = self._make_message(method, kwargs)
