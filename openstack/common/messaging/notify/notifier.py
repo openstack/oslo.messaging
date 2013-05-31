@@ -21,6 +21,7 @@ from oslo.config import cfg
 from stevedore import driver
 
 from openstack.common.gettextutils import _
+from openstack.common import messaging
 from openstack.common import timeutils
 from openstack.common import uuidutils
 
@@ -40,7 +41,7 @@ class _Driver(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, topics=None, transport=None):
+    def __init__(self, conf, topics, transport):
         self.conf = conf
         self.topics = topics
         self.transport = transport
@@ -64,7 +65,7 @@ class Notifier(object):
         self._drivers = None
         self._topics = ([topic] if topic is not None
                         else conf.notification_topics)
-        self._transport = transport
+        self._transport = transport or messaging.get_transport(conf)
 
     def _get_drivers(self):
         if self._drivers is not None:

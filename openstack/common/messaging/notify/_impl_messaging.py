@@ -17,7 +17,7 @@
 
 from openstack.common.gettextutils import _
 from openstack.common import log as logging
-from openstack.common.messaging
+from openstack.common import messaging
 from openstack.common.messaging.notify import notifier
 
 LOG = logging.getLogger(__name__)
@@ -25,9 +25,7 @@ LOG = logging.getLogger(__name__)
 
 class MessagingDriver(notifier._Driver):
 
-    def __init__(self, conf, topics=None, transport=None, envelope=False):
-        if transport is None:
-            transport = messaging.get_transport(conf)
+    def __init__(self, conf, topics, transport, envelope=False):
         super(MessagingDriver, self).__init__(conf, topics, transport)
         self.envelope = envelope
 
