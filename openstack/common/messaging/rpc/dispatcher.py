@@ -20,6 +20,7 @@ from openstack.common.gettextutils import _
 from openstack.common import log as logging
 from openstack.common.messaging import _server as server
 from openstack.common.messaging import _utils as utils
+from openstack.common.messaging import serializer as msg_serializer
 
 _LOG = logging.getLogger(__name__)
 
@@ -49,13 +50,21 @@ class UnsupportedVersion(RPCDispatcherError):
 class RPCDispatcher(object):
     "Pass messages to the API objects for processing."
 
-    def __init__(self, endpoints):
+    def __init__(self, endpoints, serializer=None):
         self.endpoints = endpoints
+        self.serializer = serializer or msg_serializer.NoOpSerializer()
 
     @staticmethod
     def _is_compatible(endpoint, version):
         endpoint_version = endpoint.target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
+
+    def _dispatch(self, endpoint, method, ctxt, args):
+        new_args = dict()
+        for argname, arg in args.iteritems():
+            new_args[argname] = self.serializer.deserialize_entity(ctxt, arg)
+        result = getattr(endpoint, method)(ctxt, **new_args)
+        return self.serializer.serialize_entity(ctxt, result)
 
     def __call__(self, ctxt, message):
         method = message.get('method')
@@ -71,7 +80,7 @@ class RPCDispatcher(object):
             is_compatible = self._is_compatible(endpoint, version)
 
             if is_compatible and hasattr(endpoint, method):
-                return getattr(endpoint, method)(ctxt, **args)
+                return self._dispatch(endpoint, method, ctxt, args)
 
             found_compatible = found_compatible or is_compatible
 
