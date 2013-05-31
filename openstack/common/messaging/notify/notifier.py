@@ -18,9 +18,10 @@
 import abc
 
 from oslo.config import cfg
-from stevedore import driver
+from stevedore import named
 
 from openstack.common.gettextutils import _
+from openstack.common import log as logging
 from openstack.common import messaging
 from openstack.common import timeutils
 from openstack.common import uuidutils
@@ -35,6 +36,8 @@ _notifier_opts = [
                 deprecated_group='rpc_notifier2',
                 help='AMQP topic used for openstack notifications'),
 ]
+
+LOG = logging.getLogger(__name__)
 
 
 class _Driver(object):
@@ -62,28 +65,21 @@ class Notifier(object):
 
         self._driver_names = ([driver] if driver is not None
                               else conf.notification_driver)
-        self._drivers = None
+
         self._topics = ([topic] if topic is not None
                         else conf.notification_topics)
         self._transport = transport or messaging.get_transport(conf)
 
-    def _get_drivers(self):
-        if self._drivers is not None:
-            return self._drivers
-
-        self._drivers = []
-
-        kwargs = dict(topics=self._topics, transport=self._transport)
-
-        for driver in self._driver_names:
-            mgr = driver.DriverManager('openstack.common.notify.drivers',
-                                       driver,
-                                       invoke_on_load=True,
-                                       invoke_args=[self.conf],
-                                       invoke_kwds=kwargs)
-            self._drivers.append(driver)
-
-        return self._drivers
+        self._driver_mgr = named.NamedExtensionManager(
+            'openstack.common.notify.drivers',
+            names=self._driver_names,
+            invoke_on_load=True,
+            invoke_args=[self.conf],
+            invoke_kwds={
+                'topics': self._topics,
+                'transport': self._transport,
+            },
+        )
 
     def _notify(self, context, event_type, payload, priority):
         msg = dict(message_id=uuidutils.generate_uuid(),
@@ -93,13 +89,14 @@ class Notifier(object):
                    payload=payload,
                    timestamp=str(timeutils.utcnow()))
 
-        for driver in self._get_drivers():
+        def do_notify(ext):
             try:
-                driver.notify(context, msg, priority)
+                ext.obj.notify(context, msg, priority)
             except Exception as e:
                 LOG.exception(_("Problem '%(e)s' attempting to send to "
                                 "notification system. Payload=%(payload)s")
                               % dict(e=e, payload=payload))
+        self._driver_mgr.map(do_notify)
 
     def debug(self, context, event_type, payload):
         self._notify(context, event_type, payload, 'DEBUG')
