@@ -132,21 +132,26 @@ class RPCClient(object):
 
         super(RPCClient, self).__init__()
 
-    def prepare(self, exchange=None, topic=None, namespace=None,
-                version=None, server=None, fanout=None,
-                timeout=None, check_for_lock=None, version_cap=None):
-        target = self.target(exchange=exchange,
-                             topic=topic,
-                             namespace=namespace,
-                             version=version,
-                             server=server,
-                             fanout=fanout)
+    _marker = object()
 
-        if timeout is None:
+    def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
+                version=_marker, server=_marker, fanout=_marker,
+                timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+        kwargs = dict(
+            exchange=exchange,
+            topic=topic,
+            namespace=namespace,
+            version=version,
+            server=server,
+            fanout=fanout)
+        kwargs = dict([(k, v) for k, v in kwargs.items() if v is not self._marker])
+        target = self.target(**kwargs)
+
+        if timeout is self._marker:
             timeout = self.timeout
-        if check_for_lock is None:
+        if check_for_lock is self._marker:
             check_for_lock = self.check_for_lock
-        if version_cap is None:
+        if version_cap is self._marker:
             version_cap = self.version_cap
 
         return _CallContext(self.transport, target,
