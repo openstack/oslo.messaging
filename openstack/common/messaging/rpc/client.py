@@ -79,7 +79,7 @@ class _CallContext(object):
 
     def cast(self, ctxt, method, **kwargs):
         msg = self._make_message(ctxt, method, kwargs)
-        self.transport._send(target, ctxt, msg)
+        self.transport._send(self.target, ctxt, msg)
 
     def _check_for_lock(self):
         if not self.conf.debug:
