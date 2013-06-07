@@ -47,6 +47,21 @@ class MessageHandlingServer(object):
         super(MessageHandlingServer, self).__init__()
 
     def start(self):
+        """Start handling incoming messages.
+
+        This method causes the server to begin polling the transport for
+        incoming messages and passing them to the dispatcher. Message
+        processing will continue until the stop() method is called.
+
+        The executor controls how the server integrates with the applications
+        I/O handling strategy - it may choose to poll for messages in a new
+        process, thread or co-operatively scheduled coroutine or simply by
+        registering a callback with an event loop. Similarly, the executor may
+        choose to dispatch messages in a new thread, coroutine or simply the
+        current thread. An RPCServer subclass is available for each I/O
+        strategy supported by the library, so choose the subclass appropraite
+        for your program.
+        """
         if self._executor is not None:
             return
         listener = self.transport._listen(self.target)
@@ -55,10 +70,22 @@ class MessageHandlingServer(object):
         self._executor.start()
 
     def stop(self):
+        """Stop handling incoming messages.
+
+        Once this method returns, no new incoming messages will be handled by
+        the server. However, the server may still be in the process of handling
+        some messages.
+        """
         if self._executor is not None:
             self._executor.stop()
 
     def wait(self):
+        """Wait for message processing to complete.
+
+        After calling stop(), there may still be some some existing messages
+        which have not been completely processed. The wait() method blocks
+        until all message processing has completed.
+        """
         if self._executor is not None:
             self._executor.wait()
         self._executor = None

@@ -40,11 +40,25 @@ _transport_opts = [
 
 
 def set_defaults(control_exchange):
+    """Set defaults for messaging transport configuration options.
+
+    :param control_exchange: the default exchange under which topics are scoped
+    :type control_exchange: str
+    """
     cfg.set_defaults(_transport_opts,
                      control_exchange=control_exchange)
 
 
 class Transport(object):
+
+    """A messaging transport.
+
+    This is a mostly opaque handle for an underlying messaging transport
+    driver.
+
+    It has a single 'conf' property which is the cfg.ConfigOpts instance used
+    to construct the transport object.
+    """
 
     def __init__(self, driver):
         self.conf = driver.conf
@@ -62,6 +76,27 @@ class Transport(object):
 
 
 def get_transport(conf, url=None):
+    """A factory method for Transport objects.
+
+    This method will construct a Transport object from transport configuration
+    gleaned from the user's configuration and, optionally, a transport URL.
+
+    If a transport URL is supplied as a parameter, any transport configuration
+    contained in it takes precedence. If no transport URL is supplied, but
+    there is a transport URL supplied in the user's configuration then that
+    URL will take the place of the url parameter. In both cases, any
+    configuration not supplied in the transport URL may be taken from
+    individual configuration parameters in the user's configuration.
+
+    An example transport URL might be::
+
+        rabbit://me:passwd@host:5672/myexchange
+
+    :param conf: the user configuration
+    :type conf: cfg.ConfigOpts
+    :param url: a transport URL
+    :type url: str
+    """
     conf.register_opts(_transport_opts)
 
     url = url or conf.transport_url

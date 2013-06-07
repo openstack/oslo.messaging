@@ -78,6 +78,7 @@ class _CallContext(object):
         return msg
 
     def cast(self, ctxt, method, **kwargs):
+        """Invoke a method and return immediately. See RPCClient.cast()."""
         msg = self._make_message(ctxt, method, kwargs)
         self.transport._send(self.target, ctxt, msg)
 
@@ -99,6 +100,7 @@ class _CallContext(object):
                                      version_cap=self.version_cap)
 
     def call(self, ctxt, method, **kwargs):
+        """Invoke a method and wait for a reply. See RPCClient.call()."""
         msg = self._make_message(ctxt, method, kwargs)
 
         timeout = self.timeout
@@ -117,9 +119,68 @@ class _CallContext(object):
 
 class RPCClient(object):
 
+    """A class for invoking methods on remote servers.
+
+    The RPCClient class is responsible for sending method invocations to remote
+    servers via a messaging transport.
+
+    A default target is supplied to the RPCClient constructor, but target
+    attributes can be overridden for individual method invocations using the
+    prepare() method.
+
+    A method invocation consists of a request context dictionary, a method name
+    and a dictionary of arguments. A cast() invocation just sends the request
+    and returns immediately. A call() invocation waits for the server to send
+    a return value.
+
+    This class is intended to be used by subclassing it and providing methods
+    on the subclass which will perform the remote invocation using call() or
+    cast()::
+
+        class TestClient(messaging.RPCClient):
+
+        def __init__(self, transport):
+            target = messaging.Target(topic='testtopic', version='2.0')
+            super(Client, self).__init__(transport, target)
+
+        def test(self, ctxt, arg):
+            return self.call(ctxt, 'test', arg=arg)
+
+    An example of using the prepare() method to override some attributes of the
+    default target::
+
+        def test(self, ctxt, arg):
+            cctxt = self.prepare(version='2.5')
+            return cctxt.call(ctxt, 'test', arg=arg)
+
+    RPCClient have a number of other properties - timeout, check_for_lock and
+    version_cap - which may make sense to override for some method invocations,
+    so they too can be passed to prepare()::
+
+        def test(self, ctxt, arg):
+            cctxt = self.prepare(check_for_lock=False, timeout=10)
+            return cctxt.call(ctxt, 'test', arg=arg)
+
+    """
+
     def __init__(self, transport, target,
                  timeout=None, check_for_lock=None,
                  version_cap=None, serializer=None):
+        """Construct an RPC client.
+
+        :param transport: a messaging transport handle
+        :type transport: Transport
+        :param target: the default target for invocations
+        :type target: Target
+        :param timeout: an optional default timeout (in seconds) for call()s
+        :type timeout: int or float
+        :param check_for_lock: warn if a lockutils.synchronized lock is held
+        :type check_for_lock: bool
+        :param version_cap: raise a RpcVersionCapError version exceeds this cap
+        :type version_cap: str
+        :param serializer: an optional entity serializer
+        :type serializer: Serializer
+        """
         self.conf = transport.conf
         self.conf.register_opts(_client_opts)
 
@@ -137,6 +198,36 @@ class RPCClient(object):
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
                 timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+        """Prepare a method invocation context.
+
+        Use this method to override client properties for an individual method
+        invocation. For example::
+
+            def test(self, ctxt, arg):
+                cctxt = self.prepare(version='2.5')
+                return cctxt.call(ctxt, 'test', arg=arg)
+
+        :param exchange: see Target.exchange
+        :type exchange: str
+        :param topic: see Target.topic
+        :type topic: str
+        :param namespace: see Target.namespace
+        :type namespace: str
+        :param version: requirement the server must support, see Target.version
+        :type version: str
+        :param server: send to a specific server, see Target.server
+        :type server: str
+        :param fanout: send to all servers on topic, see Target.fanout
+        :type fanout: bool
+        :param timeout: an optional default timeout (in seconds) for call()s
+        :type timeout: int or float
+        :param check_for_lock: warn if a lockutils.synchronized lock is held
+        :type check_for_lock: bool
+        :param version_cap: raise a RpcVersionCapError version exceeds this cap
+        :type version_cap: str
+        :param serializer: an optional entity serializer
+        :type serializer: Serializer
+        """
         kwargs = dict(
             exchange=exchange,
             topic=topic,
@@ -160,7 +251,32 @@ class RPCClient(object):
                             version_cap)
 
     def cast(self, ctxt, method, **kwargs):
+        """Invoke a method and return immediately.
+
+        Method arguments must either be primitive types or types supported by
+        the client's serializer (if any).
+
+        :param ctxt: a request context dict
+        :type ctxt: dict
+        :param method: the method name
+        :type method: str
+        :param kwargs: a dict of method arguments
+        :param kwargs: dict
+        """
         self.prepare().cast(ctxt, method, **kwargs)
 
     def call(self, ctxt, method, **kwargs):
+        """Invoke a method and wait for a reply.
+
+        Method arguments must either be primitive types or types supported by
+        the client's serializer (if any).
+
+        :param ctxt: a request context dict
+        :type ctxt: dict
+        :param method: the method name
+        :type method: str
+        :param kwargs: a dict of method arguments
+        :param kwargs: dict
+        :raises: MessagingTimeout
+        """
         return self.prepare().call(ctxt, method, **kwargs)

@@ -19,7 +19,27 @@ from openstack.common.messaging.rpc import server
 
 class EventletRPCServer(server._RPCServer):
 
+    """An RPC server which integrates with eventlet.
+
+    This is an RPC server which polls for incoming messages from a greenthread
+    and dispatches each message in its own greenthread.
+
+    The stop() method kills the message polling greenthread and the wait()
+    method waits for all message dispatch greenthreads to complete.
+    """
+
     def __init__(self, transport, target, endpoints, serializer=None):
+        """Construct a new eventlet RPC server.
+
+        :param transport: the messaging transport
+        :type transport: Transport
+        :param target: the exchange, topic and server to listen on
+        :type target: Target
+        :param endpoints: a list of endpoint objects
+        :type endpoints: list
+        :param serializer: an optional entity serializer
+        :type serializer: Serializer
+        """
         executor_cls = impl_eventlet.EventletExecutor
         super(EventletRPCServer, self).__init__(transport,
                                                 target,

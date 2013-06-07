@@ -21,6 +21,16 @@ class Target(object):
     A Target encapsulates all the information to identify where a message
     should be sent or what messages a server is listening for.
 
+    Different subsets of the information encapsulated in a Target object is
+    relevant to various aspects of the API::
+
+      creating a server:
+        topic and server is required; exchange is optional
+      an endpoint's target:
+        namespace and version is optional
+      client sending a message:
+        topic is required, all other attributes optional
+
     Its attributes are:
 
     :param exchange: A scope for topics. Leave unspecified to default to the
