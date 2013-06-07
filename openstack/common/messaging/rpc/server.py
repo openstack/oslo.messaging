@@ -15,7 +15,7 @@
 
 from openstack.common.messaging import _server
 from openstack.common.messaging._executors import impl_blocking
-from openstack.common.messaging.rpc import dispatcher
+from openstack.common.messaging.rpc import _dispatcher
 
 
 class _RPCServer(_server.MessageHandlingServer):
@@ -23,7 +23,7 @@ class _RPCServer(_server.MessageHandlingServer):
     def __init__(self, transport, target, endpoints, executor_cls):
         super(_RPCServer, self).__init__(transport,
                                          target,
-                                         dispatcher.RPCDispatcher(endpoints),
+                                         _dispatcher.RPCDispatcher(endpoints),
                                          executor_cls)
 
 
