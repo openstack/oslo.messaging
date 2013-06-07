@@ -17,7 +17,7 @@ from openstack.common.messaging._executors import impl_eventlet
 from openstack.common.messaging.rpc import server
 
 
-class EventletRPCServer(server.RPCServer):
+class EventletRPCServer(server._RPCServer):
 
     def __init__(self, transport, target, endpoints):
         executor_cls = impl_eventlet.EventletExecutor

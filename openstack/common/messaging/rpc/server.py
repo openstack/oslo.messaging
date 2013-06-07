@@ -13,21 +13,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging import _server as server
+from openstack.common.messaging import _server
 from openstack.common.messaging._executors import impl_blocking
 from openstack.common.messaging.rpc import dispatcher
 
 
-class RPCServer(server.MessageHandlingServer):
+class _RPCServer(_server.MessageHandlingServer):
 
     def __init__(self, transport, target, endpoints, executor_cls):
-        super(RPCServer, self).__init__(transport,
-                                        target,
-                                        dispatcher.RPCDispatcher(endpoints),
-                                        executor_cls)
+        super(_RPCServer, self).__init__(transport,
+                                         target,
+                                         dispatcher.RPCDispatcher(endpoints),
+                                         executor_cls)
 
 
-class BlockingRPCServer(RPCServer):
+class BlockingRPCServer(_RPCServer):
 
     def __init__(self, transport, target, endpoints):
         executor_cls = impl_blocking.BlockingExecutor
