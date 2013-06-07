@@ -128,7 +128,7 @@ class RPCClient(object):
         self.timeout = timeout
         self.check_for_lock = check_for_lock
         self.version_cap = version_cap
-        self.serializer = serializer or msg_serialier.NoOpSerializer()
+        self.serializer = serializer or msg_serializer.NoOpSerializer()
 
         super(RPCClient, self).__init__()
 
