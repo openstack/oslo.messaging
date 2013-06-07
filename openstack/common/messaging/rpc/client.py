@@ -133,24 +133,24 @@ class RPCClient(object):
     and returns immediately. A call() invocation waits for the server to send
     a return value.
 
-    This class is intended to be used by subclassing it and providing methods
-    on the subclass which will perform the remote invocation using call() or
-    cast()::
+    This class is intended to be used by wrapping it in another class which
+    provides methods on the subclass to perform the remote invocation using
+    call() or cast()::
 
-        class TestClient(messaging.RPCClient):
+        class TestClient(object):
 
-        def __init__(self, transport):
-            target = messaging.Target(topic='testtopic', version='2.0')
-            super(Client, self).__init__(transport, target)
+            def __init__(self, transport):
+                target = messaging.Target(topic='testtopic', version='2.0')
+                self._client = messaging.RPCClient(transport, target)
 
-        def test(self, ctxt, arg):
-            return self.call(ctxt, 'test', arg=arg)
+            def test(self, ctxt, arg):
+                return self._client.call(ctxt, 'test', arg=arg)
 
     An example of using the prepare() method to override some attributes of the
     default target::
 
         def test(self, ctxt, arg):
-            cctxt = self.prepare(version='2.5')
+            cctxt = self._client.prepare(version='2.5')
             return cctxt.call(ctxt, 'test', arg=arg)
 
     RPCClient have a number of other properties - timeout, check_for_lock and
@@ -158,18 +158,19 @@ class RPCClient(object):
     so they too can be passed to prepare()::
 
         def test(self, ctxt, arg):
-            cctxt = self.prepare(check_for_lock=False, timeout=10)
+            cctxt = self._client.prepare(check_for_lock=False, timeout=10)
             return cctxt.call(ctxt, 'test', arg=arg)
 
-    However, this class can be used directly without subclassing. For example:
+    However, this class can be used directly without wrapping it another class.
+    For example:
 
         transport = messaging.get_transport(cfg.CONF)
         target = messaging.Target(topic='testtopic', version='2.0')
         client = messaging.RPCClient(transport, target)
         client.call(ctxt, 'test', arg=arg)
 
-    but this is probably only useful in limited circumstances as the subclass
-    will usually help to make the code much more obvious.
+    but this is probably only useful in limited circumstances as a wrapper
+    class will usually help to make the code much more obvious.
     """
 
     def __init__(self, transport, target,
