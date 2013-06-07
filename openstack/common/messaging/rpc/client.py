@@ -161,6 +161,15 @@ class RPCClient(object):
             cctxt = self.prepare(check_for_lock=False, timeout=10)
             return cctxt.call(ctxt, 'test', arg=arg)
 
+    However, this class can be used directly without subclassing. For example:
+
+        transport = messaging.get_transport(cfg.CONF)
+        target = messaging.Target(topic='testtopic', version='2.0')
+        client = messaging.RPCClient(transport, target)
+        client.call(ctxt, 'test', arg=arg)
+
+    but this is probably only useful in limited circumstances as the subclass
+    will usually help to make the code much more obvious.
     """
 
     def __init__(self, transport, target,
