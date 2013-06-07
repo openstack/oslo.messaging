@@ -51,7 +51,7 @@ class UnsupportedVersion(RPCDispatcherError):
 class RPCDispatcher(object):
     "Pass messages to the API objects for processing."
 
-    def __init__(self, endpoints, serializer=None):
+    def __init__(self, endpoints, serializer):
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
         self._default_target = target.Target()

@@ -19,9 +19,10 @@ from openstack.common.messaging.rpc import server
 
 class EventletRPCServer(server._RPCServer):
 
-    def __init__(self, transport, target, endpoints):
+    def __init__(self, transport, target, endpoints, serializer=None):
         executor_cls = impl_eventlet.EventletExecutor
         super(EventletRPCServer, self).__init__(transport,
                                                 target,
                                                 endpoints,
+                                                serializer,
                                                 executor_cls)

@@ -20,18 +20,20 @@ from openstack.common.messaging.rpc import _dispatcher
 
 class _RPCServer(_server.MessageHandlingServer):
 
-    def __init__(self, transport, target, endpoints, executor_cls):
+    def __init__(self, transport, target, endpoints, serializer, executor_cls):
+        dispatcher = _dispatcher.RPCDispatcher(endpoints, serializer)
         super(_RPCServer, self).__init__(transport,
                                          target,
-                                         _dispatcher.RPCDispatcher(endpoints),
+                                         dispatcher,
                                          executor_cls)
 
 
 class BlockingRPCServer(_RPCServer):
 
-    def __init__(self, transport, target, endpoints):
+    def __init__(self, transport, target, endpoints, serializer=None):
         executor_cls = impl_blocking.BlockingExecutor
         super(BlockingRPCServer, self).__init__(transport,
                                                 target,
                                                 endpoints,
+                                                serializer,
                                                 executor_cls)
