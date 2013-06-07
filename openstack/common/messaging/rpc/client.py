@@ -94,7 +94,7 @@ class _CallContext(object):
                       {'locks': local.strong_store.locks_held, 'stack': stack})
 
     def _check_version_cap(self, version):
-        if not utils.version_is_compatible(self.version_cap, v):
+        if not utils.version_is_compatible(self.version_cap, version):
             raise RpcVersionCapError(version=version,
                                      version_cap=self.version_cap)
 
