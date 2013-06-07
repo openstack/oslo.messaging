@@ -25,7 +25,7 @@ class BlockingExecutor(base.ExecutorBase):
     def start(self):
         self._running = True
         while self._running:
-            self._process_one_message()
+            self._dispatch(self.listener.poll())
 
     def stop(self):
         self._running = False

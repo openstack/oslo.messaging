@@ -14,16 +14,27 @@
 #    under the License.
 
 import eventlet
+from eventlet import greenpool
 import greenlet
 
+from oslo.config import cfg
+
 from openstack.common.messaging._executors import base
+
+_eventlet_opts = [
+    cfg.IntOpt('rpc_thread_pool_size',
+               default=64,
+               help='Size of RPC greenthread pool'),
+]
 
 
 class EventletExecutor(base.ExecutorBase):
 
     def __init__(self, conf, listener, callback):
         super(EventletExecutor, self).__init__(conf, listener, callback)
+        self.conf.register_opts(_eventlet_opts)
         self._thread = None
+        self._greenpool = greenpool.GreenPool(self.conf.rpc_thread_pool_size)
 
     def start(self):
         if self._thread is not None:
@@ -32,7 +43,8 @@ class EventletExecutor(base.ExecutorBase):
         def _executor_thread():
             try:
                 while True:
-                    self._process_one_message()
+                    incoming = self.listener.poll()
+                    self._greenpool.spawn_n(self._dispatch, incoming)
             except greenlet.GreenletExit:
                 return
 
@@ -46,6 +58,7 @@ class EventletExecutor(base.ExecutorBase):
     def wait(self):
         if self._thread is None:
             return
+        self._greenpool.waitall()
         try:
             self._thread.wait()
         except greenlet.GreenletExit:

@@ -30,8 +30,7 @@ class ExecutorBase(object):
         self.listener = listener
         self.callback = callback
 
-    def _process_one_message(self):
-        incoming = self.listener.poll()
+    def _dispatch(self, incoming):
         try:
             reply = self.callback(incoming.ctxt, incoming.message)
             if reply:
