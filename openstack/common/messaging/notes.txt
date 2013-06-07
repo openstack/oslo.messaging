@@ -69,6 +69,11 @@ is unclear:
       - optional: exchange
       - ignored: namespace, version, fanout
 
+  - in dispatcher:
+      - required: none
+      - optional: namespace, version
+      - ignored: exchange, topic, server, fanout
+
   - in driver.send():
       - required: topic
       - optional: server, fanout and exchange

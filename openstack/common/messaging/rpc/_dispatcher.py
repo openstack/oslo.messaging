@@ -18,9 +18,10 @@
 
 from openstack.common.gettextutils import _
 from openstack.common import log as logging
-from openstack.common.messaging import _server as server
-from openstack.common.messaging import _utils as utils
 from openstack.common.messaging import serializer as msg_serializer
+from openstack.common.messaging import _server as server
+from openstack.common.messaging import target
+from openstack.common.messaging import _utils as utils
 
 _LOG = logging.getLogger(__name__)
 
@@ -53,10 +54,15 @@ class RPCDispatcher(object):
     def __init__(self, endpoints, serializer=None):
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
+        self._default_target = target.Target()
 
     @staticmethod
-    def _is_compatible(endpoint, version):
-        endpoint_version = endpoint.target.version or '1.0'
+    def _is_namespace(target, namespace):
+        return namespace == target.namespace
+
+    @staticmethod
+    def _is_compatible(target, version):
+        endpoint_version = target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
 
     def _dispatch(self, endpoint, method, ctxt, args):
@@ -74,15 +80,18 @@ class RPCDispatcher(object):
 
         found_compatible = False
         for endpoint in self.endpoints:
-            if namespace != endpoint.target.namespace:
+            target = getattr(endpoint, 'target', None)
+            if not target:
+                target = self._default_target
+
+            if not (self._is_namespace(target, namespace) and
+                    self._is_compatible(target, version)):
                 continue
 
-            is_compatible = self._is_compatible(endpoint, version)
-
-            if is_compatible and hasattr(endpoint, method):
+            if hasattr(endpoint, method):
                 return self._dispatch(endpoint, method, ctxt, args)
 
-            found_compatible = found_compatible or is_compatible
+            found_compatible = True
 
         if found_compatible:
             raise NoSuchMethodError(method)
