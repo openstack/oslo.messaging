@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging import _server
 from openstack.common.messaging._executors import impl_blocking
+from openstack.common.messaging import _server
 from openstack.common.messaging.rpc import _dispatcher
 
 """

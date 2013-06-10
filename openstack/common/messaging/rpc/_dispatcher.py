@@ -18,10 +18,10 @@
 
 from openstack.common.gettextutils import _
 from openstack.common import log as logging
-from openstack.common.messaging import serializer as msg_serializer
 from openstack.common.messaging import _server as server
-from openstack.common.messaging import target
 from openstack.common.messaging import _utils as utils
+from openstack.common.messaging import serializer as msg_serializer
+from openstack.common.messaging import target
 
 _LOG = logging.getLogger(__name__)
 

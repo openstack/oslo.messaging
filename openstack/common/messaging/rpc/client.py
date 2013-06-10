@@ -23,9 +23,8 @@ from oslo.config import cfg
 from openstack.common.gettextutils import _
 from openstack.common import local
 from openstack.common import log as logging
-from openstack.common.messaging import serializer as msg_serializer
-from openstack.common.messaging import target
 from openstack.common.messaging import _utils as utils
+from openstack.common.messaging import serializer as msg_serializer
 
 _client_opts = [
     cfg.IntOpt('rpc_response_timeout',
@@ -86,8 +85,8 @@ class _CallContext(object):
         if not self.conf.debug:
             return None
 
-        if (hasattr(local.strong_store, 'locks_held') and
-            local.strong_store.locks_held):
+        if ((hasattr(local.strong_store, 'locks_held') and
+             local.strong_store.locks_held)):
             stack = ' :: '.join([frame[3] for frame in inspect.stack()])
             _LOG.warn(_('An RPC is being made while holding a lock. The locks '
                         'currently held are %(locks)s. This is probably a bug. '
@@ -245,7 +244,8 @@ class RPCClient(object):
             version=version,
             server=server,
             fanout=fanout)
-        kwargs = dict([(k, v) for k, v in kwargs.items() if v is not self._marker])
+        kwargs = dict([(k, v) for k, v in kwargs.items()
+                       if v is not self._marker])
         target = self.target(**kwargs)
 
         if timeout is self._marker:
