@@ -13,10 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from .exceptions import MessagingException
-from .exceptions import MessagingTimeout
 from .rpc.client import RPCClient
 from .rpc.server import BlockingRPCServer
 from .serializer import Serializer
 from .target import Target
 from .transport import get_transport
+
+from .exceptions import MessagingException
+from .exceptions import MessagingTimeout
+
+from .transport import DriverLoadFailure
+from .transport import InvalidTransportURL

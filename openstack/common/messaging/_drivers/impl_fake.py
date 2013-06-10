@@ -20,7 +20,7 @@ import Queue
 import time
 
 from openstack.common.gettextutils import _
-from openstack.common.messaging import exceptions
+from openstack.common import messaging
 from openstack.common.messaging._drivers import base
 from openstack.common.messaging import _utils as utils
 
@@ -119,7 +119,7 @@ class FakeDriver(base.BaseDriver):
                 break
 
             if timeout and (time.time() - start_time > timeout):
-                raise exceptions.MessagingTimeout(
+                raise messaging.MessagingTimeout(
                     _('No listeners found for topic %s') % target.topic)
 
             time.sleep(.05)

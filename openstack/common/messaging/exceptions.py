@@ -13,9 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 class MessagingException(Exception):
-    pass
+    """Base class for exceptions."""
+
+    def __init__(self, msg=None):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
 
 
 class MessagingTimeout(MessagingException):
-    pass
+    """Raised if message sending times out."""

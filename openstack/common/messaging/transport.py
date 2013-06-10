@@ -21,6 +21,9 @@ import urlparse
 from oslo.config import cfg
 from stevedore import driver
 
+from openstack.common.messaging import exceptions
+
+
 _transport_opts = [
     cfg.StrOpt('transport_url',
                default=None,
@@ -75,6 +78,24 @@ class Transport(object):
         return self._driver.listen(target)
 
 
+class InvalidTransportURL(exceptions.MessagingException):
+    """Raised if transport URL is invalid."""
+
+    def __init__(self, url, msg):
+        super(InvalidTransportURL, self).__init__(msg)
+        self.url = url
+
+
+class DriverLoadFailure(exceptions.MessagingException):
+    """Raised if a transport driver can't be loaded."""
+
+    def __init__(self, driver, ex):
+        msg = 'Failed to load transport driver "%s": %s' % (driver, ex)
+        super(DriverLoadFailure, self).__init__(msg)
+        self.driver = driver
+        self.ex = ex
+
+
 def get_transport(conf, url=None):
     """A factory method for Transport objects.
 
@@ -102,6 +123,8 @@ def get_transport(conf, url=None):
     url = url or conf.transport_url
     if url is not None:
         rpc_backend = urlparse.urlparse(url).scheme
+        if not rpc_backend:
+            raise InvalidTransportURL(url, 'No scheme specified in "%s"' % url)
     else:
         rpc_backend = conf.rpc_backend
 
@@ -109,9 +132,13 @@ def get_transport(conf, url=None):
     if url is not None:
         kwargs['url'] = url
 
-    mgr = driver.DriverManager('openstack.common.messaging.drivers',
-                               rpc_backend,
-                               invoke_on_load=True,
-                               invoke_args=[conf],
-                               invoke_kwds=kwargs)
+    try:
+        mgr = driver.DriverManager('openstack.common.messaging.drivers',
+                                   rpc_backend,
+                                   invoke_on_load=True,
+                                   invoke_args=[conf],
+                                   invoke_kwds=kwargs)
+    except RuntimeError as ex:
+        raise DriverLoadFailure(rpc_backend, ex)
+
     return Transport(mgr.driver)
