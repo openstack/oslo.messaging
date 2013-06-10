@@ -13,14 +13,22 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from .rpc.client import RPCClient
-from .rpc.server import BlockingRPCServer
-from .serializer import Serializer
-from .target import Target
-from .transport import get_transport
+from openstack.common.messaging import exceptions
+from openstack.common.messaging.rpc import client
+from openstack.common.messaging.rpc import server
+from openstack.common.messaging import serializer
+from openstack.common.messaging import target
+from openstack.common.messaging import transport
 
-from .exceptions import MessagingException
-from .exceptions import MessagingTimeout
 
-from .transport import DriverLoadFailure
-from .transport import InvalidTransportURL
+get_transport = transport.get_transport
+Target = target.Target
+
+RPCClient = client.RPCClient
+BlockingRPCServer = server.BlockingRPCServer
+Serializer = serializer.Serializer
+
+MessagingException = exceptions.MessagingException
+MessagingTimeout = exceptions.MessagingTimeout
+DriverLoadFailure = transport.DriverLoadFailure
+InvalidTransportURL = transport.InvalidTransportURL
