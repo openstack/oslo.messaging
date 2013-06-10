@@ -77,6 +77,9 @@ class Target(object):
         kwargs.setdefault('fanout', self.fanout)
         return Target(**kwargs)
 
+    def __eq__(self, other):
+        return vars(self) == vars(other)
+
     def __repr__(self):
         attrs = []
         for a in ['exchange', 'topic', 'namespace',
