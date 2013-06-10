@@ -37,9 +37,9 @@ def version_is_compatible(imp_version, version):
 def parse_url(url, default_exchange=None):
     """Parse an url.
 
-    Assimung a URL takes the form of:
+    Assuming a URL takes the form of:
 
-        transport://username:password@host1:port[,hostN:portN]/exchange[?option=value]
+        transport://user:pass@host1:port[,hostN:portN]/exchange[?opt=val]
 
     then parse the URL and return a dictionary with the following structure:
 
@@ -66,9 +66,9 @@ def parse_url(url, default_exchange=None):
        {"username": "user", "password": "passwd", "host": "host2:port2"}
       ]
 
-    * In order to avoid the above propagation, it is possible to alter the order
-    in which the hosts are specified or specify a set of fake credentials using
-    ",:@host2:port2"
+    * In order to avoid the above propagation, it is possible to alter the
+    order in which the hosts are specified or specify a set of fake credentials
+    using ",:@host2:port2"
 
 
       user:passwd@host1:port1,:@host2:port2
