@@ -98,7 +98,7 @@ class FakeDriver(base.BaseDriver):
     def send(self, target, ctxt, message,
              wait_for_reply=None, timeout=None, envelope=False):
         if not target.topic:
-            raise InvalidTarget(_('A topic is required to send'), target)
+            raise InvalidTarget('A topic is required to send', target)
 
         # FIXME(markmc): preconditions to enforce:
         #  - timeout and not wait_for_reply
@@ -120,7 +120,7 @@ class FakeDriver(base.BaseDriver):
 
             if timeout and (time.time() - start_time > timeout):
                 raise messaging.MessagingTimeout(
-                    _('No listeners found for topic %s') % target.topic)
+                    'No listeners found for topic %s' % target.topic)
 
             time.sleep(.05)
 
@@ -137,14 +137,14 @@ class FakeDriver(base.BaseDriver):
 
     def listen(self, target):
         if not (target.topic and target.server):
-            raise InvalidTarget(_('Topic and server are required to listen'),
+            raise InvalidTarget('Topic and server are required to listen',
                                 target)
 
         exchange = target.exchange or self._default_exchange
         topics = self._exchanges.setdefault(exchange, {})
 
         if target.topic in topics:
-            raise InvalidTarget(_('Already listening on this topic'), target)
+            raise InvalidTarget('Already listening on this topic', target)
 
         listener = FakeListener(self, target)
 

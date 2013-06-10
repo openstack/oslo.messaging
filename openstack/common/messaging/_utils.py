@@ -87,7 +87,7 @@ def parse_url(url, default_exchange=None):
 
     # NOTE(flaper87): Not PY3K compliant
     if not isinstance(url, basestring):
-        raise TypeError(_("Wrong URL type"))
+        raise TypeError("Wrong URL type")
 
     url = urlparse.urlparse(url)
 

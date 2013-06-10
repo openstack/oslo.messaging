@@ -20,7 +20,6 @@ import inspect
 
 from oslo.config import cfg
 
-from openstack.common.gettextutils import _
 from openstack.common import local
 from openstack.common import log as logging
 from openstack.common.messaging import _utils as utils
@@ -42,8 +41,8 @@ class RpcVersionCapError(Exception):
         self.version_cap = version_cap
 
     def __str__(self):
-        return (_("Specified RPC version cap, %(version_cap)s, is too low. "
-                  "Needs to be higher than %(version)s.") %
+        return ("Specified RPC version cap, %(version_cap)s, is too low. "
+                "Needs to be higher than %(version)s." %
                 dict(version=self.version, version_cap=self.version_cap))
 
 
@@ -88,9 +87,9 @@ class _CallContext(object):
         if ((hasattr(local.strong_store, 'locks_held') and
              local.strong_store.locks_held)):
             stack = ' :: '.join([frame[3] for frame in inspect.stack()])
-            _LOG.warn(_('An RPC is being made while holding a lock. The locks '
-                        'currently held are %(locks)s. This is probably a bug. '
-                        'Please report it. Include the following: [%(stack)s].'),
+            _LOG.warn('An RPC is being made while holding a lock. The locks '
+                      'currently held are %(locks)s. This is probably a bug. '
+                      'Please report it. Include the following: [%(stack)s].',
                       {'locks': local.strong_store.locks_held, 'stack': stack})
 
     def _check_version_cap(self, version):
