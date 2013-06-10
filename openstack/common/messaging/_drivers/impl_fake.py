@@ -19,7 +19,6 @@ import json
 import Queue
 import time
 
-from openstack.common.gettextutils import _
 from openstack.common import messaging
 from openstack.common.messaging._drivers import base
 from openstack.common.messaging import _utils as utils
@@ -51,7 +50,8 @@ class FakeListener(base.Listener):
         self._queue = Queue.Queue()
         self._reply_queue = Queue.Queue()
 
-    def _deliver_message(self, ctxt, message, wait_for_reply=None, timeout=None):
+    def _deliver_message(self, ctxt, message,
+                         wait_for_reply=None, timeout=None):
         self._queue.put((ctxt, message))
         if wait_for_reply:
             try:
@@ -113,7 +113,8 @@ class FakeDriver(base.BaseDriver):
             topics = self._exchanges.get(exchange, {})
             listeners = topics.get(target.topic, [])
             if target.server:
-                listeners = [l for l in listeners if l.target.server == server]
+                listeners = [l for l in listeners
+                             if l.target.server == target.server]
 
             if listeners or not wait_for_reply:
                 break
@@ -133,7 +134,8 @@ class FakeDriver(base.BaseDriver):
 
         # FIXME(markmc): implement round-robin delivery
         listener = listeners[0]
-        return listener._deliver_message(ctxt, message, wait_for_reply, timeout)
+        return listener._deliver_message(ctxt, message,
+                                         wait_for_reply, timeout)
 
     def listen(self, target):
         if not (target.topic and target.server):
