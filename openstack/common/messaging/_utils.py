@@ -152,6 +152,6 @@ def exchange_from_url(self, url, default_exchange=None):
     if not url.path.startswith('/'):
         return default_exchange
 
-    parts = u.path[1:].split('/')
+    parts = url.path[1:].split('/')
 
     return parts[0] if parts[0] else default_exchange
