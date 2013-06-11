@@ -233,8 +233,6 @@ class RPCClient(object):
         :type check_for_lock: bool
         :param version_cap: raise a RpcVersionCapError version exceeds this cap
         :type version_cap: str
-        :param serializer: an optional entity serializer
-        :type serializer: Serializer
         """
         kwargs = dict(
             exchange=exchange,
