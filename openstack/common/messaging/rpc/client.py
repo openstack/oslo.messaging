@@ -75,9 +75,16 @@ class _CallContext(object):
 
         return msg
 
+    def _check_version_cap(self, version):
+        if not utils.version_is_compatible(self.version_cap, version):
+            raise RPCVersionCapError(version=version,
+                                     version_cap=self.version_cap)
+
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately. See RPCClient.cast()."""
         msg = self._make_message(ctxt, method, kwargs)
+        if self.version_cap:
+            self._check_version_cap(msg.get('version'))
         self.transport._send(self.target, ctxt, msg)
 
     def _check_for_lock(self):
@@ -91,11 +98,6 @@ class _CallContext(object):
                       'currently held are %(locks)s. This is probably a bug. '
                       'Please report it. Include the following: [%(stack)s].',
                       {'locks': local.strong_store.locks_held, 'stack': stack})
-
-    def _check_version_cap(self, version):
-        if not utils.version_is_compatible(self.version_cap, version):
-            raise RPCVersionCapError(version=version,
-                                     version_cap=self.version_cap)
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
