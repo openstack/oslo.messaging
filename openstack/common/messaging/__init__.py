@@ -32,3 +32,4 @@ MessagingException = exceptions.MessagingException
 MessagingTimeout = exceptions.MessagingTimeout
 DriverLoadFailure = transport.DriverLoadFailure
 InvalidTransportURL = transport.InvalidTransportURL
+RPCVersionCapError = client.RPCVersionCapError

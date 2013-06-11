@@ -23,6 +23,7 @@ from oslo.config import cfg
 from openstack.common import local
 from openstack.common import log as logging
 from openstack.common.messaging import _utils as utils
+from openstack.common.messaging import exceptions
 from openstack.common.messaging import serializer as msg_serializer
 
 _client_opts = [
@@ -34,16 +35,15 @@ _client_opts = [
 _LOG = logging.getLogger(__name__)
 
 
-class RpcVersionCapError(Exception):
+class RPCVersionCapError(exceptions.MessagingException):
 
     def __init__(self, version, version_cap):
         self.version = version
         self.version_cap = version_cap
-
-    def __str__(self):
-        return ("Specified RPC version cap, %(version_cap)s, is too low. "
-                "Needs to be higher than %(version)s." %
-                dict(version=self.version, version_cap=self.version_cap))
+        msg = ("Specified RPC version cap, %(version_cap)s, is too low. "
+               "Needs to be higher than %(version)s." %
+               dict(version=self.version, version_cap=self.version_cap))
+        super(RPCVersionCapError, self).__init__(msg)
 
 
 class _CallContext(object):
@@ -94,7 +94,7 @@ class _CallContext(object):
 
     def _check_version_cap(self, version):
         if not utils.version_is_compatible(self.version_cap, version):
-            raise RpcVersionCapError(version=version,
+            raise RPCVersionCapError(version=version,
                                      version_cap=self.version_cap)
 
     def call(self, ctxt, method, **kwargs):
@@ -184,7 +184,7 @@ class RPCClient(object):
         :type timeout: int or float
         :param check_for_lock: warn if a lockutils.synchronized lock is held
         :type check_for_lock: bool
-        :param version_cap: raise a RpcVersionCapError version exceeds this cap
+        :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
         :param serializer: an optional entity serializer
         :type serializer: Serializer
@@ -231,7 +231,7 @@ class RPCClient(object):
         :type timeout: int or float
         :param check_for_lock: warn if a lockutils.synchronized lock is held
         :type check_for_lock: bool
-        :param version_cap: raise a RpcVersionCapError version exceeds this cap
+        :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
         """
         kwargs = dict(
