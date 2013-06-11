@@ -20,7 +20,6 @@ import inspect
 
 from oslo.config import cfg
 
-from openstack.common import local
 from openstack.common import log as logging
 from openstack.common.messaging import _utils as utils
 from openstack.common.messaging import exceptions
@@ -88,16 +87,13 @@ class _CallContext(object):
         self.transport._send(self.target, ctxt, msg)
 
     def _check_for_lock(self):
-        if not self.conf.debug:
-            return None
-
-        if ((hasattr(local.strong_store, 'locks_held') and
-             local.strong_store.locks_held)):
+        locks_held = self.check_for_lock(self.conf)
+        if locks_held:
             stack = ' :: '.join([frame[3] for frame in inspect.stack()])
             _LOG.warn('An RPC is being made while holding a lock. The locks '
                       'currently held are %(locks)s. This is probably a bug. '
                       'Please report it. Include the following: [%(stack)s].',
-                      {'locks': local.strong_store.locks_held, 'stack': stack})
+                      {'locks': locks_held, 'stack': stack})
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
@@ -158,7 +154,7 @@ class RPCClient(object):
     so they too can be passed to prepare()::
 
         def test(self, ctxt, arg):
-            cctxt = self._client.prepare(check_for_lock=False, timeout=10)
+            cctxt = self._client.prepare(check_for_lock=None, timeout=10)
             return cctxt.call(ctxt, 'test', arg=arg)
 
     However, this class can be used directly without wrapping it another class.
@@ -184,7 +180,7 @@ class RPCClient(object):
         :type target: Target
         :param timeout: an optional default timeout (in seconds) for call()s
         :type timeout: int or float
-        :param check_for_lock: warn if a lockutils.synchronized lock is held
+        :param check_for_lock: a callable that given conf returns held locks
         :type check_for_lock: bool
         :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
@@ -231,7 +227,7 @@ class RPCClient(object):
         :type fanout: bool
         :param timeout: an optional default timeout (in seconds) for call()s
         :type timeout: int or float
-        :param check_for_lock: warn if a lockutils.synchronized lock is held
+        :param check_for_lock: a callable that given conf returns held locks
         :type check_for_lock: bool
         :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
