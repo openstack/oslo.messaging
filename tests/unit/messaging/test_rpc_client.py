@@ -425,7 +425,9 @@ class TestSerializer(test_utils.BaseTestCase):
         self.mox.ReplayAll()
 
         method = client.call if self.call else client.cast
-        method(self.ctxt, 'foo', **self.args)
+        retval = method(self.ctxt, 'foo', **self.args)
+        if self.retval is not None:
+            self.assertEquals(retval, 'd' + self.retval)
 
     def _test_scenario(self, name):
         _test_scenario(name, self.scenarios, self, self._test_call_serializer)
