@@ -1,6 +1,8 @@
 
 TODO:
 
+  - can_send_version() in RPCClient
+
   - we need some way for the dispatcher to take the incoming
     context dict and instantiate a user-supplied request context
     object with it
