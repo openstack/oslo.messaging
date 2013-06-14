@@ -47,6 +47,7 @@ RPCVersionCapError = client.RPCVersionCapError
 
 MessagingServerError = server.MessagingServerError
 ExecutorLoadFailure = server.ExecutorLoadFailure
+ServerListenError = server.ServerListenError
 
 RPCDispatcherError = rpc_dispatcher.RPCDispatcherError
 NoSuchMethod = rpc_dispatcher.NoSuchMethod

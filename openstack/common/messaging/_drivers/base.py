@@ -15,6 +15,12 @@
 
 import abc
 
+from openstack.common.messaging import exceptions
+
+
+class TransportDriverError(exceptions.MessagingException):
+    """Base class for transport driver specific exceptions."""
+
 
 class IncomingMessage(object):
 

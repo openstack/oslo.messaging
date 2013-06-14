@@ -24,14 +24,12 @@ from openstack.common.messaging._drivers import base
 from openstack.common.messaging import _utils as utils
 
 
-class InvalidTarget(ValueError):
+class InvalidTarget(base.TransportDriverError, ValueError):
 
     def __init__(self, msg, target):
-        self.msg = msg
+        msg = msg + ":" + str(target)
+        super(InvalidTarget, self).__init__(msg)
         self.target = target
-
-    def __str__(self):
-        return self.msg + ":" + str(self.target)
 
 
 class FakeIncomingMessage(base.IncomingMessage):

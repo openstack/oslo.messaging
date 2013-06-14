@@ -19,6 +19,7 @@
 from stevedore import driver
 
 from openstack.common import log as logging
+from openstack.common.messaging._drivers import base as driver_base
 from openstack.common.messaging import exceptions
 
 _LOG = logging.getLogger(__name__)
@@ -35,6 +36,16 @@ class ExecutorLoadFailure(MessagingServerError):
         msg = 'Failed to load executor "%s": %s' % (executor, ex)
         super(ExecutorLoadFailure, self).__init__(msg)
         self.executor = executor
+        self.ex = ex
+
+
+class ServerListenError(MessagingServerError):
+    """Raised if we failed to listen on a target."""
+
+    def __init__(self, target, ex):
+        msg = 'Failed to listen on target "%s": %s' % (target, ex)
+        super(ServerListenError, self).__init__(msg)
+        self.target = target
         self.ex = ex
 
 
@@ -101,7 +112,12 @@ class MessageHandlingServer(object):
         """
         if self._executor is not None:
             return
-        listener = self.transport._listen(self.target)
+
+        try:
+            listener = self.transport._listen(self.target)
+        except driver_base.TransportDriverError as ex:
+            raise ServerListenError(self.target, ex)
+
         self._executor = self._executor_cls(self.conf, listener,
                                             self.dispatcher)
         self._executor.start()
