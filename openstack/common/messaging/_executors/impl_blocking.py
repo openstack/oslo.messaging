@@ -18,6 +18,17 @@ from openstack.common.messaging._executors import base
 
 class BlockingExecutor(base.ExecutorBase):
 
+    """A message executor which blocks the current thread.
+
+    The blocking executor's start() method functions as a request processing
+    loop - i.e. it blocks, processes messages and only returns when stop() is
+    called from a dispatched method.
+
+    Method calls are dispatched in the current thread, so only a single method
+    call can be executing at once. This executor is likely to only be useful
+    for simple demo programs.
+    """
+
     def __init__(self, conf, listener, callback):
         super(BlockingExecutor, self).__init__(conf, listener, callback)
         self._running = False

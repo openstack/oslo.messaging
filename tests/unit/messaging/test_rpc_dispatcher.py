@@ -14,7 +14,6 @@
 #    under the License.
 
 from openstack.common import messaging
-from openstack.common.messaging.rpc import _dispatcher as rpc_dispatcher
 from openstack.common.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
@@ -53,7 +52,7 @@ class TestDispatcher(test_utils.BaseTestCase):
          dict(endpoints=[],
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo'),
-              success=False, ex=rpc_dispatcher.UnsupportedVersion)),
+              success=False, ex=messaging.UnsupportedVersion)),
         ('default_target',
          dict(endpoints=[{}],
               dispatch_to=dict(endpoint=0, method='foo'),
@@ -79,7 +78,7 @@ class TestDispatcher(test_utils.BaseTestCase):
          dict(endpoints=[{}],
               dispatch_to=None,
               ctxt={}, msg=dict(method='foobar'),
-              success=False, ex=rpc_dispatcher.NoSuchMethodError)),
+              success=False, ex=messaging.NoSuchMethod)),
         ('namespace',
          dict(endpoints=[{}, dict(namespace='testns')],
               dispatch_to=dict(endpoint=1, method='foo'),
@@ -89,7 +88,7 @@ class TestDispatcher(test_utils.BaseTestCase):
          dict(endpoints=[{}, dict(namespace='testns')],
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo', namespace='nstest'),
-              success=False, ex=rpc_dispatcher.UnsupportedVersion)),
+              success=False, ex=messaging.UnsupportedVersion)),
         ('version',
          dict(endpoints=[dict(version='1.5'), dict(version='3.4')],
               dispatch_to=dict(endpoint=1, method='foo'),
@@ -99,7 +98,7 @@ class TestDispatcher(test_utils.BaseTestCase):
          dict(endpoints=[dict(version='1.5'), dict(version='3.0')],
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo', version='3.2'),
-              success=False, ex=rpc_dispatcher.UnsupportedVersion)),
+              success=False, ex=messaging.UnsupportedVersion)),
     ]
 
     def _test_dispatcher(self):
@@ -109,7 +108,7 @@ class TestDispatcher(test_utils.BaseTestCase):
             endpoints.append(_FakeEndpoint(target))
 
         serializer = None
-        dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer)
+        dispatcher = messaging.RPCDispatcher(endpoints, serializer)
 
         if self.dispatch_to is not None:
             endpoint = endpoints[self.dispatch_to['endpoint']]
@@ -128,9 +127,9 @@ class TestDispatcher(test_utils.BaseTestCase):
             self.assertFalse(self.success, ex)
             self.assertTrue(self.ex is not None, ex)
             self.assertTrue(isinstance(ex, self.ex), ex)
-            if isinstance(ex, rpc_dispatcher.NoSuchMethodError):
+            if isinstance(ex, messaging.NoSuchMethod):
                 self.assertEquals(ex.method, self.msg.get('method'))
-            elif isinstance(ex, rpc_dispatcher.UnsupportedVersion):
+            elif isinstance(ex, messaging.UnsupportedVersion):
                 self.assertEquals(ex.version, self.msg.get('version', '1.0'))
         else:
             self.assertTrue(self.success)
@@ -183,7 +182,7 @@ class TestSerializer(test_utils.BaseTestCase):
     def _test_serializer(self):
         endpoint = _FakeEndpoint()
         serializer = msg_serializer.NoOpSerializer
-        dispatcher = rpc_dispatcher.RPCDispatcher([endpoint], serializer)
+        dispatcher = messaging.RPCDispatcher([endpoint], serializer)
 
         self.mox.StubOutWithMock(endpoint, 'foo')
         args = dict([(k, 'd' + v) for k, v in self.args.items()])

@@ -16,13 +16,26 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from stevedore import driver
+
 from openstack.common import log as logging
+from openstack.common.messaging import exceptions
 
 _LOG = logging.getLogger(__name__)
 
 
-class MessagingServerError(Exception):
-    pass
+class MessagingServerError(exceptions.MessagingException):
+    """Base class for all MessageHandlingServer exceptions."""
+
+
+class ExecutorLoadFailure(MessagingServerError):
+    """Raised if an executor can't be loaded."""
+
+    def __init__(self, executor, ex):
+        msg = 'Failed to load executor "%s": %s' % (executor, ex)
+        super(ExecutorLoadFailure, self).__init__(msg)
+        self.executor = executor
+        self.ex = ex
 
 
 class MessageHandlingServer(object):
@@ -33,15 +46,40 @@ class MessageHandlingServer(object):
     new tasks.
     """
 
-    def __init__(self, transport, target, dispatcher, executor_cls):
+    def __init__(self, transport, target, dispatcher, executor='blocking'):
+        """Construct a message handling server.
+
+        The dispatcher parameter is a callable which is invoked with context
+        and message dictionaries each time a message is received.
+
+        The executor parameter controls how incoming messages will be received
+        and dispatched. By default, the most simple executor is used - the
+        blocking executor.
+
+        :param transport: the messaging transport
+        :type transport: Transport
+        :param target: the exchange, topic and server to listen on
+        :type target: Target
+        :param dispatcher: a callable which is invoked for each method
+        :type dispatcher: callable
+        :param executor: name of message executor - e.g. 'eventlet', 'blocking'
+        :type executor: str
+        """
         self.conf = transport.conf
 
         self.transport = transport
         self.target = target
         self.dispatcher = dispatcher
+        self.executor = executor
 
-        self._executor_cls = executor_cls
-        self._executor = None
+        try:
+            mgr = driver.DriverManager('openstack.common.messaging.executors',
+                                       self.executor)
+        except RuntimeError as ex:
+            raise ExecutorLoadFailure(self.executor, ex)
+        else:
+            self._executor_cls = mgr.driver
+            self._executor = None
 
         super(MessageHandlingServer, self).__init__()
 

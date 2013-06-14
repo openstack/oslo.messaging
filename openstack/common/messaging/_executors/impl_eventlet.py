@@ -30,6 +30,15 @@ _eventlet_opts = [
 
 class EventletExecutor(base.ExecutorBase):
 
+    """A message exector which integrates with eventlet.
+
+    This is an executor which polls for incoming messages from a greenthread
+    and dispatches each message in its own greenthread.
+
+    The stop() method kills the message polling greenthread and the wait()
+    method waits for all message dispatch greenthreads to complete.
+    """
+
     def __init__(self, conf, listener, callback):
         super(EventletExecutor, self).__init__(conf, listener, callback)
         self.conf.register_opts(_eventlet_opts)

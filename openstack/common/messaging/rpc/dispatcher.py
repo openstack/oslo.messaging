@@ -16,40 +16,52 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.gettextutils import _
 from openstack.common import log as logging
-from openstack.common.messaging import _server as server
 from openstack.common.messaging import _utils as utils
 from openstack.common.messaging import serializer as msg_serializer
+from openstack.common.messaging import server as msg_server
 from openstack.common.messaging import target
 
 _LOG = logging.getLogger(__name__)
 
 
-class RPCDispatcherError(server.MessagingServerError):
-    pass
+class RPCDispatcherError(msg_server.MessagingServerError):
+    "A base class for all RPC dispatcher exceptions."
 
 
-class NoSuchMethodError(RPCDispatcherError, AttributeError):
+class NoSuchMethod(RPCDispatcherError, AttributeError):
+    "Raised if there is no endpoint which exposes the requested method."
 
     def __init__(self, method):
+        msg = "Endpoint does not support RPC method %s" % method
+        super(NoSuchMethod, self).__init__(msg)
         self.method = method
-
-    def __str__(self):
-        return _("Endpoint does not support RPC method %s") % self.method
 
 
 class UnsupportedVersion(RPCDispatcherError):
+    "Raised if there is no endpoint which supports the requested version."
 
     def __init__(self, version):
+        msg = "Endpoint does not support RPC version %s" % version
+        super(UnsupportedVersion, self).__init__(msg)
         self.version = version
-
-    def __str__(self):
-        return _("Endpoint does not support RPC version %s") % self.version
 
 
 class RPCDispatcher(object):
-    "Pass messages to the API objects for processing."
+    """A message dispatcher which understands RPC messages.
+
+    A MessageHandlingServer is constructed by passing a callable dispatcher
+    which is invoked with context and message dictionaries each time a message
+    is received.
+
+    RPCDispatcher is one such dispatcher which understands the format of RPC
+    messages. The dispatcher looks at the namespace, version and method values
+    in the message and matches those against a list of available endpoints.
+
+    Endpoints may have a target attribute describing the namespace and version
+    of the methods exposed by that object. All public methods on an endpoint
+    object are remotely invokable by clients.
+    """
 
     def __init__(self, endpoints, serializer):
         self.endpoints = endpoints
@@ -73,6 +85,14 @@ class RPCDispatcher(object):
         return self.serializer.serialize_entity(ctxt, result)
 
     def __call__(self, ctxt, message):
+        """Dispatch an RPC message to the appropriate endpoint method.
+
+        :param ctxt: the request context
+        :type ctxt: dict
+        :param message: the message payload
+        :type message: dict
+        :raises: NoSuchMethod, UnsupportedVersion
+        """
         method = message.get('method')
         args = message.get('args', {})
         namespace = message.get('namespace')
@@ -94,6 +114,6 @@ class RPCDispatcher(object):
             found_compatible = True
 
         if found_compatible:
-            raise NoSuchMethodError(method)
+            raise NoSuchMethod(method)
         else:
             raise UnsupportedVersion(version)
