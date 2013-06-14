@@ -130,6 +130,10 @@ class FakeDriver(base.BaseDriver):
                     return ret
             return
 
+        if not listeners:
+            # FIXME(markmc): timeout exception
+            return None
+
         # FIXME(markmc): implement round-robin delivery
         listener = listeners[0]
         return listener._deliver_message(ctxt, message,
