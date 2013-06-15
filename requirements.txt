@@ -1,0 +1,11 @@
+oslo.config
+stevedore
+
+# for timeutils
+iso8601
+
+# for jsonutils
+six
+
+# for log
+eventlet

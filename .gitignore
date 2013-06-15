@@ -1,0 +1,14 @@
+AUTHORS
+ChangeLog
+*~
+*.swp
+*.pyc
+*.log
+.tox
+.coverage
+oslo.messaging.egg-info/
+build/
+doc/build/
+doc/source/api/
+dist/
+.testrepository/
