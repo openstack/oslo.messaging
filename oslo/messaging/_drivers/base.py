@@ -34,12 +34,11 @@ class IncomingMessage(object):
 
     @abc.abstractmethod
     def reply(self, reply=None, failure=None):
-        pass
+        "Send a reply or failure back to the client."
 
     @abc.abstractmethod
     def done(self):
-        # so the transport can ack the message
-        pass
+        "The message has been dispatched and replied to."
 
 
 class Listener(object):
@@ -53,8 +52,7 @@ class Listener(object):
 
     @abc.abstractmethod
     def poll(self):
-        # returns an IncomingMessage
-        pass
+        "Blocking until a message is pending and return IncomingMessage."
 
 
 class BaseDriver(object):
@@ -70,9 +68,7 @@ class BaseDriver(object):
     def send(self, target, ctxt, message,
              wait_for_reply=None, timeout=None, envelope=False):
         """Send a message to the given target."""
-        return None
 
     @abc.abstractmethod
     def listen(self, target):
         """Construct a Listener for the given target."""
-        return None
