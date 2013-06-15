@@ -21,7 +21,7 @@ import urlparse
 from oslo.config import cfg
 from stevedore import driver
 
-from openstack.common.messaging import exceptions
+from oslo.messaging import exceptions
 
 
 _transport_opts = [
@@ -133,7 +133,7 @@ def get_transport(conf, url=None):
         kwargs['url'] = url
 
     try:
-        mgr = driver.DriverManager('openstack.common.messaging.drivers',
+        mgr = driver.DriverManager('oslo.messaging.drivers',
                                    rpc_backend,
                                    invoke_on_load=True,
                                    invoke_args=[conf],

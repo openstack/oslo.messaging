@@ -20,8 +20,8 @@ import mox
 from oslo.config import cfg
 from stevedore import driver
 
-from openstack.common import messaging
-from openstack.common.messaging import transport
+from oslo import messaging
+from oslo.messaging import transport
 from tests import utils as test_utils
 
 # FIXME(markmc): I'm having touble using testscenarios with nose
@@ -138,7 +138,7 @@ class GetTransportTestCase(test_utils.BaseTestCase):
             invoke_kwds['url'] = self.expect['url']
 
         drvr = _FakeDriver(self.conf)
-        driver.DriverManager('openstack.common.messaging.drivers',
+        driver.DriverManager('oslo.messaging.drivers',
                              self.expect['backend'],
                              invoke_on_load=True,
                              invoke_args=invoke_args,
@@ -166,7 +166,7 @@ class GetTransportTestCase(test_utils.BaseTestCase):
             if self.expect['url']:
                 invoke_kwds['url'] = self.expect['url']
 
-            driver.DriverManager('openstack.common.messaging.drivers',
+            driver.DriverManager('oslo.messaging.drivers',
                                  self.expect['backend'],
                                  invoke_on_load=True,
                                  invoke_args=invoke_args,

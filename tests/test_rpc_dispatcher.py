@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common import messaging
-from openstack.common.messaging import serializer as msg_serializer
+from oslo import messaging
+from oslo.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
 # FIXME(markmc): I'm having touble using testscenarios with nose

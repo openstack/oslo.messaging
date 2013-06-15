@@ -15,7 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging.notify import notifier
+from oslo.messaging.notify import notifier
 
 
 class NoOpDriver(notifier._Driver):

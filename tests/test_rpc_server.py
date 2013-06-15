@@ -17,7 +17,7 @@ import threading
 
 from oslo.config import cfg
 
-from openstack.common import messaging
+from oslo import messaging
 from tests import utils as test_utils
 
 

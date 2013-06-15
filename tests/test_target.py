@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common import messaging
+from oslo import messaging
 from tests import utils as test_utils
 
 # FIXME(markmc): I'm having touble using testscenarios with nose

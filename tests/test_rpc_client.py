@@ -15,9 +15,9 @@
 
 from oslo.config import cfg
 
-from openstack.common import messaging
-from openstack.common.messaging.rpc import client as rpc_client
-from openstack.common.messaging import serializer as msg_serializer
+from oslo import messaging
+from oslo.messaging.rpc import client as rpc_client
+from oslo.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
 # FIXME(markmc): I'm having touble using testscenarios with nose

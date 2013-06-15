@@ -13,7 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging._executors import base
+from oslo.messaging._executors import base
 
 
 class BlockingExecutor(base.ExecutorBase):

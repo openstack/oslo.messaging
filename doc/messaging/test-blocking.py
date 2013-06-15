@@ -4,8 +4,8 @@ import threading
 
 from oslo.config import cfg
 
-from openstack.common import log as logging
-from openstack.common import messaging
+from oslo.messaging.openstack.common import log as logging
+from oslo import messaging
 
 logging.setup('test-blocking')
 

@@ -8,9 +8,9 @@ import socket
 
 from oslo.config import cfg
 
-from openstack.common import log as logging
-from openstack.common import messaging
-from openstack.common.messaging import eventlet as evmsg
+from oslo.messaging.openstack.common import log as logging
+from oslo import messaging
+from oslo.messaging import eventlet as evmsg
 
 logging.setup('test-eventlet')
 

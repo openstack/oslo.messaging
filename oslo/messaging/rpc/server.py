@@ -13,8 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging.rpc import dispatcher as rpc_dispatcher
-from openstack.common.messaging import server as msg_server
+from oslo.messaging.rpc import dispatcher as rpc_dispatcher
+from oslo.messaging import server as msg_server
 
 """
 An RPC server exposes a number of endpoints, each of which contain a set of
@@ -49,7 +49,7 @@ Currently BlockingRPCServer and eventlet.RPCServer are available.
 A simple example of an RPC server with multiple endpoints might be:
 
     from oslo.config import cfg
-    from openstack.common import messaging
+    from oslo import messaging
 
     class ServerControlEndpoint(object):
 

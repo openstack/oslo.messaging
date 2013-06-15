@@ -16,11 +16,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common import log as logging
-from openstack.common.messaging import _utils as utils
-from openstack.common.messaging import serializer as msg_serializer
-from openstack.common.messaging import server as msg_server
-from openstack.common.messaging import target
+from oslo.messaging import _utils as utils
+from oslo.messaging.openstack.common import log as logging
+from oslo.messaging import serializer as msg_serializer
+from oslo.messaging import server as msg_server
+from oslo.messaging import target
 
 _LOG = logging.getLogger(__name__)
 

@@ -20,11 +20,11 @@ import abc
 from oslo.config import cfg
 from stevedore import named
 
-from openstack.common.gettextutils import _
-from openstack.common import log as logging
-from openstack.common import messaging
-from openstack.common import timeutils
-from openstack.common import uuidutils
+from oslo import messaging
+from oslo.messaging.openstack.common.gettextutils import _
+from oslo.messaging.openstack.common import log as logging
+from oslo.messaging.openstack.common import timeutils
+from oslo.messaging.openstack.common import uuidutils
 
 _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',
@@ -71,7 +71,7 @@ class Notifier(object):
         self._transport = transport or messaging.get_transport(conf)
 
         self._driver_mgr = named.NamedExtensionManager(
-            'openstack.common.notify.drivers',
+            'oslo.messaging.notify.drivers',
             names=self._driver_names,
             invoke_on_load=True,
             invoke_args=[self.conf],

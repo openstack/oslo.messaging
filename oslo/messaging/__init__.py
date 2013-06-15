@@ -13,14 +13,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging import exceptions
-from openstack.common.messaging.rpc import client
-from openstack.common.messaging.rpc import dispatcher as rpc_dispatcher
-from openstack.common.messaging.rpc import server as rpc_server
-from openstack.common.messaging import serializer
-from openstack.common.messaging import server
-from openstack.common.messaging import target
-from openstack.common.messaging import transport
+from oslo.messaging import exceptions
+from oslo.messaging.rpc import client
+from oslo.messaging.rpc import dispatcher as rpc_dispatcher
+from oslo.messaging.rpc import server as rpc_server
+from oslo.messaging import serializer
+from oslo.messaging import server
+from oslo.messaging import target
+from oslo.messaging import transport
 
 
 get_transport = transport.get_transport

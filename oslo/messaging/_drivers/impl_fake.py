@@ -19,9 +19,9 @@ import json
 import Queue
 import time
 
-from openstack.common import messaging
-from openstack.common.messaging._drivers import base
-from openstack.common.messaging import _utils as utils
+from oslo import messaging
+from oslo.messaging._drivers import base
+from oslo.messaging import _utils as utils
 
 
 class InvalidTarget(base.TransportDriverError, ValueError):

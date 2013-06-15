@@ -18,9 +18,10 @@
 
 from stevedore import driver
 
-from openstack.common import log as logging
-from openstack.common.messaging._drivers import base as driver_base
-from openstack.common.messaging import exceptions
+from oslo.messaging._drivers import base as driver_base
+from oslo.messaging import exceptions
+from oslo.messaging.openstack.common import log as logging
+
 
 _LOG = logging.getLogger(__name__)
 
@@ -84,7 +85,7 @@ class MessageHandlingServer(object):
         self.executor = executor
 
         try:
-            mgr = driver.DriverManager('openstack.common.messaging.executors',
+            mgr = driver.DriverManager('oslo.messaging.executors',
                                        self.executor)
         except RuntimeError as ex:
             raise ExecutorLoadFailure(self.executor, ex)

@@ -15,7 +15,7 @@
 
 import abc
 
-from openstack.common.messaging import exceptions
+from oslo.messaging import exceptions
 
 
 class TransportDriverError(exceptions.MessagingException):

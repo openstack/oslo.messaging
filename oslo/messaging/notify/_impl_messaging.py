@@ -15,10 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.gettextutils import _
-from openstack.common import log as logging
-from openstack.common import messaging
-from openstack.common.messaging.notify import notifier
+from oslo import messaging
+from oslo.messaging.notify import notifier
+from oslo.messaging.openstack.common.gettextutils import _
+from oslo.messaging.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 

@@ -15,8 +15,8 @@
 import abc
 import sys
 
-from openstack.common.gettextutils import _
-from openstack.common import log as logging
+from oslo.messaging.openstack.common.gettextutils import _
+from oslo.messaging.openstack.common import log as logging
 
 _LOG = logging.getLogger(__name__)
 

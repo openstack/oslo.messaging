@@ -15,14 +15,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from openstack.common.messaging.notify import notifier
+from oslo.messaging.notify import notifier
+from oslo.messaging.openstack.common import jsonutils
+from oslo.messaging.openstack.common import log as logging
 
 
-class TestDriver(notifier._Driver):
+class LogDriver(notifier._Driver):
 
-    def __init__(self, conf, **kwargs):
-        super(TestDriver, self).__init__(conf, **kwargs)
-        self.notifications = []
+    LOGGER_BASE = 'oslo.messaging.notification'
 
     def notify(self, context, message, priority):
-        self.notifications.append(message)
+        logger = logging.getLogger('%s.%s' % (self.LOGGER_BASE,
+                                              message['event_type']))
+        getattr(logger, priority)(jsonutils.dumps(message))

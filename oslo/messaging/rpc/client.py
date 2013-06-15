@@ -20,10 +20,10 @@ import inspect
 
 from oslo.config import cfg
 
-from openstack.common import log as logging
-from openstack.common.messaging import _utils as utils
-from openstack.common.messaging import exceptions
-from openstack.common.messaging import serializer as msg_serializer
+from oslo.messaging import _utils as utils
+from oslo.messaging import exceptions
+from oslo.messaging.openstack.common import log as logging
+from oslo.messaging import serializer as msg_serializer
 
 _client_opts = [
     cfg.IntOpt('rpc_response_timeout',
