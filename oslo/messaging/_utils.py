@@ -131,7 +131,7 @@ def parse_url(url, default_exchange=None):
     return parsed
 
 
-def exchange_from_url(self, url, default_exchange=None):
+def exchange_from_url(url, default_exchange=None):
     """Parse an exchange name from a URL.
 
     Assuming a URL takes the form of:
