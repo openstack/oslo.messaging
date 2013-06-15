@@ -75,7 +75,7 @@ class TestCastCall(test_utils.BaseTestCase):
 
 class TestCastToTarget(test_utils.BaseTestCase):
 
-    scenarios = [
+    _base = [
         ('all_none', dict(ctor={}, prepare={}, expect={})),
         ('ctor_exchange',
          dict(ctor=dict(exchange='testexchange'),
@@ -175,6 +175,16 @@ class TestCastToTarget(test_utils.BaseTestCase):
               expect=dict(fanout=False))),
     ]
 
+    _prepare = [
+        ('single_prepare', dict(double_prepare=False)),
+        ('double_prepare', dict(double_prepare=True)),
+    ]
+
+    @classmethod
+    def generate_scenarios(cls):
+        cls.scenarios = testscenarios.multiply_scenarios(cls._base,
+                                                         cls._prepare)
+
     def setUp(self):
         super(TestCastToTarget, self).setUp(conf=cfg.ConfigOpts())
 
@@ -198,7 +208,12 @@ class TestCastToTarget(test_utils.BaseTestCase):
 
         if self.prepare:
             client = client.prepare(**self.prepare)
+            if self.double_prepare:
+                client = client.prepare(**self.prepare)
         client.cast({}, 'foo')
+
+
+TestCastToTarget.generate_scenarios()
 
 
 _notset = object()

@@ -112,6 +112,46 @@ class _CallContext(object):
                                       wait_for_reply=True, timeout=timeout)
         return self.serializer.deserialize_entity(ctxt, result)
 
+    _marker = object()
+
+    @classmethod
+    def _prepare(cls, base,
+                 exchange=_marker, topic=_marker, namespace=_marker,
+                 version=_marker, server=_marker, fanout=_marker,
+                 timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+        """Prepare a method invocation context. See RPCClient.prepare()."""
+        kwargs = dict(
+            exchange=exchange,
+            topic=topic,
+            namespace=namespace,
+            version=version,
+            server=server,
+            fanout=fanout)
+        kwargs = dict([(k, v) for k, v in kwargs.items()
+                       if v is not cls._marker])
+        target = base.target(**kwargs)
+
+        if timeout is cls._marker:
+            timeout = base.timeout
+        if check_for_lock is cls._marker:
+            check_for_lock = base.check_for_lock
+        if version_cap is cls._marker:
+            version_cap = base.version_cap
+
+        return _CallContext(base.transport, target,
+                            base.serializer,
+                            timeout, check_for_lock,
+                            version_cap)
+
+    def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
+                version=_marker, server=_marker, fanout=_marker,
+                timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+        """Prepare a method invocation context. See RPCClient.prepare()."""
+        return self._prepare(self,
+                             exchange, topic, namespace,
+                             version, server, fanout,
+                             timeout, check_for_lock, version_cap)
+
 
 class RPCClient(object):
 
@@ -199,7 +239,7 @@ class RPCClient(object):
 
         super(RPCClient, self).__init__()
 
-    _marker = object()
+    _marker = _CallContext._marker
 
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
@@ -232,28 +272,10 @@ class RPCClient(object):
         :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
         """
-        kwargs = dict(
-            exchange=exchange,
-            topic=topic,
-            namespace=namespace,
-            version=version,
-            server=server,
-            fanout=fanout)
-        kwargs = dict([(k, v) for k, v in kwargs.items()
-                       if v is not self._marker])
-        target = self.target(**kwargs)
-
-        if timeout is self._marker:
-            timeout = self.timeout
-        if check_for_lock is self._marker:
-            check_for_lock = self.check_for_lock
-        if version_cap is self._marker:
-            version_cap = self.version_cap
-
-        return _CallContext(self.transport, target,
-                            self.serializer,
-                            timeout, check_for_lock,
-                            version_cap)
+        return _CallContext._prepare(self,
+                                     exchange, topic, namespace,
+                                     version, server, fanout,
+                                     timeout, check_for_lock, version_cap)
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately.
