@@ -46,12 +46,12 @@ class ExecutorBase(object):
 
     @abc.abstractmethod
     def start(self):
-        pass
+        "Start polling for incoming messages."
 
     @abc.abstractmethod
     def stop(self):
-        pass
+        "Stop polling for messages."
 
     @abc.abstractmethod
     def wait(self):
-        pass
+        "Wait until the executor has stopped polling."
