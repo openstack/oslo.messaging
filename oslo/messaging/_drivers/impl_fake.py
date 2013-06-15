@@ -17,6 +17,7 @@
 
 import json
 import Queue
+import threading
 import time
 
 from oslo import messaging
@@ -43,33 +44,58 @@ class FakeIncomingMessage(base.IncomingMessage):
 
 class FakeListener(base.Listener):
 
-    def __init__(self, driver, target):
+    def __init__(self, driver, target, exchange):
         super(FakeListener, self).__init__(driver, target)
-        self._queue = Queue.Queue()
-        self._reply_queue = Queue.Queue()
-
-    def _deliver_message(self, ctxt, message,
-                         wait_for_reply=None, timeout=None):
-        self._queue.put((ctxt, message))
-        if wait_for_reply:
-            try:
-                return self._reply_queue.get(timeout=timeout)
-            except Queue.Empty:
-                # FIXME(markmc): timeout exception
-                return None
+        self._exchange = exchange
 
     def _deliver_reply(self, reply=None, failure=None):
         # FIXME: handle failure
-        self._reply_queue.put(reply)
+        if self._reply_q:
+            self._reply_q.put(reply)
 
     def poll(self):
+        self._reply_q = None
         while True:
-            # sleeping allows keyboard interrupts
-            try:
-                (ctxt, message) = self._queue.get(block=False)
+            (ctxt, message, reply_q) = self._exchange.poll(self.target)
+            if message is not None:
+                self._reply_q = reply_q
                 return FakeIncomingMessage(self, ctxt, message)
-            except Queue.Empty:
-                time.sleep(.05)
+            time.sleep(.05)
+
+
+class FakeExchange(object):
+
+    def __init__(self, name):
+        self.name = name
+        self._queues_lock = threading.Lock()
+        self._topic_queues = {}
+        self._server_queues = {}
+
+    def _get_topic_queue(self, topic):
+        return self._topic_queues.setdefault(topic, [])
+
+    def _get_server_queue(self, topic, server):
+        return self._server_queues.setdefault((topic, server), [])
+
+    def deliver_message(self, topic, ctxt, message,
+                        server=None, fanout=False, reply_q=None):
+        with self._queues_lock:
+            if fanout:
+                queues = [q for t, q in self._server_queues.items()
+                          if t[0] == topic]
+            elif server is not None:
+                queues = [self._get_server_queue(topic, server)]
+            else:
+                queues = [self._get_topic_queue(topic)]
+            for queue in queues:
+                queue.append((ctxt, message, reply_q))
+
+    def poll(self, target):
+        with self._queues_lock:
+            queue = self._get_server_queue(target.topic, target.server)
+            if not queue:
+                queue = self._get_topic_queue(target.topic)
+            return queue.pop(0) if queue else (None, None, None)
 
 
 class FakeDriver(base.BaseDriver):
@@ -79,6 +105,7 @@ class FakeDriver(base.BaseDriver):
 
         self._default_exchange = utils.exchange_from_url(url, default_exchange)
 
+        self._exchanges_lock = threading.Lock()
         self._exchanges = {}
 
     @staticmethod
@@ -93,6 +120,10 @@ class FakeDriver(base.BaseDriver):
         """
         json.dumps(message)
 
+    def _get_exchange(self, name):
+        while self._exchanges_lock:
+            return self._exchanges.setdefault(name, FakeExchange(name))
+
     def send(self, target, ctxt, message,
              wait_for_reply=None, timeout=None, envelope=False):
         if not target.topic:
@@ -104,55 +135,35 @@ class FakeDriver(base.BaseDriver):
 
         self._check_serialize(message)
 
-        exchange = target.exchange or self._default_exchange
+        exchange = self._get_exchange(target.exchange or
+                                      self._default_exchange)
 
-        start_time = time.time()
-        while True:
-            topics = self._exchanges.get(exchange, {})
-            listeners = topics.get(target.topic, [])
-            if target.server:
-                listeners = [l for l in listeners
-                             if l.target.server == target.server]
+        # FIXME(markmc): Need to create and pass a reply_queue
 
-            if listeners or not wait_for_reply:
-                break
+        reply_q = None
+        if wait_for_reply:
+            reply_q = Queue.Queue()
 
-            if timeout and (time.time() - start_time > timeout):
+        exchange.deliver_message(target.topic, ctxt, message,
+                                 server=target.server,
+                                 fanout=target.fanout,
+                                 reply_q=reply_q)
+
+        if wait_for_reply:
+            try:
+                return reply_q.get(timeout=timeout)
+            except Queue.Empty:
                 raise messaging.MessagingTimeout(
-                    'No listeners found for topic %s' % target.topic)
+                    'No reply on topic %s' % target.topic)
 
-            time.sleep(.05)
-
-        if target.fanout:
-            for listener in listeners:
-                ret = listener._deliver_message(ctxt, message)
-                if ret:
-                    return ret
-            return
-
-        if not listeners:
-            # FIXME(markmc): timeout exception
-            return None
-
-        # FIXME(markmc): implement round-robin delivery
-        listener = listeners[0]
-        return listener._deliver_message(ctxt, message,
-                                         wait_for_reply, timeout)
+        return None
 
     def listen(self, target):
         if not (target.topic and target.server):
             raise InvalidTarget('Topic and server are required to listen',
                                 target)
 
-        exchange = target.exchange or self._default_exchange
-        topics = self._exchanges.setdefault(exchange, {})
+        exchange = self._get_exchange(target.exchange or
+                                      self._default_exchange)
 
-        if target.topic in topics:
-            raise InvalidTarget('Already listening on this topic', target)
-
-        listener = FakeListener(self, target)
-
-        listeners = topics.setdefault(target.topic, [])
-        listeners.append(listener)
-
-        return listener
+        return FakeListener(self, target, exchange)

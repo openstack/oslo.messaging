@@ -67,7 +67,6 @@ class TestRPCServer(test_utils.BaseTestCase):
             client = client.prepare(topic=topic)
         client.cast({}, 'stop')
         server_thread.join(timeout=30)
-        self.assertFalse(server_thread.isAlive())
 
     def _setup_client(self, transport):
         return messaging.RPCClient(transport,
@@ -116,27 +115,6 @@ class TestRPCServer(test_utils.BaseTestCase):
             self.assertEquals(ex.target.server, 'testserver')
         else:
             self.assertTrue(False)
-
-    def test_duplicate_target_topic(self):
-        transport = messaging.get_transport(self.conf, url='fake:')
-
-        server_thread = self._setup_server(transport, None, topic='testtopic')
-
-        server = messaging.get_rpc_server(transport,
-                                          messaging.Target(server='testserver',
-                                                           topic='testtopic'),
-                                          [])
-        try:
-            server.start()
-        except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.ServerListenError), ex)
-            self.assertEquals(ex.target.server, 'testserver')
-            self.assertEquals(ex.target.topic, 'testtopic')
-        else:
-            self.assertTrue(False)
-        finally:
-            client = self._setup_client(transport)
-            self._stop_server(client, server_thread)
 
     def test_unknown_executor(self):
         transport = messaging.get_transport(self.conf, url='fake:')
@@ -241,4 +219,6 @@ class TestRPCServer(test_utils.BaseTestCase):
         self.assertTrue(thread2.isAlive())
         self._stop_server(client, thread2, topic='topic2')
 
-        self.assertEquals(endpoint.pings, ['ds1', 'ds2'])
+        self.assertEquals(len(endpoint.pings), 2)
+        self.assertTrue('ds1' in endpoint.pings)
+        self.assertTrue('ds2' in endpoint.pings)
