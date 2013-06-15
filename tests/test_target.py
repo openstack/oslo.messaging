@@ -13,23 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testscenarios
+
 from oslo import messaging
 from tests import utils as test_utils
 
-# FIXME(markmc): I'm having touble using testscenarios with nose
-# import testscenarios
-# load_tests = testscenarios.load_tests_apply_scenarios
-
-
-def _test_scenario(name, scenarios, obj, method):
-    for n, args in scenarios:
-        if n == name:
-            for k, v in args.items():
-                setattr(obj, k, v)
-            break
-    else:
-        raise RuntimeError('Invalid scenario', name)
-    method()
+load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class TargetConstructorTestCase(test_utils.BaseTestCase):
@@ -44,7 +33,7 @@ class TargetConstructorTestCase(test_utils.BaseTestCase):
         ('fanout', dict(kwargs=dict(fanout=True))),
     ]
 
-    def _test_constructor(self):
+    def test_constructor(self):
         target = messaging.Target(**self.kwargs)
         for k in self.kwargs:
             self.assertEquals(getattr(target, k), self.kwargs[k])
@@ -53,30 +42,6 @@ class TargetConstructorTestCase(test_utils.BaseTestCase):
             if k in self.kwargs:
                 continue
             self.assertTrue(getattr(target, k) is None)
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_constructor)
-
-    def test_constructor_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_constructor_exchange(self):
-        self._test_scenario('exchange')
-
-    def test_constructor_topic(self):
-        self._test_scenario('topic')
-
-    def test_constructor_namespace(self):
-        self._test_scenario('namespace')
-
-    def test_constructor_version(self):
-        self._test_scenario('version')
-
-    def test_constructor_server(self):
-        self._test_scenario('server')
-
-    def test_constructor_fanout(self):
-        self._test_scenario('fanout')
 
 
 class TargetCallableTestCase(test_utils.BaseTestCase):
@@ -121,7 +86,7 @@ class TargetCallableTestCase(test_utils.BaseTestCase):
                             vals=dict(fanout=True))),
     ]
 
-    def _test_callable(self):
+    def test_callable(self):
         target = messaging.Target(**self.attrs)
         target = target(**self.kwargs)
         for k in self.vals:
@@ -131,48 +96,6 @@ class TargetCallableTestCase(test_utils.BaseTestCase):
             if k in self.vals:
                 continue
             self.assertTrue(getattr(target, k) is None)
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_callable)
-
-    def test_callable_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_callable_exchange_attr(self):
-        self._test_scenario('exchange_attr')
-
-    def test_callable_exchange_arg(self):
-        self._test_scenario('exchange_arg')
-
-    def test_callable_topic_attr(self):
-        self._test_scenario('topic_attr')
-
-    def test_callable_topic_arg(self):
-        self._test_scenario('topic_arg')
-
-    def test_callable_namespace_attr(self):
-        self._test_scenario('namespace_attr')
-
-    def test_callable_namespace_arg(self):
-        self._test_scenario('namespace_arg')
-
-    def test_callable_version_attr(self):
-        self._test_scenario('version_attr')
-
-    def test_callable_version_arg(self):
-        self._test_scenario('version_arg')
-
-    def test_callable_server_attr(self):
-        self._test_scenario('server_attr')
-
-    def test_callable_server_arg(self):
-        self._test_scenario('server_arg')
-
-    def test_callable_fanout_attr(self):
-        self._test_scenario('fanout_attr')
-
-    def test_callable_fanout_arg(self):
-        self._test_scenario('fanout_arg')
 
 
 class TargetReprTestCase(test_utils.BaseTestCase):
@@ -197,70 +120,51 @@ class TargetReprTestCase(test_utils.BaseTestCase):
                                           'fanout=True')),
     ]
 
-    def _test_repr(self):
+    def test_repr(self):
         target = messaging.Target(**self.kwargs)
         self.assertEquals(str(target), '<Target ' + self.repr + '>')
 
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_repr)
 
-    def test_repr_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_repr_exchange(self):
-        self._test_scenario('exchange')
-
-    def test_repr_topic(self):
-        self._test_scenario('topic')
-
-    def test_repr_namespace(self):
-        self._test_scenario('namespace')
-
-    def test_repr_version(self):
-        self._test_scenario('version')
-
-    def test_repr_server(self):
-        self._test_scenario('server')
-
-    def test_repr_fanout(self):
-        self._test_scenario('fanout')
-
-    def test_repr_exchange_and_fanout(self):
-        self._test_scenario('exchange_and_fanout')
+_notset = object()
 
 
 class EqualityTestCase(test_utils.BaseTestCase):
 
-    scenarios = [
-        ('all_none',
-         dict(a_kwargs=dict(), b_kwargs=dict(), equals=True)),
-    ]
-
     @classmethod
-    def _add_scenarios(cls, param):
-        new_scenarios = [
-            ('a_' + param,
-             dict(a_kwargs={param: 'foo'},
-                  b_kwargs={},
-                  equals=False)),
-            ('b_' + param,
-             dict(a_kwargs={},
-                  b_kwargs={param: 'bar'},
-                  equals=False)),
-            (param + '_equals',
-             dict(a_kwargs={param: 'foo'},
-                  b_kwargs={param: 'foo'},
-                  equals=True)),
-            (param + '_not_equals',
-             dict(a_kwargs={param: 'foo'},
-                  b_kwargs={param: 'bar'},
-                  equals=False))
+    def generate_scenarios(cls):
+        attr = [
+            ('exchange', dict(attr='exchange')),
+            ('topic', dict(attr='topic')),
+            ('namespace', dict(attr='namespace')),
+            ('version', dict(attr='version')),
+            ('server', dict(attr='server')),
+            ('fanout', dict(attr='fanout')),
         ]
-        cls.scenarios.extend(new_scenarios)
+        a = [
+            ('a_notset', dict(a_value=_notset)),
+            ('a_none', dict(a_value=None)),
+            ('a_empty', dict(a_value='')),
+            ('a_foo', dict(a_value='foo')),
+            ('a_bar', dict(a_value='bar')),
+        ]
+        b = [
+            ('b_notset', dict(b_value=_notset)),
+            ('b_none', dict(b_value=None)),
+            ('b_empty', dict(b_value='')),
+            ('b_foo', dict(b_value='foo')),
+            ('b_bar', dict(b_value='bar')),
+        ]
 
-    def _test_equality(self):
-        a = messaging.Target(**self.a_kwargs)
-        b = messaging.Target(**self.b_kwargs)
+        cls.scenarios = testscenarios.multiply_scenarios(attr, a, b)
+        for s in cls.scenarios:
+            s[1]['equals'] = (s[1]['a_value'] == s[1]['b_value'])
+
+    def test_equality(self):
+        a_kwargs = {self.attr : self.a_value}
+        b_kwargs = {self.attr : self.b_value}
+
+        a = messaging.Target(**a_kwargs)
+        b = messaging.Target(**b_kwargs)
 
         if self.equals:
             self.assertEquals(a, b)
@@ -269,88 +173,5 @@ class EqualityTestCase(test_utils.BaseTestCase):
             self.assertNotEquals(a, b)
             self.assertFalse(a == b)
 
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_equality)
 
-    def test_equality_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_equality_a_exchange(self):
-        self._test_scenario('a_exchange')
-
-    def test_equality_b_exchange(self):
-        self._test_scenario('b_exchange')
-
-    def test_equality_exchange_equals(self):
-        self._test_scenario('exchange_equals')
-
-    def test_equality_exchange_not_equals(self):
-        self._test_scenario('exchange_not_equals')
-
-    def test_equality_a_topic(self):
-        self._test_scenario('a_topic')
-
-    def test_equality_b_topic(self):
-        self._test_scenario('b_topic')
-
-    def test_equality_topic_equals(self):
-        self._test_scenario('topic_equals')
-
-    def test_equality_topic_not_equals(self):
-        self._test_scenario('topic_not_equals')
-
-    def test_equality_a_namespace(self):
-        self._test_scenario('a_namespace')
-
-    def test_equality_b_namespace(self):
-        self._test_scenario('b_namespace')
-
-    def test_equality_namespace_equals(self):
-        self._test_scenario('namespace_equals')
-
-    def test_equality_namespace_not_equals(self):
-        self._test_scenario('namespace_not_equals')
-
-    def test_equality_a_version(self):
-        self._test_scenario('a_version')
-
-    def test_equality_b_version(self):
-        self._test_scenario('b_version')
-
-    def test_equality_version_equals(self):
-        self._test_scenario('version_equals')
-
-    def test_equality_version_not_equals(self):
-        self._test_scenario('version_not_equals')
-
-    def test_equality_a_server(self):
-        self._test_scenario('a_server')
-
-    def test_equality_b_server(self):
-        self._test_scenario('b_server')
-
-    def test_equality_server_equals(self):
-        self._test_scenario('server_equals')
-
-    def test_equality_server_not_equals(self):
-        self._test_scenario('server_not_equals')
-
-    def test_equality_a_fanout(self):
-        self._test_scenario('a_fanout')
-
-    def test_equality_b_fanout(self):
-        self._test_scenario('b_fanout')
-
-    def test_equality_fanout_equals(self):
-        self._test_scenario('fanout_equals')
-
-    def test_equality_fanout_not_equals(self):
-        self._test_scenario('fanout_not_equals')
-
-
-EqualityTestCase._add_scenarios('exchange')
-EqualityTestCase._add_scenarios('topic')
-EqualityTestCase._add_scenarios('namespace')
-EqualityTestCase._add_scenarios('version')
-EqualityTestCase._add_scenarios('server')
-EqualityTestCase._add_scenarios('fanout')
+EqualityTestCase.generate_scenarios()

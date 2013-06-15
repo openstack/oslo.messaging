@@ -13,24 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import testscenarios
+
 from oslo import messaging
 from oslo.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
-# FIXME(markmc): I'm having touble using testscenarios with nose
-# import testscenarios
-# load_tests = testscenarios.load_tests_apply_scenarios
-
-
-def _test_scenario(name, scenarios, obj, method):
-    for n, args in scenarios:
-        if n == name:
-            for k, v in args.items():
-                setattr(obj, k, v)
-            break
-    else:
-        raise RuntimeError('Invalid scenario', name)
-    method()
+load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class _FakeEndpoint(object):
@@ -101,7 +90,7 @@ class TestDispatcher(test_utils.BaseTestCase):
               success=False, ex=messaging.UnsupportedVersion)),
     ]
 
-    def _test_dispatcher(self):
+    def test_dispatcher(self):
         endpoints = []
         for e in self.endpoints:
             target = messaging.Target(**e) if e else None
@@ -134,39 +123,6 @@ class TestDispatcher(test_utils.BaseTestCase):
         else:
             self.assertTrue(self.success)
 
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_dispatcher)
-
-    def test_dispatcher_no_endpoints(self):
-        self._test_scenario('no_endpoints')
-
-    def test_dispatcher_default_target(self):
-        self._test_scenario('default_target')
-
-    def test_dispatcher_default_target_ctxt_and_args(self):
-        self._test_scenario('default_target_ctxt_and_args')
-
-    def test_dispatcher_default_target_namespace(self):
-        self._test_scenario('default_target')
-
-    def test_dispatcher_default_target_version(self):
-        self._test_scenario('default_target')
-
-    def test_dispatcher_default_target_no_such_method(self):
-        self._test_scenario('default_target_no_such_method')
-
-    def test_dispatcher_namespace(self):
-        self._test_scenario('namespace')
-
-    def test_dispatcher_namespace_mismatch(self):
-        self._test_scenario('namespace_mismatch')
-
-    def test_dispatcher_version(self):
-        self._test_scenario('version')
-
-    def test_dispatcher_version_mismatch(self):
-        self._test_scenario('version_mismatch')
-
 
 class TestSerializer(test_utils.BaseTestCase):
 
@@ -179,7 +135,7 @@ class TestSerializer(test_utils.BaseTestCase):
               retval='d')),
     ]
 
-    def _test_serializer(self):
+    def test_serializer(self):
         endpoint = _FakeEndpoint()
         serializer = msg_serializer.NoOpSerializer
         dispatcher = messaging.RPCDispatcher([endpoint], serializer)
@@ -202,12 +158,3 @@ class TestSerializer(test_utils.BaseTestCase):
         retval = dispatcher(self.ctxt, dict(method='foo', args=self.args))
         if self.retval is not None:
             self.assertEquals(retval, 's' + self.retval)
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_serializer)
-
-    def test_serializer_no_args_or_retval(self):
-        self._test_scenario('no_args_or_retval')
-
-    def test_serializer_args_and_retval(self):
-        self._test_scenario('args_and_retval')

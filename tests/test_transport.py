@@ -19,25 +19,13 @@ import fixtures
 import mox
 from oslo.config import cfg
 from stevedore import driver
+import testscenarios
 
 from oslo import messaging
 from oslo.messaging import transport
 from tests import utils as test_utils
 
-# FIXME(markmc): I'm having touble using testscenarios with nose
-# import testscenarios
-# load_tests = testscenarios.load_tests_apply_scenarios
-
-
-def _test_scenario(name, scenarios, obj, method):
-    for n, args in scenarios:
-        if n == name:
-            for k, v in args.items():
-                setattr(obj, k, v)
-            break
-    else:
-        raise RuntimeError('Invalid scenario', name)
-    method()
+load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class _FakeDriver(object):
@@ -66,66 +54,38 @@ class GetTransportTestCase(test_utils.BaseTestCase):
               control_exchange=None,
               expect=dict(backend=None,
                           exchange=None,
-                          url=None),
-              ex=None)),
+                          url=None))),
         ('rpc_backend',
          dict(url=None, transport_url=None, rpc_backend='testbackend',
               control_exchange=None,
               expect=dict(backend='testbackend',
                           exchange=None,
-                          url=None),
-              ex=None)),
+                          url=None))),
         ('control_exchange',
          dict(url=None, transport_url=None, rpc_backend=None,
               control_exchange='testexchange',
               expect=dict(backend=None,
                           exchange='testexchange',
-                          url=None),
-              ex=None)),
+                          url=None))),
         ('transport_url',
          dict(url=None, transport_url='testtransport:', rpc_backend=None,
               control_exchange=None,
               expect=dict(backend='testtransport',
                           exchange=None,
-                          url='testtransport:'),
-              ex=None)),
+                          url='testtransport:'))),
         ('url_param',
          dict(url='testtransport:', transport_url=None, rpc_backend=None,
               control_exchange=None,
               expect=dict(backend='testtransport',
                           exchange=None,
-                          url='testtransport:'),
-              ex=None)),
-        ('invalid_transport_url',
-         dict(url=None, transport_url='invalid', rpc_backend=None,
-              control_exchange=None,
-              expect=None,
-              ex=dict(cls=messaging.InvalidTransportURL,
-                      msg_contains='No scheme specified',
-                      url='invalid'))),
-        ('invalid_url_param',
-         dict(url='invalid', transport_url=None, rpc_backend=None,
-              control_exchange=None,
-              expect=None,
-              ex=dict(cls=messaging.InvalidTransportURL,
-                      msg_contains='No scheme specified',
-                      url='invalid'))),
-        ('driver_load_failure',
-         dict(url=None, transport_url=None, rpc_backend='testbackend',
-              control_exchange=None,
-              expect=dict(backend='testbackend',
-                          exchange=None,
-                          url=None),
-              ex=dict(cls=messaging.DriverLoadFailure,
-                      msg_contains='Failed to load',
-                      driver='testbackend'))),
+                          url='testtransport:'))),
     ]
 
     def setUp(self):
         super(GetTransportTestCase, self).setUp(conf=cfg.ConfigOpts())
         self.conf.register_opts(transport._transport_opts)
 
-    def _test_get_transport_happy(self):
+    def test_get_transport(self):
         self.config(rpc_backend=self.rpc_backend,
                     control_exchange=self.control_exchange,
                     transport_url=self.transport_url)
@@ -153,21 +113,43 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         self.assertTrue(transport.conf is self.conf)
         self.assertTrue(transport._driver is drvr)
 
-    def _test_get_transport_sad(self):
+
+class GetTransportSadPathTestCase(test_utils.BaseTestCase):
+
+    scenarios = [
+        ('invalid_transport_url',
+         dict(url=None, transport_url='invalid', rpc_backend=None,
+              ex=dict(cls=messaging.InvalidTransportURL,
+                      msg_contains='No scheme specified',
+                      url='invalid'))),
+        ('invalid_url_param',
+         dict(url='invalid', transport_url=None, rpc_backend=None,
+              ex=dict(cls=messaging.InvalidTransportURL,
+                      msg_contains='No scheme specified',
+                      url='invalid'))),
+        ('driver_load_failure',
+         dict(url=None, transport_url=None, rpc_backend='testbackend',
+              ex=dict(cls=messaging.DriverLoadFailure,
+                      msg_contains='Failed to load',
+                      driver='testbackend'))),
+    ]
+
+    def setUp(self):
+        super(GetTransportSadPathTestCase, self).setUp(conf=cfg.ConfigOpts())
+        self.conf.register_opts(transport._transport_opts)
+
+    def test_get_transport_sad(self):
         self.config(rpc_backend=self.rpc_backend,
-                    control_exchange=self.control_exchange,
                     transport_url=self.transport_url)
 
-        if self.expect:
+        if self.rpc_backend:
             self.mox.StubOutWithMock(driver, 'DriverManager')
 
             invoke_args = [self.conf]
-            invoke_kwds = dict(default_exchange=self.expect['exchange'])
-            if self.expect['url']:
-                invoke_kwds['url'] = self.expect['url']
+            invoke_kwds = dict(default_exchange='openstack')
 
             driver.DriverManager('oslo.messaging.drivers',
-                                 self.expect['backend'],
+                                 self.rpc_backend,
                                  invoke_on_load=True,
                                  invoke_args=invoke_args,
                                  invoke_kwds=invoke_kwds).\
@@ -190,39 +172,6 @@ class GetTransportTestCase(test_utils.BaseTestCase):
             for k, v in self.ex.items():
                 self.assertTrue(hasattr(ex, k))
                 self.assertEquals(getattr(ex, k), v)
-
-    def _test_get_transport(self):
-        if self.ex is None:
-            self._test_get_transport_happy()
-        else:
-            self._test_get_transport_sad()
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_get_transport)
-
-    def test_get_transport_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_get_transport_rpc_backend(self):
-        self._test_scenario('rpc_backend')
-
-    def test_get_transport_control_exchange(self):
-        self._test_scenario('control_exchange')
-
-    def test_get_transport_transport_url(self):
-        self._test_scenario('transport_url')
-
-    def test_get_transport_url_param(self):
-        self._test_scenario('url_param')
-
-    def test_get_transport_invalid_transport_url(self):
-        self._test_scenario('invalid_transport_url')
-
-    def test_get_transport_invalid_url_param(self):
-        self._test_scenario('invalid_url_param')
-
-    def test_get_transport_driver_load_failure(self):
-        self._test_scenario('driver_load_failure')
 
 
 # FIXME(markmc): this could be used elsewhere

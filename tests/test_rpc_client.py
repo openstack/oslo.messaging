@@ -14,26 +14,14 @@
 #    under the License.
 
 from oslo.config import cfg
+import testscenarios
 
 from oslo import messaging
 from oslo.messaging.rpc import client as rpc_client
 from oslo.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
-# FIXME(markmc): I'm having touble using testscenarios with nose
-# import testscenarios
-# load_tests = testscenarios.load_tests_apply_scenarios
-
-
-def _test_scenario(name, scenarios, obj, method):
-    for n, args in scenarios:
-        if n == name:
-            for k, v in args.items():
-                setattr(obj, k, v)
-            break
-    else:
-        raise RuntimeError('Invalid scenario', name)
-    method()
+load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class _FakeTransport(object):
@@ -64,7 +52,7 @@ class TestCastCall(test_utils.BaseTestCase):
         super(TestCastCall, self).setUp(conf=cfg.ConfigOpts())
         self.conf.register_opts(rpc_client._client_opts)
 
-    def _test_cast_call(self):
+    def test_cast_call(self):
         self.config(rpc_response_timeout=None)
 
         transport = _FakeTransport(self.conf)
@@ -83,21 +71,6 @@ class TestCastCall(test_utils.BaseTestCase):
 
         method = client.call if self.call else client.cast
         method(self.ctxt, 'foo', **self.args)
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_cast_call)
-
-    def test_cast_no_ctxt_no_args(self):
-        self._test_scenario('cast_no_ctxt_no_args')
-
-    def test_call_no_ctxt_no_args(self):
-        self._test_scenario('call_no_ctxt_no_args')
-
-    def test_cast_ctxt_and_args(self):
-        self._test_scenario('cast_ctxt_and_args')
-
-    def test_call_ctxt_and_args(self):
-        self._test_scenario('call_ctxt_and_args')
 
 
 class TestCastToTarget(test_utils.BaseTestCase):
@@ -205,7 +178,7 @@ class TestCastToTarget(test_utils.BaseTestCase):
     def setUp(self):
         super(TestCastToTarget, self).setUp(conf=cfg.ConfigOpts())
 
-    def _test_cast_to_target(self):
+    def test_cast_to_target(self):
         target = messaging.Target(**self.ctor)
         expect_target = messaging.Target(**self.expect)
 
@@ -226,84 +199,6 @@ class TestCastToTarget(test_utils.BaseTestCase):
         if self.prepare:
             client = client.prepare(**self.prepare)
         client.cast({}, 'foo')
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_cast_to_target)
-
-    def test_cast_to_target_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_cast_to_target_ctor_exchange(self):
-        self._test_scenario('ctor_exchange')
-
-    def test_cast_to_target_prepare_exchange(self):
-        self._test_scenario('prepare_exchange')
-
-    def test_cast_to_target_prepare_exchange_none(self):
-        self._test_scenario('prepare_exchange_none')
-
-    def test_cast_to_target_both_exchange(self):
-        self._test_scenario('both_exchange')
-
-    def test_cast_to_target_ctor_topic(self):
-        self._test_scenario('ctor_topic')
-
-    def test_cast_to_target_prepare_topic(self):
-        self._test_scenario('prepare_topic')
-
-    def test_cast_to_target_prepare_topic_none(self):
-        self._test_scenario('prepare_topic_none')
-
-    def test_cast_to_target_both_topic(self):
-        self._test_scenario('both_topic')
-
-    def test_cast_to_target_ctor_namespace(self):
-        self._test_scenario('ctor_namespace')
-
-    def test_cast_to_target_prepare_namespace(self):
-        self._test_scenario('prepare_namespace')
-
-    def test_cast_to_target_prepare_namespace_none(self):
-        self._test_scenario('prepare_namespace_none')
-
-    def test_cast_to_target_both_namespace(self):
-        self._test_scenario('both_namespace')
-
-    def test_cast_to_target_ctor_version(self):
-        self._test_scenario('ctor_version')
-
-    def test_cast_to_target_prepare_version(self):
-        self._test_scenario('prepare_version')
-
-    def test_cast_to_target_prepare_version_none(self):
-        self._test_scenario('prepare_version_none')
-
-    def test_cast_to_target_both_version(self):
-        self._test_scenario('both_version')
-
-    def test_cast_to_target_ctor_server(self):
-        self._test_scenario('ctor_server')
-
-    def test_cast_to_target_prepare_server(self):
-        self._test_scenario('prepare_server')
-
-    def test_cast_to_target_prepare_server_none(self):
-        self._test_scenario('prepare_server_none')
-
-    def test_cast_to_target_both_server(self):
-        self._test_scenario('both_server')
-
-    def test_cast_to_target_ctor_fanout(self):
-        self._test_scenario('ctor_fanout')
-
-    def test_cast_to_target_prepare_fanout(self):
-        self._test_scenario('prepare_fanout')
-
-    def test_cast_to_target_prepare_fanout_none(self):
-        self._test_scenario('prepare_fanout_none')
-
-    def test_cast_to_target_both_fanout(self):
-        self._test_scenario('both_fanout')
 
 
 _notset = object()
@@ -332,7 +227,7 @@ class TestCallTimeout(test_utils.BaseTestCase):
         super(TestCallTimeout, self).setUp(conf=cfg.ConfigOpts())
         self.conf.register_opts(rpc_client._client_opts)
 
-    def _test_call_timeout(self):
+    def test_call_timeout(self):
         self.config(rpc_response_timeout=self.confval)
 
         transport = _FakeTransport(self.conf)
@@ -350,30 +245,6 @@ class TestCallTimeout(test_utils.BaseTestCase):
         if self.prepare is not _notset:
             client = client.prepare(timeout=self.prepare)
         client.call({}, 'foo')
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_call_timeout)
-
-    def test_call_timeout_all_none(self):
-        self._test_scenario('all_none')
-
-    def test_call_timeout_confval(self):
-        self._test_scenario('confval')
-
-    def test_call_timeout_ctor(self):
-        self._test_scenario('ctor')
-
-    def test_call_timeout_ctor_zero(self):
-        self._test_scenario('ctor_zero')
-
-    def test_call_timeout_prepare(self):
-        self._test_scenario('prepare')
-
-    def test_call_timeout_prepare_override(self):
-        self._test_scenario('prepare_override')
-
-    def test_call_timeout_prepare_zero(self):
-        self._test_scenario('prepare_zero')
 
 
 class TestSerializer(test_utils.BaseTestCase):
@@ -395,7 +266,7 @@ class TestSerializer(test_utils.BaseTestCase):
         super(TestSerializer, self).setUp(conf=cfg.ConfigOpts())
         self.conf.register_opts(rpc_client._client_opts)
 
-    def _test_call_serializer(self):
+    def test_call_serializer(self):
         self.config(rpc_response_timeout=None)
 
         transport = _FakeTransport(self.conf)
@@ -429,21 +300,15 @@ class TestSerializer(test_utils.BaseTestCase):
         if self.retval is not None:
             self.assertEquals(retval, 'd' + self.retval)
 
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_call_serializer)
-
-    def test_serializer_cast(self):
-        self._test_scenario('cast')
-
-    def test_serializer_call(self):
-        self._test_scenario('call')
-
 
 class TestVersionCap(test_utils.BaseTestCase):
 
-    scenarios = []
+    _call_vs_cast = [
+        ('call', dict(call=True)),
+        ('cast', dict(call=False)),
+    ]
 
-    _scenarios_template = [
+    _cap_scenarios = [
         ('all_none',
          dict(cap=None, prepare_cap=_notset,
               version=None, prepare_version=_notset,
@@ -471,21 +336,16 @@ class TestVersionCap(test_utils.BaseTestCase):
     ]
 
     @classmethod
-    def setup_scenarios(cls):
-        for s in cls._scenarios_template:
-            s = ('call_' + s[0], s[1].copy())
-            s[1]['call'] = True
-            cls.scenarios.append(s)
-        for s in cls._scenarios_template:
-            s = ('cast_' + s[0], s[1].copy())
-            s[1]['call'] = False
-            cls.scenarios.append(s)
+    def generate_scenarios(cls):
+        cls.scenarios = (
+            testscenarios.multiply_scenarios(cls._call_vs_cast,
+                                             cls._cap_scenarios))
 
     def setUp(self):
         super(TestVersionCap, self).setUp(conf=cfg.ConfigOpts())
         self.conf.register_opts(rpc_client._client_opts)
 
-    def _test_version_cap(self):
+    def test_version_cap(self):
         self.config(rpc_response_timeout=None)
 
         transport = _FakeTransport(self.conf)
@@ -530,47 +390,8 @@ class TestVersionCap(test_utils.BaseTestCase):
         else:
             self.assertTrue(self.success)
 
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_version_cap)
 
-    def test_version_cap_call_all_none(self):
-        self._test_scenario('call_all_none')
-
-    def test_version_call_ctor_cap_ok(self):
-        self._test_scenario('call_ctor_cap_ok')
-
-    def test_version_call_ctor_cap_override_ok(self):
-        self._test_scenario('call_ctor_cap_override_ok')
-
-    def test_version_call_ctor_cap_override_none(self):
-        self._test_scenario('call_ctor_cap_override_none_ok')
-
-    def test_version_call_ctor_cap_minor_fail(self):
-        self._test_scenario('call_ctor_cap_minor_fail')
-
-    def test_version_call_ctor_cap_major_fail(self):
-        self._test_scenario('call_ctor_cap_major_fail')
-
-    def test_version_cap_cast_all_none(self):
-        self._test_scenario('cast_all_none')
-
-    def test_version_cast_ctor_cap_ok(self):
-        self._test_scenario('cast_ctor_cap_ok')
-
-    def test_version_cast_ctor_cap_override_ok(self):
-        self._test_scenario('cast_ctor_cap_override_ok')
-
-    def test_version_cast_ctor_cap_override_none(self):
-        self._test_scenario('cast_ctor_cap_override_none_ok')
-
-    def test_version_cast_ctor_cap_minor_fail(self):
-        self._test_scenario('cast_ctor_cap_minor_fail')
-
-    def test_version_cast_ctor_cap_major_fail(self):
-        self._test_scenario('cast_ctor_cap_major_fail')
-
-
-TestVersionCap.setup_scenarios()
+TestVersionCap.generate_scenarios()
 
 
 class TestCheckForLock(test_utils.BaseTestCase):
@@ -588,7 +409,7 @@ class TestCheckForLock(test_utils.BaseTestCase):
         super(TestCheckForLock, self).setUp(conf=cfg.ConfigOpts())
         self.conf.register_opts(rpc_client._client_opts)
 
-    def _test_check_for_lock(self):
+    def test_check_for_lock(self):
         self.config(rpc_response_timeout=None)
 
         transport = _FakeTransport(self.conf)
@@ -622,15 +443,3 @@ class TestCheckForLock(test_utils.BaseTestCase):
             self.assertTrue(self.warning in warnings[0])
         else:
             self.assertEquals(len(warnings), 0)
-
-    def _test_scenario(self, name):
-        _test_scenario(name, self.scenarios, self, self._test_check_for_lock)
-
-    def test_check_for_lock_none(self):
-        self._test_scenario('none')
-
-    def test_check_for_lock_one(self):
-        self._test_scenario('one')
-
-    def test_check_for_lock_two(self):
-        self._test_scenario('two')
