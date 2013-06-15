@@ -138,8 +138,6 @@ class FakeDriver(base.BaseDriver):
         exchange = self._get_exchange(target.exchange or
                                       self._default_exchange)
 
-        # FIXME(markmc): Need to create and pass a reply_queue
-
         reply_q = None
         if wait_for_reply:
             reply_q = Queue.Queue()
