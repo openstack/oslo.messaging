@@ -36,6 +36,8 @@ class ServerSetupMixin(object):
                                                     serializer=serializer)
 
         def stop(self, ctxt):
+            # Check start() does nothing with a running server
+            self._server.start()
             self._server.stop()
             self._server.wait()
 
