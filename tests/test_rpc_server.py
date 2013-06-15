@@ -37,6 +37,7 @@ class ServerSetupMixin(object):
 
         def stop(self, ctxt):
             self._server.stop()
+            self._server.wait()
 
         def start(self):
             self._server.start()
