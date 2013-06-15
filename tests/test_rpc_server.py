@@ -14,6 +14,7 @@
 #    under the License.
 
 import threading
+import time
 
 from oslo.config import cfg
 import testscenarios
@@ -148,6 +149,34 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
     def test_no_client_topic_cast(self):
         self._test_no_client_topic(call=False)
+
+    def test_client_call_timeout(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        finished = False
+        wait = threading.Condition()
+
+        class TestEndpoint(object):
+            def ping(self, ctxt, arg):
+                with wait:
+                    if not finished:
+                        wait.wait()
+
+        server_thread = self._setup_server(transport, TestEndpoint())
+        client = self._setup_client(transport)
+
+        try:
+            client.prepare(timeout=0).call({}, 'ping', arg='foo')
+        except Exception as ex:
+            self.assertTrue(isinstance(ex, messaging.MessagingTimeout), ex)
+        else:
+            self.assertTrue(False)
+
+        with wait:
+            finished = True
+            wait.notify()
+
+        self._stop_server(client, server_thread)
 
     def test_unknown_executor(self):
         transport = messaging.get_transport(self.conf, url='fake:')
