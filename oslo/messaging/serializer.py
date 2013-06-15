@@ -29,7 +29,6 @@ class Serializer(object):
         :param entity: Entity to be serialized
         :returns: Serialized form of entity
         """
-        pass
 
     @abc.abstractmethod
     def deserialize_entity(self, context, entity):
@@ -39,7 +38,6 @@ class Serializer(object):
         :param entity: Primitive to be deserialized
         :returns: Deserialized form of entity
         """
-        pass
 
 
 class NoOpSerializer(Serializer):
