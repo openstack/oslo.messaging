@@ -116,7 +116,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         else:
             self.assertTrue(False)
 
-    def test_no_target_topic(self):
+    def test_no_server_topic(self):
         transport = messaging.get_transport(self.conf, url='fake:')
         target = messaging.Target(server='testserver')
         server = messaging.get_rpc_server(transport, target, [])
@@ -127,6 +127,27 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             self.assertEquals(ex.target.server, 'testserver')
         else:
             self.assertTrue(False)
+
+    def _test_no_client_topic(self, call=True):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        client = self._setup_client(transport, topic=None)
+
+        method = client.call if call else client.cast
+
+        try:
+            method({}, 'ping', arg='foo')
+        except Exception as ex:
+            self.assertTrue(isinstance(ex, messaging.ClientSendError), ex)
+            self.assertTrue(ex.target is not None)
+        else:
+            self.assertTrue(False)
+
+    def test_no_client_topic_call(self):
+        self._test_no_client_topic(call=True)
+
+    def test_no_client_topic_cast(self):
+        self._test_no_client_topic(call=False)
 
     def test_unknown_executor(self):
         transport = messaging.get_transport(self.conf, url='fake:')

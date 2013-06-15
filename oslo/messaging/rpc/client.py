@@ -20,6 +20,7 @@ import inspect
 
 from oslo.config import cfg
 
+from oslo.messaging._drivers import base as driver_base
 from oslo.messaging import _utils as utils
 from oslo.messaging import exceptions
 from oslo.messaging.openstack.common import log as logging
@@ -43,6 +44,16 @@ class RPCVersionCapError(exceptions.MessagingException):
                "Needs to be higher than %(version)s." %
                dict(version=self.version, version_cap=self.version_cap))
         super(RPCVersionCapError, self).__init__(msg)
+
+
+class ClientSendError(exceptions.MessagingException):
+    """Raised if we failed to send a message to a target."""
+
+    def __init__(self, target, ex):
+        msg = 'Failed to send to target "%s": %s' % (target, ex)
+        super(ClientSendError, self).__init__(msg)
+        self.target = target
+        self.ex = ex
 
 
 class _CallContext(object):
@@ -84,7 +95,10 @@ class _CallContext(object):
         msg = self._make_message(ctxt, method, kwargs)
         if self.version_cap:
             self._check_version_cap(msg.get('version'))
-        self.transport._send(self.target, ctxt, msg)
+        try:
+            self.transport._send(self.target, ctxt, msg)
+        except driver_base.TransportDriverError as ex:
+            raise ClientSendError(self.target, ex)
 
     def _check_for_lock(self):
         locks_held = self.check_for_lock(self.conf)
@@ -108,8 +122,11 @@ class _CallContext(object):
         if self.version_cap:
             self._check_version_cap(msg.get('version'))
 
-        result = self.transport._send(self.target, ctxt, msg,
-                                      wait_for_reply=True, timeout=timeout)
+        try:
+            result = self.transport._send(self.target, ctxt, msg,
+                                          wait_for_reply=True, timeout=timeout)
+        except driver_base.TransportDriverError as ex:
+            raise ClientSendError(self.target, ex)
         return self.serializer.deserialize_entity(ctxt, result)
 
     _marker = object()

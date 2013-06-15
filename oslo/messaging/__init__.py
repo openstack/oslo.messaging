@@ -44,6 +44,7 @@ DriverLoadFailure = transport.DriverLoadFailure
 InvalidTransportURL = transport.InvalidTransportURL
 
 RPCVersionCapError = client.RPCVersionCapError
+ClientSendError = client.ClientSendError
 
 MessagingServerError = server.MessagingServerError
 ExecutorLoadFailure = server.ExecutorLoadFailure
