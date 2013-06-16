@@ -113,10 +113,11 @@ class _CallContext(object):
         locks_held = self.check_for_lock(self.conf)
         if locks_held:
             stack = ' :: '.join([frame[3] for frame in inspect.stack()])
-            _LOG.warn('An RPC is being made while holding a lock. The locks '
-                      'currently held are %(locks)s. This is probably a bug. '
-                      'Please report it. Include the following: [%(stack)s].',
-                      {'locks': locks_held, 'stack': stack})
+            _LOG.warning('An RPC is being made while holding a lock. The '
+                         'locks currently held are %(locks)s. This is '
+                         'probably a bug. Please report it. Include the '
+                         'following: [%(stack)s].',
+                         {'locks': locks_held, 'stack': stack})
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""

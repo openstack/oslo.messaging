@@ -523,7 +523,7 @@ class TestCheckForLock(test_utils.BaseTestCase):
                 a = a[0]
             warnings.append(msg % a)
 
-        self.stubs.Set(rpc_client._LOG, 'warn', stub_warn)
+        self.stubs.Set(rpc_client._LOG, 'warning', stub_warn)
 
         client.call({}, 'foo')
 
