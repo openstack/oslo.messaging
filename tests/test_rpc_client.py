@@ -409,6 +409,80 @@ class TestVersionCap(test_utils.BaseTestCase):
 TestVersionCap.generate_scenarios()
 
 
+class TestCanSendVersion(test_utils.BaseTestCase):
+
+    scenarios = [
+        ('all_none',
+         dict(cap=None, prepare_cap=_notset,
+              version=None, prepare_version=_notset,
+              can_send_version=_notset,
+              can_send=True)),
+        ('ctor_cap_ok',
+         dict(cap='1.1', prepare_cap=_notset,
+              version='1.0', prepare_version=_notset,
+              can_send_version=_notset,
+              can_send=True)),
+        ('ctor_cap_override_ok',
+         dict(cap='2.0', prepare_cap='1.1',
+              version='1.0', prepare_version='1.0',
+              can_send_version=_notset,
+              can_send=True)),
+        ('ctor_cap_override_none_ok',
+         dict(cap='1.1', prepare_cap=None,
+              version='1.0', prepare_version=_notset,
+              can_send_version=_notset,
+              can_send=True)),
+        ('ctor_cap_can_send_ok',
+         dict(cap='1.1', prepare_cap=None,
+              version='1.0', prepare_version=_notset,
+              can_send_version='1.1',
+              can_send=True)),
+        ('ctor_cap_can_send_none_ok',
+         dict(cap='1.1', prepare_cap=None,
+              version='1.0', prepare_version=_notset,
+              can_send_version=None,
+              can_send=True)),
+        ('ctor_cap_minor_fail',
+         dict(cap='1.0', prepare_cap=_notset,
+              version='1.1', prepare_version=_notset,
+              can_send_version=_notset,
+              can_send=False)),
+        ('ctor_cap_major_fail',
+         dict(cap='2.0', prepare_cap=_notset,
+              version=None, prepare_version='1.0',
+              can_send_version=_notset,
+              can_send=False)),
+    ]
+
+    def setUp(self):
+        super(TestCanSendVersion, self).setUp(conf=cfg.ConfigOpts())
+        self.conf.register_opts(rpc_client._client_opts)
+
+    def test_version_cap(self):
+        self.config(rpc_response_timeout=None)
+
+        transport = _FakeTransport(self.conf)
+
+        target = messaging.Target(version=self.version)
+        client = messaging.RPCClient(transport, target,
+                                     version_cap=self.cap)
+
+        prep_kwargs = {}
+        if self.prepare_cap is not _notset:
+            prep_kwargs['version_cap'] = self.prepare_cap
+        if self.prepare_version is not _notset:
+            prep_kwargs['version'] = self.prepare_version
+        if prep_kwargs:
+            client = client.prepare(**prep_kwargs)
+
+        if self.can_send_version is not _notset:
+            can_send = client.can_send_version(version=self.can_send_version)
+        else:
+            can_send = client.can_send_version()
+
+        self.assertEquals(can_send, self.can_send)
+
+
 class TestCheckForLock(test_utils.BaseTestCase):
 
     scenarios = [

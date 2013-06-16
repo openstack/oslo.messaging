@@ -58,6 +58,8 @@ class ClientSendError(exceptions.MessagingException):
 
 class _CallContext(object):
 
+    _marker = object()
+
     def __init__(self, transport, target, serializer,
                  timeout=None, check_for_lock=None, version_cap=None):
         self.conf = transport.conf
@@ -89,6 +91,13 @@ class _CallContext(object):
         if not utils.version_is_compatible(self.version_cap, version):
             raise RPCVersionCapError(version=version,
                                      version_cap=self.version_cap)
+
+    def can_send_version(self, version=_marker):
+        """Check to see if a version is compatible with the version cap."""
+        version = self.target.version if version is self._marker else version
+        return (not self.version_cap or
+                utils.version_is_compatible(self.version_cap,
+                                            self.target.version))
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately. See RPCClient.cast()."""
@@ -128,8 +137,6 @@ class _CallContext(object):
         except driver_base.TransportDriverError as ex:
             raise ClientSendError(self.target, ex)
         return self.serializer.deserialize_entity(ctxt, result)
-
-    _marker = object()
 
     @classmethod
     def _prepare(cls, base,
@@ -324,3 +331,7 @@ class RPCClient(object):
         :raises: MessagingTimeout
         """
         return self.prepare().call(ctxt, method, **kwargs)
+
+    def can_send_version(self, version=_marker):
+        """Check to see if a version is compatible with the version cap."""
+        return self.prepare(version=version).can_send_version()
