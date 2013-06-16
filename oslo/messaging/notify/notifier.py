@@ -21,7 +21,6 @@ from oslo.config import cfg
 from stevedore import named
 
 from oslo import messaging
-from oslo.messaging.openstack.common.gettextutils import _
 from oslo.messaging.openstack.common import log as logging
 from oslo.messaging.openstack.common import timeutils
 from oslo.messaging.openstack.common import uuidutils
@@ -93,9 +92,9 @@ class Notifier(object):
             try:
                 ext.obj.notify(context, msg, priority)
             except Exception as e:
-                LOG.exception(_("Problem '%(e)s' attempting to send to "
-                                "notification system. Payload=%(payload)s")
-                              % dict(e=e, payload=payload))
+                LOG.exception("Problem '%(e)s' attempting to send to "
+                              "notification system. Payload=%(payload)s",
+                              dict(e=e, payload=payload))
         self._driver_mgr.map(do_notify)
 
     def debug(self, context, event_type, payload):

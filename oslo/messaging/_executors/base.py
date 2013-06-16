@@ -15,7 +15,6 @@
 import abc
 import sys
 
-from oslo.messaging.openstack.common.gettextutils import _
 from oslo.messaging.openstack.common import log as logging
 
 _LOG = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class ExecutorBase(object):
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
-            _LOG.error(_("Failed to process message... skipping it."),
+            _LOG.error("Failed to process message... skipping it.",
                        exc_info=exc_info)
             incoming.reply(failure=exc_info)
         finally:

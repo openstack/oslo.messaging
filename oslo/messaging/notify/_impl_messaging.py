@@ -17,7 +17,6 @@
 
 from oslo import messaging
 from oslo.messaging.notify import notifier
-from oslo.messaging.openstack.common.gettextutils import _
 from oslo.messaging.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
@@ -36,8 +35,8 @@ class MessagingDriver(notifier._Driver):
                 self.transport._send(target, context, message,
                                      envelope=self.envelope)
             except Exception:
-                LOG.exception(_("Could not send notification to %(topic)s. "
-                                "Payload=%(message)s"),
+                LOG.exception("Could not send notification to %(topic)s. "
+                              "Payload=%(message)s",
                               dict(topic=topic, message=message))
 
 
