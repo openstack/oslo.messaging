@@ -16,11 +16,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 from stevedore import driver
 
 from oslo.messaging._drivers import base as driver_base
 from oslo.messaging import exceptions
-from oslo.messaging.openstack.common import log as logging
 
 
 _LOG = logging.getLogger(__name__)

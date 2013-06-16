@@ -15,9 +15,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 from oslo.messaging.notify import notifier
 from oslo.messaging.openstack.common import jsonutils
-from oslo.messaging.openstack.common import log as logging
 
 
 class LogDriver(notifier._Driver):

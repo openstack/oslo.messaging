@@ -16,8 +16,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 from oslo.messaging import _utils as utils
-from oslo.messaging.openstack.common import log as logging
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
 from oslo.messaging import target

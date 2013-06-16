@@ -17,13 +17,13 @@
 #    under the License.
 
 import inspect
+import logging
 
 from oslo.config import cfg
 
 from oslo.messaging._drivers import base as driver_base
 from oslo.messaging import _utils as utils
 from oslo.messaging import exceptions
-from oslo.messaging.openstack.common import log as logging
 from oslo.messaging import serializer as msg_serializer
 
 _client_opts = [

@@ -13,9 +13,8 @@
 #    under the License.
 
 import abc
+import logging
 import sys
-
-from oslo.messaging.openstack.common import log as logging
 
 _LOG = logging.getLogger(__name__)
 

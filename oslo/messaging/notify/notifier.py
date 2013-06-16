@@ -16,12 +16,12 @@
 #    under the License.
 
 import abc
+import logging
 
 from oslo.config import cfg
 from stevedore import named
 
 from oslo import messaging
-from oslo.messaging.openstack.common import log as logging
 from oslo.messaging.openstack.common import timeutils
 from oslo.messaging.openstack.common import uuidutils
 
