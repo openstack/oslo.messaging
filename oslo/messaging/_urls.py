@@ -91,8 +91,9 @@ def parse_url(url, default_exchange=None):
             continue
 
         if "@" in host:
-            creds, host = host.split("@")
-            username, password = creds.split(":")
+            username, host = host.split("@", 1)
+            if ":" in username:
+                username, password = username.split(":", 1)
 
         hosts.append({
             "host": host,
