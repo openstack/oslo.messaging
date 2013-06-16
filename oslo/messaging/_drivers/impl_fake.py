@@ -35,8 +35,14 @@ class InvalidTarget(base.TransportDriverError, ValueError):
 
 class FakeIncomingMessage(base.IncomingMessage):
 
+    def __init__(self, listener, ctxt, message, reply_q):
+        super(FakeIncomingMessage, self).__init__(listener, ctxt, message)
+        self._reply_q = reply_q
+
     def reply(self, reply=None, failure=None):
-        self.listener._deliver_reply(reply, failure)
+        # FIXME: handle failure
+        if self._reply_q:
+            self._reply_q.put(reply)
 
     def done(self):
         pass
@@ -48,18 +54,11 @@ class FakeListener(base.Listener):
         super(FakeListener, self).__init__(driver, target)
         self._exchange = exchange
 
-    def _deliver_reply(self, reply=None, failure=None):
-        # FIXME: handle failure
-        if self._reply_q:
-            self._reply_q.put(reply)
-
     def poll(self):
-        self._reply_q = None
         while True:
             (ctxt, message, reply_q) = self._exchange.poll(self.target)
             if message is not None:
-                self._reply_q = reply_q
-                return FakeIncomingMessage(self, ctxt, message)
+                return FakeIncomingMessage(self, ctxt, message, reply_q)
             time.sleep(.05)
 
 
