@@ -66,6 +66,8 @@ def parse_url(url, default_exchange=None):
     :type default_exchange: str
     :returns: A dictionary with the parsed data
     """
+    if not url:
+        return dict(exchange=default_exchange)
 
     # NOTE(flaper87): Not PY3K compliant
     if not isinstance(url, basestring):
@@ -75,12 +77,11 @@ def parse_url(url, default_exchange=None):
 
     parsed = dict(transport=url.scheme)
 
-    # NOTE(flaper87): Set the exchange.
-    # if it is / or None then use the
-    # default one.
-    exchange = default_exchange
-    if url.path and url.path != "/":
-        exchange = url.path[1:].split("/")[0]
+    exchange = None
+    if url.path.startswith('/'):
+        exchange = url.path[1:].split('/')[0]
+    if not exchange:
+        exchange = default_exchange
     parsed["exchange"] = exchange
 
     # NOTE(flaper87): Parse netloc.
@@ -128,13 +129,4 @@ def exchange_from_url(url, default_exchange=None):
     :param default_exchange: what to return if no exchange found in URL
     :type default_exchange: str
     """
-    if not url:
-        return default_exchange
-
-    url = urlparse.urlparse(url)
-    if not url.path.startswith('/'):
-        return default_exchange
-
-    parts = url.path[1:].split('/')
-
-    return parts[0] if parts[0] else default_exchange
+    return parse_url(url, default_exchange)['exchange']
