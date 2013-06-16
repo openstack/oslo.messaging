@@ -22,7 +22,7 @@ import time
 
 from oslo import messaging
 from oslo.messaging._drivers import base
-from oslo.messaging import _utils as utils
+from oslo.messaging import _urls as urls
 
 
 class InvalidTarget(base.TransportDriverError, ValueError):
@@ -102,7 +102,7 @@ class FakeDriver(base.BaseDriver):
     def __init__(self, conf, url=None, default_exchange=None):
         super(FakeDriver, self).__init__(conf, url, default_exchange)
 
-        self._default_exchange = utils.exchange_from_url(url, default_exchange)
+        self._default_exchange = urls.exchange_from_url(url, default_exchange)
 
         self._exchanges_lock = threading.Lock()
         self._exchanges = {}
