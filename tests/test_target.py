@@ -160,8 +160,8 @@ class EqualityTestCase(test_utils.BaseTestCase):
             s[1]['equals'] = (s[1]['a_value'] == s[1]['b_value'])
 
     def test_equality(self):
-        a_kwargs = {self.attr : self.a_value}
-        b_kwargs = {self.attr : self.b_value}
+        a_kwargs = {self.attr: self.a_value}
+        b_kwargs = {self.attr: self.b_value}
 
         a = messaging.Target(**a_kwargs)
         b = messaging.Target(**b_kwargs)

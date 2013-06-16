@@ -14,7 +14,6 @@
 #    under the License.
 
 import threading
-import time
 
 from oslo.config import cfg
 import testscenarios
@@ -296,7 +295,7 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
          dict(multi_endpoints=True,
               expect1=['ds1'],
               expect2=['ds2'])),
-   ]
+    ]
 
     @classmethod
     def generate_scenarios(cls):
