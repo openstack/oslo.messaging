@@ -23,10 +23,10 @@ class Server(object):
         self.target = messaging.Target(topic='testtopic',
                                        server=transport.conf.host,
                                        version='2.5')
-        self._server = messaging.rpc_server.get_rpc_server(transport,
-                                                           self.target,
-                                                           [self],
-                                                           executor='eventlet')
+        self._server = messaging.get_rpc_server(transport,
+                                                self.target,
+                                                [self],
+                                                executor='eventlet')
         super(Server, self).__init__()
 
     def start(self):
