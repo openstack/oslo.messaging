@@ -115,7 +115,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             server.start()
         except Exception as ex:
             self.assertTrue(isinstance(ex, messaging.ServerListenError), ex)
-            self.assertEquals(ex.target.topic, 'testtopic')
+            self.assertEqual(ex.target.topic, 'testtopic')
         else:
             self.assertTrue(False)
 
@@ -127,7 +127,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             server.start()
         except Exception as ex:
             self.assertTrue(isinstance(ex, messaging.ServerListenError), ex)
-            self.assertEquals(ex.target.server, 'testserver')
+            self.assertEqual(ex.target.server, 'testserver')
         else:
             self.assertTrue(False)
 
@@ -187,7 +187,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             messaging.get_rpc_server(transport, None, [], executor='foo')
         except Exception as ex:
             self.assertTrue(isinstance(ex, messaging.ExecutorLoadFailure))
-            self.assertEquals(ex.executor, 'foo')
+            self.assertEqual(ex.executor, 'foo')
         else:
             self.assertTrue(False)
 
@@ -210,7 +210,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
         self._stop_server(client, server_thread)
 
-        self.assertEquals(endpoint.pings, ['dsfoo', 'dsbar'])
+        self.assertEqual(endpoint.pings, ['dsfoo', 'dsbar'])
 
     def test_call(self):
         transport = messaging.get_transport(self.conf, url='fake:')
@@ -222,7 +222,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
 
-        self.assertEquals(client.call({}, 'ping', arg='foo'), 'dsdsfoo')
+        self.assertEqual(client.call({}, 'ping', arg='foo'), 'dsdsfoo')
 
         self._stop_server(client, server_thread)
 
@@ -237,7 +237,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         client = self._setup_client(transport)
 
         direct = client.prepare(server='testserver')
-        self.assertEquals(direct.call({}, 'ping', arg='foo'), 'dsdsfoo')
+        self.assertEqual(direct.call({}, 'ping', arg='foo'), 'dsdsfoo')
 
         self._stop_server(client, server_thread)
 
@@ -251,10 +251,10 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
 
-        self.assertEquals(client.call({'dsa': 'b'},
-                                      'ctxt_check',
-                                      key='a'),
-                          'dsb')
+        self.assertEqual(client.call({'dsa': 'b'},
+                                     'ctxt_check',
+                                     key='a'),
+                         'dsb')
 
         self._stop_server(client, server_thread)
 
@@ -413,7 +413,7 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
                           thread2, topic=self.topic2)
 
         def check(pings, expect):
-            self.assertEquals(len(pings), len(expect))
+            self.assertEqual(len(pings), len(expect))
             for a in expect:
                 self.assertTrue(a in pings)
 

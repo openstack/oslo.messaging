@@ -36,7 +36,7 @@ class TargetConstructorTestCase(test_utils.BaseTestCase):
     def test_constructor(self):
         target = messaging.Target(**self.kwargs)
         for k in self.kwargs:
-            self.assertEquals(getattr(target, k), self.kwargs[k])
+            self.assertEqual(getattr(target, k), self.kwargs[k])
         for k in ['exchange', 'topic', 'namespace',
                   'version', 'server', 'fanout']:
             if k in self.kwargs:
@@ -90,7 +90,7 @@ class TargetCallableTestCase(test_utils.BaseTestCase):
         target = messaging.Target(**self.attrs)
         target = target(**self.kwargs)
         for k in self.vals:
-            self.assertEquals(getattr(target, k), self.vals[k])
+            self.assertEqual(getattr(target, k), self.vals[k])
         for k in ['exchange', 'topic', 'namespace',
                   'version', 'server', 'fanout']:
             if k in self.vals:
@@ -122,7 +122,7 @@ class TargetReprTestCase(test_utils.BaseTestCase):
 
     def test_repr(self):
         target = messaging.Target(**self.kwargs)
-        self.assertEquals(str(target), '<Target ' + self.repr + '>')
+        self.assertEqual(str(target), '<Target ' + self.repr + '>')
 
 
 _notset = object()
@@ -167,7 +167,7 @@ class EqualityTestCase(test_utils.BaseTestCase):
         b = messaging.Target(**b_kwargs)
 
         if self.equals:
-            self.assertEquals(a, b)
+            self.assertEqual(a, b)
             self.assertFalse(a != b)
         else:
             self.assertNotEquals(a, b)

@@ -313,7 +313,7 @@ class TestSerializer(test_utils.BaseTestCase):
         method = client.call if self.call else client.cast
         retval = method(self.ctxt, 'foo', **self.args)
         if self.retval is not None:
-            self.assertEquals(retval, 'd' + self.retval)
+            self.assertEqual(retval, 'd' + self.retval)
 
 
 class TestVersionCap(test_utils.BaseTestCase):
@@ -480,7 +480,7 @@ class TestCanSendVersion(test_utils.BaseTestCase):
         else:
             can_send = client.can_send_version()
 
-        self.assertEquals(can_send, self.can_send)
+        self.assertEqual(can_send, self.can_send)
 
 
 class TestCheckForLock(test_utils.BaseTestCase):
@@ -528,7 +528,7 @@ class TestCheckForLock(test_utils.BaseTestCase):
         client.call({}, 'foo')
 
         if self.warning:
-            self.assertEquals(len(warnings), 1)
+            self.assertEqual(len(warnings), 1)
             self.assertTrue(self.warning in warnings[0])
         else:
-            self.assertEquals(len(warnings), 0)
+            self.assertEqual(len(warnings), 0)

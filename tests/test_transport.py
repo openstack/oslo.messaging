@@ -171,7 +171,7 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 
             for k, v in self.ex.items():
                 self.assertTrue(hasattr(ex, k))
-                self.assertEquals(getattr(ex, k), v)
+                self.assertEqual(getattr(ex, k), v)
 
 
 # FIXME(markmc): this could be used elsewhere

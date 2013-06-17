@@ -52,8 +52,8 @@ class TestExchangeFromURL(test_utils.BaseTestCase):
         if self.default is not self._notset:
             kwargs['default_exchange'] = self.default
 
-        self.assertEquals(urls.exchange_from_url(self.url, **kwargs),
-                          self.expect)
+        self.assertEqual(urls.exchange_from_url(self.url, **kwargs),
+                         self.expect)
 
 
 class TestParseURL(test_utils.BaseTestCase):
@@ -155,4 +155,4 @@ class TestParseURL(test_utils.BaseTestCase):
     ]
 
     def test_parse_url(self):
-        self.assertEquals(urls.parse_url(self.url), self.expect)
+        self.assertEqual(urls.parse_url(self.url), self.expect)
