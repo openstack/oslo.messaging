@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__all__ = ['MessagingException', 'MessagingTimeout']
+
 
 class MessagingException(Exception):
     """Base class for exceptions."""

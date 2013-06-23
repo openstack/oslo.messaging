@@ -16,6 +16,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__all__ = [
+    'NoSuchMethod',
+    'RPCDispatcher',
+    'RPCDispatcherError',
+    'UnsupportedVersion',
+]
+
 import logging
 
 from oslo.messaging import _utils as utils

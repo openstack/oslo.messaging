@@ -209,12 +209,12 @@ class TestSetDefaults(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestSetDefaults, self).setUp(conf=cfg.ConfigOpts())
-        self.useFixture(_SetDefaultsFixture(transport.set_defaults,
+        self.useFixture(_SetDefaultsFixture(messaging.set_transport_defaults,
                                             transport._transport_opts,
                                             'control_exchange'))
 
     def test_set_default_control_exchange(self):
-        transport.set_defaults(control_exchange='foo')
+        messaging.set_transport_defaults(control_exchange='foo')
 
         self.mox.StubOutWithMock(driver, 'DriverManager')
         invoke_kwds = mox.ContainsKeyValue('default_exchange', 'foo')

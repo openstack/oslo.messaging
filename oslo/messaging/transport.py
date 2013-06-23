@@ -16,6 +16,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__all__ = [
+    'DriverLoadFailure',
+    'InvalidTransportURL',
+    'Transport',
+    'get_transport',
+    'set_transport_defaults',
+]
+
 import urlparse
 
 from oslo.config import cfg
@@ -42,7 +50,7 @@ _transport_opts = [
 ]
 
 
-def set_defaults(control_exchange):
+def set_transport_defaults(control_exchange):
     """Set defaults for messaging transport configuration options.
 
     :param control_exchange: the default exchange under which topics are scoped

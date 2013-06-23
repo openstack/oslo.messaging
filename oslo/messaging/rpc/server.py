@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+__all__ = ['get_rpc_server']
+
 from oslo.messaging.rpc import dispatcher as rpc_dispatcher
 from oslo.messaging import server as msg_server
 
