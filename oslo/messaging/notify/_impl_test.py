@@ -26,5 +26,5 @@ class TestDriver(notifier._Driver):
         super(TestDriver, self).__init__(conf, **kwargs)
         self.notifications = []
 
-    def notify(self, context, message, priority):
+    def notify(self, ctxt, message, priority):
         self.notifications.append(message)

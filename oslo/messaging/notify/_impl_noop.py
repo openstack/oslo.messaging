@@ -20,5 +20,5 @@ from oslo.messaging.notify import notifier
 
 class NoOpDriver(notifier._Driver):
 
-    def notify(self, context, message, priority):
+    def notify(self, ctxt, message, priority):
         pass

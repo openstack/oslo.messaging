@@ -27,7 +27,7 @@ class LogDriver(notifier._Driver):
 
     LOGGER_BASE = 'oslo.messaging.notification'
 
-    def notify(self, context, message, priority):
+    def notify(self, ctxt, message, priority):
         logger = logging.getLogger('%s.%s' % (self.LOGGER_BASE,
                                               message['event_type']))
         getattr(logger, priority)(jsonutils.dumps(message))

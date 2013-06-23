@@ -38,11 +38,11 @@ class MessagingDriver(notifier._Driver):
         super(MessagingDriver, self).__init__(conf, topics, transport)
         self.envelope = envelope
 
-    def notify(self, context, message, priority):
+    def notify(self, ctxt, message, priority):
         for topic in self.topics:
             target = messaging.Target(topic='%s.%s' % (topic, priority))
             try:
-                self.transport._send(target, context, message,
+                self.transport._send(target, ctxt, message,
                                      envelope=self.envelope)
             except Exception:
                 LOG.exception("Could not send notification to %(topic)s. "

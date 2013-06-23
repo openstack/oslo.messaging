@@ -49,7 +49,7 @@ class _Driver(object):
         self.transport = transport
 
     @abc.abstractmethod
-    def notify(self, context, msg, priority):
+    def notify(self, ctxt, msg, priority):
         pass
 
 
@@ -126,7 +126,7 @@ class Notifier(object):
             },
         )
 
-    def _notify(self, context, event_type, payload, priority):
+    def _notify(self, ctxt, event_type, payload, priority):
         msg = dict(message_id=uuidutils.generate_uuid(),
                    publisher_id=self.publisher_id,
                    event_type=event_type,
@@ -136,69 +136,69 @@ class Notifier(object):
 
         def do_notify(ext):
             try:
-                ext.obj.notify(context, msg, priority)
+                ext.obj.notify(ctxt, msg, priority)
             except Exception as e:
                 LOG.exception("Problem '%(e)s' attempting to send to "
                               "notification system. Payload=%(payload)s",
                               dict(e=e, payload=payload))
         self._driver_mgr.map(do_notify)
 
-    def debug(self, context, event_type, payload):
+    def debug(self, ctxt, event_type, payload):
         """Send a notification at debug level.
 
-        :param context: a request context dict
-        :type context: dict
+        :param ctxt: a request context dict
+        :type ctxt: dict
         :param event_type: describes the event, e.g. 'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
         """
-        self._notify(context, event_type, payload, 'DEBUG')
+        self._notify(ctxt, event_type, payload, 'DEBUG')
 
-    def info(self, context, event_type, payload):
+    def info(self, ctxt, event_type, payload):
         """Send a notification at info level.
 
-        :param context: a request context dict
-        :type context: dict
+        :param ctxt: a request context dict
+        :type ctxt: dict
         :param event_type: describes the event, e.g. 'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
         """
-        self._notify(context, event_type, payload, 'INFO')
+        self._notify(ctxt, event_type, payload, 'INFO')
 
-    def warn(self, context, event_type, payload):
+    def warn(self, ctxt, event_type, payload):
         """Send a notification at warning level.
 
-        :param context: a request context dict
-        :type context: dict
+        :param ctxt: a request context dict
+        :type ctxt: dict
         :param event_type: describes the event, e.g. 'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
         """
-        self._notify(context, event_type, payload, 'WARN')
+        self._notify(ctxt, event_type, payload, 'WARN')
 
-    def error(self, context, event_type, payload):
+    def error(self, ctxt, event_type, payload):
         """Send a notification at error level.
 
-        :param context: a request context dict
-        :type context: dict
+        :param ctxt: a request context dict
+        :type ctxt: dict
         :param event_type: describes the event, e.g. 'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
         """
-        self._notify(context, event_type, payload, 'ERROR')
+        self._notify(ctxt, event_type, payload, 'ERROR')
 
-    def critical(self, context, event_type, payload):
+    def critical(self, ctxt, event_type, payload):
         """Send a notification at critical level.
 
-        :param context: a request context dict
-        :type context: dict
+        :param ctxt: a request context dict
+        :type ctxt: dict
         :param event_type: describes the event, e.g. 'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
         """
-        self._notify(context, event_type, payload, 'CRITICAL')
+        self._notify(ctxt, event_type, payload, 'CRITICAL')
