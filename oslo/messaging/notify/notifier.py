@@ -55,8 +55,54 @@ class _Driver(object):
 
 class Notifier(object):
 
+    """Send notification messages.
+
+    The Notifier class is used for sending notification messages over a
+    messaging transport or other means.
+
+    Notification messages follow the following format:
+
+        {'message_id': str(uuid.uuid4()),
+         'publisher_id': 'compute.host1',
+         'timestamp': timeutils.utcnow(),
+         'priority': 'WARN',
+         'event_type': 'compute.create_instance',
+         'payload': {'instance_id': 12, ... }}
+
+    A Notifier object can be instantiated with a configuration object and a
+    publisher ID:
+
+        notifier = notifier.Notifier(cfg.CONF, 'compute.host1')
+
+    and notifications are sent via drivers chosen with the notification_driver
+    config option, on the topics consen with the notification_topics config
+    option, on a transport contstructed using the supplied configuration.
+
+    Alternatively, a Notifier object can be instantiated with a specific
+    driver, topic or transport:
+
+        notifier = notifier.Notifier(cfg.CONF,
+                                     'compute.host',
+                                     driver='messaging',
+                                     topic='notifications',
+                                     transport=RPC_TRANSPORT)
+    """
+
     def __init__(self, conf, publisher_id,
                  driver=None, topic=None, transport=None):
+        """Construct a Notifier object.
+
+        :param conf: user configuration, used for e.g. notification_driver
+        :type conf: a cfg.ConfigOpts instance
+        :param publisher_id: field in notifications sent, e.g. 'compute.host1'
+        :type publisher_id: str
+        :param driver: a driver to lookup from oslo.messaging.notify.drivers
+        :type driver: str
+        :param topic: the topic which to send messages on
+        :type topic: str
+        :param transport: the transport to use for sending messages
+        :type transport: oslo.messaging.Transport
+        """
         self.conf = conf
         self.conf.register_opts(_notifier_opts)
 
@@ -98,16 +144,61 @@ class Notifier(object):
         self._driver_mgr.map(do_notify)
 
     def debug(self, context, event_type, payload):
+        """Send a notification at debug level.
+
+        :param context: a request context dict
+        :type context: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
         self._notify(context, event_type, payload, 'DEBUG')
 
     def info(self, context, event_type, payload):
+        """Send a notification at info level.
+
+        :param context: a request context dict
+        :type context: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
         self._notify(context, event_type, payload, 'INFO')
 
     def warn(self, context, event_type, payload):
+        """Send a notification at warning level.
+
+        :param context: a request context dict
+        :type context: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
         self._notify(context, event_type, payload, 'WARN')
 
     def error(self, context, event_type, payload):
+        """Send a notification at error level.
+
+        :param context: a request context dict
+        :type context: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
         self._notify(context, event_type, payload, 'ERROR')
 
     def critical(self, context, event_type, payload):
+        """Send a notification at critical level.
+
+        :param context: a request context dict
+        :type context: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
         self._notify(context, event_type, payload, 'CRITICAL')

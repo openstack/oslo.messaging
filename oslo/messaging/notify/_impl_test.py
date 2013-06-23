@@ -20,6 +20,8 @@ from oslo.messaging.notify import notifier
 
 class TestDriver(notifier._Driver):
 
+    "Store notifications in memory for test verification."
+
     def __init__(self, conf, **kwargs):
         super(TestDriver, self).__init__(conf, **kwargs)
         self.notifications = []

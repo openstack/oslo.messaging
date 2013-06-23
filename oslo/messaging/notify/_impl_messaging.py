@@ -25,6 +25,15 @@ LOG = logging.getLogger(__name__)
 
 class MessagingDriver(notifier._Driver):
 
+    """Send notifications using the 1.0 message format.
+
+    This driver sends notifications over the configured messaging transport,
+    but without any message envelope (also known as message format 1.0).
+
+    This driver should only be used in cases where there are existing consumers
+    deployed which do not support the 2.0 message format.
+    """
+
     def __init__(self, conf, topics, transport, envelope=False):
         super(MessagingDriver, self).__init__(conf, topics, transport)
         self.envelope = envelope
@@ -42,6 +51,8 @@ class MessagingDriver(notifier._Driver):
 
 
 class MessagingV2Driver(MessagingDriver):
+
+    "Send notifications using the 2.0 message format."
 
     def __init__(self, conf, **kwargs):
         super(MessagingDriver, self).__init__(conf, envelope=True, **kwargs)

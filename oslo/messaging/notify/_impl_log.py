@@ -23,6 +23,8 @@ from oslo.messaging.openstack.common import jsonutils
 
 class LogDriver(notifier._Driver):
 
+    "Publish notifications via Python logging infrastructure."
+
     LOGGER_BASE = 'oslo.messaging.notification'
 
     def notify(self, context, message, priority):
