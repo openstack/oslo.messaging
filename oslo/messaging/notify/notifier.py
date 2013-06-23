@@ -24,6 +24,7 @@ from stevedore import named
 from oslo import messaging
 from oslo.messaging.openstack.common import timeutils
 from oslo.messaging.openstack.common import uuidutils
+from oslo.messaging import serializer as msg_serializer
 
 _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',
@@ -89,7 +90,8 @@ class Notifier(object):
     """
 
     def __init__(self, conf, publisher_id,
-                 driver=None, topic=None, transport=None):
+                 driver=None, topic=None,
+                 transport=None, serializer=None):
         """Construct a Notifier object.
 
         :param conf: user configuration, used for e.g. notification_driver
@@ -102,6 +104,8 @@ class Notifier(object):
         :type topic: str
         :param transport: the transport to use for sending messages
         :type transport: oslo.messaging.Transport
+        :param serializer: an optional entity serializer
+        :type serializer: Serializer
         """
         self.conf = conf
         self.conf.register_opts(_notifier_opts)
@@ -114,6 +118,7 @@ class Notifier(object):
         self._topics = ([topic] if topic is not None
                         else conf.notification_topics)
         self._transport = transport or messaging.get_transport(conf)
+        self._serializer = serializer or msg_serializer.NoOpSerializer()
 
         self._driver_mgr = named.NamedExtensionManager(
             'oslo.messaging.notify.drivers',
@@ -127,6 +132,8 @@ class Notifier(object):
         )
 
     def _notify(self, ctxt, event_type, payload, priority):
+        payload = self._serializer.serialize_entity(ctxt, payload)
+
         msg = dict(message_id=uuidutils.generate_uuid(),
                    publisher_id=self.publisher_id,
                    event_type=event_type,
