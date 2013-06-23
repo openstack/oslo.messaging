@@ -1,6 +1,14 @@
 
 TODO:
 
+  - apps need to be able to register backwards compat aliases for
+    entry point names
+
+      get_transport(conf, driver_aliases={
+        'nova.openstack.common.rpc.impl_kombu': 'rabbit',
+        'nova.openstack.common.rpc.impl_qpid: 'qpid',
+        'nova.openstack.common.rpc.impl_zmq: 'zmq'})
+
   - we need some way for the dispatcher to take the incoming
     context dict and instantiate a user-supplied request context
     object with it
