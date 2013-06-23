@@ -24,19 +24,19 @@ class Serializer(object):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def serialize_entity(self, context, entity):
+    def serialize_entity(self, ctxt, entity):
         """Serialize something to primitive form.
 
-        :param context: Security context
+        :param context: Request context
         :param entity: Entity to be serialized
         :returns: Serialized form of entity
         """
 
     @abc.abstractmethod
-    def deserialize_entity(self, context, entity):
+    def deserialize_entity(self, ctxt, entity):
         """Deserialize something from primitive form.
 
-        :param context: Security context
+        :param context: Request context
         :param entity: Primitive to be deserialized
         :returns: Deserialized form of entity
         """
@@ -45,8 +45,8 @@ class Serializer(object):
 class NoOpSerializer(Serializer):
     """A serializer that does nothing."""
 
-    def serialize_entity(self, context, entity):
+    def serialize_entity(self, ctxt, entity):
         return entity
 
-    def deserialize_entity(self, context, entity):
+    def deserialize_entity(self, ctxt, entity):
         return entity
