@@ -55,4 +55,4 @@ class MessagingV2Driver(MessagingDriver):
     "Send notifications using the 2.0 message format."
 
     def __init__(self, conf, **kwargs):
-        super(MessagingDriver, self).__init__(conf, envelope=True, **kwargs)
+        super(MessagingV2Driver, self).__init__(conf, envelope=True, **kwargs)
