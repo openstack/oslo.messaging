@@ -30,4 +30,4 @@ class LogDriver(notifier._Driver):
     def notify(self, ctxt, message, priority):
         logger = logging.getLogger('%s.%s' % (self.LOGGER_BASE,
                                               message['event_type']))
-        getattr(logger, priority)(jsonutils.dumps(message))
+        getattr(logger, priority.lower())(jsonutils.dumps(message))
