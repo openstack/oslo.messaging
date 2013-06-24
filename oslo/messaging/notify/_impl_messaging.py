@@ -39,6 +39,7 @@ class MessagingDriver(notifier._Driver):
         self.envelope = envelope
 
     def notify(self, ctxt, message, priority):
+        priority = priority.lower()
         for topic in self.topics:
             target = messaging.Target(topic='%s.%s' % (topic, priority))
             try:
