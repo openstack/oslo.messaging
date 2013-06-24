@@ -36,7 +36,7 @@ _notifier_opts = [
                 help='AMQP topic used for openstack notifications'),
 ]
 
-LOG = logging.getLogger(__name__)
+_LOG = logging.getLogger(__name__)
 
 
 class _Driver(object):
@@ -141,9 +141,9 @@ class Notifier(object):
             try:
                 ext.obj.notify(ctxt, msg, priority)
             except Exception as e:
-                LOG.exception("Problem '%(e)s' attempting to send to "
-                              "notification system. Payload=%(payload)s",
-                              dict(e=e, payload=payload))
+                _LOG.exception("Problem '%(e)s' attempting to send to "
+                               "notification system. Payload=%(payload)s",
+                               dict(e=e, payload=payload))
         self._driver_mgr.map(do_notify)
 
     def debug(self, ctxt, event_type, payload):
