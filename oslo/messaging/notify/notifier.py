@@ -144,7 +144,9 @@ class Notifier(object):
                 _LOG.exception("Problem '%(e)s' attempting to send to "
                                "notification system. Payload=%(payload)s",
                                dict(e=e, payload=payload))
-        self._driver_mgr.map(do_notify)
+
+        if self._driver_mgr.extensions:
+            self._driver_mgr.map(do_notify)
 
     def debug(self, ctxt, event_type, payload):
         """Send a notification at debug level.
