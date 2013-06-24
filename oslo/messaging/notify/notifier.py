@@ -21,7 +21,6 @@ import logging
 from oslo.config import cfg
 from stevedore import named
 
-from oslo import messaging
 from oslo.messaging.openstack.common import timeutils
 from oslo.messaging.openstack.common import uuidutils
 from oslo.messaging import serializer as msg_serializer
@@ -70,54 +69,51 @@ class Notifier(object):
          'event_type': 'compute.create_instance',
          'payload': {'instance_id': 12, ... }}
 
-    A Notifier object can be instantiated with a configuration object and a
+    A Notifier object can be instantiated with a transport object and a
     publisher ID:
 
-        notifier = notifier.Notifier(cfg.CONF, 'compute.host1')
+        notifier = notifier.Notifier(get_transport(CONF), 'compute.host1')
 
     and notifications are sent via drivers chosen with the notification_driver
-    config option, on the topics consen with the notification_topics config
-    option, on a transport contstructed using the supplied configuration.
+    config option and on the topics consen with the notification_topics config
+    option.
 
     Alternatively, a Notifier object can be instantiated with a specific
-    driver, topic or transport:
+    driver or topic:
 
-        notifier = notifier.Notifier(cfg.CONF,
+        notifier = notifier.Notifier(RPC_TRANSPORT,
                                      'compute.host',
                                      driver='messaging',
-                                     topic='notifications',
-                                     transport=RPC_TRANSPORT)
+                                     topic='notifications')
     """
 
-    def __init__(self, conf, publisher_id,
+    def __init__(self, transport, publisher_id,
                  driver=None, topic=None,
-                 transport=None, serializer=None):
+                 serializer=None):
         """Construct a Notifier object.
 
-        :param conf: user configuration, used for e.g. notification_driver
-        :type conf: a cfg.ConfigOpts instance
+        :param transport: the transport to use for sending messages
+        :type transport: oslo.messaging.Transport
         :param publisher_id: field in notifications sent, e.g. 'compute.host1'
         :type publisher_id: str
         :param driver: a driver to lookup from oslo.messaging.notify.drivers
         :type driver: str
         :param topic: the topic which to send messages on
         :type topic: str
-        :param transport: the transport to use for sending messages
-        :type transport: oslo.messaging.Transport
         :param serializer: an optional entity serializer
         :type serializer: Serializer
         """
-        self.conf = conf
+        self.conf = transport.conf
         self.conf.register_opts(_notifier_opts)
 
+        self.transport = transport
         self.publisher_id = publisher_id
 
         self._driver_names = ([driver] if driver is not None
-                              else conf.notification_driver)
+                              else self.conf.notification_driver)
 
         self._topics = ([topic] if topic is not None
-                        else conf.notification_topics)
-        self._transport = transport or messaging.get_transport(conf)
+                        else self.conf.notification_topics)
         self._serializer = serializer or msg_serializer.NoOpSerializer()
 
         self._driver_mgr = named.NamedExtensionManager(
@@ -127,7 +123,7 @@ class Notifier(object):
             invoke_args=[self.conf],
             invoke_kwds={
                 'topics': self._topics,
-                'transport': self._transport,
+                'transport': self.transport,
             },
         )
 
