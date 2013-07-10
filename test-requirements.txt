@@ -19,3 +19,4 @@ coverage
 
 # this is required for the docs build jobs
 sphinx
+oslo.sphinx
