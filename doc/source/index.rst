@@ -5,12 +5,18 @@ The Oslo messaging API supports RPC and notifications over a number of
 different messsaging transports.
 
 Contents
---------
+========
 
 .. toctree::
    :maxdepth: 1
 
-   api/autoindex
+   transport
+   target
+   server
+   rpcclient
+   notifier
+   serializer
+   exceptions
 
 Release Notes
 =============

@@ -22,7 +22,7 @@ class Target(object):
     should be sent or what messages a server is listening for.
 
     Different subsets of the information encapsulated in a Target object is
-    relevant to various aspects of the API::
+    relevant to various aspects of the API:
 
       creating a server:
         topic and server is required; exchange is optional

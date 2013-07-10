@@ -13,11 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['get_rpc_server']
-
-from oslo.messaging.rpc import dispatcher as rpc_dispatcher
-from oslo.messaging import server as msg_server
-
 """
 An RPC server exposes a number of endpoints, each of which contain a set of
 methods which may be invoked remotely by clients over a given transport.
@@ -25,7 +20,7 @@ methods which may be invoked remotely by clients over a given transport.
 To create an RPC server, you supply a transport, target and a list of
 endpoints.
 
-A transport can be obtained simply by calling the get_transport() method:
+A transport can be obtained simply by calling the get_transport() method::
 
     transport = messaging.get_transport(conf)
 
@@ -48,7 +43,7 @@ complete.
 An RPC server class is provided for each supported I/O handling framework.
 Currently BlockingRPCServer and eventlet.RPCServer are available.
 
-A simple example of an RPC server with multiple endpoints might be:
+A simple example of an RPC server with multiple endpoints might be::
 
     from oslo.config import cfg
     from oslo import messaging
@@ -93,6 +88,11 @@ Parameters to the method invocation are primitive types and so must be the
 return values from the methods. By supplying a serializer object, a server can
 deserialize arguments from - serialize return values to - primitive types.
 """
+
+__all__ = ['get_rpc_server']
+
+from oslo.messaging.rpc import dispatcher as rpc_dispatcher
+from oslo.messaging import server as msg_server
 
 
 def get_rpc_server(transport, target, endpoints,
