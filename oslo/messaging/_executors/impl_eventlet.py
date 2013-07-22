@@ -20,6 +20,7 @@ import greenlet
 from oslo.config import cfg
 
 from oslo.messaging._executors import base
+from oslo.messaging.openstack.common import excutils
 
 _eventlet_opts = [
     cfg.IntOpt('rpc_thread_pool_size',
@@ -49,6 +50,7 @@ class EventletExecutor(base.ExecutorBase):
         if self._thread is not None:
             return
 
+        @excutils.forever_retry_uncaught_exceptions
         def _executor_thread():
             try:
                 while True:
