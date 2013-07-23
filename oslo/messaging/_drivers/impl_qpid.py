@@ -17,6 +17,7 @@
 
 import functools
 import itertools
+import logging
 import time
 import uuid
 
@@ -30,7 +31,6 @@ from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
-from oslo.messaging.openstack.common import log as logging
 
 qpid_codec = importutils.try_import("qpid.codec010")
 qpid_messaging = importutils.try_import("qpid.messaging")

@@ -16,6 +16,7 @@
 
 import functools
 import itertools
+import logging
 import socket
 import ssl
 import time
@@ -94,7 +95,7 @@ kombu_opts = [
 
 ]
 
-LOG = rpc_common.LOG
+LOG = logging.getLogger(__name__)
 
 
 def _get_queue_arguments(conf):

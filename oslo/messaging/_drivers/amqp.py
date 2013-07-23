@@ -27,6 +27,7 @@ AMQP, but is deprecated and predates this code.
 
 import collections
 import inspect
+import logging
 import sys
 import threading
 import uuid
@@ -40,7 +41,6 @@ from oslo.messaging._drivers import pool
 from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging.openstack.common import local
-from oslo.messaging.openstack.common import log as logging
 
 
 amqp_opts = [

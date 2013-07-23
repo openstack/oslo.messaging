@@ -6,6 +6,3 @@ iso8601
 
 # for jsonutils
 six
-
-# for log
-eventlet

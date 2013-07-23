@@ -18,6 +18,7 @@
 #    under the License.
 
 import copy
+import logging
 import sys
 import traceback
 
@@ -28,7 +29,6 @@ from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
 from oslo.messaging.openstack.common import local
-from oslo.messaging.openstack.common import log as logging
 
 
 CONF = cfg.CONF
