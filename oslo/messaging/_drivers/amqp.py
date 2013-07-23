@@ -36,11 +36,11 @@ from eventlet import queue
 from eventlet import semaphore
 from oslo.config import cfg
 
-from openstack.common import excutils
-from openstack.common.gettextutils import _  # noqa
-from openstack.common import local
-from openstack.common import log as logging
-from openstack.common.rpc import common as rpc_common
+from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging.openstack.common import excutils
+from oslo.messaging.openstack.common.gettextutils import _  # noqa
+from oslo.messaging.openstack.common import local
+from oslo.messaging.openstack.common import log as logging
 
 
 amqp_opts = [

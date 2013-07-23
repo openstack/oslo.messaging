@@ -24,13 +24,13 @@ import eventlet
 import greenlet
 from oslo.config import cfg
 
-from openstack.common import excutils
-from openstack.common.gettextutils import _  # noqa
-from openstack.common import importutils
-from openstack.common import jsonutils
-from openstack.common import log as logging
-from openstack.common.rpc import amqp as rpc_amqp
-from openstack.common.rpc import common as rpc_common
+from oslo.messaging._drivers.rpc import amqp as rpc_amqp
+from oslo.messaging._drivers.rpc import common as rpc_common
+from oslo.messaging.openstack.common import excutils
+from oslo.messaging.openstack.common.gettextutils import _  # noqa
+from oslo.messaging.openstack.common import importutils
+from oslo.messaging.openstack.common import jsonutils
+from oslo.messaging.openstack.common import log as logging
 
 qpid_codec = importutils.try_import("qpid.codec010")
 qpid_messaging = importutils.try_import("qpid.messaging")
