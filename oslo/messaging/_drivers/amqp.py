@@ -39,8 +39,9 @@ from oslo.config import cfg
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._drivers import pool
 from oslo.messaging.openstack.common import excutils
-from oslo.messaging.openstack.common.gettextutils import _  # noqa
 
+# FIXME(markmc): remove this
+_ = lambda s: s
 
 amqp_opts = [
     cfg.BoolOpt('amqp_durable_queues',

@@ -25,10 +25,11 @@ import traceback
 from oslo.config import cfg
 import six
 
-from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
 
+# FIXME(markmc): remove this
+_ = lambda s: s
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
