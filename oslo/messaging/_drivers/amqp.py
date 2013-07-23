@@ -54,8 +54,6 @@ amqp_opts = [
                 help='Auto-delete queues in amqp.'),
 ]
 
-cfg.CONF.register_opts(amqp_opts)
-
 UNIQUE_ID = '_unique_id'
 LOG = logging.getLogger(__name__)
 

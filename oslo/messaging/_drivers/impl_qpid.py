@@ -69,8 +69,6 @@ qpid_opts = [
                 help='Disable Nagle algorithm'),
 ]
 
-cfg.CONF.register_opts(qpid_opts)
-
 JSON_CONTENT_TYPE = 'application/json; charset=utf8'
 
 

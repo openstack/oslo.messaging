@@ -94,8 +94,6 @@ kombu_opts = [
 
 ]
 
-cfg.CONF.register_opts(kombu_opts)
-
 LOG = rpc_common.LOG
 
 
