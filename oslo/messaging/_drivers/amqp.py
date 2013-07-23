@@ -40,7 +40,6 @@ from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._drivers import pool
 from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common.gettextutils import _  # noqa
-from oslo.messaging.openstack.common import local
 
 
 amqp_opts = [
@@ -399,8 +398,8 @@ class ProxyCallback(_ThreadPoolWithWait):
         """
         # It is important to clear the context here, because at this point
         # the previous context is stored in local.store.context
-        if hasattr(local.store, 'context'):
-            del local.store.context
+        #if hasattr(local.store, 'context'):
+        #    del local.store.context
         rpc_common._safe_log(LOG.debug, _('received %s'), message_data)
         self.msg_id_cache.check_duplicate_message(message_data)
         ctxt = unpack_context(self.conf, message_data)

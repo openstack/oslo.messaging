@@ -28,7 +28,6 @@ import six
 from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
-from oslo.messaging.openstack.common import local
 
 
 CONF = cfg.CONF
@@ -380,7 +379,8 @@ class CommonRpcContext(object):
         return self.from_dict(self.to_dict())
 
     def update_store(self):
-        local.store.context = self
+        #local.store.context = self
+        pass
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
