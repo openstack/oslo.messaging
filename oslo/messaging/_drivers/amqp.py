@@ -28,15 +28,15 @@ AMQP, but is deprecated and predates this code.
 import collections
 import inspect
 import sys
+import threading
 import uuid
 
 from eventlet import greenpool
-from eventlet import pools
 from eventlet import queue
-from eventlet import semaphore
 from oslo.config import cfg
 
 from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging._drivers import pool
 from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging.openstack.common import local
@@ -58,14 +58,12 @@ UNIQUE_ID = '_unique_id'
 LOG = logging.getLogger(__name__)
 
 
-class Pool(pools.Pool):
+class ConnectionPool(pool.Pool):
     """Class that implements a Pool of Connections."""
-    def __init__(self, conf, connection_cls, *args, **kwargs):
+    def __init__(self, conf, connection_cls):
         self.connection_cls = connection_cls
         self.conf = conf
-        kwargs.setdefault("max_size", self.conf.rpc_conn_pool_size)
-        kwargs.setdefault("order_as_stack", True)
-        super(Pool, self).__init__(*args, **kwargs)
+        super(ConnectionPool, self).__init__(self.conf.rpc_conn_pool_size)
         self.reply_proxy = None
 
     # TODO(comstud): Timeout connections not used in a while
@@ -74,8 +72,8 @@ class Pool(pools.Pool):
         return self.connection_cls(self.conf)
 
     def empty(self):
-        while self.free_items:
-            self.get().close()
+        for item in self.iter_free:
+            item.close()
         # Force a new connection pool to be created.
         # Note that this was added due to failing unit test cases. The issue
         # is the above "while loop" gets all the cached connections from the
@@ -88,14 +86,14 @@ class Pool(pools.Pool):
         self.connection_cls.pool = None
 
 
-_pool_create_sem = semaphore.Semaphore()
+_pool_create_sem = threading.Lock()
 
 
 def get_connection_pool(conf, connection_cls):
     with _pool_create_sem:
         # Make sure only one thread tries to create the connection pool.
         if not connection_cls.pool:
-            connection_cls.pool = Pool(conf, connection_cls)
+            connection_cls.pool = ConnectionPool(conf, connection_cls)
     return connection_cls.pool
 
 
@@ -517,7 +515,7 @@ def create_connection(conf, new, connection_pool):
     return ConnectionContext(conf, connection_pool, pooled=not new)
 
 
-_reply_proxy_create_sem = semaphore.Semaphore()
+_reply_proxy_create_sem = threading.Lock()
 
 
 def multicall(conf, context, topic, msg, timeout, connection_pool):
