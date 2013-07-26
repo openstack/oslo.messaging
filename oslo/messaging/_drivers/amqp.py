@@ -72,7 +72,7 @@ class ConnectionPool(pool.Pool):
         return self.connection_cls(self.conf)
 
     def empty(self):
-        for item in self.iter_free:
+        for item in self.iter_free():
             item.close()
         # Force a new connection pool to be created.
         # Note that this was added due to failing unit test cases. The issue
