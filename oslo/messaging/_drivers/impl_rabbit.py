@@ -43,17 +43,7 @@ from oslo.messaging.openstack.common import sslutils
 # FIXME(markmc): remove this
 _ = lambda s: s
 
-# FIXME(markmc): these were toplevel in openstack.common.rpc
 rabbit_opts = [
-    cfg.IntOpt('rpc_conn_pool_size',
-               default=30,
-               help='Size of RPC connection pool'),
-    cfg.BoolOpt('fake_rabbit',
-                default=False,
-                help='If passed, use a fake RabbitMQ provider'),
-]
-
-kombu_opts = [
     cfg.StrOpt('kombu_ssl_version',
                default='',
                help='SSL version to use (valid only if SSL enabled). '
@@ -109,6 +99,10 @@ kombu_opts = [
                      'You need to wipe RabbitMQ database when '
                      'changing this option.'),
 
+    # FIXME(markmc): this was toplevel in openstack.common.rpc
+    cfg.BoolOpt('fake_rabbit',
+                default=False,
+                help='If passed, use a fake RabbitMQ provider'),
 ]
 
 LOG = logging.getLogger(__name__)
@@ -1081,7 +1075,6 @@ class RabbitDriver(base.BaseDriver):
     def __init__(self, conf, url=None, default_exchange=None):
         super(RabbitDriver, self).__init__(conf, url, default_exchange)
 
-        self.conf.register_opts(kombu_opts)
         self.conf.register_opts(rabbit_opts)
         self.conf.register_opts(rpc_amqp.amqp_opts)
 
