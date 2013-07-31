@@ -45,21 +45,17 @@ class Pool(object):
             self._items.appendleft(item)
             self._cond.notify()
 
-    def get(self, only_free=False):
+    def get(self):
         """Return an item from the pool, when one is available.
 
         This may cause the calling thread to block.
-
-        :param only_free: if True, return None if no free item available
-        :type only_free: bool
         """
         with self._cond:
             while True:
                 try:
                     return self._items.popleft()
                 except IndexError:
-                    if only_free:
-                        return None
+                    pass
 
                 if self._current_size < self._max_size:
                     self._current_size += 1
