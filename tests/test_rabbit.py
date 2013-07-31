@@ -29,9 +29,6 @@ class TestRabbitDriver(test_utils.BaseTestCase):
         self.config(rpc_backend='rabbit')
         self.config(fake_rabbit=True)
 
-        # FIXME(markmc): this should be a cleanup method on the driver itself
-        self.addCleanup(rabbit_driver.cleanup)
-
     def test_driver_load(self):
         transport = messaging.get_transport(self.conf)
         self.assertTrue(isinstance(transport._driver,
@@ -39,6 +36,8 @@ class TestRabbitDriver(test_utils.BaseTestCase):
 
     def test_send_receive(self):
         transport = messaging.get_transport(self.conf)
+        self.addCleanup(transport.cleanup)
+
         driver = transport._driver
 
         target = messaging.Target(topic='testtopic')

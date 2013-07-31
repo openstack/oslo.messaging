@@ -322,3 +322,8 @@ class AMQPDriverBase(base.BaseDriver):
         conn.declare_fanout_consumer(target.topic, listener)
 
         return listener
+
+    def cleanup(self):
+        if self._connection_pool:
+            self._connection_pool.empty()
+        self._connection_pool = None

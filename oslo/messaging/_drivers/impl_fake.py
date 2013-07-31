@@ -164,3 +164,6 @@ class FakeDriver(base.BaseDriver):
                                       self._default_exchange)
 
         return FakeListener(self, target, exchange)
+
+    def cleanup(self):
+        pass

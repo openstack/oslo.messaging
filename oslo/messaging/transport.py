@@ -85,6 +85,10 @@ class Transport(object):
     def _listen(self, target):
         return self._driver.listen(target)
 
+    def cleanup(self):
+        """Release all resources associated with this transport."""
+        self._driver.cleanup()
+
 
 class InvalidTransportURL(exceptions.MessagingException):
     """Raised if transport URL is invalid."""
