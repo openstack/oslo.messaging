@@ -25,8 +25,9 @@ import eventlet
 import greenlet
 from oslo.config import cfg
 
-from oslo.messaging._drivers.rpc import amqp as rpc_amqp
-from oslo.messaging._drivers.rpc import common as rpc_common
+from oslo.messaging._drivers import amqp as rpc_amqp
+from oslo.messaging._drivers import amqpdriver
+from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
@@ -737,3 +738,15 @@ def notify(conf, context, topic, msg, envelope):
 
 def cleanup():
     return rpc_amqp.cleanup(Connection.pool)
+
+
+class QpidDriver(amqpdriver.AMQPDriverBase):
+
+    def __init__(self, conf, url=None, default_exchange=None):
+        conf.register_opts(qpid_opts)
+        conf.register_opts(rpc_amqp.amqp_opts)
+
+        connection_pool = rpc_amqp.get_connection_pool(conf, Connection)
+
+        super(QpidDriver, self).__init__(conf, connection_pool,
+                                         url, default_exchange)
