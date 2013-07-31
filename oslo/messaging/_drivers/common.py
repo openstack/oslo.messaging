@@ -72,6 +72,18 @@ _MESSAGE_KEY = 'oslo.message'
 
 _REMOTE_POSTFIX = '_Remote'
 
+# FIXME(markmc): add an API to replace this option
+_exception_opts = [
+    cfg.ListOpt('allowed_rpc_exception_modules',
+                default=['oslo.messaging.exceptions',
+                         'nova.exception',
+                         'cinder.exception',
+                         'exceptions',
+                         ],
+                help='Modules of exceptions that are permitted to be recreated'
+                     'upon receiving exception data from an rpc call.'),
+]
+
 
 class RPCException(Exception):
     msg_fmt = _("An unknown RPC related exception occurred.")
@@ -327,6 +339,7 @@ def deserialize_remote_exception(conf, data):
 
     # NOTE(ameade): We DO NOT want to allow just any module to be imported, in
     # order to prevent arbitrary code execution.
+    conf.register_opts(_exception_opts)
     if module not in conf.allowed_rpc_exception_modules:
         return RemoteError(name, failure.get('message'), trace)
 
