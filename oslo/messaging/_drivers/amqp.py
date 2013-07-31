@@ -52,6 +52,11 @@ amqp_opts = [
     cfg.BoolOpt('amqp_auto_delete',
                 default=False,
                 help='Auto-delete queues in amqp.'),
+
+    # FIXME(markmc): this was toplevel in openstack.common.rpc
+    cfg.IntOpt('rpc_conn_pool_size',
+               default=30,
+               help='Size of RPC connection pool'),
 ]
 
 UNIQUE_ID = '_unique_id'
