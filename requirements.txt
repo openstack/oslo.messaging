@@ -6,3 +6,7 @@ iso8601
 
 # for jsonutils
 six
+
+# FIXME(markmc): remove this when the drivers no longer
+# import eventlet
+eventlet>=0.12.0
