@@ -37,6 +37,9 @@ class AMQPIncomingMessage(base.IncomingMessage):
         self.reply_q = reply_q
 
     def _send_reply(self, conn, reply=None, failure=None, ending=False):
+        if failure:
+            failure = rpc_common.serialize_remote_exception(failure)
+
         # FIXME(markmc): is the reply format really driver specific?
         msg = {'result': reply, 'failure': failure}
 
@@ -306,7 +309,10 @@ class AMQPDriverBase(base.BaseDriver):
 
             if wait_for_reply:
                 # FIXME(markmc): timeout?
-                return self._waiter.wait(msg_id)
+                result = self._waiter.wait(msg_id)
+                if isinstance(result, Exception):
+                    raise result
+                return result
         finally:
             if wait_for_reply:
                 self._waiter.unlisten(msg_id)
