@@ -112,8 +112,7 @@ class FakeDriver(base.BaseDriver):
         while self._exchanges_lock:
             return self._exchanges.setdefault(name, FakeExchange(name))
 
-    def send(self, target, ctxt, message,
-             wait_for_reply=None, timeout=None, envelope=False):
+    def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
         self._check_serialize(message)
 
         exchange = self._get_exchange(target.exchange or
@@ -136,6 +135,12 @@ class FakeDriver(base.BaseDriver):
                     'No reply on topic %s' % target.topic)
 
         return None
+
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+        return self._send(target, ctxt, message, wait_for_reply, timeout)
+
+    def send_notification(self, target, ctxt, message, version):
+        self._send(target, ctxt, message)
 
     def listen(self, target):
         exchange = self._get_exchange(target.exchange or

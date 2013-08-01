@@ -36,6 +36,9 @@ class _FakeDriver(object):
     def send(self, *args, **kwargs):
         pass
 
+    def send_notification(self, *args, **kwargs):
+        pass
+
     def listen(self, target):
         pass
 
@@ -239,8 +242,7 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(t._driver, 'send')
         t._driver.send(self._target, 'ctxt', 'message',
                        wait_for_reply=None,
-                       timeout=None,
-                       envelope=False)
+                       timeout=None)
         self.mox.ReplayAll()
 
         t._send(self._target, 'ctxt', 'message')
@@ -251,14 +253,21 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(t._driver, 'send')
         t._driver.send(self._target, 'ctxt', 'message',
                        wait_for_reply='wait_for_reply',
-                       timeout='timeout',
-                       envelope='envelope')
+                       timeout='timeout')
         self.mox.ReplayAll()
 
         t._send(self._target, 'ctxt', 'message',
                 wait_for_reply='wait_for_reply',
-                timeout='timeout',
-                envelope='envelope')
+                timeout='timeout')
+
+    def test_send_notification(self):
+        t = transport.Transport(_FakeDriver(cfg.CONF))
+
+        self.mox.StubOutWithMock(t._driver, 'send')
+        t._driver.send(self._target, 'ctxt', 'message', 1.0)
+        self.mox.ReplayAll()
+
+        t._send_notification(self._target, 'ctxt', 'message', version=1.0)
 
     def test_listen(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))

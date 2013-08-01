@@ -75,15 +75,19 @@ class Transport(object):
         self.conf = driver.conf
         self._driver = driver
 
-    def _send(self, target, ctxt, message,
-              wait_for_reply=None, timeout=None, envelope=False):
+    def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
         if not target.topic:
             raise exceptions.InvalidTarget('A topic is required to send',
                                            target)
         return self._driver.send(target, ctxt, message,
                                  wait_for_reply=wait_for_reply,
-                                 timeout=timeout,
-                                 envelope=envelope)
+                                 timeout=timeout)
+
+    def _send_notification(self, target, ctxt, message, version):
+        if not target.topic:
+            raise exceptions.InvalidTarget('A topic is required to send',
+                                           target)
+        self._driver.send(target, ctxt, message, version)
 
     def _listen(self, target):
         if not (target.topic and target.server):

@@ -37,8 +37,7 @@ class _FakeTransport(object):
     def __init__(self, conf):
         self.conf = conf
 
-    def _send(self, target, ctxt, message,
-              wait_for_reply=None, timeout=None, envelope=False):
+    def _send_notification(self, target, ctxt, message, version):
         pass
 
 
@@ -139,7 +138,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         notifier = messaging.Notifier(transport, 'test.localhost')
 
-        self.mox.StubOutWithMock(transport, '_send')
+        self.mox.StubOutWithMock(transport, '_send_notification')
 
         message_id = uuid.uuid4()
         self.mox.StubOutWithMock(uuid, 'uuid4')
@@ -158,15 +157,16 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         sends = []
         if self.v1:
-            sends.append(dict(envelope=False))
+            sends.append(dict(version=1.0))
         if self.v2:
-            sends.append(dict(envelope=True))
+            sends.append(dict(version=2.0))
 
         for send_kwargs in sends:
             for topic in self.topics:
                 target = messaging.Target(topic='%s.%s' % (topic,
                                                            self.priority))
-                transport._send(target, self.ctxt, message, **send_kwargs)
+                transport._send_notification(target, self.ctxt, message,
+                                             **send_kwargs)
 
         self.mox.ReplayAll()
 

@@ -277,8 +277,8 @@ class AMQPDriverBase(base.BaseDriver):
 
         return self._reply_q
 
-    def send(self, target, ctxt, message,
-             wait_for_reply=None, timeout=None, envelope=False):
+    def _send(self, target, ctxt, message,
+              wait_for_reply=None, timeout=None, envelope=True):
 
         # FIXME(markmc): remove this temporary hack
         class Context(object):
@@ -299,8 +299,8 @@ class AMQPDriverBase(base.BaseDriver):
 
         msg.update({'_reply_q': self._get_reply_q()})
 
-        # FIXME(markmc): handle envelope param
-        msg = rpc_common.serialize_msg(msg)
+        if envelope:
+            msg = rpc_common.serialize_msg(msg)
 
         if wait_for_reply:
             self._waiter.listen(msg_id)
@@ -323,6 +323,12 @@ class AMQPDriverBase(base.BaseDriver):
         finally:
             if wait_for_reply:
                 self._waiter.unlisten(msg_id)
+
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+        return self._send(target, ctxt, message, wait_for_reply, timeout)
+
+    def send_notification(self, target, ctxt, message, version):
+        return self._send(target, ctxt, message, envelope=(version == 2.0))
 
     def listen(self, target):
         conn = self._get_connection(pooled=False)

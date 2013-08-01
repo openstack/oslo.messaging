@@ -66,6 +66,10 @@ class BaseDriver(object):
         """Send a message to the given target."""
 
     @abc.abstractmethod
+    def send_notification(self, target, ctxt, message, version):
+        """Send a notification message to the given target."""
+
+    @abc.abstractmethod
     def listen(self, target):
         """Construct a Listener for the given target."""
 

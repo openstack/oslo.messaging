@@ -34,17 +34,17 @@ class MessagingDriver(notifier._Driver):
     deployed which do not support the 2.0 message format.
     """
 
-    def __init__(self, conf, topics, transport, envelope=False):
+    def __init__(self, conf, topics, transport, version=1.0):
         super(MessagingDriver, self).__init__(conf, topics, transport)
-        self.envelope = envelope
+        self.version = version
 
     def notify(self, ctxt, message, priority):
         priority = priority.lower()
         for topic in self.topics:
             target = messaging.Target(topic='%s.%s' % (topic, priority))
             try:
-                self.transport._send(target, ctxt, message,
-                                     envelope=self.envelope)
+                self.transport._send_notification(target, ctxt, message,
+                                                  version=self.version)
             except Exception:
                 LOG.exception("Could not send notification to %(topic)s. "
                               "Payload=%(message)s",
@@ -56,4 +56,4 @@ class MessagingV2Driver(MessagingDriver):
     "Send notifications using the 2.0 message format."
 
     def __init__(self, conf, **kwargs):
-        super(MessagingV2Driver, self).__init__(conf, envelope=True, **kwargs)
+        super(MessagingV2Driver, self).__init__(conf, version=2.0, **kwargs)
