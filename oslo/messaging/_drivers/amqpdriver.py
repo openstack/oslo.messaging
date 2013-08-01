@@ -20,6 +20,7 @@ import Queue
 import threading
 import uuid
 
+from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
@@ -97,8 +98,6 @@ class AMQPListener(base.Listener):
         while True:
             if self.incoming:
                 return self.incoming.pop(0)
-
-            # FIXME(markmc): timeout?
             self.conn.consume(limit=1)
 
 
@@ -108,8 +107,12 @@ class ReplyWaiters(object):
         self._queues = {}
         self._wrn_threshhold = 10
 
-    def get(self, msg_id):
-        return self._queues[msg_id].get()
+    def get(self, msg_id, timeout):
+        try:
+            return self._queues[msg_id].get(block=True, timeout=timeout)
+        except Queue.Empty:
+            raise messaging.MessagingTimeout('Timed out waiting for a reply '
+                                             'to message ID %s' % msg_id)
 
     def put(self, msg_id, message_data):
         queue = self._queues.get(msg_id)
@@ -176,7 +179,7 @@ class ReplyWaiter(object):
             result = data['result']
         return result, ending
 
-    def _poll_connection(self, msg_id):
+    def _poll_connection(self, msg_id, timeout):
         while True:
             while self.incoming:
                 message_data = self.incoming.pop(0)
@@ -187,20 +190,23 @@ class ReplyWaiter(object):
 
                 self.waiters.put(incoming_msg_id, message_data)
 
-            # FIXME(markmc): timeout?
-            self.conn.consume(limit=1)
+            try:
+                self.conn.consume(limit=1, timeout=timeout)
+            except rpc_common.Timeout:
+                raise messaging.MessagingTimeout('Timed out waiting for a '
+                                                 'reply to message ID %s'
+                                                 % msg_id)
 
-    def _poll_queue(self, msg_id):
+    def _poll_queue(self, msg_id, timeout):
         while True:
-            # FIXME(markmc): timeout?
-            message = self.waiters.get(msg_id)
+            message = self.waiters.get(msg_id, timeout)
             if message is None:
                 return None, None, True  # lock was released
 
             reply, ending = self._process_reply(message)
             return reply, ending, False
 
-    def wait(self, msg_id):
+    def wait(self, msg_id, timeout):
         # NOTE(markmc): multiple threads may call this
         # First thread calls consume, when it gets its reply
         # it wakes up other threads and they call consume
@@ -211,7 +217,7 @@ class ReplyWaiter(object):
             if self.conn_lock.acquire(False):
                 try:
                     while True:
-                        reply, ending = self._poll_connection(msg_id)
+                        reply, ending = self._poll_connection(msg_id, timeout)
                         if reply:
                             final_reply = reply
                         elif ending:
@@ -220,7 +226,7 @@ class ReplyWaiter(object):
                     self.conn_lock.release()
                     self.waiters.wake_all(msg_id)
             else:
-                reply, ending, trylock = self._poll_queue(msg_id)
+                reply, ending, trylock = self._poll_queue(msg_id, timeout)
                 if trylock:
                     continue
                 if reply:
@@ -308,8 +314,7 @@ class AMQPDriverBase(base.BaseDriver):
                     conn.topic_send(topic, msg, timeout=timeout)
 
             if wait_for_reply:
-                # FIXME(markmc): timeout?
-                result = self._waiter.wait(msg_id)
+                result = self._waiter.wait(msg_id, timeout)
                 if isinstance(result, Exception):
                     raise result
                 return result

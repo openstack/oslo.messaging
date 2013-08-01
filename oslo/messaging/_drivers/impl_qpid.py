@@ -600,9 +600,9 @@ class Connection(object):
         """Send a notify message on a topic."""
         self.publisher_send(NotifyPublisher, topic, msg)
 
-    def consume(self, limit=None):
+    def consume(self, limit=None, timeout=None):
         """Consume from all queues/consumers."""
-        it = self.iterconsume(limit=limit)
+        it = self.iterconsume(limit=limit, timeout=timeout)
         while True:
             try:
                 it.next()

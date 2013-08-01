@@ -63,11 +63,17 @@ class TestSendReceive(test_utils.BaseTestCase):
         ('failure', dict(failure=True)),
     ]
 
+    _timeout = [
+        ('no_timeout', dict(timeout=None)),
+        ('timeout', dict(timeout=0.01)),  # FIXME(markmc): timeout=0 is broken?
+    ]
+
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._n_senders,
                                                          cls._context,
-                                                         cls._failure)
+                                                         cls._failure,
+                                                         cls._timeout)
 
     def setUp(self):
         super(TestSendReceive, self).setUp()
@@ -95,11 +101,13 @@ class TestSendReceive(test_utils.BaseTestCase):
                 replies.append(driver.send(target,
                                            self.ctxt,
                                            {'foo': i},
-                                           wait_for_reply=True))
+                                           wait_for_reply=True,
+                                           timeout=self.timeout))
                 self.assertFalse(self.failure)
-            except ZeroDivisionError as e:
+                self.assertIsNone(self.timeout)
+            except (ZeroDivisionError, messaging.MessagingTimeout) as e:
                 replies.append(e)
-                self.assertTrue(self.failure)
+                self.assertTrue(self.failure or self.timeout is not None)
 
         while len(senders) < self.n_senders:
             senders.append(threading.Thread(target=send_and_wait_for_reply,
@@ -120,22 +128,25 @@ class TestSendReceive(test_utils.BaseTestCase):
             order[-1], order[-2] = order[-2], order[-1]
 
         for i in order:
-            if self.failure:
-                try:
-                    raise ZeroDivisionError
-                except Exception:
-                    failure = sys.exc_info()
-                msgs[i].reply(failure=failure)
-            else:
-                msgs[i].reply({'bar': msgs[i].message['foo']})
+            if self.timeout is None:
+                if self.failure:
+                    try:
+                        raise ZeroDivisionError
+                    except Exception:
+                        failure = sys.exc_info()
+                    msgs[i].reply(failure=failure)
+                else:
+                    msgs[i].reply({'bar': msgs[i].message['foo']})
             senders[i].join()
 
         self.assertEqual(len(replies), len(senders))
         for i, reply in enumerate(replies):
-            if not self.failure:
-                self.assertEqual(reply, {'bar': order[i]})
-            else:
+            if self.timeout is not None:
+                self.assertIsInstance(reply, messaging.MessagingTimeout)
+            elif self.failure:
                 self.assertIsInstance(reply, ZeroDivisionError)
+            else:
+                self.assertEqual(reply, {'bar': order[i]})
 
 
 TestSendReceive.generate_scenarios()
