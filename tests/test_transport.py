@@ -231,29 +231,31 @@ class TestSetDefaults(test_utils.BaseTestCase):
 
 class TestTransportMethodArgs(test_utils.BaseTestCase):
 
+    _target = messaging.Target(topic='topic', server='server')
+
     def test_send_defaults(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
         self.mox.StubOutWithMock(t._driver, 'send')
-        t._driver.send('target', 'ctxt', 'message',
+        t._driver.send(self._target, 'ctxt', 'message',
                        wait_for_reply=None,
                        timeout=None,
                        envelope=False)
         self.mox.ReplayAll()
 
-        t._send('target', 'ctxt', 'message')
+        t._send(self._target, 'ctxt', 'message')
 
     def test_send_all_args(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
         self.mox.StubOutWithMock(t._driver, 'send')
-        t._driver.send('target', 'ctxt', 'message',
+        t._driver.send(self._target, 'ctxt', 'message',
                        wait_for_reply='wait_for_reply',
                        timeout='timeout',
                        envelope='envelope')
         self.mox.ReplayAll()
 
-        t._send('target', 'ctxt', 'message',
+        t._send(self._target, 'ctxt', 'message',
                 wait_for_reply='wait_for_reply',
                 timeout='timeout',
                 envelope='envelope')
@@ -262,7 +264,7 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
         self.mox.StubOutWithMock(t._driver, 'listen')
-        t._driver.listen('target')
+        t._driver.listen(self._target)
         self.mox.ReplayAll()
 
-        t._listen('target')
+        t._listen(self._target)

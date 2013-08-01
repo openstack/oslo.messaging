@@ -25,14 +25,6 @@ from oslo.messaging._drivers import base
 from oslo.messaging import _urls as urls
 
 
-class InvalidTarget(base.TransportDriverError, ValueError):
-
-    def __init__(self, msg, target):
-        msg = msg + ":" + str(target)
-        super(InvalidTarget, self).__init__(msg)
-        self.target = target
-
-
 class FakeIncomingMessage(base.IncomingMessage):
 
     def __init__(self, listener, ctxt, message, reply_q):
@@ -122,13 +114,6 @@ class FakeDriver(base.BaseDriver):
 
     def send(self, target, ctxt, message,
              wait_for_reply=None, timeout=None, envelope=False):
-        if not target.topic:
-            raise InvalidTarget('A topic is required to send', target)
-
-        # FIXME(markmc): preconditions to enforce:
-        #  - timeout and not wait_for_reply
-        #  - target.fanout and (wait_for_reply or timeout)
-
         self._check_serialize(message)
 
         exchange = self._get_exchange(target.exchange or
@@ -153,10 +138,6 @@ class FakeDriver(base.BaseDriver):
         return None
 
     def listen(self, target):
-        if not (target.topic and target.server):
-            raise InvalidTarget('Topic and server are required to listen',
-                                target)
-
         exchange = self._get_exchange(target.exchange or
                                       self._default_exchange)
 

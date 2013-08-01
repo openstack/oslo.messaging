@@ -307,7 +307,6 @@ class AMQPDriverBase(base.BaseDriver):
 
         try:
             with self._get_connection() as conn:
-                # FIXME(markmc): check that target.topic is set
                 if target.fanout:
                     conn.fanout_send(target.topic, msg)
                 else:
@@ -326,8 +325,6 @@ class AMQPDriverBase(base.BaseDriver):
                 self._waiter.unlisten(msg_id)
 
     def listen(self, target):
-        # FIXME(markmc): check that topic.target and topic.server is set
-
         conn = self._get_connection(pooled=False)
 
         listener = AMQPListener(self, target, conn)

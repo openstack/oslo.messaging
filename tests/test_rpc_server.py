@@ -114,7 +114,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             server.start()
         except Exception as ex:
-            self.assertIsInstance(ex, messaging.ServerListenError, ex)
+            self.assertIsInstance(ex, messaging.InvalidTarget, ex)
             self.assertEqual(ex.target.topic, 'testtopic')
         else:
             self.assertTrue(False)
@@ -126,7 +126,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             server.start()
         except Exception as ex:
-            self.assertIsInstance(ex, messaging.ServerListenError, ex)
+            self.assertIsInstance(ex, messaging.InvalidTarget, ex)
             self.assertEqual(ex.target.server, 'testserver')
         else:
             self.assertTrue(False)
@@ -141,7 +141,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             method({}, 'ping', arg='foo')
         except Exception as ex:
-            self.assertIsInstance(ex, messaging.ClientSendError, ex)
+            self.assertIsInstance(ex, messaging.InvalidTarget, ex)
             self.assertIsNotNone(ex.target)
         else:
             self.assertTrue(False)
