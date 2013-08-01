@@ -15,6 +15,7 @@
 #    under the License.
 
 import datetime
+import threading
 import uuid
 
 import fixtures
@@ -54,15 +55,28 @@ class TestRabbitDriver(test_utils.BaseTestCase):
 
         listener = driver.listen(target)
 
-        ctxt = {}
-        message = {'foo': 'bar'}
+        replies = []
 
-        driver.send(target, ctxt, message)
+        def send_and_wait_for_reply():
+            replies.append(driver.send(target,
+                                       {},
+                                       {'foo': 'bar'},
+                                       wait_for_reply=True))
+
+        sender = threading.Thread(target=send_and_wait_for_reply)
+        sender.start()
 
         received = listener.poll()
         self.assertTrue(received is not None)
-        self.assertEquals(received.ctxt, {})
-        self.assertEquals(received.message, {'foo': 'bar'})
+        self.assertEqual(received.ctxt, {})
+        self.assertEqual(received.message, {'foo': 'bar'})
+
+        received.reply({'bar': 'foo'})
+
+        sender.join()
+
+        self.assertEqual(len(replies), 1)
+        self.assertEqual(replies[0], {'bar': 'foo'})
 
 
 def _declare_queue(target):

@@ -204,7 +204,7 @@ class ReplyWaiter(object):
         # thread, it wakes up the other thread
         final_reply = None
         while True:
-            if self.conn_lock.acquire(blocking=False):
+            if self.conn_lock.acquire(False):
                 try:
                     reply, ending = self._poll_connection(msg_id)
                     if reply:
