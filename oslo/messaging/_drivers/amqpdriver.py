@@ -106,7 +106,7 @@ class ReplyWaiters(object):
         self._wrn_threshhold = 10
 
     def get(self, msg_id):
-        return self._queues.get(msg_id)
+        return self._queues[msg_id].get()
 
     def put(self, msg_id, message_data):
         queue = self._queues.get(msg_id)
@@ -177,10 +177,12 @@ class ReplyWaiter(object):
         while True:
             while self.incoming:
                 message_data = self.incoming.pop(0)
-                if message_data.pop('_msg_id', None) == msg_id:
+
+                incoming_msg_id = message_data.pop('_msg_id', None)
+                if incoming_msg_id == msg_id:
                     return self._process_reply(message_data)
 
-                self.waiters.put(msg_id, message_data)
+                self.waiters.put(incoming_msg_id, message_data)
 
             # FIXME(markmc): timeout?
             self.conn.consume(limit=1)
@@ -205,11 +207,12 @@ class ReplyWaiter(object):
         while True:
             if self.conn_lock.acquire(False):
                 try:
-                    reply, ending = self._poll_connection(msg_id)
-                    if reply:
-                        final_reply = reply
-                    elif ending:
-                        return final_reply
+                    while True:
+                        reply, ending = self._poll_connection(msg_id)
+                        if reply:
+                            final_reply = reply
+                        elif ending:
+                            return final_reply
                 finally:
                     self.conn_lock.release()
                     self.waiters.wake_all(msg_id)

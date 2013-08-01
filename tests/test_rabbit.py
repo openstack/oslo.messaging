@@ -55,28 +55,40 @@ class TestRabbitDriver(test_utils.BaseTestCase):
 
         listener = driver.listen(target)
 
+        senders = []
         replies = []
+        msgs = []
 
-        def send_and_wait_for_reply():
+        def send_and_wait_for_reply(i):
             replies.append(driver.send(target,
                                        {},
-                                       {'foo': 'bar'},
+                                       {'foo': i},
                                        wait_for_reply=True))
 
-        sender = threading.Thread(target=send_and_wait_for_reply)
-        sender.start()
+        while len(senders) < 10:
+            senders.append(threading.Thread(target=send_and_wait_for_reply,
+                                            args=(len(senders), )))
 
-        received = listener.poll()
-        self.assertTrue(received is not None)
-        self.assertEqual(received.ctxt, {})
-        self.assertEqual(received.message, {'foo': 'bar'})
+        for i in range(len(senders)):
+            senders[i].start()
 
-        received.reply({'bar': 'foo'})
+            received = listener.poll()
+            self.assertTrue(received is not None)
+            self.assertEqual(received.ctxt, {})
+            self.assertEqual(received.message, {'foo': i})
+            msgs.append(received)
 
-        sender.join()
+        # reply in reverse, except reply to the first guy second from last
+        order = range(len(senders)-1, -1, -1)
+        order[-1], order[-2] = order[-2], order[-1]
 
-        self.assertEqual(len(replies), 1)
-        self.assertEqual(replies[0], {'bar': 'foo'})
+        for i in order:
+            msgs[i].reply({'bar': msgs[i].message['foo']})
+            senders[i].join()
+
+        self.assertEqual(len(replies), len(senders))
+        for i, reply in enumerate(replies):
+            self.assertEqual(reply, {'bar': order[i]})
 
 
 def _declare_queue(target):
