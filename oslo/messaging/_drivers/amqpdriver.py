@@ -198,14 +198,20 @@ class ReplyWaiter(object):
             return reply, ending, False
 
     def wait(self, msg_id, timeout):
-        # NOTE(markmc): multiple threads may call this
-        # First thread calls consume, when it gets its reply
-        # it wakes up other threads and they call consume
-        # If a thread gets a message destined for another
-        # thread, it wakes up the other thread
+        #
+        # NOTE(markmc): we're waiting for a reply for msg_id to come in for on
+        # the reply_q, but there may be other threads also waiting for replies
+        # to other msg_ids
+        #
+        # Only one thread can be consuming from the queue using this connection
+        # and we don't want to hold open a connection per thread, so instead we
+        # have the first thread take responsibility for passing replies not
+        # intended for itself to the appropriate thread.
+        #
         final_reply = None
         while True:
             if self.conn_lock.acquire(False):
+                # Ok, we're the thread responsible for polling the connection
                 try:
                     while True:
                         reply, ending = self._poll_connection(msg_id, timeout)
@@ -215,10 +221,16 @@ class ReplyWaiter(object):
                             return final_reply
                 finally:
                     self.conn_lock.release()
+                    # We've got our reply, tell the other threads to wake up
+                    # so that one of them will take over the responsibility for
+                    # polling the connection
                     self.waiters.wake_all(msg_id)
             else:
+                # We're going to wait for the first thread to pass us our reply
                 reply, ending, trylock = self._poll_queue(msg_id, timeout)
                 if trylock:
+                    # The first thread got its reply, let's try and take over
+                    # the responsibility for polling
                     continue
                 if reply:
                     final_reply = reply
