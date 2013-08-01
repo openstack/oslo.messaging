@@ -41,10 +41,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
         if failure:
             failure = rpc_common.serialize_remote_exception(failure)
 
-        # FIXME(markmc): is the reply format really driver specific?
         msg = {'result': reply, 'failure': failure}
-
-        # FIXME(markmc): given that we're not supporting multicall ...
         if ending:
             msg['ending'] = True
 
@@ -60,7 +57,6 @@ class AMQPIncomingMessage(base.IncomingMessage):
             conn.direct_send(self.msg_id, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None):
-        LOG.info("reply")
         with self.listener.driver._get_connection() as conn:
             self._send_reply(conn, reply, failure)
             self._send_reply(conn, ending=True)
