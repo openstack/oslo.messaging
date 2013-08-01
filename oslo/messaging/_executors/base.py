@@ -39,8 +39,6 @@ class ExecutorBase(object):
             _LOG.error("Failed to process message... skipping it.",
                        exc_info=exc_info)
             incoming.reply(failure=exc_info)
-        finally:
-            incoming.done()
 
     @abc.abstractmethod
     def start(self):

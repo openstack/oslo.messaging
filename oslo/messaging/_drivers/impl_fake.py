@@ -44,9 +44,6 @@ class FakeIncomingMessage(base.IncomingMessage):
         if self._reply_q:
             self._reply_q.put(reply)
 
-    def done(self):
-        pass
-
 
 class FakeListener(base.Listener):
 

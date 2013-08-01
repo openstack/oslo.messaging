@@ -65,11 +65,6 @@ class AMQPIncomingMessage(base.IncomingMessage):
             self._send_reply(conn, reply, failure)
             self._send_reply(conn, ending=True)
 
-    def done(self):
-        LOG.info("done")
-        # FIXME(markmc): I'm not sure we need this method ... we've already
-        # acked the message at this point
-
 
 class AMQPListener(base.Listener):
 

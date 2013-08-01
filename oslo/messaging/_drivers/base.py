@@ -36,10 +36,6 @@ class IncomingMessage(object):
     def reply(self, reply=None, failure=None):
         "Send a reply or failure back to the client."
 
-    @abc.abstractmethod
-    def done(self):
-        "The message has been dispatched and replied to."
-
 
 class Listener(object):
 
