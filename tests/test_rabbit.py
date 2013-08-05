@@ -52,7 +52,4 @@ class TestRabbitDriver(test_utils.BaseTestCase):
         received = listener.poll()
         self.assertTrue(received is not None)
         self.assertEquals(received.ctxt, {})
-
-        # FIXME(markmc): this should be done by the driver
-        received.message.pop('_unique_id')
         self.assertEquals(received.message, {'foo': 'bar'})

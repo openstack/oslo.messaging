@@ -323,7 +323,7 @@ class _MsgIdCache(object):
            before ack is returned. This method prevents doing it.
         """
         if UNIQUE_ID in message_data:
-            msg_id = message_data[UNIQUE_ID]
+            msg_id = message_data.pop(UNIQUE_ID)
             if msg_id not in self.prev_msgids:
                 self.prev_msgids.append(msg_id)
             else:
