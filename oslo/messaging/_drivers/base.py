@@ -72,3 +72,7 @@ class BaseDriver(object):
     @abc.abstractmethod
     def listen(self, target):
         """Construct a Listener for the given target."""
+
+    @abc.abstractmethod
+    def cleanup(self):
+        """Release all resources."""
