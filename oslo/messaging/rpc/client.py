@@ -350,6 +350,24 @@ class RPCClient(object):
         Method arguments must either be primitive types or types supported by
         the client's serializer (if any).
 
+        The semantics of how any errors raised by the remote RPC endpoint
+        method are handled are quite subtle.
+
+        Firstly, if the remote exception is contained in one of the modules
+        listed in the allow_remote_exmods messaging.get_transport() parameter,
+        then it this exception will be re-raised by call(). However, such
+        locally re-raised remote exceptions are distinguishable from the same
+        exception type raised locally becayse re-raised remote exceptions are
+        modified such that their class name ends with the '_Remote' suffix so
+        you may do::
+
+            if ex.__class__.__name__.endswith('_Remote'):
+                # Some special case for locally re-raised remote exceptions
+
+        Secondly, if a remote exception is not from a module listed in the
+        allowed_remote_exmods list, then a messaging.RemoteError exception is
+        raised with all details of the remote exception.
+
         :param ctxt: a request context dict
         :type ctxt: dict
         :param method: the method name
