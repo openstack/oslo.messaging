@@ -16,6 +16,8 @@ import abc
 import logging
 import sys
 
+from oslo import messaging
+
 _LOG = logging.getLogger(__name__)
 
 
@@ -33,6 +35,10 @@ class ExecutorBase(object):
             reply = self.callback(incoming.ctxt, incoming.message)
             if reply:
                 incoming.reply(reply)
+        except messaging.ExpectedException as e:
+            _LOG.debug('Expected exception during message handling (%s)' %
+                       e.exc_info[1])
+            incoming.reply(failure=e.exc_info, log_failure=False)
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()

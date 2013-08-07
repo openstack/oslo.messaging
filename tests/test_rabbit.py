@@ -60,7 +60,8 @@ class TestSendReceive(test_utils.BaseTestCase):
 
     _failure = [
         ('success', dict(failure=False)),
-        ('failure', dict(failure=True)),
+        ('failure', dict(failure=True, expected=False)),
+        ('expected_failure', dict(failure=True, expected=True)),
     ]
 
     _timeout = [
@@ -134,7 +135,8 @@ class TestSendReceive(test_utils.BaseTestCase):
                         raise ZeroDivisionError
                     except Exception:
                         failure = sys.exc_info()
-                    msgs[i].reply(failure=failure)
+                    msgs[i].reply(failure=failure,
+                                  log_failure=not self.expected)
                 else:
                     msgs[i].reply({'bar': msgs[i].message['foo']})
             senders[i].join()

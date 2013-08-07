@@ -33,7 +33,7 @@ class IncomingMessage(object):
         self.message = message
 
     @abc.abstractmethod
-    def reply(self, reply=None, failure=None):
+    def reply(self, reply=None, failure=None, log_failure=True):
         "Send a reply or failure back to the client."
 
 

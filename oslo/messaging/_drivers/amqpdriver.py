@@ -37,7 +37,8 @@ class AMQPIncomingMessage(base.IncomingMessage):
         self.msg_id = msg_id
         self.reply_q = reply_q
 
-    def _send_reply(self, conn, reply=None, failure=None, ending=False):
+    def _send_reply(self, conn, reply=None, failure=None,
+                    ending=False, log_failure=True):
         if failure:
             failure = rpc_common.serialize_remote_exception(failure)
 
@@ -56,9 +57,9 @@ class AMQPIncomingMessage(base.IncomingMessage):
         else:
             conn.direct_send(self.msg_id, rpc_common.serialize_msg(msg))
 
-    def reply(self, reply=None, failure=None):
+    def reply(self, reply=None, failure=None, log_failure=True):
         with self.listener.driver._get_connection() as conn:
-            self._send_reply(conn, reply, failure)
+            self._send_reply(conn, reply, failure, log_failure=log_failure)
             self._send_reply(conn, ending=True)
 
 

@@ -31,7 +31,7 @@ class FakeIncomingMessage(base.IncomingMessage):
         super(FakeIncomingMessage, self).__init__(listener, ctxt, message)
         self._reply_q = reply_q
 
-    def reply(self, reply=None, failure=None):
+    def reply(self, reply=None, failure=None, log_failure=True):
         # FIXME: handle failure
         if self._reply_q:
             self._reply_q.put(reply)

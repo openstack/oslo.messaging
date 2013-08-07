@@ -12,3 +12,7 @@ Server
 
 .. autoclass:: MessageHandlingServer
    :members:
+
+.. autofunction:: expected_exceptions
+
+.. autoexception:: ExpectedException

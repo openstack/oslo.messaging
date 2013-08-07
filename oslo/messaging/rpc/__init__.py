@@ -15,12 +15,14 @@
 
 __all__ = [
     'ClientSendError',
+    'ExpectedException',
     'NoSuchMethod',
     'RPCClient',
     'RPCDispatcher',
     'RPCDispatcherError',
     'RPCVersionCapError',
     'UnsupportedVersion',
+    'expected_exceptions',
     'get_rpc_server',
 ]
 

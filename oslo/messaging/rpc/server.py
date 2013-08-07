@@ -89,7 +89,13 @@ return values from the methods. By supplying a serializer object, a server can
 deserialize arguments from - serialize return values to - primitive types.
 """
 
-__all__ = ['get_rpc_server']
+__all__ = [
+    'get_rpc_server',
+    'ExpectedException',
+    'expected_exceptions',
+]
+
+import sys
 
 from oslo.messaging.rpc import dispatcher as rpc_dispatcher
 from oslo.messaging import server as msg_server
@@ -117,3 +123,38 @@ def get_rpc_server(transport, target, endpoints,
     dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer)
     return msg_server.MessageHandlingServer(transport, target,
                                             dispatcher, executor)
+
+
+class ExpectedException(Exception):
+    """Encapsulates an expected exception raised by an RPC endpoint
+
+    Merely instantiating this exception records the current exception
+    information, which  will be passed back to the RPC client without
+    exceptional logging.
+    """
+    def __init__(self):
+        self.exc_info = sys.exc_info()
+
+
+def expected_exceptions(*exceptions):
+    """Decorator for RPC endpoint methods that raise expected exceptions.
+
+    Marking an endpoint method with this decorator allows the declaration
+    of expected exceptions that the RPC server should not consider fatal,
+    and not log as if they were generated in a real error scenario.
+
+    Note that this will cause listed exceptions to be wrapped in an
+    ExpectedException, which is used internally by the RPC sever. The RPC
+    client will see the original exception type.
+    """
+    def outer(func):
+        def inner(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if type(e) in exceptions:
+                    raise ExpectedException()
+                else:
+                    raise
+        return inner
+    return outer
