@@ -114,8 +114,8 @@ class TestDispatcher(test_utils.BaseTestCase):
             dispatcher(self.ctxt, self.msg)
         except Exception as ex:
             self.assertFalse(self.success, ex)
-            self.assertTrue(self.ex is not None, ex)
-            self.assertTrue(isinstance(ex, self.ex), ex)
+            self.assertIsNotNone(self.ex, ex)
+            self.assertIsInstance(ex, self.ex, ex)
             if isinstance(ex, messaging.NoSuchMethod):
                 self.assertEqual(ex.method, self.msg.get('method'))
             elif isinstance(ex, messaging.UnsupportedVersion):

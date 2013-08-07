@@ -43,8 +43,7 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
 
     def test_driver_load(self):
         transport = messaging.get_transport(self.conf)
-        self.assertTrue(isinstance(transport._driver,
-                                   rabbit_driver.RabbitDriver))
+        self.assertIsInstance(transport._driver, rabbit_driver.RabbitDriver)
 
 
 class TestSendReceive(test_utils.BaseTestCase):
@@ -110,7 +109,7 @@ class TestSendReceive(test_utils.BaseTestCase):
             senders[i].start()
 
             received = listener.poll()
-            self.assertTrue(received is not None)
+            self.assertIsNotNone(received)
             self.assertEqual(received.ctxt, self.ctxt)
             self.assertEqual(received.message, {'foo': i})
             msgs.append(received)
@@ -136,7 +135,7 @@ class TestSendReceive(test_utils.BaseTestCase):
             if not self.failure:
                 self.assertEqual(reply, {'bar': order[i]})
             else:
-                self.assertTrue(isinstance(reply, ZeroDivisionError))
+                self.assertIsInstance(reply, ZeroDivisionError)
 
 
 TestSendReceive.generate_scenarios()
@@ -272,7 +271,7 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
         connection.drain_events()
 
         self.assertEqual(1, len(msgs))
-        self.assertTrue('oslo.message' in msgs[0])
+        self.assertIn('oslo.message', msgs[0])
 
         received = msgs[0]
         received['oslo.message'] = jsonutils.loads(received['oslo.message'])
@@ -418,7 +417,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
         producer.publish(msg)
 
         received = listener.poll()
-        self.assertTrue(received is not None)
+        self.assertIsNotNone(received)
         self.assertEqual(self.expected_ctxt, received.ctxt)
         self.assertEqual(self.expected, received.message)
 

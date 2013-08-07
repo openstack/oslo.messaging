@@ -41,7 +41,7 @@ class TargetConstructorTestCase(test_utils.BaseTestCase):
                   'version', 'server', 'fanout']:
             if k in self.kwargs:
                 continue
-            self.assertTrue(getattr(target, k) is None)
+            self.assertIsNone(getattr(target, k))
 
 
 class TargetCallableTestCase(test_utils.BaseTestCase):
@@ -95,7 +95,7 @@ class TargetCallableTestCase(test_utils.BaseTestCase):
                   'version', 'server', 'fanout']:
             if k in self.vals:
                 continue
-            self.assertTrue(getattr(target, k) is None)
+            self.assertIsNone(getattr(target, k))
 
 
 class TargetReprTestCase(test_utils.BaseTestCase):

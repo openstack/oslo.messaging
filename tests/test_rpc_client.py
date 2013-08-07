@@ -400,8 +400,8 @@ class TestVersionCap(test_utils.BaseTestCase):
         try:
             method({}, 'foo')
         except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.RPCVersionCapError), ex)
-            self.assertTrue(not self.success)
+            self.assertIsInstance(ex, messaging.RPCVersionCapError, ex)
+            self.assertFalse(self.success)
         else:
             self.assertTrue(self.success)
 
@@ -504,7 +504,7 @@ class TestCheckForLock(test_utils.BaseTestCase):
         transport = _FakeTransport(self.conf)
 
         def check_for_lock(conf):
-            self.assertTrue(conf is self.conf)
+            self.assertIs(conf, self.conf)
             return self.locks_held
 
         client = messaging.RPCClient(transport, messaging.Target(),
@@ -529,6 +529,6 @@ class TestCheckForLock(test_utils.BaseTestCase):
 
         if self.warning:
             self.assertEqual(len(warnings), 1)
-            self.assertTrue(self.warning in warnings[0])
+            self.assertIn(self.warning, warnings[0])
         else:
             self.assertEqual(len(warnings), 0)

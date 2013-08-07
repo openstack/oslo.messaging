@@ -97,13 +97,13 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         server = messaging.get_rpc_server(transport, target, endpoints,
                                           serializer=serializer)
 
-        self.assertTrue(server.conf is self.conf)
-        self.assertTrue(server.transport is transport)
-        self.assertTrue(server.target is target)
-        self.assertTrue(isinstance(server.dispatcher, messaging.RPCDispatcher))
-        self.assertTrue(server.dispatcher.endpoints is endpoints)
-        self.assertTrue(server.dispatcher.serializer is serializer)
-        self.assertTrue(server.executor is 'blocking')
+        self.assertIs(server.conf, self.conf)
+        self.assertIs(server.transport, transport)
+        self.assertIs(server.target, target)
+        self.assertIsInstance(server.dispatcher, messaging.RPCDispatcher)
+        self.assertIs(server.dispatcher.endpoints, endpoints)
+        self.assertIs(server.dispatcher.serializer, serializer)
+        self.assertIs(server.executor, 'blocking')
 
     def test_no_target_server(self):
         transport = messaging.get_transport(self.conf, url='fake:')
@@ -114,7 +114,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             server.start()
         except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.ServerListenError), ex)
+            self.assertIsInstance(ex, messaging.ServerListenError, ex)
             self.assertEqual(ex.target.topic, 'testtopic')
         else:
             self.assertTrue(False)
@@ -126,7 +126,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             server.start()
         except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.ServerListenError), ex)
+            self.assertIsInstance(ex, messaging.ServerListenError, ex)
             self.assertEqual(ex.target.server, 'testserver')
         else:
             self.assertTrue(False)
@@ -141,8 +141,8 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             method({}, 'ping', arg='foo')
         except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.ClientSendError), ex)
-            self.assertTrue(ex.target is not None)
+            self.assertIsInstance(ex, messaging.ClientSendError, ex)
+            self.assertIsNotNone(ex.target)
         else:
             self.assertTrue(False)
 
@@ -170,7 +170,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             client.prepare(timeout=0).call({}, 'ping', arg='foo')
         except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.MessagingTimeout), ex)
+            self.assertIsInstance(ex, messaging.MessagingTimeout, ex)
         else:
             self.assertTrue(False)
 
@@ -186,7 +186,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         try:
             messaging.get_rpc_server(transport, None, [], executor='foo')
         except Exception as ex:
-            self.assertTrue(isinstance(ex, messaging.ExecutorLoadFailure))
+            self.assertIsInstance(ex, messaging.ExecutorLoadFailure)
             self.assertEqual(ex.executor, 'foo')
         else:
             self.assertTrue(False)
@@ -415,7 +415,7 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         def check(pings, expect):
             self.assertEqual(len(pings), len(expect))
             for a in expect:
-                self.assertTrue(a in pings)
+                self.assertIn(a, pings)
 
         if self.expect_either:
             check(endpoint1.pings + endpoint2.pings, self.expect_either)

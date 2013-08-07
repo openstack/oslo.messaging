@@ -109,9 +109,9 @@ class GetTransportTestCase(test_utils.BaseTestCase):
 
         transport = messaging.get_transport(self.conf, url=self.url)
 
-        self.assertTrue(transport is not None)
-        self.assertTrue(transport.conf is self.conf)
-        self.assertTrue(transport._driver is drvr)
+        self.assertIsNotNone(transport)
+        self.assertIs(transport.conf, self.conf)
+        self.assertIs(transport._driver, drvr)
 
 
 class GetTransportSadPathTestCase(test_utils.BaseTestCase):
@@ -164,10 +164,10 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
             ex_cls = self.ex.pop('cls')
             ex_msg_contains = self.ex.pop('msg_contains')
 
-            self.assertTrue(isinstance(ex, messaging.MessagingException))
-            self.assertTrue(isinstance(ex, ex_cls))
+            self.assertIsInstance(ex, messaging.MessagingException)
+            self.assertIsInstance(ex, ex_cls)
             self.assertTrue(hasattr(ex, 'msg'))
-            self.assertTrue(ex_msg_contains in ex.msg)
+            self.assertIn(ex_msg_contains, ex.msg)
 
             for k, v in self.ex.items():
                 self.assertTrue(hasattr(ex, k))

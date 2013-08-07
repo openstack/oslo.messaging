@@ -136,7 +136,7 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
         # Note: _Remote prefix not stripped from tracebacks
         tb = ex.__class__.__name__ + ': ' + self.msg
-        self.assertTrue(tb in ''.join(failure['tb']))
+        self.assertIn(tb, ''.join(failure['tb']))
 
         if self.log_failure:
             self.assertTrue(len(errors) > 0, errors)
@@ -307,7 +307,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
         ex = exceptions.deserialize_remote_exception(self.conf, serialized)
 
-        self.assertTrue(isinstance(ex, self.cls))
+        self.assertIsInstance(ex, self.cls)
         self.assertEqual(ex.__class__.__name__, self.remote_name)
         self.assertEqual(str(ex), self.str)
         self.assertEqual(ex.message, self.msg)

@@ -89,11 +89,11 @@ class PoolTestCase(test_utils.BaseTestCase):
         objs = []
         for i in range(self.n_iters):
             objs.append(p.get())
-            self.assertTrue(isinstance(objs[i], uuid.UUID))
+            self.assertIsInstance(objs[i], uuid.UUID)
 
         def wait_for_obj():
             o = p.get()
-            self.assertTrue(o in objs)
+            self.assertIn(o, objs)
 
         waiter = self.ThreadWaitWaiter(p._cond, self.n_iters, self.stubs)
 
@@ -115,7 +115,7 @@ class PoolTestCase(test_utils.BaseTestCase):
             p.put(o)
 
         for o in p.iter_free():
-            self.assertTrue(o in objs)
+            self.assertIn(o, objs)
             objs.remove(o)
 
         self.assertEquals(objs, [])
