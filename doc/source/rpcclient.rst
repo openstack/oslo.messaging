@@ -6,3 +6,5 @@ RPC Client
 
 .. autoclass:: RPCClient
    :members:
+
+.. autoexception:: RemoteError

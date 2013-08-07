@@ -20,6 +20,7 @@ __all__ = [
     'ClientSendError',
     'RPCClient',
     'RPCVersionCapError',
+    'RemoteError',
 ]
 
 import inspect
@@ -39,6 +40,26 @@ _client_opts = [
 ]
 
 _LOG = logging.getLogger(__name__)
+
+
+class RemoteError(exceptions.MessagingException):
+
+    """Signifies that a remote endpoint method has raised an exception.
+
+    Contains a string representation of the type of the original exception,
+    the value of the original exception, and the traceback.  These are
+    sent to the parent as a joined string so printing the exception
+    contains all of the relevant info.
+    """
+
+    def __init__(self, exc_type=None, value=None, traceback=None):
+        self.exc_type = exc_type
+        self.value = value
+        self.traceback = traceback
+        msg = ("Remote error: %(exc_type)s %(value)s\n%(traceback)s." %
+               dict(exc_type=self.exc_type, value=self.value,
+                    traceback=self.traceback))
+        super(RemoteError, self).__init__(msg)
 
 
 class RPCVersionCapError(exceptions.MessagingException):
@@ -335,7 +356,7 @@ class RPCClient(object):
         :type method: str
         :param kwargs: a dict of method arguments
         :param kwargs: dict
-        :raises: MessagingTimeout
+        :raises: MessagingTimeout, RemoteError
         """
         return self.prepare().call(ctxt, method, **kwargs)
 

@@ -17,6 +17,7 @@ import sys
 
 import testscenarios
 
+from oslo import messaging
 from oslo.messaging._drivers import common as exceptions
 from oslo.messaging.openstack.common import jsonutils
 from tests import utils as test_utils
@@ -160,7 +161,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=['test'],
               kwargs={},
               str='test\ntraceback\ntraceback\n',
-              msg='test',
+              message='test',
               remote_name='Exception',
               remote_args=('test\ntraceback\ntraceback\n', ),
               remote_kwargs={})),
@@ -172,7 +173,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={},
               str='test\ntraceback\ntraceback\n',
-              msg='I am Nova',
+              message='I am Nova',
               remote_name='NovaStyleException_Remote',
               remote_args=('I am Nova', ),
               remote_kwargs={})),
@@ -184,7 +185,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=['testing'],
               kwargs={},
               str='test\ntraceback\ntraceback\n',
-              msg='testing',
+              message='testing',
               remote_name='NovaStyleException_Remote',
               remote_args=('testing', ),
               remote_kwargs={})),
@@ -196,7 +197,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={'who': 'Oslo'},
               str='test\ntraceback\ntraceback\n',
-              msg='I am Oslo',
+              message='I am Oslo',
               remote_name='KwargsStyleException_Remote',
               remote_args=('I am Oslo', ),
               remote_kwargs={})),
@@ -204,7 +205,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
          dict(allowed=[],
               clsname='Exception',
               modname='exceptions',
-              cls=exceptions.RemoteError,
+              cls=messaging.RemoteError,
               args=[],
               kwargs={},
               str=("Remote error: Exception test\n"
@@ -212,8 +213,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               msg=("Remote error: Exception test\n"
                    "[u'traceback\\ntraceback\\n']."),
               remote_name='RemoteError',
-              remote_args=("Remote error: Exception test\n"
-                           "[u'traceback\\ntraceback\\n'].", ),
+              remote_args=(),
               remote_kwargs={'exc_type': 'Exception',
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
@@ -221,7 +221,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
          dict(allowed=['notexist'],
               clsname='Exception',
               modname='notexist',
-              cls=exceptions.RemoteError,
+              cls=messaging.RemoteError,
               args=[],
               kwargs={},
               str=("Remote error: Exception test\n"
@@ -229,8 +229,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               msg=("Remote error: Exception test\n"
                    "[u'traceback\\ntraceback\\n']."),
               remote_name='RemoteError',
-              remote_args=("Remote error: Exception test\n"
-                           "[u'traceback\\ntraceback\\n'].", ),
+              remote_args=(),
               remote_kwargs={'exc_type': 'Exception',
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
@@ -238,7 +237,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
          dict(allowed=['exceptions'],
               clsname='FarcicalError',
               modname='exceptions',
-              cls=exceptions.RemoteError,
+              cls=messaging.RemoteError,
               args=[],
               kwargs={},
               str=("Remote error: FarcicalError test\n"
@@ -246,8 +245,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               msg=("Remote error: FarcicalError test\n"
                    "[u'traceback\\ntraceback\\n']."),
               remote_name='RemoteError',
-              remote_args=("Remote error: FarcicalError test\n"
-                           "[u'traceback\\ntraceback\\n'].", ),
+              remote_args=(),
               remote_kwargs={'exc_type': 'FarcicalError',
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
@@ -255,7 +253,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
          dict(allowed=['exceptions'],
               clsname='Exception',
               modname='exceptions',
-              cls=exceptions.RemoteError,
+              cls=messaging.RemoteError,
               args=[],
               kwargs={'foobar': 'blaa'},
               str=("Remote error: Exception test\n"
@@ -263,8 +261,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               msg=("Remote error: Exception test\n"
                    "[u'traceback\\ntraceback\\n']."),
               remote_name='RemoteError',
-              remote_args=("Remote error: Exception test\n"
-                           "[u'traceback\\ntraceback\\n'].", ),
+              remote_args=(),
               remote_kwargs={'exc_type': 'Exception',
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
@@ -272,7 +269,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
          dict(allowed=['exceptions'],
               clsname='SystemExit',
               modname='exceptions',
-              cls=exceptions.RemoteError,
+              cls=messaging.RemoteError,
               args=[],
               kwargs={},
               str=("Remote error: SystemExit test\n"
@@ -280,8 +277,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               msg=("Remote error: SystemExit test\n"
                    "[u'traceback\\ntraceback\\n']."),
               remote_name='RemoteError',
-              remote_args=("Remote error: SystemExit test\n"
-                           "[u'traceback\\ntraceback\\n'].", ),
+              remote_args=(),
               remote_kwargs={'exc_type': 'SystemExit',
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
@@ -310,5 +306,8 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         self.assertIsInstance(ex, self.cls)
         self.assertEqual(ex.__class__.__name__, self.remote_name)
         self.assertEqual(str(ex), self.str)
-        self.assertEqual(ex.message, self.msg)
+        if hasattr(self, 'msg'):
+            self.assertEqual(ex.msg, self.msg)
+        else:
+            self.assertEqual(ex.message, self.message)
         self.assertEqual(ex.args, self.remote_args)

@@ -23,6 +23,7 @@ import sys
 import traceback
 
 from oslo.config import cfg
+from oslo import messaging
 import six
 
 from oslo.messaging.openstack.common import importutils
@@ -341,7 +342,7 @@ def deserialize_remote_exception(conf, data):
     # order to prevent arbitrary code execution.
     conf.register_opts(_exception_opts)
     if module not in conf.allowed_rpc_exception_modules:
-        return RemoteError(name, failure.get('message'), trace)
+        return messaging.RemoteError(name, failure.get('message'), trace)
 
     try:
         mod = importutils.import_module(module)
@@ -351,7 +352,7 @@ def deserialize_remote_exception(conf, data):
 
         failure = klass(*failure.get('args', []), **failure.get('kwargs', {}))
     except (AttributeError, TypeError, ImportError):
-        return RemoteError(name, failure.get('message'), trace)
+        return messaging.RemoteError(name, failure.get('message'), trace)
 
     ex_type = type(failure)
     str_override = lambda self: message

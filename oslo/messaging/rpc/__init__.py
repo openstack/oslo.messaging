@@ -21,6 +21,7 @@ __all__ = [
     'RPCDispatcher',
     'RPCDispatcherError',
     'RPCVersionCapError',
+    'RemoteError',
     'UnsupportedVersion',
     'expected_exceptions',
     'get_rpc_server',
