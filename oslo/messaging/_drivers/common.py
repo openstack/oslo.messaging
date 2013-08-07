@@ -73,7 +73,6 @@ _MESSAGE_KEY = 'oslo.message'
 
 _REMOTE_POSTFIX = '_Remote'
 
-# FIXME(markmc): add an API to replace this option
 _exception_opts = [
     cfg.ListOpt('allowed_rpc_exception_modules',
                 default=['oslo.messaging.exceptions',
@@ -330,7 +329,7 @@ def serialize_remote_exception(failure_info, log_failure=True):
     return json_data
 
 
-def deserialize_remote_exception(conf, data):
+def deserialize_remote_exception(data, allowed_remote_exmods):
     failure = jsonutils.loads(str(data))
 
     trace = failure.get('tb', [])
@@ -340,8 +339,7 @@ def deserialize_remote_exception(conf, data):
 
     # NOTE(ameade): We DO NOT want to allow just any module to be imported, in
     # order to prevent arbitrary code execution.
-    conf.register_opts(_exception_opts)
-    if module not in conf.allowed_rpc_exception_modules:
+    if module != 'exceptions' and module not in allowed_remote_exmods:
         return messaging.RemoteError(name, failure.get('message'), trace)
 
     try:

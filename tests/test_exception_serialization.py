@@ -150,7 +150,7 @@ SerializeRemoteExceptionTestCase.generate_scenarios()
 
 class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
-    _standard_allowed = [__name__, 'exceptions']
+    _standard_allowed = [__name__]
 
     scenarios = [
         ('bog_standard',
@@ -203,18 +203,18 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               remote_kwargs={})),
         ('not_allowed',
          dict(allowed=[],
-              clsname='Exception',
-              modname='exceptions',
+              clsname='NovaStyleException',
+              modname=__name__,
               cls=messaging.RemoteError,
               args=[],
               kwargs={},
-              str=("Remote error: Exception test\n"
+              str=("Remote error: NovaStyleException test\n"
                    "[u'traceback\\ntraceback\\n']."),
-              msg=("Remote error: Exception test\n"
+              msg=("Remote error: NovaStyleException test\n"
                    "[u'traceback\\ntraceback\\n']."),
               remote_name='RemoteError',
               remote_args=(),
-              remote_kwargs={'exc_type': 'Exception',
+              remote_kwargs={'exc_type': 'NovaStyleException',
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
         ('unknown_module',
@@ -234,7 +234,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
         ('unknown_exception',
-         dict(allowed=['exceptions'],
+         dict(allowed=[],
               clsname='FarcicalError',
               modname='exceptions',
               cls=messaging.RemoteError,
@@ -250,7 +250,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
         ('unknown_kwarg',
-         dict(allowed=['exceptions'],
+         dict(allowed=[],
               clsname='Exception',
               modname='exceptions',
               cls=messaging.RemoteError,
@@ -266,7 +266,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
                              'value': 'test',
                              'traceback': 'traceback\ntraceback\n'})),
         ('system_exit',
-         dict(allowed=['exceptions'],
+         dict(allowed=[],
               clsname='SystemExit',
               modname='exceptions',
               cls=messaging.RemoteError,
@@ -283,13 +283,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
                              'traceback': 'traceback\ntraceback\n'})),
     ]
 
-    def setUp(self):
-        super(DeserializeRemoteExceptionTestCase, self).setUp()
-        self.conf.register_opts(exceptions._exception_opts)
-
     def test_deserialize_remote_exception(self):
-        self.config(allowed_rpc_exception_modules=self.allowed)
-
         failure = {
             'class': self.clsname,
             'module': self.modname,
@@ -301,7 +295,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
         serialized = jsonutils.dumps(failure)
 
-        ex = exceptions.deserialize_remote_exception(self.conf, serialized)
+        ex = exceptions.deserialize_remote_exception(serialized, self.allowed)
 
         self.assertIsInstance(ex, self.cls)
         self.assertEqual(ex.__class__.__name__, self.remote_name)

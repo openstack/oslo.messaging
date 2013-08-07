@@ -54,34 +54,46 @@ class GetTransportTestCase(test_utils.BaseTestCase):
     scenarios = [
         ('all_none',
          dict(url=None, transport_url=None, rpc_backend=None,
-              control_exchange=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend=None,
                           exchange=None,
-                          url=None))),
+                          url=None,
+                          allowed=[]))),
         ('rpc_backend',
          dict(url=None, transport_url=None, rpc_backend='testbackend',
-              control_exchange=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend='testbackend',
                           exchange=None,
-                          url=None))),
+                          url=None,
+                          allowed=[]))),
         ('control_exchange',
          dict(url=None, transport_url=None, rpc_backend=None,
-              control_exchange='testexchange',
+              control_exchange='testexchange', allowed=None,
               expect=dict(backend=None,
                           exchange='testexchange',
-                          url=None))),
+                          url=None,
+                          allowed=[]))),
         ('transport_url',
          dict(url=None, transport_url='testtransport:', rpc_backend=None,
-              control_exchange=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend='testtransport',
                           exchange=None,
-                          url='testtransport:'))),
+                          url='testtransport:',
+                          allowed=[]))),
         ('url_param',
          dict(url='testtransport:', transport_url=None, rpc_backend=None,
-              control_exchange=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend='testtransport',
                           exchange=None,
-                          url='testtransport:'))),
+                          url='testtransport:',
+                          allowed=[]))),
+        ('allowed_remote_exmods',
+         dict(url=None, transport_url=None, rpc_backend=None,
+              control_exchange=None, allowed=['foo', 'bar'],
+              expect=dict(backend=None,
+                          exchange=None,
+                          url=None,
+                          allowed=['foo', 'bar']))),
     ]
 
     def setUp(self):
@@ -96,7 +108,8 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(driver, 'DriverManager')
 
         invoke_args = [self.conf]
-        invoke_kwds = dict(default_exchange=self.expect['exchange'])
+        invoke_kwds = dict(default_exchange=self.expect['exchange'],
+                           allowed_remote_exmods=self.expect['allowed'])
         if self.expect['url']:
             invoke_kwds['url'] = self.expect['url']
 
@@ -110,7 +123,10 @@ class GetTransportTestCase(test_utils.BaseTestCase):
 
         self.mox.ReplayAll()
 
-        transport = messaging.get_transport(self.conf, url=self.url)
+        kwargs = dict(url=self.url)
+        if self.allowed is not None:
+            kwargs['allowed_remote_exmods'] = self.allowed
+        transport = messaging.get_transport(self.conf, **kwargs)
 
         self.assertIsNotNone(transport)
         self.assertIs(transport.conf, self.conf)
@@ -149,7 +165,8 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
             self.mox.StubOutWithMock(driver, 'DriverManager')
 
             invoke_args = [self.conf]
-            invoke_kwds = dict(default_exchange='openstack')
+            invoke_kwds = dict(default_exchange='openstack',
+                               allowed_remote_exmods=[])
 
             driver.DriverManager('oslo.messaging.drivers',
                                  self.rpc_backend,

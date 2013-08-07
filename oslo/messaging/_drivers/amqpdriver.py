@@ -135,10 +135,11 @@ class ReplyWaiters(object):
 
 class ReplyWaiter(object):
 
-    def __init__(self, conf, reply_q, conn):
+    def __init__(self, conf, reply_q, conn, allowed_remote_exmods):
         self.conf = conf
         self.conn = conn
         self.reply_q = reply_q
+        self.allowed_remote_exmods = allowed_remote_exmods
 
         self.conn_lock = threading.Lock()
         self.incoming = []
@@ -163,8 +164,8 @@ class ReplyWaiter(object):
         self.msg_id_cache.check_duplicate_message(data)
         if data['failure']:
             failure = data['failure']
-            result = rpc_common.deserialize_remote_exception(self.conf,
-                                                             failure)
+            result = rpc_common.deserialize_remote_exception(
+                failure, self.allowed_remote_exmods)
         elif data.get('ending', False):
             ending = True
         else:
@@ -241,8 +242,10 @@ class ReplyWaiter(object):
 
 class AMQPDriverBase(base.BaseDriver):
 
-    def __init__(self, conf, connection_pool, url=None, default_exchange=None):
-        super(AMQPDriverBase, self).__init__(conf, url, default_exchange)
+    def __init__(self, conf, connection_pool, url=None, default_exchange=None,
+                 allowed_remote_exmods=[]):
+        super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
+                                             allowed_remote_exmods)
 
         self._default_exchange = urls.exchange_from_url(url, default_exchange)
 
@@ -271,7 +274,8 @@ class AMQPDriverBase(base.BaseDriver):
 
             conn = self._get_connection(pooled=False)
 
-            self._waiter = ReplyWaiter(self.conf, reply_q, conn)
+            self._waiter = ReplyWaiter(self.conf, reply_q, conn,
+                                       self._allowed_remote_exmods)
 
             self._reply_q = reply_q
             self._reply_q_conn = conn

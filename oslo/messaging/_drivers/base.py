@@ -55,10 +55,12 @@ class BaseDriver(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, url=None, default_exchange=None):
+    def __init__(self, conf, url=None, default_exchange=None,
+                 allowed_remote_exmods=[]):
         self.conf = conf
         self._url = url
         self._default_exchange = default_exchange
+        self._allowed_remote_exmods = allowed_remote_exmods
 
     @abc.abstractmethod
     def send(self, target, ctxt, message,

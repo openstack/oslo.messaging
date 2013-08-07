@@ -119,7 +119,7 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
-def get_transport(conf, url=None):
+def get_transport(conf, url=None, allowed_remote_exmods=[]):
     """A factory method for Transport objects.
 
     This method will construct a Transport object from transport configuration
@@ -140,6 +140,9 @@ def get_transport(conf, url=None):
     :type conf: cfg.ConfigOpts
     :param url: a transport URL
     :type url: str
+    :param allowed_remote_exmods: a list of modules which a client using this
+    transport will deserialize remote exceptions from
+    :type allowed_remote_exmods: list
     """
     conf.register_opts(_transport_opts)
 
@@ -151,7 +154,8 @@ def get_transport(conf, url=None):
     else:
         rpc_backend = conf.rpc_backend
 
-    kwargs = dict(default_exchange=conf.control_exchange)
+    kwargs = dict(default_exchange=conf.control_exchange,
+                  allowed_remote_exmods=allowed_remote_exmods)
     if url is not None:
         kwargs['url'] = url
 
