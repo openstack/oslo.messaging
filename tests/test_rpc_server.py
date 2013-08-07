@@ -258,6 +258,35 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
         self._stop_server(client, server_thread)
 
+    def test_failure(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        class TestEndpoint(object):
+            def ping(self, ctxt, arg):
+                raise ValueError
+
+        server_thread = self._setup_server(transport, TestEndpoint())
+        client = self._setup_client(transport)
+
+        self.assertRaises(ValueError, client.call, {}, 'ping', arg='foo')
+
+        self._stop_server(client, server_thread)
+
+    def test_expected_failure(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        class TestEndpoint(object):
+            @messaging.expected_exceptions(ValueError)
+            def ping(self, ctxt, arg):
+                raise ValueError
+
+        server_thread = self._setup_server(transport, TestEndpoint())
+        client = self._setup_client(transport)
+
+        self.assertRaises(ValueError, client.call, {}, 'ping', arg='foo')
+
+        self._stop_server(client, server_thread)
+
 
 class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
 

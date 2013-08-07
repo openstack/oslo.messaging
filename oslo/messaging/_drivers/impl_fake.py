@@ -32,9 +32,8 @@ class FakeIncomingMessage(base.IncomingMessage):
         self._reply_q = reply_q
 
     def reply(self, reply=None, failure=None, log_failure=True):
-        # FIXME: handle failure
         if self._reply_q:
-            self._reply_q.put(reply)
+            self._reply_q.put((reply, failure))
 
 
 class FakeListener(base.Listener):
@@ -129,7 +128,11 @@ class FakeDriver(base.BaseDriver):
 
         if wait_for_reply:
             try:
-                return reply_q.get(timeout=timeout)
+                reply, failure = reply_q.get(timeout=timeout)
+                if failure:
+                    raise failure
+                else:
+                    return reply
             except Queue.Empty:
                 raise messaging.MessagingTimeout(
                     'No reply on topic %s' % target.topic)
