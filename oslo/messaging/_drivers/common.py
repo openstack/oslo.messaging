@@ -26,6 +26,7 @@ from oslo.config import cfg
 from oslo import messaging
 import six
 
+from oslo.messaging import _utils as utils
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
 
@@ -454,21 +455,6 @@ def client_exceptions(*exceptions):
     return outer
 
 
-def version_is_compatible(imp_version, version):
-    """Determine whether versions are compatible.
-
-    :param imp_version: The version implemented
-    :param version: The version requested by an incoming message.
-    """
-    version_parts = version.split('.')
-    imp_version_parts = imp_version.split('.')
-    if int(version_parts[0]) != int(imp_version_parts[0]):  # Major
-        return False
-    if int(version_parts[1]) > int(imp_version_parts[1]):  # Minor
-        return False
-    return True
-
-
 def serialize_msg(raw_msg):
     # NOTE(russellb) See the docstring for _RPC_ENVELOPE_VERSION for more
     # information about this format.
@@ -514,7 +500,8 @@ def deserialize_msg(msg):
     # At this point we think we have the message envelope
     # format we were expecting. (#1.a above)
 
-    if not version_is_compatible(_RPC_ENVELOPE_VERSION, msg[_VERSION_KEY]):
+    if not utils.version_is_compatible(_RPC_ENVELOPE_VERSION,
+                                       msg[_VERSION_KEY]):
         raise UnsupportedRpcEnvelopeVersion(version=msg[_VERSION_KEY])
 
     raw_msg = jsonutils.loads(msg[_MESSAGE_KEY])
