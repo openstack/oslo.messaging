@@ -86,7 +86,8 @@ supplied by the client.
 
 Parameters to the method invocation are primitive types and so must be the
 return values from the methods. By supplying a serializer object, a server can
-deserialize arguments from - serialize return values to - primitive types.
+deserialize a request context and arguments from - and serialize return values
+to - primitive types.
 """
 
 __all__ = [

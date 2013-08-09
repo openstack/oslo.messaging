@@ -129,6 +129,7 @@ class Notifier(object):
 
     def _notify(self, ctxt, event_type, payload, priority):
         payload = self._serializer.serialize_entity(ctxt, payload)
+        ctxt = self._serializer.serialize_context(ctxt)
 
         msg = dict(message_id=uuidutils.generate_uuid(),
                    publisher_id=self.publisher_id,

@@ -27,7 +27,7 @@ class Serializer(object):
     def serialize_entity(self, ctxt, entity):
         """Serialize something to primitive form.
 
-        :param context: Request context
+        :param ctxt: Request context, in deserialized form
         :param entity: Entity to be serialized
         :returns: Serialized form of entity
         """
@@ -36,8 +36,24 @@ class Serializer(object):
     def deserialize_entity(self, ctxt, entity):
         """Deserialize something from primitive form.
 
-        :param context: Request context
+        :param ctxt: Request context, in deserialized form
         :param entity: Primitive to be deserialized
+        :returns: Deserialized form of entity
+        """
+
+    @abc.abstractmethod
+    def serialize_context(self, ctxt):
+        """Serialize a request context into a dictionary.
+
+        :param ctxt: Request context
+        :returns: Serialized form of context
+        """
+
+    @abc.abstractmethod
+    def deserialize_context(self, ctxt):
+        """Deserialize a dictionary into a request context.
+
+        :param ctxt: Request context dictionary
         :returns: Deserialized form of entity
         """
 
@@ -50,3 +66,9 @@ class NoOpSerializer(Serializer):
 
     def deserialize_entity(self, ctxt, entity):
         return entity
+
+    def serialize_context(self, ctxt):
+        return ctxt
+
+    def deserialize_context(self, ctxt):
+        return ctxt

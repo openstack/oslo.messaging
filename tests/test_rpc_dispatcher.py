@@ -128,29 +128,33 @@ class TestSerializer(test_utils.BaseTestCase):
 
     scenarios = [
         ('no_args_or_retval',
-         dict(ctxt={}, args={}, retval=None)),
+         dict(ctxt={}, dctxt={}, args={}, retval=None)),
         ('args_and_retval',
          dict(ctxt=dict(user='bob'),
+              dctxt=dict(user='alice'),
               args=dict(a='a', b='b', c='c'),
               retval='d')),
     ]
 
     def test_serializer(self):
         endpoint = _FakeEndpoint()
-        serializer = msg_serializer.NoOpSerializer
+        serializer = msg_serializer.NoOpSerializer()
         dispatcher = messaging.RPCDispatcher([endpoint], serializer)
 
         self.mox.StubOutWithMock(endpoint, 'foo')
         args = dict([(k, 'd' + v) for k, v in self.args.items()])
-        endpoint.foo(self.ctxt, **args).AndReturn(self.retval)
+        endpoint.foo(self.dctxt, **args).AndReturn(self.retval)
 
         self.mox.StubOutWithMock(serializer, 'serialize_entity')
         self.mox.StubOutWithMock(serializer, 'deserialize_entity')
+        self.mox.StubOutWithMock(serializer, 'deserialize_context')
+
+        serializer.deserialize_context(self.ctxt).AndReturn(self.dctxt)
 
         for arg in self.args:
-            serializer.deserialize_entity(self.ctxt, arg).AndReturn('d' + arg)
+            serializer.deserialize_entity(self.dctxt, arg).AndReturn('d' + arg)
 
-        serializer.serialize_entity(self.ctxt, self.retval).\
+        serializer.serialize_entity(self.dctxt, self.retval).\
             AndReturn('s' + self.retval if self.retval else None)
 
         self.mox.ReplayAll()

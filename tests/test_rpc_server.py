@@ -51,6 +51,12 @@ class ServerSetupMixin(object):
         def deserialize_entity(self, ctxt, entity):
             return 'd' + (entity or '')
 
+        def serialize_context(self, ctxt):
+            return dict([(k, 's' + v) for k, v in ctxt.items()])
+
+        def deserialize_context(self, ctxt):
+            return dict([(k, 'd' + v) for k, v in ctxt.items()])
+
     def __init__(self):
         self.serializer = self.TestSerializer()
 
@@ -254,7 +260,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertEqual(client.call({'dsa': 'b'},
                                      'ctxt_check',
                                      key='a'),
-                         'dsb')
+                         'dsdsb')
 
         self._stop_server(client, server_thread)
 
