@@ -33,7 +33,7 @@ _notifier_opts = [
                 default=['notifications', ],
                 deprecated_name='topics',
                 deprecated_group='rpc_notifier2',
-                help='AMQP topic used for openstack notifications'),
+                help='AMQP topic used for OpenStack notifications'),
 ]
 
 _LOG = logging.getLogger(__name__)
