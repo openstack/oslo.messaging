@@ -40,7 +40,8 @@ class AMQPIncomingMessage(base.IncomingMessage):
     def _send_reply(self, conn, reply=None, failure=None,
                     ending=False, log_failure=True):
         if failure:
-            failure = rpc_common.serialize_remote_exception(failure)
+            failure = rpc_common.serialize_remote_exception(failure,
+                                                            log_failure)
 
         msg = {'result': reply, 'failure': failure}
         if ending:
