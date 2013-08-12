@@ -295,11 +295,14 @@ class TestSerializer(test_utils.BaseTestCase):
         msg = dict(method='foo',
                    args=dict([(k, 's' + v) for k, v in self.args.items()]))
         kwargs = dict(wait_for_reply=True, timeout=None) if self.call else {}
-        transport._send(messaging.Target(), self.ctxt, msg, **kwargs).\
-            AndReturn(self.retval)
+        transport._send(messaging.Target(),
+                        dict(user='alice'),
+                        msg,
+                        **kwargs).AndReturn(self.retval)
 
         self.mox.StubOutWithMock(serializer, 'serialize_entity')
         self.mox.StubOutWithMock(serializer, 'deserialize_entity')
+        self.mox.StubOutWithMock(serializer, 'serialize_context')
 
         for arg in self.args:
             serializer.serialize_entity(self.ctxt, arg).AndReturn('s' + arg)
@@ -307,6 +310,8 @@ class TestSerializer(test_utils.BaseTestCase):
         if self.call:
             serializer.deserialize_entity(self.ctxt, self.retval).\
                 AndReturn('d' + self.retval)
+
+        serializer.serialize_context(self.ctxt).AndReturn(dict(user='alice'))
 
         self.mox.ReplayAll()
 

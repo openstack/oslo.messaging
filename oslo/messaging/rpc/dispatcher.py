@@ -86,6 +86,7 @@ class RPCDispatcher(object):
         return utils.version_is_compatible(endpoint_version, version)
 
     def _dispatch(self, endpoint, method, ctxt, args):
+        ctxt = self.serializer.deserialize_context(ctxt)
         new_args = dict()
         for argname, arg in args.iteritems():
             new_args[argname] = self.serializer.deserialize_entity(ctxt, arg)

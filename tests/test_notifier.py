@@ -201,12 +201,15 @@ class TestSerializer(test_utils.BaseTestCase):
 
         timeutils.set_time_override()
 
+        self.mox.StubOutWithMock(serializer, 'serialize_context')
         self.mox.StubOutWithMock(serializer, 'serialize_entity')
-        serializer.serialize_entity({}, 'bar').AndReturn('sbar')
+        serializer.serialize_context(dict(user='bob')).\
+            AndReturn(dict(user='alice'))
+        serializer.serialize_entity(dict(user='bob'), 'bar').AndReturn('sbar')
 
         self.mox.ReplayAll()
 
-        notifier.info({}, 'test.notify', 'bar')
+        notifier.info(dict(user='bob'), 'test.notify', 'bar')
 
         message = {
             'message_id': str(message_id),
@@ -217,7 +220,8 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow.override_time),
         }
 
-        self.assertEquals(_impl_test.NOTIFICATIONS, [({}, message, 'INFO')])
+        self.assertEquals(_impl_test.NOTIFICATIONS,
+                          [(dict(user='alice'), message, 'INFO')])
 
 
 class TestLogNotifier(test_utils.BaseTestCase):

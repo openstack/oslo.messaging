@@ -129,6 +129,8 @@ class _CallContext(object):
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately. See RPCClient.cast()."""
         msg = self._make_message(ctxt, method, kwargs)
+        ctxt = self.serializer.serialize_context(ctxt)
+
         if self.version_cap:
             self._check_version_cap(msg.get('version'))
         try:
@@ -149,6 +151,7 @@ class _CallContext(object):
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
         msg = self._make_message(ctxt, method, kwargs)
+        msg_ctxt = self.serializer.serialize_context(ctxt)
 
         timeout = self.timeout
         if self.timeout is None:
@@ -160,7 +163,7 @@ class _CallContext(object):
             self._check_version_cap(msg.get('version'))
 
         try:
-            result = self.transport._send(self.target, ctxt, msg,
+            result = self.transport._send(self.target, msg_ctxt, msg,
                                           wait_for_reply=True, timeout=timeout)
         except driver_base.TransportDriverError as ex:
             raise ClientSendError(self.target, ex)
@@ -335,6 +338,9 @@ class RPCClient(object):
         Method arguments must either be primitive types or types supported by
         the client's serializer (if any).
 
+        Similarly, the request context must be a dict unless the client's
+        serializer supports serializing another type.
+
         :param ctxt: a request context dict
         :type ctxt: dict
         :param method: the method name
@@ -348,7 +354,9 @@ class RPCClient(object):
         """Invoke a method and wait for a reply.
 
         Method arguments must either be primitive types or types supported by
-        the client's serializer (if any).
+        the client's serializer (if any). Similarly, the request context must
+        be a dict unless the client's serializer supports serializing another
+        type.
 
         The semantics of how any errors raised by the remote RPC endpoint
         method are handled are quite subtle.
