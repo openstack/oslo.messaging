@@ -24,6 +24,7 @@ from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging import _urls as urls
 
 LOG = logging.getLogger(__name__)
 
@@ -247,6 +248,8 @@ class AMQPDriverBase(base.BaseDriver):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 
+        self._server_params = self._parse_url(self._url)
+
         self._default_exchange = default_exchange
 
         # FIXME(markmc): temp hack
@@ -260,10 +263,46 @@ class AMQPDriverBase(base.BaseDriver):
         self._reply_q_conn = None
         self._waiter = None
 
+    @staticmethod
+    def _parse_url(url):
+        if url is None:
+            return None
+
+        parsed = urls.parse_url(url)
+
+        # Make sure there's not a query string; that could identify
+        # requirements we can't comply with (e.g., ssl), so reject it if
+        # it's present
+        if parsed['parameters']:
+            raise messaging.InvalidTransportURL(
+                url, "Cannot comply with query string in transport URL")
+
+        if not parsed['hosts']:
+            return None
+
+        sp = {
+            'virtual_host': parsed['virtual_host'],
+        }
+
+        # FIXME(markmc): support multiple hosts
+        host = parsed['hosts'][0]
+
+        if ':' in host['host']:
+            (sp['hostname'], sp['port']) = host['host'].split(':', 1)
+            sp['port'] = int(sp['port'])
+        else:
+            sp['hostname'] = host['host']
+
+        sp['username'] = host['username']
+        sp['password'] = host['password']
+
+        return sp
+
     def _get_connection(self, pooled=True):
         return rpc_amqp.ConnectionContext(self.conf,
                                           self._connection_pool,
-                                          pooled=pooled)
+                                          pooled=pooled,
+                                          server_params=self._server_params)
 
     def _get_reply_q(self):
         with self._reply_q_lock:
