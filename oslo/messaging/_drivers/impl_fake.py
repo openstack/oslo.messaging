@@ -22,7 +22,6 @@ import time
 
 from oslo import messaging
 from oslo.messaging._drivers import base
-from oslo.messaging import _urls as urls
 
 
 class FakeIncomingMessage(base.IncomingMessage):
@@ -92,7 +91,7 @@ class FakeDriver(base.BaseDriver):
         super(FakeDriver, self).__init__(conf, url, default_exchange,
                                          allowed_remote_exmods=[])
 
-        self._default_exchange = urls.exchange_from_url(url, default_exchange)
+        self._default_exchange = default_exchange
 
         self._exchanges_lock = threading.Lock()
         self._exchanges = {}

@@ -134,7 +134,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=[]):
 
     An example transport URL might be::
 
-        rabbit://me:passwd@host:5672/myexchange
+        rabbit://me:passwd@host:5672/virtual_host
 
     :param conf: the user configuration
     :type conf: cfg.ConfigOpts
