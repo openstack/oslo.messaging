@@ -16,3 +16,5 @@ Server
 .. autofunction:: expected_exceptions
 
 .. autoexception:: ExpectedException
+
+.. autofunction:: get_local_context

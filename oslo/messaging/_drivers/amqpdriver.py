@@ -73,8 +73,6 @@ class AMQPListener(base.Listener):
         self.incoming = []
 
     def __call__(self, message):
-        # FIXME(markmc): del local.store.context
-
         # FIXME(markmc): logging isn't driver specific
         rpc_common._safe_log(LOG.debug, 'received %s', message)
 

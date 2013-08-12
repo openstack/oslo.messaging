@@ -26,6 +26,7 @@ __all__ = [
 import logging
 
 from oslo.messaging import _utils as utils
+from oslo.messaging import localcontext
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
 from oslo.messaging import target
@@ -118,7 +119,11 @@ class RPCDispatcher(object):
                 continue
 
             if hasattr(endpoint, method):
-                return self._dispatch(endpoint, method, ctxt, args)
+                localcontext.set_local_context(ctxt)
+                try:
+                    return self._dispatch(endpoint, method, ctxt, args)
+                finally:
+                    localcontext.clear_local_context()
 
             found_compatible = True
 
