@@ -24,6 +24,7 @@ import kombu
 import testscenarios
 
 from oslo import messaging
+from oslo.messaging._drivers import common as driver_common
 from oslo.messaging._drivers import impl_rabbit as rabbit_driver
 from oslo.messaging.openstack.common import jsonutils
 from oslo.messaging import transport as msg_transport
@@ -96,6 +97,14 @@ class TestSendReceive(test_utils.BaseTestCase):
         senders = []
         replies = []
         msgs = []
+        errors = []
+
+        def stub_error(msg, *a, **kw):
+            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+                a = a[0]
+            errors.append(str(msg) % a)
+
+        self.stubs.Set(driver_common.LOG, 'error', stub_error)
 
         def send_and_wait_for_reply(i):
             try:
@@ -149,6 +158,11 @@ class TestSendReceive(test_utils.BaseTestCase):
                 self.assertIsInstance(reply, ZeroDivisionError)
             else:
                 self.assertEqual(reply, {'bar': order[i]})
+
+        if not self.timeout and self.failure and not self.expected:
+            self.assertTrue(len(errors) > 0, errors)
+        else:
+            self.assertEqual(len(errors), 0, errors)
 
 
 TestSendReceive.generate_scenarios()
