@@ -16,17 +16,17 @@
 import urlparse
 
 
-def parse_url(url, default_exchange=None):
+def parse_url(url):
     """Parse an url.
 
     Assuming a URL takes the form of:
 
-        transport://user:pass@host1:port[,hostN:portN]/exchange[?opt=val]
+        transport://user:pass@host1:port[,hostN:portN]/virtual_host[?opt=val]
 
     then parse the URL and return a dictionary with the following structure:
 
         {
-            'exchange': 'exchange'
+            'virtual_host': 'virtual_host',
             'transport': 'transport',
             'hosts': [{'username': 'username',
                        'password': 'password'
@@ -62,12 +62,10 @@ def parse_url(url, default_exchange=None):
 
     :param url: The URL to parse
     :type url: str
-    :param default_exchange: what to return if no exchange found in URL
-    :type default_exchange: str
     :returns: A dictionary with the parsed data
     """
     if not url:
-        return dict(exchange=default_exchange)
+        return None
 
     # NOTE(flaper87): Not PY3K compliant
     if not isinstance(url, basestring):
@@ -77,12 +75,10 @@ def parse_url(url, default_exchange=None):
 
     parsed = dict(transport=url.scheme)
 
-    exchange = None
+    virtual_host = None
     if url.path.startswith('/'):
-        exchange = url.path[1:].split('/')[0]
-    if not exchange:
-        exchange = default_exchange
-    parsed["exchange"] = exchange
+        virtual_host = url.path[1:]
+    parsed["virtual_host"] = virtual_host
 
     # NOTE(flaper87): Parse netloc.
     hosts = []
@@ -113,20 +109,3 @@ def parse_url(url, default_exchange=None):
     parsed['parameters'] = parameters
 
     return parsed
-
-
-def exchange_from_url(url, default_exchange=None):
-    """Parse an exchange name from a URL.
-
-    Assuming a URL takes the form of:
-
-      transport:///myexchange
-
-    then parse the URL and return the exchange name.
-
-    :param url: the URL to parse
-    :type url: str
-    :param default_exchange: what to return if no exchange found in URL
-    :type default_exchange: str
-    """
-    return parse_url(url, default_exchange)['exchange']

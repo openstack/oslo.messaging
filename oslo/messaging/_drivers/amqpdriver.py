@@ -24,7 +24,6 @@ from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
-from oslo.messaging import _urls as urls
 
 LOG = logging.getLogger(__name__)
 
@@ -248,7 +247,7 @@ class AMQPDriverBase(base.BaseDriver):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 
-        self._default_exchange = urls.exchange_from_url(url, default_exchange)
+        self._default_exchange = default_exchange
 
         # FIXME(markmc): temp hack
         if self._default_exchange:
