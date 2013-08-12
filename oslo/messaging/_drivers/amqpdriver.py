@@ -24,7 +24,6 @@ from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
-from oslo.messaging import _urls as urls
 
 LOG = logging.getLogger(__name__)
 
@@ -241,12 +240,12 @@ class ReplyWaiter(object):
 
 class AMQPDriverBase(base.BaseDriver):
 
-    def __init__(self, conf, connection_pool, url=None, default_exchange=None,
-                 allowed_remote_exmods=[]):
+    def __init__(self, conf, url, connection_pool,
+                 default_exchange=None, allowed_remote_exmods=[]):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 
-        self._server_params = self._parse_url(self._url)
+        self._server_params = self._server_params_from_url(self._url)
 
         self._default_exchange = default_exchange
 
@@ -261,38 +260,22 @@ class AMQPDriverBase(base.BaseDriver):
         self._reply_q_conn = None
         self._waiter = None
 
-    @staticmethod
-    def _parse_url(url):
-        if url is None:
-            return None
-
-        parsed = urls.parse_url(url)
-
-        # Make sure there's not a query string; that could identify
-        # requirements we can't comply with (e.g., ssl), so reject it if
-        # it's present
-        if parsed['parameters']:
-            raise messaging.InvalidTransportURL(
-                url, "Cannot comply with query string in transport URL")
-
-        if not parsed['hosts']:
+    def _server_params_from_url(self, url):
+        if not url.hosts:
             return None
 
         sp = {
-            'virtual_host': parsed['virtual_host'],
+            'virtual_host': url.virtual_host,
         }
 
         # FIXME(markmc): support multiple hosts
-        host = parsed['hosts'][0]
+        host = url.hosts[0]
 
-        if ':' in host['host']:
-            (sp['hostname'], sp['port']) = host['host'].split(':', 1)
-            sp['port'] = int(sp['port'])
-        else:
-            sp['hostname'] = host['host']
-
-        sp['username'] = host['username']
-        sp['password'] = host['password']
+        sp['hostname'] = host.hostname
+        if host.port is not None:
+            sp['port'] = host.port
+        sp['username'] = host.username or ''
+        sp['password'] = host.password or ''
 
         return sp
 

@@ -55,8 +55,8 @@ class BaseDriver(object):
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, conf, url=None, default_exchange=None,
-                 allowed_remote_exmods=[]):
+    def __init__(self, conf, url,
+                 default_exchange=None, allowed_remote_exmods=[]):
         self.conf = conf
         self._url = url
         self._default_exchange = default_exchange

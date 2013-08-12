@@ -8,4 +8,9 @@ Transport
 
 .. autoclass:: Transport
 
+.. autoclass:: TransportURL
+   :members:
+
+.. autoclass:: TransportHost
+
 .. autofunction:: set_transport_defaults

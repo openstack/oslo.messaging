@@ -873,13 +873,14 @@ def cleanup():
 
 class RabbitDriver(amqpdriver.AMQPDriverBase):
 
-    def __init__(self, conf, url=None, default_exchange=None,
+    def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=[]):
         conf.register_opts(rabbit_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 
         connection_pool = rpc_amqp.get_connection_pool(conf, Connection)
 
-        super(RabbitDriver, self).__init__(conf, connection_pool,
-                                           url, default_exchange,
+        super(RabbitDriver, self).__init__(conf, url,
+                                           connection_pool,
+                                           default_exchange,
                                            allowed_remote_exmods)

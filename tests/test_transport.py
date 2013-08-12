@@ -52,26 +52,12 @@ class _FakeManager(object):
 class GetTransportTestCase(test_utils.BaseTestCase):
 
     scenarios = [
-        ('all_none',
-         dict(url=None, transport_url=None, rpc_backend=None,
-              control_exchange=None, allowed=None,
-              expect=dict(backend=None,
-                          exchange=None,
-                          url=None,
-                          allowed=[]))),
         ('rpc_backend',
          dict(url=None, transport_url=None, rpc_backend='testbackend',
               control_exchange=None, allowed=None,
               expect=dict(backend='testbackend',
                           exchange=None,
-                          url=None,
-                          allowed=[]))),
-        ('control_exchange',
-         dict(url=None, transport_url=None, rpc_backend=None,
-              control_exchange='testexchange', allowed=None,
-              expect=dict(backend=None,
-                          exchange='testexchange',
-                          url=None,
+                          url='testbackend:',
                           allowed=[]))),
         ('transport_url',
          dict(url=None, transport_url='testtransport:', rpc_backend=None,
@@ -87,12 +73,19 @@ class GetTransportTestCase(test_utils.BaseTestCase):
                           exchange=None,
                           url='testtransport:',
                           allowed=[]))),
+        ('control_exchange',
+         dict(url=None, transport_url=None, rpc_backend='testbackend',
+              control_exchange='testexchange', allowed=None,
+              expect=dict(backend='testbackend',
+                          exchange='testexchange',
+                          url='testbackend:',
+                          allowed=[]))),
         ('allowed_remote_exmods',
-         dict(url=None, transport_url=None, rpc_backend=None,
+         dict(url=None, transport_url=None, rpc_backend='testbackend',
               control_exchange=None, allowed=['foo', 'bar'],
-              expect=dict(backend=None,
+              expect=dict(backend='testbackend',
                           exchange=None,
-                          url=None,
+                          url='testbackend:',
                           allowed=['foo', 'bar']))),
     ]
 
@@ -107,11 +100,11 @@ class GetTransportTestCase(test_utils.BaseTestCase):
 
         self.mox.StubOutWithMock(driver, 'DriverManager')
 
-        invoke_args = [self.conf]
+        invoke_args = [self.conf,
+                       messaging.TransportURL.parse(self.conf,
+                                                    self.expect['url'])]
         invoke_kwds = dict(default_exchange=self.expect['exchange'],
                            allowed_remote_exmods=self.expect['allowed'])
-        if self.expect['url']:
-            invoke_kwds['url'] = self.expect['url']
 
         drvr = _FakeDriver(self.conf)
         driver.DriverManager('oslo.messaging.drivers',
@@ -164,7 +157,9 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
         if self.rpc_backend:
             self.mox.StubOutWithMock(driver, 'DriverManager')
 
-            invoke_args = [self.conf]
+            invoke_args = [self.conf,
+                           messaging.TransportURL.parse(self.conf,
+                                                        self.url)]
             invoke_kwds = dict(default_exchange='openstack',
                                allowed_remote_exmods=[])
 
@@ -191,7 +186,7 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 
             for k, v in self.ex.items():
                 self.assertTrue(hasattr(ex, k))
-                self.assertEqual(getattr(ex, k), v)
+                self.assertEqual(str(getattr(ex, k)), v)
 
 
 # FIXME(markmc): this could be used elsewhere

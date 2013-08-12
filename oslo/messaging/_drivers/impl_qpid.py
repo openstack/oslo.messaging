@@ -742,13 +742,14 @@ def cleanup():
 
 class QpidDriver(amqpdriver.AMQPDriverBase):
 
-    def __init__(self, conf, url=None, default_exchange=None,
-                 allowed_remote_exmods=[]):
+    def __init__(self, conf, url,
+                 default_exchange=None, allowed_remote_exmods=[]):
         conf.register_opts(qpid_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 
         connection_pool = rpc_amqp.get_connection_pool(conf, Connection)
 
-        super(QpidDriver, self).__init__(conf, connection_pool,
-                                         url, default_exchange,
+        super(QpidDriver, self).__init__(conf, url,
+                                         connection_pool,
+                                         default_exchange,
                                          allowed_remote_exmods)
