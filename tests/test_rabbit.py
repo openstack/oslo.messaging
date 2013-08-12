@@ -47,6 +47,66 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
         self.assertIsInstance(transport._driver, rabbit_driver.RabbitDriver)
 
 
+class TestRabbitTransportURL(test_utils.BaseTestCase):
+
+    scenarios = [
+        ('none', dict(url=None, expected=None)),
+        ('empty', dict(url='rabbit:///', expected=None)),
+        ('localhost',
+         dict(url='rabbit://localhost/',
+              expected=dict(hostname='localhost',
+                            username='',
+                            password='',
+                            virtual_host=''))),
+        ('no_creds',
+         dict(url='rabbit://host/virtual_host',
+              expected=dict(hostname='host',
+                            username='',
+                            password='',
+                            virtual_host='virtual_host'))),
+        ('no_port',
+         dict(url='rabbit://user:password@host/virtual_host',
+              expected=dict(hostname='host',
+                            username='user',
+                            password='password',
+                            virtual_host='virtual_host'))),
+        ('full_url',
+         dict(url='rabbit://user:password@host:10/virtual_host',
+              expected=dict(hostname='host',
+                            port=10,
+                            username='user',
+                            password='password',
+                            virtual_host='virtual_host'))),
+    ]
+
+    def setUp(self):
+        super(TestRabbitTransportURL, self).setUp()
+        self.conf.register_opts(msg_transport._transport_opts)
+        self.conf.register_opts(rabbit_driver.rabbit_opts)
+        self.config(rpc_backend='rabbit')
+        self.config(fake_rabbit=True)
+
+    def test_transport_url(self):
+        cnx_init = rabbit_driver.Connection.__init__
+        passed_params = []
+
+        def record_params(self, conf, server_params=None):
+            passed_params.append(server_params)
+            return cnx_init(self, conf, server_params)
+
+        self.stubs.Set(rabbit_driver.Connection, '__init__', record_params)
+
+        transport = messaging.get_transport(self.conf, self.url)
+
+        driver = transport._driver
+
+        target = messaging.Target(topic='testtopic')
+
+        driver.send(target, {}, {})
+
+        self.assertEquals(passed_params[0], self.expected)
+
+
 class TestSendReceive(test_utils.BaseTestCase):
 
     _n_senders = [
