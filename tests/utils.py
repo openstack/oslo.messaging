@@ -58,6 +58,10 @@ class BaseTestCase(testtools.TestCase):
         self.conf = conf
         self.addCleanup(self.conf.reset)
 
+        from oslo.messaging import conffixture
+        self.messaging_conf = self.useFixture(
+            conffixture.ConfFixture(self.conf))
+
         moxfixture = self.useFixture(moxstubout.MoxStubout())
         self.mox = moxfixture.mox
         self.stubs = moxfixture.stubs
