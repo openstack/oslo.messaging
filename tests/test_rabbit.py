@@ -27,7 +27,6 @@ from oslo import messaging
 from oslo.messaging._drivers import common as driver_common
 from oslo.messaging._drivers import impl_rabbit as rabbit_driver
 from oslo.messaging.openstack.common import jsonutils
-from oslo.messaging import transport as msg_transport
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -37,10 +36,8 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRabbitDriverLoad, self).setUp()
-        self.conf.register_opts(msg_transport._transport_opts)
-        self.conf.register_opts(rabbit_driver.rabbit_opts)
-        self.config(rpc_backend='rabbit')
-        self.config(fake_rabbit=True)
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
 
     def test_driver_load(self):
         transport = messaging.get_transport(self.conf)
@@ -81,10 +78,8 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRabbitTransportURL, self).setUp()
-        self.conf.register_opts(msg_transport._transport_opts)
-        self.conf.register_opts(rabbit_driver.rabbit_opts)
-        self.config(rpc_backend='rabbit')
-        self.config(fake_rabbit=True)
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
 
     def test_transport_url(self):
         cnx_init = rabbit_driver.Connection.__init__
@@ -139,10 +134,8 @@ class TestSendReceive(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestSendReceive, self).setUp()
-        self.conf.register_opts(msg_transport._transport_opts)
-        self.conf.register_opts(rabbit_driver.rabbit_opts)
-        self.config(rpc_backend='rabbit')
-        self.config(fake_rabbit=True)
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
 
     def test_send_receive(self):
         transport = messaging.get_transport(self.conf)
@@ -313,10 +306,8 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRequestWireFormat, self).setUp()
-        self.conf.register_opts(msg_transport._transport_opts)
-        self.conf.register_opts(rabbit_driver.rabbit_opts)
-        self.config(rpc_backend='rabbit')
-        self.config(fake_rabbit=True)
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
 
         self.uuids = []
         self.orig_uuid4 = uuid.uuid4
@@ -462,10 +453,8 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestReplyWireFormat, self).setUp()
-        self.conf.register_opts(msg_transport._transport_opts)
-        self.conf.register_opts(rabbit_driver.rabbit_opts)
-        self.config(rpc_backend='rabbit')
-        self.config(fake_rabbit=True)
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
 
     def test_reply_wire_format(self):
         if hasattr(self, 'skip_msg'):

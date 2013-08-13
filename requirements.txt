@@ -1,6 +1,9 @@
 oslo.config
 stevedore
 
+# for oslo.messging.conffixture
+fixtures>=0.3.12
+
 # for timeutils
 iso8601
 

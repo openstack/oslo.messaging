@@ -5,7 +5,6 @@ flake8==2.0
 hacking>=0.5.6,<0.7
 
 discover
-fixtures>=0.3.12
 mox>=0.5.3
 python-subunit
 testrepository>=0.0.13

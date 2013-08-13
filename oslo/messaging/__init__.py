@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from .conffixture import *
 from .exceptions import *
 from .localcontext import *
 from .notify import *
