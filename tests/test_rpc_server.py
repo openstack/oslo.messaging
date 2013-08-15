@@ -46,10 +46,10 @@ class ServerSetupMixin(object):
     class TestSerializer(object):
 
         def serialize_entity(self, ctxt, entity):
-            return 's' + (entity or '')
+            return ('s' + entity) if entity else entity
 
         def deserialize_entity(self, ctxt, entity):
-            return 'd' + (entity or '')
+            return ('d' + entity) if entity else entity
 
         def serialize_context(self, ctxt):
             return dict([(k, 's' + v) for k, v in ctxt.items()])
@@ -228,6 +228,11 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
 
+        self.assertIsNone(client.call({}, 'ping', arg=None))
+        self.assertEqual(client.call({}, 'ping', arg=0), 0)
+        self.assertEqual(client.call({}, 'ping', arg=False), False)
+        self.assertEqual(client.call({}, 'ping', arg=[]), [])
+        self.assertEqual(client.call({}, 'ping', arg={}), {})
         self.assertEqual(client.call({}, 'ping', arg='foo'), 'dsdsfoo')
 
         self._stop_server(client, server_thread)
@@ -243,6 +248,11 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         client = self._setup_client(transport)
 
         direct = client.prepare(server='testserver')
+        self.assertIsNone(direct.call({}, 'ping', arg=None))
+        self.assertEqual(client.call({}, 'ping', arg=0), 0)
+        self.assertEqual(client.call({}, 'ping', arg=False), False)
+        self.assertEqual(client.call({}, 'ping', arg=[]), [])
+        self.assertEqual(client.call({}, 'ping', arg={}), {})
         self.assertEqual(direct.call({}, 'ping', arg='foo'), 'dsdsfoo')
 
         self._stop_server(client, server_thread)

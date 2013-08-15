@@ -32,9 +32,7 @@ class ExecutorBase(object):
 
     def _dispatch(self, incoming):
         try:
-            reply = self.callback(incoming.ctxt, incoming.message)
-            if reply:
-                incoming.reply(reply)
+            incoming.reply(self.callback(incoming.ctxt, incoming.message))
         except messaging.ExpectedException as e:
             _LOG.debug('Expected exception during message handling (%s)' %
                        e.exc_info[1])
