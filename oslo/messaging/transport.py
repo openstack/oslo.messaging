@@ -385,7 +385,24 @@ class TransportURL(object):
                 username, hostname = host.split('@', 1)
                 if ':' in username:
                     username, password = username.split(':', 1)
-            if ':' in hostname:
+
+            if hostname[0] == '[':
+                # Find the closing ']' and extract the hostname
+                host_end = hostname.find(']')
+                if host_end < 0:
+                    # NOTE(Vek): Identical to what Python 2.7's
+                    # urlparse.urlparse() raises in this case
+                    raise ValueError("Invalid IPv6 URL")
+
+                port_text = hostname[host_end:]
+                hostname = hostname[1:host_end]
+
+                # Now we need the port; this is compliant with how urlparse
+                # parses the port data
+                port = None
+                if ':' in port_text:
+                    port = int(port_text.split(':', 1)[1])
+            elif ':' in hostname:
                 hostname, port = hostname.split(':', 1)
                 port = int(port)
 

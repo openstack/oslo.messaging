@@ -42,12 +42,26 @@ class TestParseURL(test_utils.BaseTestCase):
                           hosts=[
                               dict(host='host'),
                           ]))),
+        ('ipv6_host',
+         dict(url='foo://[ffff::1]/bar',
+              expect=dict(transport='foo',
+                          virtual_host='bar',
+                          hosts=[
+                              dict(host='ffff::1'),
+                          ]))),
         ('port',
          dict(url='foo://host:1234/bar',
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(host='host', port=1234),
+                          ]))),
+        ('ipv6_port',
+         dict(url='foo://[ffff::1]:1234/bar',
+              expect=dict(transport='foo',
+                          virtual_host='bar',
+                          hosts=[
+                              dict(host='ffff::1', port=1234),
                           ]))),
         ('username',
          dict(url='foo://u@host:1234/bar',
@@ -81,6 +95,16 @@ class TestParseURL(test_utils.BaseTestCase):
                               dict(host='host1', port=1234,
                                    username='u1', password='p1'),
                               dict(host='host2', port=4321,
+                                   username='u2', password='p2'),
+                          ]))),
+        ('multi_creds_ipv6',
+         dict(url='foo://u1:p1@[ffff::1]:1234,u2:p2@[ffff::2]:4321/bar',
+              expect=dict(transport='foo',
+                          virtual_host='bar',
+                          hosts=[
+                              dict(host='ffff::1', port=1234,
+                                   username='u1', password='p1'),
+                              dict(host='ffff::2', port=4321,
                                    username='u2', password='p2'),
                           ]))),
     ]
