@@ -32,6 +32,7 @@ class FakeIncomingMessage(base.IncomingMessage):
 
     def reply(self, reply=None, failure=None, log_failure=True):
         if self._reply_q:
+            failure = failure[1] if failure else None
             self._reply_q.put((reply, failure))
 
 
