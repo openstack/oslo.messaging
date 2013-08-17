@@ -215,9 +215,9 @@ class ReplyWaiter(object):
                 try:
                     while True:
                         reply, ending = self._poll_connection(msg_id, timeout)
-                        if reply:
+                        if not ending:
                             final_reply = reply
-                        elif ending:
+                        else:
                             return final_reply
                 finally:
                     self.conn_lock.release()
@@ -232,9 +232,9 @@ class ReplyWaiter(object):
                     # The first thread got its reply, let's try and take over
                     # the responsibility for polling
                     continue
-                if reply:
+                if not ending:
                     final_reply = reply
-                elif ending:
+                else:
                     return final_reply
 
 
