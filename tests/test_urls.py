@@ -78,6 +78,13 @@ class TestParseURL(test_utils.BaseTestCase):
                               dict(host='host', port=1234,
                                    username='u', password='p'),
                           ]))),
+        ('creds_no_host',
+         dict(url='foo://u:p@/bar',
+              expect=dict(transport='foo',
+                          virtual_host='bar',
+                          hosts=[
+                              dict(username='u', password='p'),
+                          ]))),
         ('multi_host',
          dict(url='foo://u:p@host1:1234,host2:4321/bar',
               expect=dict(transport='foo',

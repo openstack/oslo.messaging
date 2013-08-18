@@ -386,7 +386,9 @@ class TransportURL(object):
                 if ':' in username:
                     username, password = username.split(':', 1)
 
-            if hostname[0] == '[':
+            if not hostname:
+                hostname = None
+            elif hostname.startswith('['):
                 # Find the closing ']' and extract the hostname
                 host_end = hostname.find(']')
                 if host_end < 0:
