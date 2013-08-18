@@ -115,7 +115,7 @@ class ReplyWaiters(object):
             queue.put(message_data)
 
     def wake_all(self, except_id):
-        msg_ids = [i for i in self._queues if i != except_id]
+        msg_ids = [i for i in self._queues.keys() if i != except_id]
         for msg_id in msg_ids:
             self.put(msg_id, None)
 
