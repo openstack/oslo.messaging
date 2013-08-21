@@ -82,6 +82,16 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         ('not_v2', dict(v2=False)),
     ]
 
+    _publisher_id = [
+        ('ctor_pub_id', dict(ctor_pub_id='test',
+                             expected_pub_id='test')),
+        ('prep_pub_id', dict(prep_pub_id='test.localhost',
+                             expected_pub_id='test.localhost')),
+        ('override', dict(ctor_pub_id='test',
+                          prep_pub_id='test.localhost',
+                          expected_pub_id='test.localhost')),
+    ]
+
     _topics = [
         ('no_topics', dict(topics=[])),
         ('single_topic', dict(topics=['notifications'])),
@@ -108,6 +118,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._v1,
                                                          cls._v2,
+                                                         cls._publisher_id,
                                                          cls._topics,
                                                          cls._priority,
                                                          cls._payload,
@@ -136,7 +147,14 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         transport = _FakeTransport(self.conf)
 
-        notifier = messaging.Notifier(transport, 'test.localhost')
+        if hasattr(self, 'ctor_pub_id'):
+            notifier = messaging.Notifier(transport,
+                                          publisher_id=self.ctor_pub_id)
+        else:
+            notifier = messaging.Notifier(transport)
+
+        if hasattr(self, 'prep_pub_id'):
+            notifier = notifier.prepare(publisher_id=self.prep_pub_id)
 
         self.mox.StubOutWithMock(transport, '_send_notification')
 
@@ -148,7 +166,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         message = {
             'message_id': str(message_id),
-            'publisher_id': 'test.localhost',
+            'publisher_id': self.expected_pub_id,
             'event_type': 'test.notify',
             'priority': self.priority.upper(),
             'payload': self.payload,

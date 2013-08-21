@@ -60,7 +60,7 @@ class Notifier(object):
     The Notifier class is used for sending notification messages over a
     messaging transport or other means.
 
-    Notification messages follow the following format:
+    Notification messages follow the following format::
 
         {'message_id': str(uuid.uuid4()),
          'publisher_id': 'compute.host1',
@@ -72,22 +72,29 @@ class Notifier(object):
     A Notifier object can be instantiated with a transport object and a
     publisher ID:
 
-        notifier = notifier.Notifier(get_transport(CONF), 'compute.host1')
+        notifier = notifier.Notifier(get_transport(CONF), 'compute')
 
     and notifications are sent via drivers chosen with the notification_driver
     config option and on the topics consen with the notification_topics config
     option.
 
     Alternatively, a Notifier object can be instantiated with a specific
-    driver or topic:
+    driver or topic::
 
         notifier = notifier.Notifier(RPC_TRANSPORT,
                                      'compute.host',
                                      driver='messaging',
                                      topic='notifications')
+
+    Notifier objects are relatively expensive to instantiate (mostly the cost
+    of loading notification drivers), so it is possible to specialize a given
+    Notifier object with a different publisher id using the prepare() method::
+
+        notifier = notifier.prepare(publisher_id='compute')
+        notifier.info(ctxt, event_type, payload)
     """
 
-    def __init__(self, transport, publisher_id,
+    def __init__(self, transport, publisher_id=None,
                  driver=None, topic=None,
                  serializer=None):
         """Construct a Notifier object.
@@ -127,12 +134,26 @@ class Notifier(object):
             },
         )
 
-    def _notify(self, ctxt, event_type, payload, priority):
+    _marker = object()
+
+    def prepare(self, publisher_id=_marker):
+        """Return a specialized Notifier instance.
+
+        Returns a new Notifier instance with the supplied publisher_id. Allows
+        sending notifications from multiple publisher_ids without the overhead
+        of notification driver loading.
+
+        :param publisher_id: field in notifications sent, e.g. 'compute.host1'
+        :type publisher_id: str
+        """
+        return _SubNotifier._prepare(self, publisher_id)
+
+    def _notify(self, ctxt, event_type, payload, priority, publisher_id=None):
         payload = self._serializer.serialize_entity(ctxt, payload)
         ctxt = self._serializer.serialize_context(ctxt)
 
         msg = dict(message_id=uuidutils.generate_uuid(),
-                   publisher_id=self.publisher_id,
+                   publisher_id=publisher_id or self.publisher_id,
                    event_type=event_type,
                    priority=priority,
                    payload=payload,
@@ -208,3 +229,26 @@ class Notifier(object):
         :type payload: dict
         """
         self._notify(ctxt, event_type, payload, 'CRITICAL')
+
+
+class _SubNotifier(Notifier):
+
+    _marker = Notifier._marker
+
+    def __init__(self, base, publisher_id):
+        self._base = base
+        self.conf = base.conf
+        self.transport = base.transport
+        self.publisher_id = publisher_id
+
+        self._serializer = self._base._serializer
+        self._driver_mgr = self._base._driver_mgr
+
+    def _notify(self, ctxt, event_type, payload, priority):
+        super(_SubNotifier, self)._notify(ctxt, event_type, payload, priority)
+
+    @classmethod
+    def _prepare(cls, base, publisher_id=_marker):
+        if publisher_id is cls._marker:
+            publisher_id = base.publisher_id
+        return cls(base, publisher_id)
