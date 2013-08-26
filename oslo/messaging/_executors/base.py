@@ -40,7 +40,7 @@ class ExecutorBase(object):
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
-            _LOG.error("Failed to process message... skipping it.",
+            _LOG.error('Exception during message handling',
                        exc_info=exc_info)
             incoming.reply(failure=exc_info)
 
