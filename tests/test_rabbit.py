@@ -24,6 +24,7 @@ import kombu
 import testscenarios
 
 from oslo import messaging
+from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as driver_common
 from oslo.messaging._drivers import impl_rabbit as rabbit_driver
 from oslo.messaging.openstack.common import jsonutils
@@ -233,6 +234,86 @@ class TestSendReceive(test_utils.BaseTestCase):
 
 
 TestSendReceive.generate_scenarios()
+
+
+class TestRacyWaitForReply(test_utils.BaseTestCase):
+
+    def setUp(self):
+        super(TestRacyWaitForReply, self).setUp()
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
+
+    def test_send_receive(self):
+        transport = messaging.get_transport(self.conf)
+        self.addCleanup(transport.cleanup)
+
+        driver = transport._driver
+
+        target = messaging.Target(topic='testtopic')
+
+        listener = driver.listen(target)
+
+        senders = []
+        replies = []
+        msgs = []
+
+        wait_conditions = []
+        orig_reply_waiter = amqpdriver.ReplyWaiter.wait
+
+        def reply_waiter(self, msg_id, timeout):
+            if wait_conditions:
+                with wait_conditions[0]:
+                    wait_conditions.pop().wait()
+            return orig_reply_waiter(self, msg_id, timeout)
+
+        self.stubs.Set(amqpdriver.ReplyWaiter, 'wait', reply_waiter)
+
+        def send_and_wait_for_reply(i):
+            replies.append(driver.send(target,
+                                       {},
+                                       {'tx_id': i},
+                                       wait_for_reply=True,
+                                       timeout=None))
+
+        while len(senders) < 2:
+            t = threading.Thread(target=send_and_wait_for_reply,
+                                 args=(len(senders), ))
+            t.daemon = True
+            senders.append(t)
+
+        # Start the first guy, receive his message, but delay his polling
+        notify_condition = threading.Condition()
+        wait_conditions.append(notify_condition)
+        senders[0].start()
+
+        msgs.append(listener.poll())
+        self.assertEqual(msgs[-1].message, {'tx_id': 0})
+
+        # Start the second guy, receive his message
+        senders[1].start()
+
+        msgs.append(listener.poll())
+        self.assertEqual(msgs[-1].message, {'tx_id': 1})
+
+        # Reply to both in order, making the second thread queue
+        # the reply meant for the first thread
+        msgs[0].reply({'rx_id': 0})
+        msgs[1].reply({'rx_id': 1})
+
+        # Wait for the second thread to finish
+        senders[1].join()
+
+        # Let the first thread continue
+        with notify_condition:
+            notify_condition.notify()
+
+        # Wait for the first thread to finish
+        senders[0].join()
+
+        # Verify replies were received out of order
+        self.assertEqual(len(replies), len(senders))
+        self.assertEqual(replies[0], {'rx_id': 1})
+        self.assertEqual(replies[1], {'rx_id': 0})
 
 
 def _declare_queue(target):
