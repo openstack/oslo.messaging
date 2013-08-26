@@ -316,13 +316,14 @@ class AMQPDriverBase(base.BaseDriver):
         context = Context(ctxt)
         msg = message
 
-        msg_id = uuid.uuid4().hex
-        msg.update({'_msg_id': msg_id})
-        LOG.debug('MSG_ID is %s' % (msg_id))
+        if wait_for_reply:
+            msg_id = uuid.uuid4().hex
+            msg.update({'_msg_id': msg_id})
+            LOG.debug('MSG_ID is %s' % (msg_id))
+            msg.update({'_reply_q': self._get_reply_q()})
+
         rpc_amqp._add_unique_id(msg)
         rpc_amqp.pack_context(msg, context)
-
-        msg.update({'_reply_q': self._get_reply_q()})
 
         if envelope:
             msg = rpc_common.serialize_msg(msg)
