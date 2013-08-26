@@ -23,7 +23,6 @@ __all__ = [
     'RemoteError',
 ]
 
-import inspect
 import logging
 
 from oslo.config import cfg
@@ -88,14 +87,13 @@ class _CallContext(object):
     _marker = object()
 
     def __init__(self, transport, target, serializer,
-                 timeout=None, check_for_lock=None, version_cap=None):
+                 timeout=None, version_cap=None):
         self.conf = transport.conf
 
         self.transport = transport
         self.target = target
         self.serializer = serializer
         self.timeout = timeout
-        self.check_for_lock = check_for_lock
         self.version_cap = version_cap
 
         super(_CallContext, self).__init__()
@@ -138,16 +136,6 @@ class _CallContext(object):
         except driver_base.TransportDriverError as ex:
             raise ClientSendError(self.target, ex)
 
-    def _check_for_lock(self):
-        locks_held = self.check_for_lock(self.conf)
-        if locks_held:
-            stack = ' :: '.join([frame[3] for frame in inspect.stack()])
-            _LOG.warning('An RPC is being made while holding a lock. The '
-                         'locks currently held are %(locks)s. This is '
-                         'probably a bug. Please report it. Include the '
-                         'following: [%(stack)s].',
-                         {'locks': locks_held, 'stack': stack})
-
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
         msg = self._make_message(ctxt, method, kwargs)
@@ -157,8 +145,6 @@ class _CallContext(object):
         if self.timeout is None:
             timeout = self.conf.rpc_response_timeout
 
-        if self.check_for_lock:
-            self._check_for_lock()
         if self.version_cap:
             self._check_version_cap(msg.get('version'))
 
@@ -173,7 +159,7 @@ class _CallContext(object):
     def _prepare(cls, base,
                  exchange=_marker, topic=_marker, namespace=_marker,
                  version=_marker, server=_marker, fanout=_marker,
-                 timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+                 timeout=_marker, version_cap=_marker):
         """Prepare a method invocation context. See RPCClient.prepare()."""
         kwargs = dict(
             exchange=exchange,
@@ -188,24 +174,21 @@ class _CallContext(object):
 
         if timeout is cls._marker:
             timeout = base.timeout
-        if check_for_lock is cls._marker:
-            check_for_lock = base.check_for_lock
         if version_cap is cls._marker:
             version_cap = base.version_cap
 
         return _CallContext(base.transport, target,
                             base.serializer,
-                            timeout, check_for_lock,
-                            version_cap)
+                            timeout, version_cap)
 
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+                timeout=_marker, version_cap=_marker):
         """Prepare a method invocation context. See RPCClient.prepare()."""
         return self._prepare(self,
                              exchange, topic, namespace,
                              version, server, fanout,
-                             timeout, check_for_lock, version_cap)
+                             timeout, version_cap)
 
 
 class RPCClient(object):
@@ -244,12 +227,12 @@ class RPCClient(object):
             cctxt = self._client.prepare(version='2.5')
             return cctxt.call(ctxt, 'test', arg=arg)
 
-    RPCClient have a number of other properties - timeout, check_for_lock and
+    RPCClient have a number of other properties - for example, timeout and
     version_cap - which may make sense to override for some method invocations,
     so they too can be passed to prepare()::
 
         def test(self, ctxt, arg):
-            cctxt = self._client.prepare(check_for_lock=None, timeout=10)
+            cctxt = self._client.prepare(timeout=10)
             return cctxt.call(ctxt, 'test', arg=arg)
 
     However, this class can be used directly without wrapping it another class.
@@ -265,8 +248,7 @@ class RPCClient(object):
     """
 
     def __init__(self, transport, target,
-                 timeout=None, check_for_lock=None,
-                 version_cap=None, serializer=None):
+                 timeout=None, version_cap=None, serializer=None):
         """Construct an RPC client.
 
         :param transport: a messaging transport handle
@@ -275,8 +257,6 @@ class RPCClient(object):
         :type target: Target
         :param timeout: an optional default timeout (in seconds) for call()s
         :type timeout: int or float
-        :param check_for_lock: a callable that given conf returns held locks
-        :type check_for_lock: bool
         :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
         :param serializer: an optional entity serializer
@@ -288,7 +268,6 @@ class RPCClient(object):
         self.transport = transport
         self.target = target
         self.timeout = timeout
-        self.check_for_lock = check_for_lock
         self.version_cap = version_cap
         self.serializer = serializer or msg_serializer.NoOpSerializer()
 
@@ -298,7 +277,7 @@ class RPCClient(object):
 
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, check_for_lock=_marker, version_cap=_marker):
+                timeout=_marker, version_cap=_marker):
         """Prepare a method invocation context.
 
         Use this method to override client properties for an individual method
@@ -322,15 +301,13 @@ class RPCClient(object):
         :type fanout: bool
         :param timeout: an optional default timeout (in seconds) for call()s
         :type timeout: int or float
-        :param check_for_lock: a callable that given conf returns held locks
-        :type check_for_lock: bool
         :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
         """
         return _CallContext._prepare(self,
                                      exchange, topic, namespace,
                                      version, server, fanout,
-                                     timeout, check_for_lock, version_cap)
+                                     timeout, version_cap)
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately.
