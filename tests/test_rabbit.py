@@ -98,7 +98,7 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
         target = messaging.Target(topic='testtopic')
 
-        driver.send(target, {}, {})
+        driver.listen(target)
 
         self.assertEquals(passed_params[0], self.expected)
 
@@ -449,10 +449,9 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
         received = msgs[0]
         received['oslo.message'] = jsonutils.loads(received['oslo.message'])
 
+        # FIXME(markmc): add _msg_id and _reply_q check
         expected_msg = {
-            '_msg_id': self.uuids[0].hex,
-            '_unique_id': self.uuids[1].hex,
-            '_reply_q': 'reply_' + self.uuids[2].hex,
+            '_unique_id': self.uuids[0].hex,
         }
         expected_msg.update(self.expected)
         expected_msg.update(self.expected_ctxt)
