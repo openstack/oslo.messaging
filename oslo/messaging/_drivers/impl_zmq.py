@@ -29,6 +29,7 @@ from oslo.config import cfg
 
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
 from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
@@ -826,6 +827,7 @@ class ZmqDriver(base.BaseDriver):
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=[]):
         conf.register_opts(zmq_opts)
+        conf.register_opts(impl_eventlet._eventlet_opts)
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)
