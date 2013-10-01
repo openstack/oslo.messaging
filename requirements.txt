@@ -1,12 +1,12 @@
-oslo.config
-stevedore
+oslo.config>=1.2.0
+stevedore>=0.10
 
 # for timeutils
-iso8601
+iso8601>=0.1.4
 
 # for jsonutils
 six
 
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
-eventlet>=0.12.0
+eventlet>=0.13.0
