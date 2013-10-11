@@ -238,8 +238,8 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow.override_time),
         }
 
-        self.assertEquals(_impl_test.NOTIFICATIONS,
-                          [(dict(user='alice'), message, 'INFO')])
+        self.assertEqual(_impl_test.NOTIFICATIONS,
+                         [(dict(user='alice'), message, 'INFO')])
 
 
 class TestLogNotifier(test_utils.BaseTestCase):
