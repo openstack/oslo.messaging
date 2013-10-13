@@ -236,7 +236,7 @@ class RPCClient(object):
             return cctxt.call(ctxt, 'test', arg=arg)
 
     However, this class can be used directly without wrapping it another class.
-    For example:
+    For example::
 
         transport = messaging.get_transport(cfg.CONF)
         target = messaging.Target(topic='testtopic', version='2.0')
