@@ -15,6 +15,8 @@
 
 import abc
 
+import six
+
 from oslo.messaging import exceptions
 
 
@@ -22,9 +24,8 @@ class TransportDriverError(exceptions.MessagingException):
     """Base class for transport driver specific exceptions."""
 
 
+@six.add_metaclass(abc.ABCMeta)
 class IncomingMessage(object):
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, listener, ctxt, message):
         self.conf = listener.conf
@@ -37,9 +38,8 @@ class IncomingMessage(object):
         "Send a reply or failure back to the client."
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Listener(object):
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, driver, target):
         self.conf = driver.conf
@@ -51,9 +51,8 @@ class Listener(object):
         "Blocking until a message is pending and return IncomingMessage."
 
 
+@six.add_metaclass(abc.ABCMeta)
 class BaseDriver(object):
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=[]):

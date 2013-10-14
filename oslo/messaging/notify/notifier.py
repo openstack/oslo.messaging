@@ -19,6 +19,7 @@ import abc
 import logging
 
 from oslo.config import cfg
+import six
 from stevedore import named
 
 from oslo.messaging.openstack.common import timeutils
@@ -39,9 +40,8 @@ _notifier_opts = [
 _LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class _Driver(object):
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, topics, transport):
         self.conf = conf

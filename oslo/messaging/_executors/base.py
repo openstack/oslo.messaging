@@ -16,14 +16,15 @@ import abc
 import logging
 import sys
 
+import six
+
 from oslo import messaging
 
 _LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(abc.ABCMeta)
 class ExecutorBase(object):
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, conf, listener, callback):
         self.conf = conf

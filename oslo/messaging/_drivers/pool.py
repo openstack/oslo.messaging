@@ -17,7 +17,10 @@ import abc
 import collections
 import threading
 
+import six
 
+
+@six.add_metaclass(abc.ABCMeta)
 class Pool(object):
 
     """A thread-safe object pool.
@@ -27,8 +30,6 @@ class Pool(object):
 
     Resizing is not supported.
     """
-
-    __metaclass__ = abc.ABCMeta
 
     def __init__(self, max_size=4):
         super(Pool, self).__init__()
