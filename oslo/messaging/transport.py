@@ -43,8 +43,8 @@ _transport_opts = [
                     'full configuration. If not set, we fall back to the '
                     'rpc_backend option and driver specific configuration.'),
     cfg.StrOpt('rpc_backend',
-               default='kombu',
-               help='The messaging driver to use, defaults to kombu. Other '
+               default='rabbit',
+               help='The messaging driver to use, defaults to rabbit. Other '
                     'drivers include qpid and zmq.'),
     cfg.StrOpt('control_exchange',
                default='openstack',
