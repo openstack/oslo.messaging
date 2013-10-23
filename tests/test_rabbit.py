@@ -48,14 +48,19 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
 class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
-        ('none', dict(url=None, expected=None)),
-        ('empty', dict(url='rabbit:///', expected=None)),
+        ('none', dict(url=None, expected={})),
+        ('empty',
+         dict(url='rabbit:///',
+              expected=dict(virtual_host=''))),
         ('localhost',
          dict(url='rabbit://localhost/',
               expected=dict(hostname='localhost',
                             username='',
                             password='',
                             virtual_host=''))),
+        ('virtual_host',
+         dict(url='rabbit:///vhost',
+              expected=dict(virtual_host='vhost'))),
         ('no_creds',
          dict(url='rabbit://host/virtual_host',
               expected=dict(hostname='host',
