@@ -170,7 +170,7 @@ class EqualityTestCase(test_utils.BaseTestCase):
             self.assertEqual(a, b)
             self.assertFalse(a != b)
         else:
-            self.assertNotEquals(a, b)
+            self.assertNotEqual(a, b)
             self.assertFalse(a == b)
 
 

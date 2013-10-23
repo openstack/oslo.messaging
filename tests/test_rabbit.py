@@ -100,7 +100,7 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
         driver.listen(target)
 
-        self.assertEquals(passed_params[0], self.expected)
+        self.assertEqual(passed_params[0], self.expected)
 
 
 class TestSendReceive(test_utils.BaseTestCase):
