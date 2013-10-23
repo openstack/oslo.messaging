@@ -2,7 +2,7 @@ oslo.config>=1.2.0
 stevedore>=0.10
 
 # for timeutils
-iso8601>=0.1.4,!=0.1.5,!=0.1.6
+iso8601>=0.1.4,!=0.1.5,!=0.1.6,!=0.1.7
 
 # for jsonutils
 six>=1.4.1
