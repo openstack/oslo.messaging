@@ -309,10 +309,16 @@ class AMQPDriverBase(base.BaseDriver):
         return sp
 
     def _get_connection(self, pooled=True):
+        # FIXME(markmc): we don't yet have a connection pool for each
+        # Transport instance, so we'll only use the pool with the
+        # transport configuration from the config file
+        server_params = self._server_params or None
+        if server_params:
+            pooled = False
         return rpc_amqp.ConnectionContext(self.conf,
                                           self._connection_pool,
                                           pooled=pooled,
-                                          server_params=self._server_params)
+                                          server_params=server_params)
 
     def _get_reply_q(self):
         with self._reply_q_lock:

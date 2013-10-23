@@ -48,7 +48,7 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
 class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
-        ('none', dict(url=None, expected={})),
+        ('none', dict(url=None, expected=None)),
         ('empty',
          dict(url='rabbit:///',
               expected=dict(virtual_host=''))),
@@ -84,28 +84,33 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRabbitTransportURL, self).setUp()
+
         self.messaging_conf.transport_driver = 'rabbit'
         self.messaging_conf.in_memory = True
 
-    def test_transport_url(self):
+        self._server_params = []
         cnx_init = rabbit_driver.Connection.__init__
-        passed_params = []
 
-        def record_params(self, conf, server_params=None):
-            passed_params.append(server_params)
-            return cnx_init(self, conf, server_params)
+        def record_params(cnx, conf, server_params=None):
+            self._server_params.append(server_params)
+            return cnx_init(cnx, conf, server_params)
+
+        def dummy_send(cnx, topic, msg, timeout=None):
+            pass
 
         self.stubs.Set(rabbit_driver.Connection, '__init__', record_params)
+        self.stubs.Set(rabbit_driver.Connection, 'topic_send', dummy_send)
 
-        transport = messaging.get_transport(self.conf, self.url)
+        self._driver = messaging.get_transport(self.conf, self.url)._driver
+        self._target = messaging.Target(topic='testtopic')
 
-        driver = transport._driver
+    def test_transport_url_listen(self):
+        self._driver.listen(self._target)
+        self.assertEqual(self._server_params[0], self.expected)
 
-        target = messaging.Target(topic='testtopic')
-
-        driver.listen(target)
-
-        self.assertEqual(passed_params[0], self.expected)
+    def test_transport_url_send(self):
+        self._driver.send(self._target, {}, {})
+        self.assertEqual(self._server_params[0], self.expected)
 
 
 class TestSendReceive(test_utils.BaseTestCase):
