@@ -291,21 +291,20 @@ class AMQPDriverBase(base.BaseDriver):
         self._waiter = None
 
     def _server_params_from_url(self, url):
-        if not url.hosts:
-            return None
+        sp = {}
 
-        sp = {
-            'virtual_host': url.virtual_host,
-        }
+        if url.virtual_host is not None:
+            sp['virtual_host'] = url.virtual_host
 
-        # FIXME(markmc): support multiple hosts
-        host = url.hosts[0]
+        if url.hosts:
+            # FIXME(markmc): support multiple hosts
+            host = url.hosts[0]
 
-        sp['hostname'] = host.hostname
-        if host.port is not None:
-            sp['port'] = host.port
-        sp['username'] = host.username or ''
-        sp['password'] = host.password or ''
+            sp['hostname'] = host.hostname
+            if host.port is not None:
+                sp['port'] = host.port
+            sp['username'] = host.username or ''
+            sp['password'] = host.password or ''
 
         return sp
 
