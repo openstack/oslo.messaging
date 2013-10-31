@@ -275,8 +275,8 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
     def test_send_notification(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
-        self.mox.StubOutWithMock(t._driver, 'send')
-        t._driver.send(self._target, 'ctxt', 'message', 1.0)
+        self.mox.StubOutWithMock(t._driver, 'send_notification')
+        t._driver.send_notification(self._target, 'ctxt', 'message', 1.0)
         self.mox.ReplayAll()
 
         t._send_notification(self._target, 'ctxt', 'message', version=1.0)

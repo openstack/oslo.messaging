@@ -91,7 +91,7 @@ class Transport(object):
         if not target.topic:
             raise exceptions.InvalidTarget('A topic is required to send',
                                            target)
-        self._driver.send(target, ctxt, message, version)
+        self._driver.send_notification(target, ctxt, message, version)
 
     def _listen(self, target):
         if not (target.topic and target.server):
