@@ -53,10 +53,10 @@ qpid_opts = [
                 help='Qpid HA cluster host:port pairs'),
     cfg.StrOpt('qpid_username',
                default='',
-               help='Username for qpid connection'),
+               help='Username for Qpid connection'),
     cfg.StrOpt('qpid_password',
                default='',
-               help='Password for qpid connection',
+               help='Password for Qpid connection',
                secret=True),
     cfg.StrOpt('qpid_sasl_mechanisms',
                default='',
@@ -123,11 +123,11 @@ class ConsumerBase(object):
         self.connect(session)
 
     def connect(self, session):
-        """Declare the reciever on connect."""
+        """Declare the receiver on connect."""
         self._declare_receiver(session)
 
     def reconnect(self, session):
-        """Re-declare the receiver after a qpid reconnect."""
+        """Re-declare the receiver after a Qpid reconnect."""
         self._declare_receiver(session)
 
     def _declare_receiver(self, session):
@@ -267,7 +267,7 @@ class Publisher(object):
                 "type": "topic",
                 "x-declare": {
                     "durable": False,
-                    # auto-delete isn't implemented for exchanges in qpid,
+                    # auto-delete isn't implemented for exchanges in Qpid,
                     # but put in here anyway
                     "auto-delete": True,
                 },
@@ -327,7 +327,7 @@ class DirectPublisher(Publisher):
 class TopicPublisher(Publisher):
     """Publisher class for 'topic'."""
     def __init__(self, conf, session, topic):
-        """init a 'topic' publisher.
+        """Init a 'topic' publisher.
         """
         exchange_name = rpc_amqp.get_control_exchange(conf)
         super(TopicPublisher, self).__init__(session,
@@ -337,7 +337,7 @@ class TopicPublisher(Publisher):
 class FanoutPublisher(Publisher):
     """Publisher class for 'fanout'."""
     def __init__(self, conf, session, topic):
-        """init a 'fanout' publisher.
+        """Init a 'fanout' publisher.
         """
         super(FanoutPublisher, self).__init__(
             session,
@@ -347,7 +347,7 @@ class FanoutPublisher(Publisher):
 class NotifyPublisher(Publisher):
     """Publisher class for notifications."""
     def __init__(self, conf, session, topic):
-        """init a 'topic' publisher.
+        """Init a 'topic' publisher.
         """
         exchange_name = rpc_amqp.get_control_exchange(conf)
         super(NotifyPublisher, self).__init__(session,
@@ -582,11 +582,11 @@ class Connection(object):
         #
         # We want to create a message with attributes, e.g. a TTL. We
         # don't really need to keep 'msg' in its JSON format any longer
-        # so let's create an actual qpid message here and get some
+        # so let's create an actual Qpid message here and get some
         # value-add on the go.
         #
         # WARNING: Request timeout happens to be in the same units as
-        # qpid's TTL (seconds). If this changes in the future, then this
+        # Qpid's TTL (seconds). If this changes in the future, then this
         # will need to be altered accordingly.
         #
         qpid_message = qpid_messaging.Message(content=msg, ttl=timeout)

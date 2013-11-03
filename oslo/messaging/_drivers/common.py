@@ -361,7 +361,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
     try:
         # NOTE(ameade): Dynamically create a new exception type and swap it in
         # as the new type for the exception. This only works on user defined
-        # Exceptions and not core python exceptions. This is important because
+        # Exceptions and not core Python exceptions. This is important because
         # we cannot necessarily change an exception message so we must override
         # the __str__ method.
         failure.__class__ = new_ex_type

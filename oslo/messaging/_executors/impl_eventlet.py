@@ -31,7 +31,7 @@ _eventlet_opts = [
 
 class EventletExecutor(base.ExecutorBase):
 
-    """A message exector which integrates with eventlet.
+    """A message executor which integrates with eventlet.
 
     This is an executor which polls for incoming messages from a greenthread
     and dispatches each message in its own greenthread.

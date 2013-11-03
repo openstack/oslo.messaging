@@ -50,7 +50,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
 
         # If a reply_q exists, add the msg_id to the reply and pass the
         # reply_q to direct_send() to use it as the response queue.
-        # Otherwise use the msg_id for backward compatibilty.
+        # Otherwise use the msg_id for backward compatibility.
         if self.reply_q:
             msg['_msg_id'] = self.msg_id
             conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
@@ -97,7 +97,7 @@ class ReplyWaiters(object):
 
     def __init__(self):
         self._queues = {}
-        self._wrn_threshhold = 10
+        self._wrn_threshold = 10
 
     def get(self, msg_id, timeout):
         try:
@@ -129,11 +129,11 @@ class ReplyWaiters(object):
 
     def add(self, msg_id, queue):
         self._queues[msg_id] = queue
-        if len(self._queues) > self._wrn_threshhold:
+        if len(self._queues) > self._wrn_threshold:
             LOG.warn('Number of call queues is greater than warning '
-                     'threshhold: %d. There could be a leak.' %
-                     self._wrn_threshhold)
-            self._wrn_threshhold *= 2
+                     'threshold: %d. There could be a leak.' %
+                     self._wrn_threshold)
+            self._wrn_threshold *= 2
 
     def remove(self, msg_id):
         del self._queues[msg_id]

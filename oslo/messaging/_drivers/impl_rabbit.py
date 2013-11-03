@@ -349,7 +349,7 @@ class Publisher(object):
 class DirectPublisher(Publisher):
     """Publisher class for 'direct'."""
     def __init__(self, conf, channel, msg_id, **kwargs):
-        """init a 'direct' publisher.
+        """Init a 'direct' publisher.
 
         Kombu options may be passed as keyword args to override defaults
         """
@@ -365,7 +365,7 @@ class DirectPublisher(Publisher):
 class TopicPublisher(Publisher):
     """Publisher class for 'topic'."""
     def __init__(self, conf, channel, topic, **kwargs):
-        """init a 'topic' publisher.
+        """Init a 'topic' publisher.
 
         Kombu options may be passed as keyword args to override defaults
         """
@@ -384,7 +384,7 @@ class TopicPublisher(Publisher):
 class FanoutPublisher(Publisher):
     """Publisher class for 'fanout'."""
     def __init__(self, conf, channel, topic, **kwargs):
-        """init a 'fanout' publisher.
+        """Init a 'fanout' publisher.
 
         Kombu options may be passed as keyword args to override defaults
         """

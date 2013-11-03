@@ -20,9 +20,9 @@
 """
 Shared code between AMQP based openstack.common.rpc implementations.
 
-The code in this module is shared between the rpc implemenations based on AMQP.
-Specifically, this includes impl_kombu and impl_qpid.  impl_carrot also uses
-AMQP, but is deprecated and predates this code.
+The code in this module is shared between the rpc implementations based on
+AMQP. Specifically, this includes impl_kombu and impl_qpid.  impl_carrot also
+uses AMQP, but is deprecated and predates this code.
 """
 
 import collections
@@ -190,7 +190,7 @@ class ReplyProxy(ConnectionContext):
     def __init__(self, conf, connection_pool):
         self._call_waiters = {}
         self._num_call_waiters = 0
-        self._num_call_waiters_wrn_threshhold = 10
+        self._num_call_waiters_wrn_threshold = 10
         self._reply_q = 'reply_' + uuid.uuid4().hex
         super(ReplyProxy, self).__init__(conf, connection_pool, pooled=False)
         self.declare_direct_consumer(self._reply_q, self._process_data)
@@ -209,11 +209,11 @@ class ReplyProxy(ConnectionContext):
 
     def add_call_waiter(self, waiter, msg_id):
         self._num_call_waiters += 1
-        if self._num_call_waiters > self._num_call_waiters_wrn_threshhold:
+        if self._num_call_waiters > self._num_call_waiters_wrn_threshold:
             LOG.warn(_('Number of call waiters is greater than warning '
-                       'threshhold: %d. There could be a MulticallProxyWaiter '
-                       'leak.') % self._num_call_waiters_wrn_threshhold)
-            self._num_call_waiters_wrn_threshhold *= 2
+                       'threshold: %d. There could be a MulticallProxyWaiter '
+                       'leak.') % self._num_call_waiters_wrn_threshold)
+            self._num_call_waiters_wrn_threshold *= 2
         self._call_waiters[msg_id] = waiter
 
     def del_call_waiter(self, msg_id):
@@ -242,7 +242,7 @@ def msg_reply(conf, msg_id, reply_q, connection_pool, reply=None,
         _add_unique_id(msg)
         # If a reply_q exists, add the msg_id to the reply and pass the
         # reply_q to direct_send() to use it as the response queue.
-        # Otherwise use the msg_id for backward compatibilty.
+        # Otherwise use the msg_id for backward compatibility.
         if reply_q:
             msg['_msg_id'] = msg_id
             conn.direct_send(reply_q, rpc_common.serialize_msg(msg))
@@ -278,7 +278,7 @@ def unpack_context(conf, msg):
     """Unpack context from msg."""
     context_dict = {}
     for key in list(msg.keys()):
-        # NOTE(vish): Some versions of python don't like unicode keys
+        # NOTE(vish): Some versions of Python don't like unicode keys
         #             in kwargs.
         key = str(key)
         if key.startswith('_context_'):

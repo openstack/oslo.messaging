@@ -36,7 +36,7 @@ def get_local_context(ctxt):
     request ID, user and tenant in every message logged from a RPC endpoint
     method.
 
-    :returns: the context for the retuest dispatched in the current thread
+    :returns: the context for the request dispatched in the current thread
     """
     return getattr(_STORE, _KEY, None)
 

@@ -132,7 +132,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=[]):
     If a transport URL is supplied as a parameter, any transport configuration
     contained in it takes precedence. If no transport URL is supplied, but
     there is a transport URL supplied in the user's configuration then that
-    URL will take the place of the url parameter. In both cases, any
+    URL will take the place of the URL parameter. In both cases, any
     configuration not supplied in the transport URL may be taken from
     individual configuration parameters in the user's configuration.
 
@@ -324,7 +324,7 @@ class TransportURL(object):
 
         * It is first splitted by ',' in order to support multiple hosts
         * The last parsed username and password will be propagated to the rest
-          of hotsts specified:
+          of hosts specified:
 
           user:passwd@host1:port1,host2:port2
 
