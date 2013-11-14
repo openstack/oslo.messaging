@@ -226,7 +226,7 @@ class TransportURL(object):
         self.conf = conf
         self.conf.register_opts(_transport_opts)
         self._transport = transport
-        self._virtual_host = virtual_host
+        self.virtual_host = virtual_host
         self._hosts = hosts
         if self._hosts is None:
             self._hosts = []
@@ -241,14 +241,6 @@ class TransportURL(object):
     @transport.setter
     def transport(self, value):
         self._transport = value
-
-    @property
-    def virtual_host(self):
-        return self._virtual_host
-
-    @virtual_host.setter
-    def virtual_host(self, value):
-        self._virtual_host = value
 
     @property
     def hosts(self):
