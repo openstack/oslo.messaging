@@ -227,9 +227,10 @@ class TransportURL(object):
         self.conf.register_opts(_transport_opts)
         self._transport = transport
         self.virtual_host = virtual_host
-        self._hosts = hosts
-        if self._hosts is None:
-            self._hosts = []
+        if hosts is None:
+            self.hosts = []
+        else:
+            self.hosts = hosts
 
     @property
     def transport(self):
@@ -241,10 +242,6 @@ class TransportURL(object):
     @transport.setter
     def transport(self, value):
         self._transport = value
-
-    @property
-    def hosts(self):
-        return self._hosts
 
     def __eq__(self, other):
         return (self.transport == other.transport and
