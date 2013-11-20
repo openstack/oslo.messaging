@@ -206,6 +206,8 @@ class Notifier(object):
         """
         self._notify(ctxt, event_type, payload, 'WARN')
 
+    warning = warn
+
     def error(self, ctxt, event_type, payload):
         """Send a notification at error level.
 
