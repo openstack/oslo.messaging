@@ -17,13 +17,13 @@
 
 import abc
 import logging
+import uuid
 
 from oslo.config import cfg
 import six
 from stevedore import named
 
 from oslo.messaging.openstack.common import timeutils
-from oslo.messaging.openstack.common import uuidutils
 from oslo.messaging import serializer as msg_serializer
 
 _notifier_opts = [
@@ -152,7 +152,7 @@ class Notifier(object):
         payload = self._serializer.serialize_entity(ctxt, payload)
         ctxt = self._serializer.serialize_context(ctxt)
 
-        msg = dict(message_id=uuidutils.generate_uuid(),
+        msg = dict(message_id=str(uuid.uuid4()),
                    publisher_id=publisher_id or self.publisher_id,
                    event_type=event_type,
                    priority=priority,
