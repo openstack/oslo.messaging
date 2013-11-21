@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['Notifier']
+__all__ = ['Notifier',
+           'LoggingNotificationHandler']
 
 from .notifier import *
+from .logger import *

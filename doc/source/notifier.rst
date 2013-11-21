@@ -6,3 +6,6 @@ Notifier
 
 .. autoclass:: Notifier
    :members:
+
+.. autoclass:: LoggingNotificationHandler
+   :members:
