@@ -144,7 +144,7 @@ class ConsumerBase(object):
                 },
             }
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         addr_opts["link"]["x-declare"].update(link_opts)
 
@@ -225,7 +225,7 @@ class DirectConsumer(ConsumerBase):
             node_name = "amq.direct/%s" % msg_id
             node_opts = {}
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(DirectConsumer, self).__init__(conf, session, callback,
                                              node_name, node_opts, msg_id,
@@ -257,7 +257,7 @@ class TopicConsumer(ConsumerBase):
         elif conf.qpid_topology_version == 2:
             node_name = "amq.topic/topic/%s/%s" % (exchange_name, topic)
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(TopicConsumer, self).__init__(conf, session, callback, node_name,
                                             {}, name or topic, link_opts)
@@ -286,7 +286,7 @@ class FanoutConsumer(ConsumerBase):
             node_opts = {}
             link_name = ""
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(FanoutConsumer, self).__init__(conf, session, callback,
                                              node_name, node_opts, link_name,
@@ -335,7 +335,7 @@ class Publisher(object):
         elif conf.qpid_topology_version == 2:
             self.address = node_name
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         self.reconnect(session)
 
@@ -387,7 +387,7 @@ class DirectPublisher(Publisher):
             node_name = "amq.direct/%s" % msg_id
             node_opts = {}
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(DirectPublisher, self).__init__(conf, session, node_name,
                                               node_opts)
@@ -405,7 +405,7 @@ class TopicPublisher(Publisher):
         elif conf.qpid_topology_version == 2:
             node_name = "amq.topic/topic/%s/%s" % (exchange_name, topic)
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(TopicPublisher, self).__init__(conf, session, node_name)
 
@@ -423,7 +423,7 @@ class FanoutPublisher(Publisher):
             node_name = "amq.topic/fanout/%s" % topic
             node_opts = {}
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(FanoutPublisher, self).__init__(conf, session, node_name,
                                               node_opts)
@@ -442,7 +442,7 @@ class NotifyPublisher(Publisher):
         elif conf.qpid_topology_version == 2:
             node_name = "amq.topic/topic/%s/%s" % (exchange_name, topic)
         else:
-            raise_invalid_topology_version()
+            raise_invalid_topology_version(conf)
 
         super(NotifyPublisher, self).__init__(conf, session, node_name,
                                               node_opts)
