@@ -170,6 +170,18 @@ class Notifier(object):
         if self._driver_mgr.extensions:
             self._driver_mgr.map(do_notify)
 
+    def audit(self, ctxt, event_type, payload):
+        """Send a notification at audit level.
+
+        :param ctxt: a request context dict
+        :type ctxt: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
+        self._notify(ctxt, event_type, payload, 'AUDIT')
+
     def debug(self, ctxt, event_type, payload):
         """Send a notification at debug level.
 

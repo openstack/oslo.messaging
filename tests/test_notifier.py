@@ -99,6 +99,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
     ]
 
     _priority = [
+        ('audit', dict(priority='audit')),
         ('debug', dict(priority='debug')),
         ('info', dict(priority='info')),
         ('warn', dict(priority='warn')),
