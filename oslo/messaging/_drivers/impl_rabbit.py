@@ -118,6 +118,16 @@ def _get_queue_arguments(conf):
     return {'x-ha-policy': 'all'} if conf.rabbit_ha_queues else {}
 
 
+class RabbitMessage(dict):
+    def __init__(self, raw_message):
+        super(RabbitMessage, self).__init__(
+            rpc_common.deserialize_msg(raw_message.payload))
+        self._raw_message = raw_message
+
+    def acknowledge(self):
+        self._raw_message.ack()
+
+
 class ConsumerBase(object):
     """Consumer base class."""
 
@@ -151,12 +161,11 @@ class ConsumerBase(object):
         """
 
         try:
-            msg = rpc_common.deserialize_msg(message.payload)
-            callback(msg)
+            callback(RabbitMessage(message))
         except Exception:
             LOG.exception(_("Failed to process message"
                             " ... skipping it."))
-        message.ack()
+            message.ack()
 
     def consume(self, *args, **kwargs):
         """Actually declare the consumer on the amqp channel.  This will

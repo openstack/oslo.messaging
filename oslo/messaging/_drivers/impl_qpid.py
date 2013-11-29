@@ -88,6 +88,17 @@ def raise_invalid_topology_version(conf):
     raise Exception(msg)
 
 
+class QpidMessage(dict):
+    def __init__(self, session, raw_message):
+        super(QpidMessage, self).__init__(
+            rpc_common.deserialize_msg(raw_message.content))
+        self._raw_message = raw_message
+        self._session = session
+
+    def acknowledge(self):
+        self._session.acknowledge(self._raw_message)
+
+
 class ConsumerBase(object):
     """Consumer base class."""
 
@@ -183,11 +194,9 @@ class ConsumerBase(object):
         message = self.receiver.fetch()
         try:
             self._unpack_json_msg(message)
-            msg = rpc_common.deserialize_msg(message.content)
-            self.callback(msg)
+            self.callback(QpidMessage(message))
         except Exception:
             LOG.exception(_("Failed to process message... skipping it."))
-        finally:
             self.session.acknowledge(message)
 
     def get_receiver(self):

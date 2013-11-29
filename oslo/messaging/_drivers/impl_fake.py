@@ -26,7 +26,6 @@ from oslo.messaging._drivers import base
 
 
 class FakeIncomingMessage(base.IncomingMessage):
-
     def __init__(self, listener, ctxt, message, reply_q):
         super(FakeIncomingMessage, self).__init__(listener, ctxt, message)
         self._reply_q = reply_q
@@ -49,7 +48,9 @@ class FakeListener(base.Listener):
             for target in self._targets:
                 (ctxt, message, reply_q) = self._exchange.poll(target)
                 if message is not None:
-                    return FakeIncomingMessage(self, ctxt, message, reply_q)
+                    message = FakeIncomingMessage(self, ctxt, message, reply_q)
+                    message.acknowledge()
+                    return message
             time.sleep(.05)
 
 
