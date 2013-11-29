@@ -27,51 +27,54 @@ class TestParseURL(test_utils.BaseTestCase):
 
     scenarios = [
         ('transport',
-         dict(url='foo:',
+         dict(url='foo:', aliases=None,
+              expect=dict(transport='foo'))),
+        ('transport_aliased',
+         dict(url='bar:', aliases=dict(bar='foo'),
               expect=dict(transport='foo'))),
         ('virtual_host_slash',
-         dict(url='foo:////',
+         dict(url='foo:////', aliases=None,
               expect=dict(transport='foo', virtual_host='/'))),
         ('virtual_host',
-         dict(url='foo:///bar',
+         dict(url='foo:///bar', aliases=None,
               expect=dict(transport='foo', virtual_host='bar'))),
         ('host',
-         dict(url='foo://host/bar',
+         dict(url='foo://host/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(host='host'),
                           ]))),
         ('ipv6_host',
-         dict(url='foo://[ffff::1]/bar',
+         dict(url='foo://[ffff::1]/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(host='ffff::1'),
                           ]))),
         ('port',
-         dict(url='foo://host:1234/bar',
+         dict(url='foo://host:1234/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(host='host', port=1234),
                           ]))),
         ('ipv6_port',
-         dict(url='foo://[ffff::1]:1234/bar',
+         dict(url='foo://[ffff::1]:1234/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(host='ffff::1', port=1234),
                           ]))),
         ('username',
-         dict(url='foo://u@host:1234/bar',
+         dict(url='foo://u@host:1234/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(host='host', port=1234, username='u'),
                           ]))),
         ('password',
-         dict(url='foo://u:p@host:1234/bar',
+         dict(url='foo://u:p@host:1234/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
@@ -79,14 +82,14 @@ class TestParseURL(test_utils.BaseTestCase):
                                    username='u', password='p'),
                           ]))),
         ('creds_no_host',
-         dict(url='foo://u:p@/bar',
+         dict(url='foo://u:p@/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
                               dict(username='u', password='p'),
                           ]))),
         ('multi_host',
-         dict(url='foo://u:p@host1:1234,host2:4321/bar',
+         dict(url='foo://u:p@host1:1234,host2:4321/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
@@ -95,7 +98,7 @@ class TestParseURL(test_utils.BaseTestCase):
                               dict(host='host2', port=4321),
                           ]))),
         ('multi_creds',
-         dict(url='foo://u1:p1@host1:1234,u2:p2@host2:4321/bar',
+         dict(url='foo://u1:p1@host1:1234,u2:p2@host2:4321/bar', aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
@@ -106,6 +109,7 @@ class TestParseURL(test_utils.BaseTestCase):
                           ]))),
         ('multi_creds_ipv6',
          dict(url='foo://u1:p1@[ffff::1]:1234,u2:p2@[ffff::2]:4321/bar',
+              aliases=None,
               expect=dict(transport='foo',
                           virtual_host='bar',
                           hosts=[
@@ -123,7 +127,7 @@ class TestParseURL(test_utils.BaseTestCase):
     def test_parse_url(self):
         self.config(rpc_backend=None)
 
-        url = messaging.TransportURL.parse(self.conf, self.url)
+        url = messaging.TransportURL.parse(self.conf, self.url, self.aliases)
 
         hosts = []
         for host in self.expect.get('hosts', []):
@@ -147,18 +151,35 @@ class TestFormatURL(test_utils.BaseTestCase):
               transport=None,
               virtual_host=None,
               hosts=[],
+              aliases=None,
+              expected='testbackend:///')),
+        ('rpc_backend_aliased',
+         dict(rpc_backend='testfoo',
+              transport=None,
+              virtual_host=None,
+              hosts=[],
+              aliases=dict(testfoo='testbackend'),
               expected='testbackend:///')),
         ('transport',
          dict(rpc_backend=None,
               transport='testtransport',
               virtual_host=None,
               hosts=[],
+              aliases=None,
+              expected='testtransport:///')),
+        ('transport_aliased',
+         dict(rpc_backend=None,
+              transport='testfoo',
+              virtual_host=None,
+              hosts=[],
+              aliases=dict(testfoo='testtransport'),
               expected='testtransport:///')),
         ('virtual_host',
          dict(rpc_backend=None,
               transport='testtransport',
               virtual_host='/vhost',
               hosts=[],
+              aliases=None,
               expected='testtransport:////vhost')),
         ('host',
          dict(rpc_backend=None,
@@ -170,6 +191,7 @@ class TestFormatURL(test_utils.BaseTestCase):
                        username='bob',
                        password='secret'),
               ],
+              aliases=None,
               expected='testtransport://bob:secret@host:10//')),
         ('multi_host',
          dict(rpc_backend=None,
@@ -185,6 +207,7 @@ class TestFormatURL(test_utils.BaseTestCase):
                        username='b2',
                        password='s2'),
               ],
+              aliases=None,
               expected='testtransport://b1:s1@h1:1000,b2:s2@h2:2000/')),
         ('quoting',
          dict(rpc_backend=None,
@@ -196,6 +219,7 @@ class TestFormatURL(test_utils.BaseTestCase):
                        username='b$',
                        password='s&'),
               ],
+              aliases=None,
               expected='testtransport://b%24:s%26@host:10//%24')),
     ]
 
@@ -216,6 +240,7 @@ class TestFormatURL(test_utils.BaseTestCase):
         url = messaging.TransportURL(self.conf,
                                      self.transport,
                                      self.virtual_host,
-                                     hosts)
+                                     hosts,
+                                     self.aliases)
 
         self.assertEqual(str(url), self.expected)
