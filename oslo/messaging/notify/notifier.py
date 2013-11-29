@@ -110,24 +110,23 @@ class Notifier(object):
         :param serializer: an optional entity serializer
         :type serializer: Serializer
         """
-        self.conf = transport.conf
-        self.conf.register_opts(_notifier_opts)
+        transport.conf.register_opts(_notifier_opts)
 
         self.transport = transport
         self.publisher_id = publisher_id
 
         self._driver_names = ([driver] if driver is not None
-                              else self.conf.notification_driver)
+                              else transport.conf.notification_driver)
 
         self._topics = ([topic] if topic is not None
-                        else self.conf.notification_topics)
+                        else transport.conf.notification_topics)
         self._serializer = serializer or msg_serializer.NoOpSerializer()
 
         self._driver_mgr = named.NamedExtensionManager(
             'oslo.messaging.notify.drivers',
             names=self._driver_names,
             invoke_on_load=True,
-            invoke_args=[self.conf],
+            invoke_args=[transport.conf],
             invoke_kwds={
                 'topics': self._topics,
                 'transport': self.transport,
@@ -251,7 +250,6 @@ class _SubNotifier(Notifier):
 
     def __init__(self, base, publisher_id):
         self._base = base
-        self.conf = base.conf
         self.transport = base.transport
         self.publisher_id = publisher_id
 
