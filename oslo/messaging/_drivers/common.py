@@ -33,7 +33,6 @@ from oslo.messaging.openstack.common import jsonutils
 # FIXME(markmc): remove this
 _ = lambda s: s
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
