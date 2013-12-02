@@ -15,6 +15,7 @@
 
 import sys
 
+import six
 import testscenarios
 
 from oslo import messaging
@@ -161,7 +162,6 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=['test'],
               kwargs={},
               str='test\ntraceback\ntraceback\n',
-              message='test',
               remote_name='Exception',
               remote_args=('test\ntraceback\ntraceback\n', ),
               remote_kwargs={})),
@@ -173,7 +173,6 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={},
               str='test\ntraceback\ntraceback\n',
-              message='I am Nova',
               remote_name='NovaStyleException_Remote',
               remote_args=('I am Nova', ),
               remote_kwargs={})),
@@ -185,7 +184,6 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=['testing'],
               kwargs={},
               str='test\ntraceback\ntraceback\n',
-              message='testing',
               remote_name='NovaStyleException_Remote',
               remote_args=('testing', ),
               remote_kwargs={})),
@@ -197,7 +195,6 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={'who': 'Oslo'},
               str='test\ntraceback\ntraceback\n',
-              message='I am Oslo',
               remote_name='KwargsStyleException_Remote',
               remote_args=('I am Oslo', ),
               remote_kwargs={})),
@@ -299,9 +296,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
         self.assertIsInstance(ex, self.cls)
         self.assertEqual(ex.__class__.__name__, self.remote_name)
-        self.assertEqual(str(ex), self.str)
+        self.assertEqual(six.text_type(ex), self.str)
         if hasattr(self, 'msg'):
-            self.assertEqual(ex.msg, self.msg)
+            self.assertEqual(six.text_type(ex), self.msg)
+            self.assertEqual(ex.args, (self.msg,) + self.remote_args)
         else:
-            self.assertEqual(ex.message, self.message)
-        self.assertEqual(ex.args, self.remote_args)
+            self.assertEqual(ex.args, self.remote_args)

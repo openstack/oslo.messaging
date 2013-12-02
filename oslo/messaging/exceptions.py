@@ -19,12 +19,6 @@ __all__ = ['MessagingException', 'MessagingTimeout', 'InvalidTarget']
 class MessagingException(Exception):
     """Base class for exceptions."""
 
-    def __init__(self, msg=None):
-        self.msg = msg
-
-    def __str__(self):
-        return self.msg
-
 
 class MessagingTimeout(MessagingException):
     """Raised if message sending times out."""

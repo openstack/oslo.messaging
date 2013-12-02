@@ -18,6 +18,7 @@ import itertools
 import fixtures
 import mox
 from oslo.config import cfg
+import six
 from stevedore import driver
 import testscenarios
 
@@ -181,8 +182,7 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 
             self.assertIsInstance(ex, messaging.MessagingException)
             self.assertIsInstance(ex, ex_cls)
-            self.assertTrue(hasattr(ex, 'msg'))
-            self.assertIn(ex_msg_contains, ex.msg)
+            self.assertIn(ex_msg_contains, six.text_type(ex))
 
             for k, v in self.ex.items():
                 self.assertTrue(hasattr(ex, k))
