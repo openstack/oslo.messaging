@@ -404,6 +404,16 @@ class AMQPDriverBase(base.BaseDriver):
 
         return listener
 
+    def listen_for_notifications(self, targets_and_priorities):
+        conn = self._get_connection(pooled=False)
+
+        listener = AMQPListener(self, conn)
+        for target, priority in targets_and_priorities:
+            conn.declare_topic_consumer('%s.%s' % (target.topic, priority),
+                                        callback=listener,
+                                        exchange_name=target.exchange)
+        return listener
+
     def cleanup(self):
         if self._connection_pool:
             self._connection_pool.empty()

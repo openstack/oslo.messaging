@@ -15,6 +15,7 @@ Contents
    server
    rpcclient
    notifier
+   notification_listener
    serializer
    exceptions
    opts
