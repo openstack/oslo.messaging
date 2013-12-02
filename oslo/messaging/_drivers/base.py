@@ -41,10 +41,9 @@ class IncomingMessage(object):
 @six.add_metaclass(abc.ABCMeta)
 class Listener(object):
 
-    def __init__(self, driver, target):
+    def __init__(self, driver):
         self.conf = driver.conf
         self.driver = driver
-        self.target = target
 
     @abc.abstractmethod
     def poll(self):

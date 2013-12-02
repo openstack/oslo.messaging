@@ -39,15 +39,17 @@ class FakeIncomingMessage(base.IncomingMessage):
 
 class FakeListener(base.Listener):
 
-    def __init__(self, driver, target, exchange):
-        super(FakeListener, self).__init__(driver, target)
+    def __init__(self, driver, exchange, targets):
+        super(FakeListener, self).__init__(driver)
         self._exchange = exchange
+        self._targets = targets
 
     def poll(self):
         while True:
-            (ctxt, message, reply_q) = self._exchange.poll(self.target)
-            if message is not None:
-                return FakeIncomingMessage(self, ctxt, message, reply_q)
+            for target in self._targets:
+                (ctxt, message, reply_q) = self._exchange.poll(target)
+                if message is not None:
+                    return FakeIncomingMessage(self, ctxt, message, reply_q)
             time.sleep(.05)
 
 
@@ -80,8 +82,9 @@ class FakeExchange(object):
 
     def poll(self, target):
         with self._queues_lock:
-            queue = self._get_server_queue(target.topic, target.server)
-            if not queue:
+            if target.server:
+                queue = self._get_server_queue(target.topic, target.server)
+            else:
                 queue = self._get_topic_queue(target.topic)
             return queue.pop(0) if queue else (None, None, None)
 
@@ -152,7 +155,11 @@ class FakeDriver(base.BaseDriver):
         exchange = self._get_exchange(target.exchange or
                                       self._default_exchange)
 
-        return FakeListener(self, target, exchange)
+        listener = FakeListener(self, exchange,
+                                [messaging.Target(topic=target.topic,
+                                                  server=target.server),
+                                 messaging.Target(topic=target.topic)])
+        return listener
 
     def cleanup(self):
         pass

@@ -66,8 +66,8 @@ class AMQPIncomingMessage(base.IncomingMessage):
 
 class AMQPListener(base.Listener):
 
-    def __init__(self, driver, target, conn):
-        super(AMQPListener, self).__init__(driver, target)
+    def __init__(self, driver, conn):
+        super(AMQPListener, self).__init__(driver)
         self.conn = conn
         self.msg_id_cache = rpc_amqp._MsgIdCache()
         self.incoming = []
@@ -395,7 +395,7 @@ class AMQPDriverBase(base.BaseDriver):
     def listen(self, target):
         conn = self._get_connection(pooled=False)
 
-        listener = AMQPListener(self, target, conn)
+        listener = AMQPListener(self, conn)
 
         conn.declare_topic_consumer(target.topic, listener)
         conn.declare_topic_consumer('%s.%s' % (target.topic, target.server),

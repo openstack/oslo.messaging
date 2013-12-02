@@ -846,8 +846,8 @@ class ZmqIncomingMessage(base.IncomingMessage):
 
 class ZmqListener(base.Listener):
 
-    def __init__(self, driver, target):
-        super(ZmqListener, self).__init__(driver, target)
+    def __init__(self, driver):
+        super(ZmqListener, self).__init__(driver)
         self.incoming_queue = moves.queue.Queue()
 
     def dispatch(self, ctxt, version, method, namespace, **kwargs):
@@ -948,7 +948,7 @@ class ZmqDriver(base.BaseDriver):
     def listen(self, target):
         conn = create_connection(self.conf)
 
-        listener = ZmqListener(self, target)
+        listener = ZmqListener(self)
 
         conn.create_consumer(target.topic, listener)
         conn.create_consumer('%s.%s' % (target.topic, target.server),
