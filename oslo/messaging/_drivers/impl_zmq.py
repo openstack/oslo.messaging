@@ -27,6 +27,7 @@ import uuid
 import eventlet
 import greenlet
 from oslo.config import cfg
+import six
 from six import moves
 
 from oslo.messaging._drivers import base
@@ -532,8 +533,8 @@ def unflatten_envelope(packenv):
     h = {}
     try:
         while True:
-            k = i.next()
-            h[k] = i.next()
+            k = six.next(i)
+            h[k] = six.next(i)
     except StopIteration:
         return h
 

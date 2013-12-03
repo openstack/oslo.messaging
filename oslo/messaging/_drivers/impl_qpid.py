@@ -21,6 +21,7 @@ import time
 import eventlet
 import greenlet
 from oslo.config import cfg
+import six
 
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
@@ -523,7 +524,7 @@ class Connection(object):
             consumers = self.consumers
             self.consumers = {}
 
-            for consumer in consumers.itervalues():
+            for consumer in six.itervalues(consumers):
                 consumer.reconnect(self.session)
                 self._register_consumer(consumer)
 
@@ -681,7 +682,7 @@ class Connection(object):
         it = self.iterconsume(limit=limit, timeout=timeout)
         while True:
             try:
-                it.next()
+                six.next(it)
             except StopIteration:
                 return
 
