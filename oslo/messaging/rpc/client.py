@@ -23,8 +23,6 @@ __all__ = [
     'RemoteError',
 ]
 
-import logging
-
 from oslo.config import cfg
 
 from oslo.messaging._drivers import base as driver_base
@@ -37,8 +35,6 @@ _client_opts = [
                default=60,
                help='Seconds to wait for a response from a call'),
 ]
-
-_LOG = logging.getLogger(__name__)
 
 
 class RemoteError(exceptions.MessagingException):

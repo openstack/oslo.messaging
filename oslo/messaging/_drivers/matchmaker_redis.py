@@ -18,8 +18,6 @@ The MatchMaker classes should accept a Topic or Fanout exchange key and
 return keys for direct exchanges, per (approximate) AMQP parlance.
 """
 
-import logging
-
 from oslo.config import cfg
 
 from oslo.messaging._drivers import matchmaker as mm_common
@@ -45,7 +43,6 @@ opt_group = cfg.OptGroup(name='matchmaker_redis',
                          title='Options for Redis-based MatchMaker')
 CONF.register_group(opt_group)
 CONF.register_opts(matchmaker_redis_opts, opt_group)
-LOG = logging.getLogger(__name__)
 
 
 class RedisExchange(mm_common.Exchange):

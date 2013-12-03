@@ -23,15 +23,11 @@ __all__ = [
     'UnsupportedVersion',
 ]
 
-import logging
-
 from oslo.messaging import _utils as utils
 from oslo.messaging import localcontext
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
 from oslo.messaging import target
-
-_LOG = logging.getLogger(__name__)
 
 
 class RPCDispatcherError(msg_server.MessagingServerError):

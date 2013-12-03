@@ -23,15 +23,10 @@ __all__ = [
     'ServerListenError',
 ]
 
-import logging
-
 from stevedore import driver
 
 from oslo.messaging._drivers import base as driver_base
 from oslo.messaging import exceptions
-
-
-_LOG = logging.getLogger(__name__)
 
 
 class MessagingServerError(exceptions.MessagingException):
