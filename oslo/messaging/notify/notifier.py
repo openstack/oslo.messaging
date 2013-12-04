@@ -243,6 +243,24 @@ class Notifier(object):
         """
         self._notify(ctxt, event_type, payload, 'CRITICAL')
 
+    def sample(self, ctxt, event_type, payload):
+        """Send a notification at sample level.
+
+        Sample notifications are for high-frequency events
+        that typically contain small payloads. eg: "CPU = 70%"
+
+        Not all drivers support the sample level
+        (log, for example) so these could be dropped.
+
+        :param ctxt: a request context dict
+        :type ctxt: dict
+        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :type event_type: str
+        :param payload: the notification payload
+        :type payload: dict
+        """
+        self._notify(ctxt, event_type, payload, 'SAMPLE')
+
 
 class _SubNotifier(Notifier):
 
