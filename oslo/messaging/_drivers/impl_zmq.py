@@ -29,6 +29,7 @@ import uuid
 import eventlet
 import greenlet
 from oslo.config import cfg
+from six import moves
 
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
@@ -232,7 +233,7 @@ class ZmqClient(object):
             return
 
         rpc_envelope = rpc_common.serialize_msg(data[1], envelope)
-        zmq_msg = reduce(lambda x, y: x + y, rpc_envelope.items())
+        zmq_msg = moves.reduce(lambda x, y: x + y, rpc_envelope.items())
         self.outq.send(map(bytes,
                        (msg_id, topic, 'impl_zmq_v2', data[0]) + zmq_msg))
 
