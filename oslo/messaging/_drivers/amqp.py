@@ -164,13 +164,11 @@ class ConnectionContext(rpc_common.Connection):
     def create_worker(self, topic, proxy, pool_name):
         self.connection.create_worker(topic, proxy, pool_name)
 
-    def join_consumer_pool(self, callback, pool_name, topic, exchange_name,
-                           ack_on_error=True):
+    def join_consumer_pool(self, callback, pool_name, topic, exchange_name):
         self.connection.join_consumer_pool(callback,
                                            pool_name,
                                            topic,
-                                           exchange_name,
-                                           ack_on_error)
+                                           exchange_name)
 
     def consume_in_thread(self):
         self.connection.consume_in_thread()

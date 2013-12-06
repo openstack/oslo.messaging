@@ -189,7 +189,6 @@ class ConsumerBase(object):
         except Exception:
             LOG.exception(_("Failed to process message... skipping it."))
         finally:
-            # TODO(sandy): Need support for optional ack_on_error.
             self.session.acknowledge(message)
 
     def get_receiver(self):
@@ -729,7 +728,7 @@ class Connection(object):
         return consumer
 
     def join_consumer_pool(self, callback, pool_name, topic,
-                           exchange_name=None, ack_on_error=True):
+                           exchange_name=None):
         """Register as a member of a group of consumers for a given topic from
         the specified exchange.
 
