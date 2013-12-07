@@ -123,7 +123,7 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
-def get_transport(conf, url=None, allowed_remote_exmods=[]):
+def get_transport(conf, url=None, allowed_remote_exmods=[], aliases=None):
     """A factory method for Transport objects.
 
     This method will construct a Transport object from transport configuration
@@ -150,12 +150,14 @@ def get_transport(conf, url=None, allowed_remote_exmods=[]):
                                   transport will deserialize remote exceptions
                                   from
     :type allowed_remote_exmods: list
+    :param aliases: A map of transport alias to transport name
+    :type aliases: dict
     """
     conf.register_opts(_transport_opts)
 
     if not isinstance(url, TransportURL):
         url = url or conf.transport_url
-        parsed = TransportURL.parse(conf, url)
+        parsed = TransportURL.parse(conf, url, aliases)
         if not parsed.transport:
             raise InvalidTransportURL(url, 'No scheme specified in "%s"' % url)
         url = parsed
@@ -220,9 +222,12 @@ class TransportURL(object):
     :type virtual_host: str
     :param hosts: a list of TransportHost objects
     :type hosts: list
+    :param aliases: A map of transport alias to transport name
+    :type aliases: dict
     """
 
-    def __init__(self, conf, transport=None, virtual_host=None, hosts=None):
+    def __init__(self, conf, transport=None, virtual_host=None, hosts=None,
+                 aliases=None):
         self.conf = conf
         self.conf.register_opts(_transport_opts)
         self._transport = transport
@@ -231,13 +236,18 @@ class TransportURL(object):
             self.hosts = []
         else:
             self.hosts = hosts
+        if aliases is None:
+            self.aliases = {}
+        else:
+            self.aliases = aliases
 
     @property
     def transport(self):
         if self._transport is None:
-            return self.conf.rpc_backend
+            transport = self.conf.rpc_backend
         else:
-            return self._transport
+            transport = self._transport
+        return self.aliases.get(transport, transport)
 
     @transport.setter
     def transport(self, value):
@@ -300,7 +310,7 @@ class TransportURL(object):
         return url
 
     @classmethod
-    def parse(cls, conf, url):
+    def parse(cls, conf, url, aliases=None):
         """Parse an url.
 
         Assuming a URL takes the form of:
@@ -337,10 +347,12 @@ class TransportURL(object):
         :type conf: oslo.config.cfg.ConfigOpts
         :param url: The URL to parse
         :type url: str
+        :param aliases: A map of transport alias to transport name
+        :type aliases: dict
         :returns: A TransportURL
         """
         if not url:
-            return cls(conf)
+            return cls(conf, aliases=aliases)
 
         # FIXME(flaper87): Not PY3K compliant
         if not isinstance(url, basestring):
@@ -402,4 +414,4 @@ class TransportURL(object):
                                        username=username,
                                        password=password))
 
-        return cls(conf, url.scheme, virtual_host, hosts)
+        return cls(conf, url.scheme, virtual_host, hosts, aliases)
