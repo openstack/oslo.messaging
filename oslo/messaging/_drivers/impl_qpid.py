@@ -440,6 +440,7 @@ class Connection(object):
         if not qpid_messaging:
             raise ImportError("Failed to import qpid.messaging")
 
+        self.connection = None
         self.session = None
         self.consumers = {}
         self.consumer_thread = None
@@ -463,7 +464,6 @@ class Connection(object):
         self.brokers = params['qpid_hosts']
         self.username = params['username']
         self.password = params['password']
-        self.connection_create(self.brokers[0])
         self.reconnect()
 
     def connection_create(self, broker):
@@ -494,7 +494,7 @@ class Connection(object):
         delay = 1
         while True:
             # Close the session if necessary
-            if self.connection.opened():
+            if self.connection is not None and self.connection.opened():
                 try:
                     self.connection.close()
                 except qpid_exceptions.ConnectionError:
