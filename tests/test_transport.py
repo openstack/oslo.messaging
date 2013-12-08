@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import itertools
-
 import fixtures
 import mox
 from oslo.config import cfg
@@ -231,7 +229,7 @@ class _SetDefaultsFixture(fixtures.Fixture):
         def first(seq, default=None, key=None):
             if key is None:
                 key = bool
-            return next(itertools.ifilter(key, seq), default)
+            return next(six.moves.filter(key, seq), default)
 
         def default(opts, name):
             return first(opts, key=lambda o: o.name == name).default
