@@ -16,9 +16,10 @@
 #    under the License.
 
 import json
-import Queue
 import threading
 import time
+
+from six import moves
 
 from oslo import messaging
 from oslo.messaging._drivers import base
@@ -121,7 +122,7 @@ class FakeDriver(base.BaseDriver):
 
         reply_q = None
         if wait_for_reply:
-            reply_q = Queue.Queue()
+            reply_q = moves.queue.Queue()
 
         exchange.deliver_message(target.topic, ctxt, message,
                                  server=target.server,
@@ -135,7 +136,7 @@ class FakeDriver(base.BaseDriver):
                     raise failure
                 else:
                     return reply
-            except Queue.Empty:
+            except moves.queue.Empty:
                 raise messaging.MessagingTimeout(
                     'No reply on topic %s' % target.topic)
 

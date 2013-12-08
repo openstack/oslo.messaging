@@ -16,7 +16,6 @@ import collections
 import logging
 import os
 import pprint
-import Queue
 import re
 import socket
 import sys
@@ -848,7 +847,7 @@ class ZmqListener(base.Listener):
 
     def __init__(self, driver, target):
         super(ZmqListener, self).__init__(driver, target)
-        self.incoming_queue = Queue.Queue()
+        self.incoming_queue = moves.queue.Queue()
 
     def dispatch(self, ctxt, version, method, namespace, **kwargs):
         message = {

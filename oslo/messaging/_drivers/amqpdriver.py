@@ -16,9 +16,10 @@
 __all__ = ['AMQPDriverBase']
 
 import logging
-import Queue
 import threading
 import uuid
+
+from six import moves
 
 from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
@@ -102,14 +103,14 @@ class ReplyWaiters(object):
     def get(self, msg_id, timeout):
         try:
             return self._queues[msg_id].get(block=True, timeout=timeout)
-        except Queue.Empty:
+        except moves.queue.Empty:
             raise messaging.MessagingTimeout('Timed out waiting for a reply '
                                              'to message ID %s' % msg_id)
 
     def check(self, msg_id):
         try:
             return self._queues[msg_id].get(block=False)
-        except Queue.Empty:
+        except moves.queue.Empty:
             return None
 
     def put(self, msg_id, message_data):
@@ -158,7 +159,7 @@ class ReplyWaiter(object):
         self.incoming.append(message)
 
     def listen(self, msg_id):
-        queue = Queue.Queue()
+        queue = moves.queue.Queue()
         self.waiters.add(msg_id, queue)
 
     def unlisten(self, msg_id):
