@@ -27,13 +27,11 @@ __all__ = [
     'set_transport_defaults',
 ]
 
-import urllib
-import urlparse
-
 from oslo.config import cfg
 from stevedore import driver
 
 from oslo.messaging import exceptions
+from oslo.messaging.openstack.common.py3kcompat import urlutils
 
 
 _transport_opts = [
@@ -285,9 +283,9 @@ class TransportURL(object):
             # Build the username and password portion of the transport URL
             if username is not None or password is not None:
                 if username is not None:
-                    netloc += urllib.quote(username, '')
+                    netloc += urlutils.quote(username, '')
                 if password is not None:
-                    netloc += ':%s' % urllib.quote(password, '')
+                    netloc += ':%s' % urlutils.quote(password, '')
                 netloc += '@'
 
             # Build the network location portion of the transport URL
@@ -305,7 +303,7 @@ class TransportURL(object):
         url = '%s://%s/' % (self.transport, ','.join(netlocs))
 
         if self.virtual_host:
-            url += urllib.quote(self.virtual_host)
+            url += urlutils.quote(self.virtual_host)
 
         return url
 
@@ -358,7 +356,7 @@ class TransportURL(object):
         if not isinstance(url, basestring):
             raise InvalidTransportURL(url, 'Wrong URL type')
 
-        url = urlparse.urlparse(url)
+        url = urlutils.urlparse(url)
 
         # Make sure there's not a query string; that could identify
         # requirements we can't comply with (e.g., ssl), so reject it if
