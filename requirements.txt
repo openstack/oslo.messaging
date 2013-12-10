@@ -1,5 +1,5 @@
 oslo.config>=1.2.0
-stevedore>=0.10
+stevedore>=0.12
 
 # for timeutils
 iso8601>=0.1.8
