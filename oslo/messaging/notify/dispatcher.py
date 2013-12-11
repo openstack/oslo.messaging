@@ -60,6 +60,7 @@ class NotificationDispatcher(object):
     @contextlib.contextmanager
     def __call__(self, incoming):
         yield lambda: self._dispatch_and_handle_error(incoming)
+        incoming.acknowledge()
 
     def _dispatch_and_handle_error(self, incoming):
         """Dispatch a notification message to the appropriate endpoint method.

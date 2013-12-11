@@ -90,9 +90,7 @@ class AMQPListener(base.Listener):
     def poll(self):
         while True:
             if self.incoming:
-                message = self.incoming.pop(0)
-                message.acknowledge()
-                return message
+                return self.incoming.pop(0)
             self.conn.consume(limit=1)
 
 

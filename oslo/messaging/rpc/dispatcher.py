@@ -124,6 +124,7 @@ class RPCDispatcher(object):
 
     @contextlib.contextmanager
     def __call__(self, incoming):
+        incoming.acknowledge()
         yield lambda: self._dispatch_and_reply(incoming)
 
     def _dispatch_and_reply(self, incoming):
