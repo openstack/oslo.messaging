@@ -40,6 +40,10 @@ class IncomingMessage(object):
     def acknowledge(self):
         "Acknowledge the message."
 
+    @abc.abstractmethod
+    def requeue(self):
+        "Requeue the message."
+
 
 @six.add_metaclass(abc.ABCMeta)
 class Listener(object):

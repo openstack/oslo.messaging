@@ -128,6 +128,9 @@ class RabbitMessage(dict):
     def acknowledge(self):
         self._raw_message.ack()
 
+    def requeue(self):
+        self._raw_message.requeue()
+
 
 class ConsumerBase(object):
     """Consumer base class."""

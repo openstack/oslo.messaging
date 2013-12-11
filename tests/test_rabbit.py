@@ -206,6 +206,7 @@ class TestSendReceive(test_utils.BaseTestCase):
             senders[i].start()
 
             received = listener.poll()
+            received.message.pop('_unique_id')
             self.assertIsNotNone(received)
             self.assertEqual(received.ctxt, self.ctxt)
             self.assertEqual(received.message, {'tx_id': i})
@@ -302,12 +303,14 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         senders[0].start()
 
         msgs.append(listener.poll())
+        msgs[-1].message.pop('_unique_id')
         self.assertEqual(msgs[-1].message, {'tx_id': 0})
 
         # Start the second guy, receive his message
         senders[1].start()
 
         msgs.append(listener.poll())
+        msgs[-1].message.pop('_unique_id')
         self.assertEqual(msgs[-1].message, {'tx_id': 1})
 
         # Reply to both in order, making the second thread queue
@@ -602,6 +605,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
         producer.publish(msg)
 
         received = listener.poll()
+        received.message.pop('_unique_id')
         self.assertIsNotNone(received)
         self.assertEqual(self.expected_ctxt, received.ctxt)
         self.assertEqual(self.expected, received.message)

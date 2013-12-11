@@ -73,6 +73,24 @@ priority
 Parameters to endpoint methods are the request context supplied by the client,
 the publisher_id of the notification message, the event_type, the payload.
 
+An endpoint method can return explicitly messaging.NotificationResult.HANDLED
+to acknowledge a message or messaging.NotificationResult.REQUEUE to requeue the
+message.
+
+The message is acknowledge only if all endpoints return
+messaging.NotificationResult.HANDLED
+
+If nothing is returned by an endpoint, this is considered like
+messaging.NotificationResult.HANDLED
+
+messaging.NotificationResult values needs to be handled by drivers:
+
+* HANDLED: supported by all drivers
+* REQUEUE: supported by drivers: fake://, rabbit://
+
+In case of an unsupported driver nothing is done to the message and a
+NotImplementedError is raised and logged.
+
 By supplying a serializer object, a listener can deserialize a request context
 and arguments from - and serialize return values to - primitive types.
 """

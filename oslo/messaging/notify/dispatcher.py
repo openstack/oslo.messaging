@@ -28,6 +28,11 @@ LOG = logging.getLogger(__name__)
 PRIORITIES = ['audit', 'debug', 'info', 'warn', 'error', 'critical', 'sample']
 
 
+class NotificationResult(object):
+    HANDLED = 'handled'
+    REQUEUE = 'requeue'
+
+
 class NotificationDispatcher(object):
     """A message dispatcher which understands Notification messages.
 
@@ -59,8 +64,15 @@ class NotificationDispatcher(object):
 
     @contextlib.contextmanager
     def __call__(self, incoming):
-        yield lambda: self._dispatch_and_handle_error(incoming)
-        incoming.acknowledge()
+        result_wrapper = []
+
+        yield lambda: result_wrapper.append(
+            self._dispatch_and_handle_error(incoming))
+
+        if result_wrapper[0] == NotificationResult.HANDLED:
+            incoming.acknowledge()
+        else:
+            incoming.requeue()
 
     def _dispatch_and_handle_error(self, incoming):
         """Dispatch a notification message to the appropriate endpoint method.
@@ -69,12 +81,13 @@ class NotificationDispatcher(object):
         :type ctxt: IncomingMessage
         """
         try:
-            self._dispatch(incoming.ctxt, incoming.message)
+            return self._dispatch(incoming.ctxt, incoming.message)
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
             LOG.error('Exception during message handling',
                       exc_info=exc_info)
+            return NotificationResult.HANDLED
 
     def _dispatch(self, ctxt, message):
         """Dispatch an RPC message to the appropriate endpoint method.
@@ -99,6 +112,10 @@ class NotificationDispatcher(object):
         for callback in self._callbacks_by_priority.get(priority, []):
             localcontext.set_local_context(ctxt)
             try:
-                callback(ctxt, publisher_id, event_type, payload)
+                ret = callback(ctxt, publisher_id, event_type, payload)
+                ret = NotificationResult.HANDLED if ret is None else ret
+                if ret != NotificationResult.HANDLED:
+                    return ret
             finally:
                 localcontext.clear_local_context()
+        return NotificationResult.HANDLED

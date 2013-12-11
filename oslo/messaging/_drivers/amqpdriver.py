@@ -37,7 +37,8 @@ class AMQPIncomingMessage(base.IncomingMessage):
 
         self.msg_id = msg_id
         self.reply_q = reply_q
-        self.acknowledge = message.acknowledge
+        self.acknowledge_callback = message.acknowledge
+        self.requeue_callback = message.requeue
 
     def _send_reply(self, conn, reply=None, failure=None,
                     ending=False, log_failure=True):
@@ -64,6 +65,19 @@ class AMQPIncomingMessage(base.IncomingMessage):
         with self.listener.driver._get_connection() as conn:
             self._send_reply(conn, reply, failure, log_failure=log_failure)
             self._send_reply(conn, ending=True)
+
+    def acknowledge(self):
+        self.listener.msg_id_cache.add(self.message)
+        self.acknowledge_callback()
+
+    def requeue(self):
+        # NOTE(sileht): In case of the connection is lost between receiving the
+        # message and requeing it, this requeue call fail
+        # but because the message is not acknowledged and not added to the
+        # msg_id_cache, the message will be reconsumed, the only difference is
+        # the message stay at the beginning of the queue instead of moving to
+        # the end.
+        self.requeue_callback()
 
 
 class AMQPListener(base.Listener):

@@ -99,6 +99,10 @@ class QpidMessage(dict):
     def acknowledge(self):
         self._session.acknowledge(self._raw_message)
 
+    def requeue(self):
+        raise NotImplementedError('The QPID driver does not yet support '
+                                  'requeuing messages')
+
 
 class ConsumerBase(object):
     """Consumer base class."""
