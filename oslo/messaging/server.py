@@ -61,7 +61,7 @@ class MessageHandlingServer(object):
     new tasks.
     """
 
-    def __init__(self, transport, target, dispatcher, executor='blocking'):
+    def __init__(self, transport, dispatcher, executor='blocking'):
         """Construct a message handling server.
 
         The dispatcher parameter is a callable which is invoked with context
@@ -73,8 +73,6 @@ class MessageHandlingServer(object):
 
         :param transport: the messaging transport
         :type transport: Transport
-        :param target: the exchange, topic and server to listen on
-        :type target: Target
         :param dispatcher: a callable which is invoked for each method
         :type dispatcher: callable
         :param executor: name of message executor - e.g. 'eventlet', 'blocking'
@@ -83,7 +81,6 @@ class MessageHandlingServer(object):
         self.conf = transport.conf
 
         self.transport = transport
-        self.target = target
         self.dispatcher = dispatcher
         self.executor = executor
 
@@ -116,9 +113,8 @@ class MessageHandlingServer(object):
         """
         if self._executor is not None:
             return
-
         try:
-            listener = self.transport._listen(self.target)
+            listener = self.dispatcher._listen(self.transport)
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
 

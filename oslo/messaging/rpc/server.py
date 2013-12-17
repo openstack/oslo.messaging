@@ -121,9 +121,8 @@ def get_rpc_server(transport, target, endpoints,
     :param serializer: an optional entity serializer
     :type serializer: Serializer
     """
-    dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer)
-    return msg_server.MessageHandlingServer(transport, target,
-                                            dispatcher, executor)
+    dispatcher = rpc_dispatcher.RPCDispatcher(target, endpoints, serializer)
+    return msg_server.MessageHandlingServer(transport, dispatcher, executor)
 
 
 class ExpectedException(Exception):

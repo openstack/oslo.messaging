@@ -105,7 +105,6 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
         self.assertIs(server.conf, self.conf)
         self.assertIs(server.transport, transport)
-        self.assertIs(server.target, target)
         self.assertIsInstance(server.dispatcher, messaging.RPCDispatcher)
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
