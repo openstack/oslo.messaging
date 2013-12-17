@@ -21,6 +21,7 @@ import fixtures
 import testscenarios
 
 from oslo import messaging
+from oslo.messaging.notify import _impl_log
 from oslo.messaging.notify import _impl_messaging
 from oslo.messaging.notify import _impl_test
 from oslo.messaging.notify import notifier as msg_notifier
@@ -104,6 +105,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         ('info', dict(priority='info')),
         ('warn', dict(priority='warn')),
         ('error', dict(priority='error')),
+        ('sample', dict(priority='sample')),
         ('critical', dict(priority='critical')),
     ]
 
@@ -283,3 +285,19 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.mox.ReplayAll()
 
         notifier.info({}, 'test.notify', 'bar')
+
+    def test_sample_priority(self):
+        # Ensure logger drops sample-level notifications.
+        driver = _impl_log.LogDriver(None, None, None)
+
+        logger = self.mox.CreateMock(
+            logging.getLogger('oslo.messaging.notification.foo'))
+        logger.sample = None
+        self.mox.StubOutWithMock(logging, 'getLogger')
+        logging.getLogger('oslo.messaging.notification.foo').\
+            AndReturn(logger)
+
+        self.mox.ReplayAll()
+
+        msg = {'event_type': 'foo'}
+        driver.notify(None, msg, "sample")
