@@ -27,6 +27,6 @@ __all__ = [
     'get_rpc_server',
 ]
 
-from client import *
-from dispatcher import *
-from server import *
+from .client import *
+from .dispatcher import *
+from .server import *
