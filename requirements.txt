@@ -10,3 +10,6 @@ six>=1.4.1
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
 eventlet>=0.13.0
+
+# used by openstack/common/gettextutils.py
+Babel>=1.3
