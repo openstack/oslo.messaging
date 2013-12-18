@@ -15,6 +15,11 @@
 import logging
 import logging.config
 import os
+import sys
+try:
+    import threading
+except ImportError:
+    threading = None
 
 import mock
 import testscenarios
@@ -31,6 +36,13 @@ load_tests = testscenarios.load_tests_apply_scenarios
 # Stolen from openstack.common.logging
 logging.AUDIT = logging.INFO + 1
 logging.addLevelName(logging.AUDIT, 'AUDIT')
+
+
+def get_thread_ident():
+    if threading is not None:
+        return threading.current_thread().ident
+    else:
+        return None
 
 
 class TestLogNotifier(test_utils.BaseTestCase):
@@ -81,7 +93,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
             {'process': os.getpid(),
              'funcName': None,
              'name': 'foo',
-             'thread': logging.thread.get_ident() if logging.thread else None,
+             'thread': get_thread_ident(),
              'levelno': levelno,
              'processName': 'MainProcess',
              'pathname': '/foo/bar',
@@ -118,6 +130,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         levelno = getattr(logging, self.priority.upper())
 
         logger = logging.getLogger('default')
+        lineno = sys._getframe().f_lineno + 1
         logger.log(levelno, 'foobar')
 
         n = messaging.notify._impl_test.NOTIFICATIONS[0][1]
@@ -126,16 +139,19 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.assertEqual(n['event_type'], 'logrecord')
         self.assertEqual(n['timestamp'], str(timeutils.utcnow.override_time))
         self.assertEqual(n['publisher_id'], None)
+        pathname = __file__
+        if pathname.endswith(('.pyc', '.pyo')):
+            pathname = pathname[:-1]
         self.assertDictEqual(
             n['payload'],
             {'process': os.getpid(),
              'funcName': 'test_logging_conf',
              'name': 'default',
-             'thread': logging.thread.get_ident() if logging.thread else None,
+             'thread': get_thread_ident(),
              'levelno': levelno,
              'processName': 'MainProcess',
-             'pathname': __file__[:-1],  # Remove the 'c' of .pyc
-             'lineno': 121,
+             'pathname': pathname,
+             'lineno': lineno,
              'msg': 'foobar',
              'exc_info': None,
              'levelname': logging.getLevelName(levelno),
