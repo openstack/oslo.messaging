@@ -24,6 +24,7 @@ __all__ = [
 ]
 
 from oslo.config import cfg
+import six
 
 from oslo.messaging._drivers import base as driver_base
 from oslo.messaging import _utils as utils
@@ -98,7 +99,7 @@ class _CallContext(object):
         msg = dict(method=method)
 
         msg['args'] = dict()
-        for argname, arg in args.iteritems():
+        for argname, arg in six.iteritems(args):
             msg['args'][argname] = self.serializer.serialize_entity(ctxt, arg)
 
         if self.target.namespace is not None:

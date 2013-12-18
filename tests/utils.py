@@ -25,6 +25,7 @@ import os
 
 import fixtures
 from oslo.config import cfg
+import six
 import testtools
 
 from oslo.messaging.openstack.common.fixture import moxstubout
@@ -79,5 +80,5 @@ class BaseTestCase(testtools.TestCase):
         test by the tearDown() method.
         """
         group = kw.pop('group', None)
-        for k, v in kw.iteritems():
+        for k, v in six.iteritems(kw):
             self.conf.set_override(k, v, group)

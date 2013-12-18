@@ -29,6 +29,7 @@ import threading
 import uuid
 
 from oslo.config import cfg
+import six
 
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._drivers import pool
@@ -293,13 +294,12 @@ def pack_context(msg, context):
 
     """
     if isinstance(context, dict):
-        context_d = dict([('_context_%s' % key, value)
-                          for (key, value) in context.iteritems()])
+        context_d = six.iteritems(context)
     else:
-        context_d = dict([('_context_%s' % key, value)
-                          for (key, value) in context.to_dict().iteritems()])
+        context_d = six.iteritems(context.to_dict())
 
-    msg.update(context_d)
+    msg.update(('_context_%s' % key, value)
+               for (key, value) in context_d)
 
 
 class _MsgIdCache(object):
