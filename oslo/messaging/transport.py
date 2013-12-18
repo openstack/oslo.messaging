@@ -28,6 +28,7 @@ __all__ = [
 ]
 
 from oslo.config import cfg
+import six
 from stevedore import driver
 
 from oslo.messaging import exceptions
@@ -352,8 +353,7 @@ class TransportURL(object):
         if not url:
             return cls(conf, aliases=aliases)
 
-        # FIXME(flaper87): Not PY3K compliant
-        if not isinstance(url, basestring):
+        if not isinstance(url, six.string_types):
             raise InvalidTransportURL(url, 'Wrong URL type')
 
         url = urlutils.urlparse(url)

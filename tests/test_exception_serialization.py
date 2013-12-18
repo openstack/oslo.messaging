@@ -119,6 +119,7 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
             try:
                 raise self.cls(*self.args, **self.kwargs)
             except Exception as ex:
+                cls_error = ex
                 if self.add_remote:
                     ex = add_remote_postfix(ex)
                 raise ex
@@ -137,7 +138,7 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         self.assertEqual(failure['kwargs'], self.kwargs)
 
         # Note: _Remote prefix not stripped from tracebacks
-        tb = ex.__class__.__name__ + ': ' + self.msg
+        tb = cls_error.__class__.__name__ + ': ' + self.msg
         self.assertIn(tb, ''.join(failure['tb']))
 
         if self.log_failure:
