@@ -20,8 +20,6 @@ import ssl
 import time
 import uuid
 
-import eventlet
-import greenlet
 import kombu
 import kombu.connection
 import kombu.entity
@@ -32,7 +30,6 @@ import six
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
-from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common import network_utils
 from oslo.messaging.openstack.common import sslutils
 
@@ -408,8 +405,6 @@ class Connection(object):
 
     def __init__(self, conf, server_params=None):
         self.consumers = []
-        self.consumer_thread = None
-        self.proxy_callbacks = []
         self.conf = conf
         self.max_retries = self.conf.rabbit_max_retries
         # Try forever?
@@ -593,15 +588,11 @@ class Connection(object):
 
     def close(self):
         """Close/release this connection."""
-        self.cancel_consumer_thread()
-        self.wait_on_proxy_callbacks()
         self.connection.release()
         self.connection = None
 
     def reset(self):
         """Reset a connection so it can be used again."""
-        self.cancel_consumer_thread()
-        self.wait_on_proxy_callbacks()
         self.channel.close()
         self.channel = self.connection.channel()
         # work around 'memory' transport bug in 1.1.3
@@ -654,21 +645,6 @@ class Connection(object):
             if limit and iteration >= limit:
                 raise StopIteration
             yield self.ensure(_error_callback, _consume)
-
-    def cancel_consumer_thread(self):
-        """Cancel a consumer thread."""
-        if self.consumer_thread is not None:
-            self.consumer_thread.kill()
-            try:
-                self.consumer_thread.wait()
-            except greenlet.GreenletExit:
-                pass
-            self.consumer_thread = None
-
-    def wait_on_proxy_callbacks(self):
-        """Wait for all proxy callback threads to exit."""
-        for proxy_cb in self.proxy_callbacks:
-            proxy_cb.wait()
 
     def publisher_send(self, cls, topic, msg, timeout=None, **kwargs):
         """Send to a publisher based on the publisher class."""
@@ -728,18 +704,6 @@ class Connection(object):
                 six.next(it)
             except StopIteration:
                 return
-
-    def consume_in_thread(self):
-        """Consumer from all queues/consumers in a greenthread."""
-        @excutils.forever_retry_uncaught_exceptions
-        def _consumer_thread():
-            try:
-                self.consume()
-            except greenlet.GreenletExit:
-                return
-        if self.consumer_thread is None:
-            self.consumer_thread = eventlet.spawn(_consumer_thread)
-        return self.consumer_thread
 
 
 class RabbitDriver(amqpdriver.AMQPDriverBase):
