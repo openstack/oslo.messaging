@@ -33,6 +33,8 @@ _ = lambda s: s
 
 LOG = logging.getLogger(__name__)
 
+_EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
+
 
 '''RPC Envelope Version.
 
@@ -76,7 +78,7 @@ _exception_opts = [
                 default=['oslo.messaging.exceptions',
                          'nova.exception',
                          'cinder.exception',
-                         'exceptions',
+                         _EXCEPTIONS_MODULE,
                          ],
                 help='Modules of exceptions that are permitted to be recreated'
                      'upon receiving exception data from an rpc call.'),
@@ -337,7 +339,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
 
     # NOTE(ameade): We DO NOT want to allow just any module to be imported, in
     # order to prevent arbitrary code execution.
-    if module != 'exceptions' and module not in allowed_remote_exmods:
+    if module != _EXCEPTIONS_MODULE and module not in allowed_remote_exmods:
         return messaging.RemoteError(name, failure.get('message'), trace)
 
     try:
