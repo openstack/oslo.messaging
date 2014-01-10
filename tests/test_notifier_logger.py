@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 import logging
 import logging.config
 import os
@@ -59,16 +60,16 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestLogNotifier, self).setUp()
-        self.addCleanup(timeutils.clear_time_override)
         self.addCleanup(messaging.notify._impl_test.reset)
         self.config(notification_driver=['test'])
 
-    def test_logger(self):
+    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    def test_logger(self, mock_utcnow):
         with mock.patch('oslo.messaging.transport.get_transport',
                         return_value=test_notifier._FakeTransport(self.conf)):
             self.logger = messaging.LoggingNotificationHandler('test://')
 
-        timeutils.set_time_override()
+        mock_utcnow.return_value = datetime.datetime.utcnow()
 
         levelno = getattr(logging, self.priority.upper(), 42)
 
@@ -86,7 +87,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.assertEqual(n['priority'],
                          getattr(self, 'queue', self.priority.upper()))
         self.assertEqual(n['event_type'], 'logrecord')
-        self.assertEqual(n['timestamp'], str(timeutils.utcnow.override_time))
+        self.assertEqual(n['timestamp'], str(timeutils.utcnow()))
         self.assertEqual(n['publisher_id'], None)
         self.assertEqual(
             n['payload'],
@@ -105,7 +106,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @testtools.skipUnless(hasattr(logging.config, 'dictConfig'),
                           "Need logging.config.dictConfig (Python >= 2.7)")
-    def test_logging_conf(self):
+    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    def test_logging_conf(self, mock_utcnow):
         with mock.patch('oslo.messaging.transport.get_transport',
                         return_value=test_notifier._FakeTransport(self.conf)):
             logging.config.dictConfig({
@@ -125,7 +127,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
                 },
             })
 
-        timeutils.set_time_override()
+        mock_utcnow.return_value = datetime.datetime.utcnow()
 
         levelno = getattr(logging, self.priority.upper())
 
@@ -137,7 +139,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.assertEqual(n['priority'],
                          getattr(self, 'queue', self.priority.upper()))
         self.assertEqual(n['event_type'], 'logrecord')
-        self.assertEqual(n['timestamp'], str(timeutils.utcnow.override_time))
+        self.assertEqual(n['timestamp'], str(timeutils.utcnow()))
         self.assertEqual(n['publisher_id'], None)
         pathname = __file__
         if pathname.endswith(('.pyc', '.pyo')):

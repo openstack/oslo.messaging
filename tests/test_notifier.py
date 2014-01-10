@@ -13,11 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
 import logging
 import sys
 import uuid
 
 import fixtures
+import mock
 import testscenarios
 
 from oslo import messaging
@@ -132,13 +134,12 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         self.conf.register_opts(msg_notifier._notifier_opts)
 
-        self.addCleanup(timeutils.clear_time_override)
-
         self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
         self.stubs.Set(_impl_messaging, 'LOG', self.logger)
         self.stubs.Set(msg_notifier, '_LOG', self.logger)
 
-    def test_notifier(self):
+    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    def test_notifier(self, mock_utcnow):
         drivers = []
         if self.v1:
             drivers.append('messaging')
@@ -165,7 +166,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(uuid, 'uuid4')
         uuid.uuid4().AndReturn(message_id)
 
-        timeutils.set_time_override()
+        mock_utcnow.return_value = datetime.datetime.utcnow()
 
         message = {
             'message_id': str(message_id),
@@ -173,7 +174,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
             'event_type': 'test.notify',
             'priority': self.priority.upper(),
             'payload': self.payload,
-            'timestamp': str(timeutils.utcnow.override_time),
+            'timestamp': str(timeutils.utcnow()),
         }
 
         sends = []
@@ -203,9 +204,9 @@ class TestSerializer(test_utils.BaseTestCase):
     def setUp(self):
         super(TestSerializer, self).setUp()
         self.addCleanup(_impl_test.reset)
-        self.addCleanup(timeutils.clear_time_override)
 
-    def test_serializer(self):
+    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    def test_serializer(self, mock_utcnow):
         transport = _FakeTransport(self.conf)
 
         serializer = msg_serializer.NoOpSerializer()
@@ -220,7 +221,7 @@ class TestSerializer(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(uuid, 'uuid4')
         uuid.uuid4().AndReturn(message_id)
 
-        timeutils.set_time_override()
+        mock_utcnow.return_value = datetime.datetime.utcnow()
 
         self.mox.StubOutWithMock(serializer, 'serialize_context')
         self.mox.StubOutWithMock(serializer, 'serialize_entity')
@@ -238,7 +239,7 @@ class TestSerializer(test_utils.BaseTestCase):
             'event_type': 'test.notify',
             'priority': 'INFO',
             'payload': 'sbar',
-            'timestamp': str(timeutils.utcnow.override_time),
+            'timestamp': str(timeutils.utcnow()),
         }
 
         self.assertEqual(_impl_test.NOTIFICATIONS,
@@ -250,9 +251,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
     def setUp(self):
         super(TestLogNotifier, self).setUp()
         self.conf.register_opts(msg_notifier._notifier_opts)
-        self.addCleanup(timeutils.clear_time_override)
 
-    def test_notifier(self):
+    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    def test_notifier(self, mock_utcnow):
         self.config(notification_driver=['log'])
 
         transport = _FakeTransport(self.conf)
@@ -263,7 +264,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(uuid, 'uuid4')
         uuid.uuid4().AndReturn(message_id)
 
-        timeutils.set_time_override()
+        mock_utcnow.return_value = datetime.datetime.utcnow()
 
         message = {
             'message_id': str(message_id),
@@ -271,7 +272,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
             'event_type': 'test.notify',
             'priority': 'INFO',
             'payload': 'bar',
-            'timestamp': str(timeutils.utcnow.override_time),
+            'timestamp': str(timeutils.utcnow()),
         }
 
         logger = self.mox.CreateMockAnything()
