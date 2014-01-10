@@ -17,6 +17,7 @@ Contents
    notifier
    serializer
    exceptions
+   opts
    conffixture
 
 Release Notes
