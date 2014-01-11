@@ -320,7 +320,7 @@ class TransportURL(object):
 
         Netloc is parsed following the sequence bellow:
 
-        * It is first splitted by ',' in order to support multiple hosts
+        * It is first split by ',' in order to support multiple hosts
         * The last parsed username and password will be propagated to the rest
           of hosts specified:
 

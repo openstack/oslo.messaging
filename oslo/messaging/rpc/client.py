@@ -339,7 +339,7 @@ class RPCClient(object):
         listed in the allow_remote_exmods messaging.get_transport() parameter,
         then it this exception will be re-raised by call(). However, such
         locally re-raised remote exceptions are distinguishable from the same
-        exception type raised locally becayse re-raised remote exceptions are
+        exception type raised locally because re-raised remote exceptions are
         modified such that their class name ends with the '_Remote' suffix so
         you may do::
 
