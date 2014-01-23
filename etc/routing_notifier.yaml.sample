@@ -1,0 +1,29 @@
+# Setting a priority AND an event means both have to be satisfied.
+#
+# However, defining different sets for the same driver allows you
+# to do OR operations.
+#
+# See how this logic is modeled below:
+#
+# if (priority in info, warn or error) or
+#    (event == compute.scheduler.run_instance)
+#        send to messaging driver ...
+#
+# if priority == 'poll' and
+#    event == 'bandwidth.*'
+#        send to poll driver
+
+group_1:
+    messaging:
+        accepted_priorities: ['info', 'warn', 'error']
+
+    poll:
+        accepted_priorities: ['poll']
+        accepted_events: ['bandwidth.*']
+
+    log:
+        accepted_events: ['compute.instance.exists']
+
+group_2:
+    messaging:⋅
+        accepted_events: ['compute.scheduler.run_instance.*']
