@@ -21,7 +21,6 @@ import uuid
 import fixtures
 import mock
 from stevedore import extension
-from stevedore.tests import manager as test_manager
 import testscenarios
 import yaml
 
@@ -314,11 +313,11 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         self.router = routing.RoutingDriver(None, None, None)
 
     def _fake_extension_manager(self, ext):
-        return test_manager.TestExtensionManager(
+        return extension.ExtensionManager.make_test_instance(
             [extension.Extension('test', None, None, ext), ])
 
     def _empty_extension_manager(self):
-        return test_manager.TestExtensionManager([])
+        return extension.ExtensionManager.make_test_instance([])
 
     def test_should_load_plugin(self):
         self.router.used_drivers = set(["zoo", "blah"])
