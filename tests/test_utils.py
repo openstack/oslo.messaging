@@ -17,7 +17,7 @@ from oslo.messaging import _utils as utils
 from tests import utils as test_utils
 
 
-class PoolTestCase(test_utils.BaseTestCase):
+class VersionIsCompatibleTestCase(test_utils.BaseTestCase):
     def test_version_is_compatible_same(self):
         self.assertTrue(utils.version_is_compatible('1.23', '1.23'))
 
