@@ -42,16 +42,16 @@ class FakeIncomingMessage(base.IncomingMessage):
 
 class FakeListener(base.Listener):
 
-    def __init__(self, driver, exchange, targets):
+    def __init__(self, driver, exchange_manager, targets):
         super(FakeListener, self).__init__(driver)
-        self._exchange = exchange
+        self._exchange_manager = exchange_manager
         self._targets = targets
 
     def poll(self):
         while True:
             for target in self._targets:
-                (ctxt, message, reply_q, requeue) = \
-                    self._exchange.poll(target)
+                exchange = self._exchange_manager.get_exchange(target.exchange)
+                (ctxt, message, reply_q, requeue) = exchange.poll(target)
                 if message is not None:
                     message = FakeIncomingMessage(self, ctxt, message,
                                                   reply_q, requeue)
@@ -100,6 +100,19 @@ class FakeExchange(object):
             return queue.pop(0) if queue else (None, None, None, None)
 
 
+class FakeExchangeManager(object):
+    def __init__(self, default_exchange):
+        self._default_exchange = default_exchange
+        self._exchanges_lock = threading.Lock()
+        self._exchanges = {}
+
+    def get_exchange(self, name):
+        if name is None:
+            name = self._default_exchange
+        while self._exchanges_lock:
+            return self._exchanges.setdefault(name, FakeExchange(name))
+
+
 class FakeDriver(base.BaseDriver):
 
     def __init__(self, conf, url, default_exchange=None,
@@ -107,10 +120,7 @@ class FakeDriver(base.BaseDriver):
         super(FakeDriver, self).__init__(conf, url, default_exchange,
                                          allowed_remote_exmods=[])
 
-        self._default_exchange = default_exchange
-
-        self._exchanges_lock = threading.Lock()
-        self._exchanges = {}
+        self._exchange_manager = FakeExchangeManager(default_exchange)
 
     @staticmethod
     def _check_serialize(message):
@@ -124,15 +134,10 @@ class FakeDriver(base.BaseDriver):
         """
         json.dumps(message)
 
-    def _get_exchange(self, name):
-        while self._exchanges_lock:
-            return self._exchanges.setdefault(name, FakeExchange(name))
-
     def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
         self._check_serialize(message)
 
-        exchange = self._get_exchange(target.exchange or
-                                      self._default_exchange)
+        exchange = self._exchange_manager.get_exchange(target.exchange)
 
         reply_q = None
         if wait_for_reply:
@@ -163,22 +168,20 @@ class FakeDriver(base.BaseDriver):
         self._send(target, ctxt, message)
 
     def listen(self, target):
-        exchange = self._get_exchange(target.exchange or
-                                      self._default_exchange)
-
-        listener = FakeListener(self, exchange,
+        exchange = target.exchange or self._default_exchange
+        listener = FakeListener(self, self._exchange_manager,
                                 [messaging.Target(topic=target.topic,
-                                                  server=target.server),
-                                 messaging.Target(topic=target.topic)])
+                                                  server=target.server,
+                                                  exchange=exchange),
+                                 messaging.Target(topic=target.topic,
+                                                  exchange=exchange)])
         return listener
 
     def listen_for_notifications(self, targets_and_priorities):
-        # TODO(sileht): Handle the target.exchange
-        exchange = self._get_exchange(self._default_exchange)
-
-        targets = [messaging.Target(topic='%s.%s' % (target.topic, priority))
+        targets = [messaging.Target(topic='%s.%s' % (target.topic, priority),
+                                    exchange=target.exchange)
                    for target, priority in targets_and_priorities]
-        listener = FakeListener(self, exchange, targets)
+        listener = FakeListener(self, self._exchange_manager, targets)
 
         return listener
 

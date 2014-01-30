@@ -29,9 +29,7 @@ load_tests = testscenarios.load_tests_apply_scenarios
 class ListenerSetupMixin(object):
 
     class Listener(object):
-        def __init__(self, transport, topics, endpoints, expect_messages):
-            targets = [messaging.Target(topic=topic)
-                       for topic in topics]
+        def __init__(self, transport, targets, endpoints, expect_messages):
             self._expect_messages = expect_messages
             self._received_msgs = 0
             self._listener = messaging.get_notification_listener(
@@ -49,9 +47,10 @@ class ListenerSetupMixin(object):
             self._listener.start()
 
     def _setup_listener(self, transport, endpoints, expect_messages,
-                        topics=None):
+                        targets=None):
         listener = self.Listener(transport,
-                                 topics=topics or ['testtopic'],
+                                 targets=targets or [
+                                     messaging.Target(topic='testtopic')],
                                  expect_messages=expect_messages,
                                  endpoints=endpoints)
 
@@ -139,9 +138,10 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
-        topics = ["topic1", "topic2"]
+        targets = [messaging.Target(topic="topic1"),
+                   messaging.Target(topic="topic2")]
         listener_thread = self._setup_listener(transport, [endpoint], 2,
-                                               topics=topics)
+                                               targets=targets)
         notifier = self._setup_notifier(transport, topic='topic1')
         notifier.info({}, 'an_event.start1', 'test')
         notifier = self._setup_notifier(transport, topic='topic2')
@@ -151,6 +151,42 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
         expected = [mock.call({}, 'testpublisher', 'an_event.start1', 'test'),
                     mock.call({}, 'testpublisher', 'an_event.start2', 'test')]
+        self.assertEqual(sorted(endpoint.info.call_args_list), expected)
+
+    def test_two_exchanges(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        endpoint = mock.Mock()
+        endpoint.info.return_value = None
+        targets = [messaging.Target(topic="topic",
+                                    exchange="exchange1"),
+                   messaging.Target(topic="topic",
+                                    exchange="exchange2")]
+        listener_thread = self._setup_listener(transport, [endpoint], 3,
+                                               targets=targets)
+
+        notifier = self._setup_notifier(transport, topic="topic")
+
+        def mock_notifier_exchange(name):
+            def side_effect(target, ctxt, message, version):
+                target.exchange = name
+                return transport._driver.send_notification(target, ctxt,
+                                                           message, version)
+            transport._send_notification = mock.MagicMock(
+                side_effect=side_effect)
+
+        notifier.info({}, 'an_event.start', 'test message default exchange')
+        mock_notifier_exchange('exchange1')
+        notifier.info({}, 'an_event.start', 'test message exchange1')
+        mock_notifier_exchange('exchange2')
+        notifier.info({}, 'an_event.start', 'test message exchange2')
+
+        self._stop_listener(listener_thread)
+
+        expected = [mock.call({}, 'testpublisher', 'an_event.start',
+                              'test message exchange1'),
+                    mock.call({}, 'testpublisher', 'an_event.start',
+                              'test message exchange2')]
         self.assertEqual(sorted(endpoint.info.call_args_list), expected)
 
     def test_two_endpoints(self):
