@@ -530,9 +530,9 @@ class Connection(object):
             try:
                 self._connect(params)
                 return
-            except IOError:
+            except IOError as e:
                 pass
-            except self.connection_errors:
+            except self.connection_errors as e:
                 pass
             except Exception as e:
                 # NOTE(comstud): Unfortunately it's possible for amqplib
