@@ -97,7 +97,8 @@ class TestDispatcher(test_utils.BaseTestCase):
             endpoints.append(_FakeEndpoint(target))
 
         serializer = None
-        dispatcher = messaging.RPCDispatcher(endpoints, serializer)
+        target = messaging.Target()
+        dispatcher = messaging.RPCDispatcher(target, endpoints, serializer)
 
         if self.dispatch_to is not None:
             endpoint = endpoints[self.dispatch_to['endpoint']]
@@ -139,7 +140,8 @@ class TestSerializer(test_utils.BaseTestCase):
     def test_serializer(self):
         endpoint = _FakeEndpoint()
         serializer = msg_serializer.NoOpSerializer()
-        dispatcher = messaging.RPCDispatcher([endpoint], serializer)
+        target = messaging.Target()
+        dispatcher = messaging.RPCDispatcher(target, [endpoint], serializer)
 
         self.mox.StubOutWithMock(endpoint, 'foo')
         args = dict([(k, 'd' + v) for k, v in self.args.items()])

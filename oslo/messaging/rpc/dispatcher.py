@@ -29,7 +29,7 @@ from oslo.messaging import _utils as utils
 from oslo.messaging import localcontext
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
-from oslo.messaging import target
+from oslo.messaging import target as msg_target
 
 
 class RPCDispatcherError(msg_server.MessagingServerError):
@@ -68,12 +68,24 @@ class RPCDispatcher(object):
     Endpoints may have a target attribute describing the namespace and version
     of the methods exposed by that object. All public methods on an endpoint
     object are remotely invokable by clients.
+
+
     """
 
-    def __init__(self, endpoints, serializer):
+    def __init__(self, target, endpoints, serializer):
+        """Construct a rpc server dispatcher.
+
+        :param target: the exchange, topic and server to listen on
+        :type target: Target
+        """
+
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
-        self._default_target = target.Target()
+        self._default_target = msg_target.Target()
+        self._target = target
+
+    def _listen(self, transport):
+        return transport._listen(self._target)
 
     @staticmethod
     def _is_namespace(target, namespace):
