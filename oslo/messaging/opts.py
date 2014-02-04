@@ -28,7 +28,7 @@ from oslo.messaging._drivers import matchmaker
 from oslo.messaging._drivers import matchmaker_redis
 from oslo.messaging._drivers import matchmaker_ring
 from oslo.messaging._drivers.protocols.amqp import opts as amqp_opts
-from oslo.messaging._executors import impl_eventlet
+from oslo.messaging._executors import base
 from oslo.messaging.notify import notifier
 from oslo.messaging.rpc import client
 from oslo.messaging import transport
@@ -39,7 +39,7 @@ _global_opt_lists = [
     impl_rabbit.rabbit_opts,
     impl_zmq.zmq_opts,
     matchmaker.matchmaker_opts,
-    impl_eventlet._eventlet_opts,
+    base._pool_opts,
     notifier._notifier_opts,
     client._client_opts,
     transport._transport_opts,

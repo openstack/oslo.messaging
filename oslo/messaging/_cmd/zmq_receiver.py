@@ -23,11 +23,11 @@ import sys
 
 from oslo.config import cfg
 from oslo.messaging._drivers import impl_zmq
-from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
+from oslo.messaging._executors import base  # FIXME(markmc)
 
 CONF = cfg.CONF
 CONF.register_opts(impl_zmq.zmq_opts)
-CONF.register_opts(impl_eventlet._eventlet_opts)
+CONF.register_opts(base._pool_opts)
 
 
 def main():
