@@ -17,6 +17,7 @@ __all__ = ['AMQPDriverBase']
 
 import logging
 import threading
+import time
 import uuid
 
 from six import moves
@@ -103,11 +104,21 @@ class AMQPListener(base.Listener):
                                                  ctxt.msg_id,
                                                  ctxt.reply_q))
 
-    def poll(self):
+    def poll(self, timeout=None):
+        if timeout is not None:
+            deadline = time.time() + timeout
+        else:
+            deadline = None
         while True:
             if self.incoming:
                 return self.incoming.pop(0)
-            self.conn.consume(limit=1)
+            if deadline is not None:
+                timeout = deadline - time.time()
+                if timeout < 0:
+                    return None
+                self.conn.consume(limit=1, timeout=timeout)
+            else:
+                self.conn.consume(limit=1)
 
 
 class ReplyWaiters(object):

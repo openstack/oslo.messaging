@@ -45,7 +45,11 @@ class FakeListener(base.Listener):
         self._exchange_manager = exchange_manager
         self._targets = targets
 
-    def poll(self):
+    def poll(self, timeout=None):
+        if timeout is not None:
+            deadline = time.time() + timeout
+        else:
+            deadline = None
         while True:
             for target in self._targets:
                 exchange = self._exchange_manager.get_exchange(target.exchange)
@@ -54,7 +58,15 @@ class FakeListener(base.Listener):
                     message = FakeIncomingMessage(self, ctxt, message,
                                                   reply_q, requeue)
                     return message
-            time.sleep(.05)
+            if deadline is not None:
+                pause = deadline - time.time()
+                if pause < 0:
+                    break
+                pause = min(pause, 0.050)
+            else:
+                pause = 0.050
+            time.sleep(pause)
+        return None
 
 
 class FakeExchange(object):

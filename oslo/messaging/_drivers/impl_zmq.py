@@ -879,9 +879,12 @@ class ZmqListener(base.Listener):
         else:
             return incoming.received.reply
 
-    def poll(self):
-        while True:
-            return self.incoming_queue.get()
+    def poll(self, timeout=None):
+        try:
+            return self.incoming_queue.get(timeout=timeout)
+        except six.moves.queue.Empty:
+            # timeout
+            return None
 
 
 class ZmqDriver(base.BaseDriver):
