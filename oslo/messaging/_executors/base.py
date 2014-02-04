@@ -38,12 +38,16 @@ class ExecutorBase(object):
             _LOG.debug('Expected exception during message handling (%s)' %
                        e.exc_info[1])
             incoming.reply(failure=e.exc_info, log_failure=False)
-        except Exception:
+        except Exception as e:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
-            _LOG.error('Exception during message handling',
+            _LOG.error('Exception during message handling: %s', e,
                        exc_info=exc_info)
             incoming.reply(failure=exc_info)
+            # NOTE(dhellmann): Remove circular object reference
+            # between the current stack frame and the traceback in
+            # exc_info.
+            del exc_info
 
     @abc.abstractmethod
     def start(self):

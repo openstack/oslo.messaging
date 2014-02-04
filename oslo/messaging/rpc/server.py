@@ -151,10 +151,13 @@ def expected_exceptions(*exceptions):
         def inner(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
-            except Exception as e:
-                if type(e) in exceptions:
-                    raise ExpectedException()
-                else:
-                    raise
+            # Take advantage of the fact that we can catch
+            # multiple exception types using a tuple of
+            # exception classes, with subclass detection
+            # for free. Any exception that is not in or
+            # derived from the args passed to us will be
+            # ignored and thrown as normal.
+            except exceptions:
+                raise ExpectedException()
         return inner
     return outer

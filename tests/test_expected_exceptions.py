@@ -43,6 +43,19 @@ class TestExpectedExceptions(test_utils.BaseTestCase):
 
         self.assertRaises(messaging.ExpectedException, naughty)
 
+    def test_decorator_expected_subclass(self):
+        class FooException(Exception):
+            pass
+
+        class BarException(FooException):
+            pass
+
+        @messaging.expected_exceptions(FooException)
+        def naughty():
+            raise BarException()
+
+        self.assertRaises(messaging.ExpectedException, naughty)
+
     def test_decorator_unexpected(self):
         class FooException(Exception):
             pass
