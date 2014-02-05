@@ -6,7 +6,8 @@ ChangeLog
 *.log
 .tox
 .coverage
-oslo.messaging.egg-info/
+*.egg-info/
+*.egg
 build/
 doc/build/
 doc/source/api/
