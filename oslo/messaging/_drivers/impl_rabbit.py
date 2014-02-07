@@ -41,51 +41,52 @@ rabbit_opts = [
                default='',
                help='SSL version to use (valid only if SSL enabled). '
                     'valid values are TLSv1, SSLv23 and SSLv3. SSLv2 may '
-                    'be available on some distributions'
+                    'be available on some distributions.'
                ),
     cfg.StrOpt('kombu_ssl_keyfile',
                default='',
-               help='SSL key file (valid only if SSL enabled)'),
+               help='SSL key file (valid only if SSL enabled).'),
     cfg.StrOpt('kombu_ssl_certfile',
                default='',
-               help='SSL cert file (valid only if SSL enabled)'),
+               help='SSL cert file (valid only if SSL enabled).'),
     cfg.StrOpt('kombu_ssl_ca_certs',
                default='',
                help=('SSL certification authority file '
-                     '(valid only if SSL enabled)')),
+                     '(valid only if SSL enabled).')),
     cfg.StrOpt('rabbit_host',
                default='localhost',
-               help='The RabbitMQ broker address where a single node is used'),
+               help='The RabbitMQ broker address where a single node is '
+                    'used.'),
     cfg.IntOpt('rabbit_port',
                default=5672,
-               help='The RabbitMQ broker port where a single node is used'),
+               help='The RabbitMQ broker port where a single node is used.'),
     cfg.ListOpt('rabbit_hosts',
                 default=['$rabbit_host:$rabbit_port'],
-                help='RabbitMQ HA cluster host:port pairs'),
+                help='RabbitMQ HA cluster host:port pairs.'),
     cfg.BoolOpt('rabbit_use_ssl',
                 default=False,
-                help='Connect over SSL for RabbitMQ'),
+                help='Connect over SSL for RabbitMQ.'),
     cfg.StrOpt('rabbit_userid',
                default='guest',
-               help='The RabbitMQ userid'),
+               help='The RabbitMQ userid.'),
     cfg.StrOpt('rabbit_password',
                default='guest',
-               help='The RabbitMQ password',
+               help='The RabbitMQ password.',
                secret=True),
     cfg.StrOpt('rabbit_virtual_host',
                default='/',
-               help='The RabbitMQ virtual host'),
+               help='The RabbitMQ virtual host.'),
     cfg.IntOpt('rabbit_retry_interval',
                default=1,
-               help='How frequently to retry connecting with RabbitMQ'),
+               help='How frequently to retry connecting with RabbitMQ.'),
     cfg.IntOpt('rabbit_retry_backoff',
                default=2,
                help='How long to backoff for between retries when connecting '
-                    'to RabbitMQ'),
+                    'to RabbitMQ.'),
     cfg.IntOpt('rabbit_max_retries',
                default=0,
                help='Maximum number of RabbitMQ connection retries. '
-                    'Default is 0 (infinite retry count)'),
+                    'Default is 0 (infinite retry count).'),
     cfg.BoolOpt('rabbit_ha_queues',
                 default=False,
                 help='Use HA queues in RabbitMQ (x-ha-policy: all). '
@@ -95,7 +96,7 @@ rabbit_opts = [
     # FIXME(markmc): this was toplevel in openstack.common.rpc
     cfg.BoolOpt('fake_rabbit',
                 default=False,
-                help='If passed, use a fake RabbitMQ provider'),
+                help='If passed, use a fake RabbitMQ provider.'),
 ]
 
 LOG = logging.getLogger(__name__)

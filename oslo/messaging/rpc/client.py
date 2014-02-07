@@ -34,7 +34,7 @@ from oslo.messaging import serializer as msg_serializer
 _client_opts = [
     cfg.IntOpt('rpc_response_timeout',
                default=60,
-               help='Seconds to wait for a response from a call'),
+               help='Seconds to wait for a response from a call.'),
 ]
 
 

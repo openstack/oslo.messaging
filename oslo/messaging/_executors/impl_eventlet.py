@@ -25,7 +25,7 @@ from oslo.messaging.openstack.common import excutils
 _eventlet_opts = [
     cfg.IntOpt('rpc_thread_pool_size',
                default=64,
-               help='Size of RPC greenthread pool'),
+               help='Size of RPC greenthread pool.'),
 ]
 
 

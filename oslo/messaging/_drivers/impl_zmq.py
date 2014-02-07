@@ -60,22 +60,22 @@ zmq_opts = [
         'rpc_zmq_matchmaker',
         default=('oslo.messaging._drivers.'
                  'matchmaker.MatchMakerLocalhost'),
-        help='MatchMaker driver',
+        help='MatchMaker driver.',
     ),
 
     # The following port is unassigned by IANA as of 2012-05-21
     cfg.IntOpt('rpc_zmq_port', default=9501,
-               help='ZeroMQ receiver listening port'),
+               help='ZeroMQ receiver listening port.'),
 
     cfg.IntOpt('rpc_zmq_contexts', default=1,
-               help='Number of ZeroMQ contexts, defaults to 1'),
+               help='Number of ZeroMQ contexts, defaults to 1.'),
 
     cfg.IntOpt('rpc_zmq_topic_backlog', default=None,
                help='Maximum number of ingress messages to locally buffer '
                     'per topic. Default is unlimited.'),
 
     cfg.StrOpt('rpc_zmq_ipc_dir', default='/var/run/openstack',
-               help='Directory for holding IPC sockets'),
+               help='Directory for holding IPC sockets.'),
 
     cfg.StrOpt('rpc_zmq_host', default=socket.gethostname(),
                help='Name of this node. Must be a valid hostname, FQDN, or '
