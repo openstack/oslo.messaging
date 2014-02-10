@@ -72,6 +72,9 @@ rabbit_opts = [
                default='guest',
                help='The RabbitMQ password',
                secret=True),
+    cfg.StrOpt('rabbit_login_method',
+               default='AMQPLAIN',
+               help='the RabbitMQ login method'),
     cfg.StrOpt('rabbit_virtual_host',
                default='/',
                help='The RabbitMQ virtual host'),
@@ -432,6 +435,7 @@ class Connection(object):
                 'port': port,
                 'userid': self.conf.rabbit_userid,
                 'password': self.conf.rabbit_password,
+                'login_method': self.conf.rabbit_login_method,
                 'virtual_host': self.conf.rabbit_virtual_host,
             }
 
