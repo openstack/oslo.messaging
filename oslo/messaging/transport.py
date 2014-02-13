@@ -29,10 +29,10 @@ __all__ = [
 
 from oslo.config import cfg
 import six
+from six.moves.urllib import parse
 from stevedore import driver
 
 from oslo.messaging import exceptions
-from oslo.messaging.openstack.common.py3kcompat import urlutils
 
 
 _transport_opts = [
@@ -295,9 +295,9 @@ class TransportURL(object):
             # Build the username and password portion of the transport URL
             if username is not None or password is not None:
                 if username is not None:
-                    netloc += urlutils.quote(username, '')
+                    netloc += parse.quote(username, '')
                 if password is not None:
-                    netloc += ':%s' % urlutils.quote(password, '')
+                    netloc += ':%s' % parse.quote(password, '')
                 netloc += '@'
 
             # Build the network location portion of the transport URL
@@ -315,7 +315,7 @@ class TransportURL(object):
         url = '%s://%s/' % (self.transport, ','.join(netlocs))
 
         if self.virtual_host:
-            url += urlutils.quote(self.virtual_host)
+            url += parse.quote(self.virtual_host)
 
         return url
 
@@ -367,7 +367,7 @@ class TransportURL(object):
         if not isinstance(url, six.string_types):
             raise InvalidTransportURL(url, 'Wrong URL type')
 
-        url = urlutils.urlparse(url)
+        url = parse.urlparse(url)
 
         # Make sure there's not a query string; that could identify
         # requirements we can't comply with (e.g., ssl), so reject it if
