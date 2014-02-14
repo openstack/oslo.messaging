@@ -116,13 +116,14 @@ class TestDispatcher(test_utils.BaseTestCase):
             for m in endpoint_methods:
                 if m == self.endpoints_expect_calls[i]:
                     method = getattr(endpoints[i], m)
-                    expected = [mock.call({}, msg['publisher_id'],
-                                          msg['event_type'],
-                                          msg['payload'], {
-                                              'timestamp': mock.ANY,
-                                              'message_id': mock.ANY
-                                          })]
-                    self.assertEqual(method.call_args_list, expected)
+                    method.assert_called_once_with(
+                        {},
+                        msg['publisher_id'],
+                        msg['event_type'],
+                        msg['payload'], {
+                            'timestamp': mock.ANY,
+                            'message_id': mock.ANY
+                        })
                 else:
                     self.assertEqual(endpoints[i].call_count, 0)
 
