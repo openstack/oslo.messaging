@@ -37,6 +37,9 @@ class IncomingMessage(object):
     def reply(self, reply=None, failure=None, log_failure=True):
         "Send a reply or failure back to the client."
 
+    def acknowledge(self):
+        "Acknowledge the message."
+
 
 @six.add_metaclass(abc.ABCMeta)
 class Listener(object):

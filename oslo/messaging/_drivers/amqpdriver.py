@@ -32,10 +32,12 @@ LOG = logging.getLogger(__name__)
 class AMQPIncomingMessage(base.IncomingMessage):
 
     def __init__(self, listener, ctxt, message, msg_id, reply_q):
-        super(AMQPIncomingMessage, self).__init__(listener, ctxt, message)
+        super(AMQPIncomingMessage, self).__init__(listener, ctxt,
+                                                  dict(message))
 
         self.msg_id = msg_id
         self.reply_q = reply_q
+        self.acknowledge = message.acknowledge
 
     def _send_reply(self, conn, reply=None, failure=None,
                     ending=False, log_failure=True):
@@ -74,7 +76,7 @@ class AMQPListener(base.Listener):
 
     def __call__(self, message):
         # FIXME(markmc): logging isn't driver specific
-        rpc_common._safe_log(LOG.debug, 'received %s', message)
+        rpc_common._safe_log(LOG.debug, 'received %s', dict(message))
 
         self.msg_id_cache.check_duplicate_message(message)
         ctxt = rpc_amqp.unpack_context(self.conf, message)
@@ -88,7 +90,9 @@ class AMQPListener(base.Listener):
     def poll(self):
         while True:
             if self.incoming:
-                return self.incoming.pop(0)
+                message = self.incoming.pop(0)
+                message.acknowledge()
+                return message
             self.conn.consume(limit=1)
 
 
@@ -156,6 +160,7 @@ class ReplyWaiter(object):
         conn.declare_direct_consumer(reply_q, self)
 
     def __call__(self, message):
+        message.acknowledge()
         self.incoming.append(message)
 
     def listen(self, msg_id):
