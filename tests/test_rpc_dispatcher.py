@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import testscenarios
 
 from oslo import messaging
@@ -91,38 +92,46 @@ class TestDispatcher(test_utils.BaseTestCase):
     ]
 
     def test_dispatcher(self):
-        endpoints = []
-        for e in self.endpoints:
-            target = messaging.Target(**e) if e else None
-            endpoints.append(_FakeEndpoint(target))
+        endpoints = [mock.Mock(spec=_FakeEndpoint,
+                               target=messaging.Target(**e))
+                     for e in self.endpoints]
 
         serializer = None
         target = messaging.Target()
         dispatcher = messaging.RPCDispatcher(target, endpoints, serializer)
 
-        if self.dispatch_to is not None:
-            endpoint = endpoints[self.dispatch_to['endpoint']]
-            method = self.dispatch_to['method']
+        def check_reply(reply=None, failure=None, log_failure=True):
+            if self.ex and failure is not None:
+                ex = failure[1]
+                self.assertFalse(self.success, ex)
+                self.assertIsNotNone(self.ex, ex)
+                self.assertIsInstance(ex, self.ex, ex)
+                if isinstance(ex, messaging.NoSuchMethod):
+                    self.assertEqual(ex.method, self.msg.get('method'))
+                elif isinstance(ex, messaging.UnsupportedVersion):
+                    self.assertEqual(ex.version,
+                                     self.msg.get('version', '1.0'))
+            else:
+                self.assertTrue(self.success, failure)
+                self.assertIsNone(failure)
 
-            self.mox.StubOutWithMock(endpoint, method)
+        incoming = mock.Mock(ctxt=self.ctxt, message=self.msg)
+        incoming.reply.side_effect = check_reply
 
-            method = getattr(endpoint, method)
-            method(self.ctxt, **self.msg.get('args', {}))
+        with dispatcher(incoming) as callback:
+            callback()
 
-        self.mox.ReplayAll()
+        for n, endpoint in enumerate(endpoints):
+            for method_name in ['foo', 'bar']:
+                method = getattr(endpoint, method_name)
+                if self.dispatch_to and n == self.dispatch_to['endpoint'] and \
+                        method_name == self.dispatch_to['method']:
+                    method.assert_called_once_with(
+                        self.ctxt, **self.msg.get('args', {}))
+                else:
+                    self.assertEqual(method.call_count, 0)
 
-        try:
-            dispatcher(self.ctxt, self.msg)
-        except Exception as ex:
-            self.assertFalse(self.success, ex)
-            self.assertIsNotNone(self.ex, ex)
-            self.assertIsInstance(ex, self.ex, ex)
-            if isinstance(ex, messaging.NoSuchMethod):
-                self.assertEqual(ex.method, self.msg.get('method'))
-            elif isinstance(ex, messaging.UnsupportedVersion):
-                self.assertEqual(ex.version, self.msg.get('version', '1.0'))
-        else:
-            self.assertTrue(self.success)
+        self.assertEqual(incoming.reply.call_count, 1)
 
 
 class TestSerializer(test_utils.BaseTestCase):
@@ -161,6 +170,7 @@ class TestSerializer(test_utils.BaseTestCase):
 
         self.mox.ReplayAll()
 
-        retval = dispatcher(self.ctxt, dict(method='foo', args=self.args))
+        retval = dispatcher._dispatch(self.ctxt, dict(method='foo',
+                                                      args=self.args))
         if self.retval is not None:
             self.assertEqual(retval, 's' + self.retval)

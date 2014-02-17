@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import sys
+
 import eventlet
 from eventlet import greenpool
 import greenlet
@@ -29,6 +31,33 @@ _eventlet_opts = [
 ]
 
 
+def spawn_with(ctxt, pool):
+    """This is the equivalent of a with statement
+    but with the content of the BLOCK statement executed
+    into a greenthread
+
+    exception path grab from:
+    http://www.python.org/dev/peps/pep-0343/
+    """
+
+    def complete(thread, exit):
+        exc = True
+        try:
+            try:
+                thread.wait()
+            except Exception:
+                exc = False
+                if not exit(*sys.exc_info()):
+                    raise
+        finally:
+            if exc:
+                exit(None, None, None)
+
+    callback = ctxt.__enter__()
+    thread = pool.spawn(callback)
+    thread.link(complete, ctxt.__exit__)
+
+
 class EventletExecutor(base.ExecutorBase):
 
     """A message executor which integrates with eventlet.
@@ -40,8 +69,8 @@ class EventletExecutor(base.ExecutorBase):
     method waits for all message dispatch greenthreads to complete.
     """
 
-    def __init__(self, conf, listener, callback):
-        super(EventletExecutor, self).__init__(conf, listener, callback)
+    def __init__(self, conf, listener, dispatcher):
+        super(EventletExecutor, self).__init__(conf, listener, dispatcher)
         self.conf.register_opts(_eventlet_opts)
         self._thread = None
         self._greenpool = greenpool.GreenPool(self.conf.rpc_thread_pool_size)
@@ -55,7 +84,8 @@ class EventletExecutor(base.ExecutorBase):
             try:
                 while True:
                     incoming = self.listener.poll()
-                    self._greenpool.spawn_n(self._dispatch, incoming)
+                    spawn_with(ctxt=self.dispatcher(incoming),
+                               pool=self._greenpool)
             except greenlet.GreenletExit:
                 return
 

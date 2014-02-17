@@ -92,11 +92,8 @@ to - primitive types.
 
 __all__ = [
     'get_rpc_server',
-    'ExpectedException',
     'expected_exceptions',
 ]
-
-import sys
 
 from oslo.messaging.rpc import dispatcher as rpc_dispatcher
 from oslo.messaging import server as msg_server
@@ -125,17 +122,6 @@ def get_rpc_server(transport, target, endpoints,
     return msg_server.MessageHandlingServer(transport, dispatcher, executor)
 
 
-class ExpectedException(Exception):
-    """Encapsulates an expected exception raised by an RPC endpoint
-
-    Merely instantiating this exception records the current exception
-    information, which  will be passed back to the RPC client without
-    exceptional logging.
-    """
-    def __init__(self):
-        self.exc_info = sys.exc_info()
-
-
 def expected_exceptions(*exceptions):
     """Decorator for RPC endpoint methods that raise expected exceptions.
 
@@ -158,6 +144,6 @@ def expected_exceptions(*exceptions):
             # derived from the args passed to us will be
             # ignored and thrown as normal.
             except exceptions:
-                raise ExpectedException()
+                raise rpc_dispatcher.ExpectedException()
         return inner
     return outer

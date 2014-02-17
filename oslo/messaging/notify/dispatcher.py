@@ -14,8 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import itertools
 import logging
+import sys
 
 from oslo.messaging import localcontext
 from oslo.messaging import serializer as msg_serializer
@@ -55,7 +57,25 @@ class NotificationDispatcher(object):
     def _listen(self, transport):
         return transport._listen_for_notifications(self._targets_priorities)
 
-    def __call__(self, ctxt, message):
+    @contextlib.contextmanager
+    def __call__(self, incoming):
+        yield lambda: self._dispatch_and_handle_error(incoming)
+
+    def _dispatch_and_handle_error(self, incoming):
+        """Dispatch a notification message to the appropriate endpoint method.
+
+        :param incoming: the incoming notification message
+        :type ctxt: IncomingMessage
+        """
+        try:
+            self._dispatch(incoming.ctxt, incoming.message)
+        except Exception:
+            # sys.exc_info() is deleted by LOG.exception().
+            exc_info = sys.exc_info()
+            LOG.error('Exception during message handling',
+                      exc_info=exc_info)
+
+    def _dispatch(self, ctxt, message):
         """Dispatch an RPC message to the appropriate endpoint method.
 
         :param ctxt: the request context

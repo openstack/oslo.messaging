@@ -21,7 +21,12 @@ __all__ = [
     'RPCDispatcher',
     'RPCDispatcherError',
     'UnsupportedVersion',
+    'ExpectedException',
 ]
+
+import contextlib
+import logging
+import sys
 
 import six
 
@@ -30,6 +35,19 @@ from oslo.messaging import localcontext
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
 from oslo.messaging import target as msg_target
+
+LOG = logging.getLogger(__name__)
+
+
+class ExpectedException(Exception):
+    """Encapsulates an expected exception raised by an RPC endpoint
+
+    Merely instantiating this exception records the current exception
+    information, which  will be passed back to the RPC client without
+    exceptional logging.
+    """
+    def __init__(self):
+        self.exc_info = sys.exc_info()
 
 
 class RPCDispatcherError(msg_server.MessagingServerError):
@@ -96,7 +114,7 @@ class RPCDispatcher(object):
         endpoint_version = target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
 
-    def _dispatch(self, endpoint, method, ctxt, args):
+    def _do_dispatch(self, endpoint, method, ctxt, args):
         ctxt = self.serializer.deserialize_context(ctxt)
         new_args = dict()
         for argname, arg in six.iteritems(args):
@@ -104,7 +122,30 @@ class RPCDispatcher(object):
         result = getattr(endpoint, method)(ctxt, **new_args)
         return self.serializer.serialize_entity(ctxt, result)
 
-    def __call__(self, ctxt, message):
+    @contextlib.contextmanager
+    def __call__(self, incoming):
+        yield lambda: self._dispatch_and_reply(incoming)
+
+    def _dispatch_and_reply(self, incoming):
+        try:
+            incoming.reply(self._dispatch(incoming.ctxt,
+                                          incoming.message))
+        except ExpectedException as e:
+            LOG.debug('Expected exception during message handling (%s)' %
+                      e.exc_info[1])
+            incoming.reply(failure=e.exc_info, log_failure=False)
+        except Exception as e:
+            # sys.exc_info() is deleted by LOG.exception().
+            exc_info = sys.exc_info()
+            LOG.error('Exception during message handling: %s', e,
+                      exc_info=exc_info)
+            incoming.reply(failure=exc_info)
+            # NOTE(dhellmann): Remove circular object reference
+            # between the current stack frame and the traceback in
+            # exc_info.
+            del exc_info
+
+    def _dispatch(self, ctxt, message):
         """Dispatch an RPC message to the appropriate endpoint method.
 
         :param ctxt: the request context
@@ -131,7 +172,7 @@ class RPCDispatcher(object):
             if hasattr(endpoint, method):
                 localcontext.set_local_context(ctxt)
                 try:
-                    return self._dispatch(endpoint, method, ctxt, args)
+                    return self._do_dispatch(endpoint, method, ctxt, args)
                 finally:
                     localcontext.clear_local_context()
 

@@ -73,7 +73,9 @@ class TestDispatcher(test_utils.BaseTestCase):
                                     for prio in itertools.chain.from_iterable(
                                         self.endpoints))))
 
-        dispatcher({}, msg)
+        incoming = mock.Mock(ctxt={}, message=msg)
+        with dispatcher(incoming) as callback:
+            callback()
 
         # check endpoint callbacks are called or not
         for i, endpoint_methods in enumerate(self.endpoints):
@@ -94,5 +96,6 @@ class TestDispatcher(test_utils.BaseTestCase):
         dispatcher = notify_dispatcher.NotificationDispatcher([mock.Mock()],
                                                               [mock.Mock()],
                                                               None)
-        dispatcher({}, msg)
+        with dispatcher(mock.Mock(ctxt={}, message=msg)) as callback:
+            callback()
         mylog.warning.assert_called_once_with('Unknown priority "what???"')

@@ -29,14 +29,15 @@ class BlockingExecutor(base.ExecutorBase):
     for simple demo programs.
     """
 
-    def __init__(self, conf, listener, callback):
-        super(BlockingExecutor, self).__init__(conf, listener, callback)
+    def __init__(self, conf, listener, dispatcher):
+        super(BlockingExecutor, self).__init__(conf, listener, dispatcher)
         self._running = False
 
     def start(self):
         self._running = True
         while self._running:
-            self._dispatch(self.listener.poll())
+            with self.dispatcher(self.listener.poll()) as callback:
+                callback()
 
     def stop(self):
         self._running = False
