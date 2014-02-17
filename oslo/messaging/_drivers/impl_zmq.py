@@ -959,5 +959,19 @@ class ZmqDriver(base.BaseDriver):
 
         return listener
 
+    def listen_for_notifications(self, targets_and_priorities):
+        conn = create_connection(self.conf)
+
+        listener = ZmqListener(self, None)
+        for target, priority in targets_and_priorities:
+            # NOTE(ewindisch): dot-priority in rpc notifier does not
+            # work with our assumptions.
+            # NOTE(sileht): create_consumer doesn't support target.exchange
+            conn.create_consumer('%s-%s' % (target.topic, priority),
+                                 listener)
+        conn.consume_in_thread()
+
+        return listener
+
     def cleanup(self):
         cleanup()

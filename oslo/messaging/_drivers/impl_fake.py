@@ -161,5 +161,15 @@ class FakeDriver(base.BaseDriver):
                                  messaging.Target(topic=target.topic)])
         return listener
 
+    def listen_for_notifications(self, targets_and_priorities):
+        # TODO(sileht): Handle the target.exchange
+        exchange = self._get_exchange(self._default_exchange)
+
+        targets = [messaging.Target(topic='%s.%s' % (target.topic, priority))
+                   for target, priority in targets_and_priorities]
+        listener = FakeListener(self, exchange, targets)
+
+        return listener
+
     def cleanup(self):
         pass

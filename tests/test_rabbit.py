@@ -108,6 +108,11 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
         self._driver.listen(self._target)
         self.assertEqual(self._server_params[0], self.expected)
 
+    def test_transport_url_listen_for_notification(self):
+        self._driver.listen_for_notifications(
+            [(messaging.Target(topic='topic'), 'info')])
+        self.assertEqual(self._server_params[0], self.expected)
+
     def test_transport_url_send(self):
         self._driver.send(self._target, {}, {})
         self.assertEqual(self._server_params[0], self.expected)
