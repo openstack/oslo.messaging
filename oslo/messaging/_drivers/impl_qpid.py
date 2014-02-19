@@ -194,7 +194,7 @@ class ConsumerBase(object):
         message = self.receiver.fetch()
         try:
             self._unpack_json_msg(message)
-            self.callback(QpidMessage(message))
+            self.callback(QpidMessage(self.session, message))
         except Exception:
             LOG.exception(_("Failed to process message... skipping it."))
             self.session.acknowledge(message)
