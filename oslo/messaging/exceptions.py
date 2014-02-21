@@ -13,7 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['MessagingException', 'MessagingTimeout', 'InvalidTarget']
+__all__ = ['MessagingException', 'MessagingTimeout', 'MessageDeliveryFailure',
+           'InvalidTarget']
 
 
 class MessagingException(Exception):
@@ -22,6 +23,10 @@ class MessagingException(Exception):
 
 class MessagingTimeout(MessagingException):
     """Raised if message sending times out."""
+
+
+class MessageDeliveryFailure(MessagingException):
+    """Raised if message sending failed after the asked retry."""
 
 
 class InvalidTarget(MessagingException, ValueError):

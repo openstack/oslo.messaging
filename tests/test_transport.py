@@ -270,7 +270,7 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(t._driver, 'send')
         t._driver.send(self._target, 'ctxt', 'message',
                        wait_for_reply=None,
-                       timeout=None)
+                       timeout=None, retry=None)
         self.mox.ReplayAll()
 
         t._send(self._target, 'ctxt', 'message')
@@ -281,12 +281,12 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         self.mox.StubOutWithMock(t._driver, 'send')
         t._driver.send(self._target, 'ctxt', 'message',
                        wait_for_reply='wait_for_reply',
-                       timeout='timeout')
+                       timeout='timeout', retry='retry')
         self.mox.ReplayAll()
 
         t._send(self._target, 'ctxt', 'message',
                 wait_for_reply='wait_for_reply',
-                timeout='timeout')
+                timeout='timeout', retry='retry')
 
     def test_send_notification(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))

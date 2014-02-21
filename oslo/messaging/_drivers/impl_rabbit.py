@@ -31,6 +31,7 @@ import six
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging import exceptions
 from oslo.messaging.openstack.common import network_utils
 
 # FIXME(markmc): remove this
@@ -539,27 +540,8 @@ class Connection(object):
         been declared before if we are reconnecting.  Exceptions should
         be handled by the caller.
         """
-        if self.connection:
-            LOG.info(_("Reconnecting to AMQP server on "
-                     "%(hostname)s:%(port)d") % broker)
-            try:
-                # XXX(nic): when reconnecting to a RabbitMQ cluster
-                # with mirrored queues in use, the attempt to release the
-                # connection can hang "indefinitely" somewhere deep down
-                # in Kombu.  Blocking the thread for a bit prior to
-                # release seems to kludge around the problem where it is
-                # otherwise reproduceable.
-                if self.conf.kombu_reconnect_delay > 0:
-                    LOG.info(_("Delaying reconnect for %1.1f seconds...") %
-                             self.conf.kombu_reconnect_delay)
-                    time.sleep(self.conf.kombu_reconnect_delay)
-
-                self.connection.release()
-            except self.connection_errors:
-                pass
-            # Setting this in case the next statement fails, though
-            # it shouldn't be doing any network operations, yet.
-            self.connection = None
+        LOG.info(_("Connecting to AMQP server on "
+                   "%(hostname)s:%(port)d") % broker)
         self.connection = kombu.connection.BrokerConnection(**broker)
         self.connection_errors = self.connection.connection_errors
         self.channel_errors = self.connection.channel_errors
@@ -578,17 +560,47 @@ class Connection(object):
         LOG.info(_('Connected to AMQP server on %(hostname)s:%(port)d') %
                  broker)
 
-    def reconnect(self):
+    def _disconnect(self):
+        if self.connection:
+            # XXX(nic): when reconnecting to a RabbitMQ cluster
+            # with mirrored queues in use, the attempt to release the
+            # connection can hang "indefinitely" somewhere deep down
+            # in Kombu.  Blocking the thread for a bit prior to
+            # release seems to kludge around the problem where it is
+            # otherwise reproduceable.
+            if self.conf.kombu_reconnect_delay > 0:
+                LOG.info(_("Delaying reconnect for %1.1f seconds...") %
+                         self.conf.kombu_reconnect_delay)
+                time.sleep(self.conf.kombu_reconnect_delay)
+
+            try:
+                self.connection.release()
+            except self.connection_errors:
+                pass
+            self.connection = None
+
+    def reconnect(self, retry=None):
         """Handles reconnecting and re-establishing queues.
-        Will retry up to self.max_retries number of times.
-        self.max_retries = 0 means to retry forever.
+        Will retry up to retry number of times.
+        retry = None means use the value of rabbit_max_retries
+        retry = -1 means to retry forever
+        retry = 0 means no retry
+        retry = N means N retries
         Sleep between tries, starting at self.interval_start
         seconds, backing off self.interval_stepping number of seconds
         each attempt.
         """
 
         attempt = 0
+        loop_forever = False
+        if retry is None:
+            retry = self.max_retries
+        if retry is None or retry < 0:
+            loop_forever = True
+
         while True:
+            self._disconnect()
+
             broker = six.next(self.brokers)
             attempt += 1
             try:
@@ -610,30 +622,30 @@ class Connection(object):
 
             log_info = {}
             log_info['err_str'] = e
-            log_info['max_retries'] = self.max_retries
+            log_info['retry'] = retry or 0
             log_info.update(broker)
 
-            if self.max_retries and attempt == self.max_retries:
+            if not loop_forever and attempt > retry:
                 msg = _('Unable to connect to AMQP server on '
-                        '%(hostname)s:%(port)d after %(max_retries)d '
+                        '%(hostname)s:%(port)d after %(retry)d '
                         'tries: %(err_str)s') % log_info
                 LOG.error(msg)
-                raise rpc_common.RPCException(msg)
+                raise exceptions.MessageDeliveryFailure(msg)
+            else:
+                if attempt == 1:
+                    sleep_time = self.interval_start or 1
+                elif attempt > 1:
+                    sleep_time += self.interval_stepping
 
-            if attempt == 1:
-                sleep_time = self.interval_start or 1
-            elif attempt > 1:
-                sleep_time += self.interval_stepping
-            if self.interval_max:
                 sleep_time = min(sleep_time, self.interval_max)
 
-            log_info['sleep_time'] = sleep_time
-            LOG.error(_('AMQP server on %(hostname)s:%(port)d is '
-                        'unreachable: %(err_str)s. Trying again in '
-                        '%(sleep_time)d seconds.') % log_info)
-            time.sleep(sleep_time)
+                log_info['sleep_time'] = sleep_time
+                LOG.error(_('AMQP server on %(hostname)s:%(port)d is '
+                            'unreachable: %(err_str)s. Trying again in '
+                            '%(sleep_time)d seconds.') % log_info)
+                time.sleep(sleep_time)
 
-    def ensure(self, error_callback, method, *args, **kwargs):
+    def ensure(self, error_callback, method, retry=None, *args, **kwargs):
         while True:
             try:
                 return method(*args, **kwargs)
@@ -657,7 +669,7 @@ class Connection(object):
                     raise
                 if error_callback:
                     error_callback(e)
-            self.reconnect()
+            self.reconnect(retry=retry)
 
     def get_channel(self):
         """Convenience call for bin/clear_rabbit_queues."""
@@ -665,8 +677,9 @@ class Connection(object):
 
     def close(self):
         """Close/release this connection."""
-        self.connection.release()
-        self.connection = None
+        if self.connection:
+            self.connection.release()
+            self.connection = None
 
     def reset(self):
         """Reset a connection so it can be used again."""
@@ -722,7 +735,8 @@ class Connection(object):
                 raise StopIteration
             yield self.ensure(_error_callback, _consume)
 
-    def publisher_send(self, cls, topic, msg, timeout=None, **kwargs):
+    def publisher_send(self, cls, topic, msg, timeout=None, retry=None,
+                       **kwargs):
         """Send to a publisher based on the publisher class."""
 
         def _error_callback(exc):
@@ -734,7 +748,7 @@ class Connection(object):
             publisher = cls(self.conf, self.channel, topic=topic, **kwargs)
             publisher.send(msg, timeout)
 
-        self.ensure(_error_callback, _publish)
+        self.ensure(_error_callback, _publish, retry=retry)
 
     def declare_direct_consumer(self, topic, callback):
         """Create a 'direct' queue.
@@ -760,14 +774,14 @@ class Connection(object):
         """Send a 'direct' message."""
         self.publisher_send(DirectPublisher, msg_id, msg)
 
-    def topic_send(self, exchange_name, topic, msg, timeout=None):
+    def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None):
         """Send a 'topic' message."""
         self.publisher_send(TopicPublisher, topic, msg, timeout,
-                            exchange_name=exchange_name)
+                            exchange_name=exchange_name, retry=retry)
 
-    def fanout_send(self, topic, msg):
+    def fanout_send(self, topic, msg, retry=None):
         """Send a 'fanout' message."""
-        self.publisher_send(FanoutPublisher, topic, msg)
+        self.publisher_send(FanoutPublisher, topic, msg, retry=retry)
 
     def notify_send(self, exchange_name, topic, msg, **kwargs):
         """Send a notify message on a topic."""
@@ -786,7 +800,8 @@ class Connection(object):
 
 class RabbitDriver(amqpdriver.AMQPDriverBase):
 
-    def __init__(self, conf, url, default_exchange=None,
+    def __init__(self, conf, url,
+                 default_exchange=None,
                  allowed_remote_exmods=[]):
         conf.register_opts(rabbit_opts)
         conf.register_opts(rpc_amqp.amqp_opts)

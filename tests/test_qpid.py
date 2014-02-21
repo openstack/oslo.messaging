@@ -753,3 +753,75 @@ _fake_session = FakeQpidSession()
 
 def get_fake_qpid_session():
     return _fake_session
+
+
+class QPidHATestCase(test_utils.BaseTestCase):
+
+    def setUp(self):
+        super(QPidHATestCase, self).setUp()
+        self.brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
+
+        self.config(qpid_hosts=self.brokers,
+                    qpid_username=None,
+                    qpid_password=None)
+
+        hostname_sets = set()
+        self.info = {'attempt': 0,
+                     'fail': False}
+
+        def _connect(myself, broker):
+            # do as little work that is enough to pass connection attempt
+            myself.connection = mock.Mock()
+            hostname = broker['host']
+            self.assertNotIn(hostname, hostname_sets)
+            hostname_sets.add(hostname)
+
+            self.info['attempt'] += 1
+            if self.info['fail']:
+                raise qpid.messaging.exceptions.ConnectionError
+
+        # just make sure connection instantiation does not fail with an
+        # exception
+        self.stubs.Set(qpid_driver.Connection, '_connect', _connect)
+
+        # starting from the first broker in the list
+        url = messaging.TransportURL.parse(self.conf, None)
+        self.connection = qpid_driver.Connection(self.conf, url)
+        self.addCleanup(self.connection.close)
+
+        self.info.update({'attempt': 0,
+                          'fail': True})
+        hostname_sets.clear()
+
+    def test_reconnect_order(self):
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.reconnect,
+                          retry=len(self.brokers) - 1)
+        self.assertEqual(len(self.brokers), self.info['attempt'])
+
+    def test_ensure_four_retries(self):
+        mock_callback = mock.Mock(
+            side_effect=qpid.messaging.exceptions.ConnectionError)
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.ensure, None, mock_callback,
+                          retry=4)
+        self.assertEqual(5, self.info['attempt'])
+        self.assertEqual(1, mock_callback.call_count)
+
+    def test_ensure_one_retry(self):
+        mock_callback = mock.Mock(
+            side_effect=qpid.messaging.exceptions.ConnectionError)
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.ensure, None, mock_callback,
+                          retry=1)
+        self.assertEqual(2, self.info['attempt'])
+        self.assertEqual(1, mock_callback.call_count)
+
+    def test_ensure_no_retry(self):
+        mock_callback = mock.Mock(
+            side_effect=qpid.messaging.exceptions.ConnectionError)
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.ensure, None, mock_callback,
+                          retry=0)
+        self.assertEqual(1, self.info['attempt'])
+        self.assertEqual(1, mock_callback.call_count)
