@@ -35,7 +35,7 @@ matchmaker_opts = [
                deprecated_name='matchmaker_ringfile',
                deprecated_group='DEFAULT',
                default='/etc/oslo/matchmaker_ring.json',
-               help='Matchmaker ring file (JSON)'),
+               help='Matchmaker ring file (JSON).'),
 ]
 
 CONF = cfg.CONF

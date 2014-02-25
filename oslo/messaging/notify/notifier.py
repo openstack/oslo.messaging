@@ -29,12 +29,12 @@ from oslo.messaging import serializer as msg_serializer
 _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',
                     default=[],
-                    help='Driver or drivers to handle sending notifications'),
+                    help='Driver or drivers to handle sending notifications.'),
     cfg.ListOpt('notification_topics',
                 default=['notifications', ],
                 deprecated_name='topics',
                 deprecated_group='rpc_notifier2',
-                help='AMQP topic used for OpenStack notifications'),
+                help='AMQP topic used for OpenStack notifications.'),
 ]
 
 _LOG = logging.getLogger(__name__)

@@ -28,7 +28,7 @@ from oslo.messaging.openstack.common.gettextutils import _  # noqa
 LOG = logging.getLogger(__name__)
 
 router_config = cfg.StrOpt('routing_notifier_config', default='',
-                           help='RoutingNotifier configuration file location')
+                           help='RoutingNotifier configuration file location.')
 
 CONF = cfg.CONF
 CONF.register_opt(router_config)

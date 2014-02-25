@@ -80,8 +80,9 @@ _exception_opts = [
                          'cinder.exception',
                          _EXCEPTIONS_MODULE,
                          ],
-                help='Modules of exceptions that are permitted to be recreated'
-                     'upon receiving exception data from an rpc call.'),
+                help='Modules of exceptions that are permitted to be '
+                     'recreated upon receiving exception data from an rpc '
+                     'call.'),
 ]
 
 

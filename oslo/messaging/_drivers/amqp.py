@@ -50,7 +50,7 @@ amqp_opts = [
     # FIXME(markmc): this was toplevel in openstack.common.rpc
     cfg.IntOpt('rpc_conn_pool_size',
                default=30,
-               help='Size of RPC connection pool'),
+               help='Size of RPC connection pool.'),
 ]
 
 UNIQUE_ID = '_unique_id'
