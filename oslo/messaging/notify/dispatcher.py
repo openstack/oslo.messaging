@@ -101,6 +101,10 @@ class NotificationDispatcher(object):
 
         publisher_id = message.get('publisher_id')
         event_type = message.get('event_type')
+        metadata = {
+            'message_id':  message.get('message_id'),
+            'timestamp': message.get('timestamp')
+        }
         priority = message.get('priority', '').lower()
         if priority not in PRIORITIES:
             LOG.warning('Unknown priority "%s"' % priority)
@@ -112,7 +116,8 @@ class NotificationDispatcher(object):
         for callback in self._callbacks_by_priority.get(priority, []):
             localcontext.set_local_context(ctxt)
             try:
-                ret = callback(ctxt, publisher_id, event_type, payload)
+                ret = callback(ctxt, publisher_id, event_type, payload,
+                               metadata)
                 ret = NotificationResult.HANDLED if ret is None else ret
                 if ret != NotificationResult.HANDLED:
                     return ret

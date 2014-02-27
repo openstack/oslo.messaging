@@ -118,7 +118,10 @@ class TestDispatcher(test_utils.BaseTestCase):
                     method = getattr(endpoints[i], m)
                     expected = [mock.call({}, msg['publisher_id'],
                                           msg['event_type'],
-                                          msg['payload'])]
+                                          msg['payload'], {
+                                              'timestamp': mock.ANY,
+                                              'message_id': mock.ANY
+                                          })]
                     self.assertEqual(method.call_args_list, expected)
                 else:
                     self.assertEqual(endpoints[i].call_count, 0)

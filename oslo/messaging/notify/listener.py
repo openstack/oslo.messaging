@@ -45,11 +45,11 @@ A simple example of a notification listener with multiple endpoints might be::
     from oslo import messaging
 
     class NotificationEndpoint(object):
-        def warn(self, ctxt, publisher_id, event_type, payload):
+        def warn(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
     class ErrorEndpoint(object):
-        def error(self, ctxt, publisher_id, event_type, payload):
+        def error(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
     transport = messaging.get_transport(cfg.CONF)
