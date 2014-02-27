@@ -21,41 +21,19 @@
 
 """Common utilities used in testing"""
 
-import os
-
-import fixtures
 from oslo.config import cfg
 import six
-import testtools
 
-from oslo.messaging.openstack.common.fixture import moxstubout
+from oslotest import base
+from oslotest import moxstubout
 
 TRUE_VALUES = ('true', '1', 'yes')
 
 
-class BaseTestCase(testtools.TestCase):
+class BaseTestCase(base.BaseTestCase):
 
     def setUp(self, conf=cfg.CONF):
         super(BaseTestCase, self).setUp()
-        self.useFixture(fixtures.FakeLogger('oslo.config'))
-        test_timeout = os.environ.get('OS_TEST_TIMEOUT', 30)
-        try:
-            test_timeout = int(test_timeout)
-        except ValueError:
-            # If timeout value is invalid, fail hard.
-            print("OS_TEST_TIMEOUT set to invalid value"
-                  " defaulting to no timeout")
-            test_timeout = 0
-        if test_timeout > 0:
-            self.useFixture(fixtures.Timeout(test_timeout, gentle=True))
-
-        if os.environ.get('OS_STDOUT_CAPTURE') in TRUE_VALUES:
-            stdout = self.useFixture(fixtures.StringStream('stdout')).stream
-            self.useFixture(fixtures.MonkeyPatch('sys.stdout', stdout))
-        if os.environ.get('OS_STDERR_CAPTURE') in TRUE_VALUES:
-            stderr = self.useFixture(fixtures.StringStream('stderr')).stream
-            self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
-
         self.conf = conf
         self.addCleanup(self.conf.reset)
 

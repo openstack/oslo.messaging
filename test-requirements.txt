@@ -9,6 +9,7 @@ python-subunit
 testrepository>=0.0.17
 testscenarios>=0.4
 testtools>=0.9.32
+oslotest
 
 # for test_rabbit
 kombu>=2.4.8
