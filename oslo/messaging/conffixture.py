@@ -46,6 +46,10 @@ class ConfFixture(fixtures.Fixture):
         self.conf = conf
         _import_opts(self.conf,
                      'oslo.messaging._drivers.impl_rabbit', 'rabbit_opts')
+        _import_opts(self.conf,
+                     'oslo.messaging._drivers.impl_qpid', 'qpid_opts')
+        _import_opts(self.conf,
+                     'oslo.messaging._drivers.amqp', 'amqp_opts')
         _import_opts(self.conf, 'oslo.messaging.rpc.client', '_client_opts')
         _import_opts(self.conf, 'oslo.messaging.transport', '_transport_opts')
 

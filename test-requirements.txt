@@ -11,6 +11,9 @@ testscenarios>=0.4
 testtools>=0.9.34
 oslotest
 
+# for test_qpid
+qpid-python
+
 # when we can require tox>= 1.4, this can go into tox.ini:
 #  [testenv:cover]
 #  deps = {[testenv]deps} coverage
@@ -19,4 +22,3 @@ coverage>=3.6
 # this is required for the docs build jobs
 sphinx>=1.1.2,<1.2
 oslosphinx
-qpid-python
