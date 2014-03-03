@@ -71,7 +71,9 @@ in one of the targets and if an endpoint implements the method named like the
 priority
 
 Parameters to endpoint methods are the request context supplied by the client,
-the publisher_id of the notification message, the event_type, the payload.
+the publisher_id of the notification message, the event_type, the payload and
+metadata. The metadata parameter is a mapping containing a unique message_id
+and a timestamp.
 
 An endpoint method can return explicitly messaging.NotificationResult.HANDLED
 to acknowledge a message or messaging.NotificationResult.REQUEUE to requeue the
