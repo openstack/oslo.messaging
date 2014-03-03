@@ -73,26 +73,20 @@ priority
 Parameters to endpoint methods are the request context supplied by the client,
 the publisher_id of the notification message, the event_type, the payload.
 
-An endpoint method can return explicitly messaging.NotificationResult.HANDLED
+By supplying a serializer object, a listener can deserialize a request context
+and arguments from - and serialize return values to - primitive types.
+
+An endpoint method can explicitly return messaging.NotificationResult.HANDLED
 to acknowledge a message or messaging.NotificationResult.REQUEUE to requeue the
 message.
 
-The message is acknowledge only if all endpoints return
-messaging.NotificationResult.HANDLED
+The message is acknowledged only if all endpoints either return
+messaging.NotificationResult.HANDLED or None.
 
-If nothing is returned by an endpoint, this is considered like
-messaging.NotificationResult.HANDLED
-
-messaging.NotificationResult values needs to be handled by drivers:
-
-* HANDLED: supported by all drivers
-* REQUEUE: supported by drivers: fake://, rabbit://
-
-In case of an unsupported driver nothing is done to the message and a
-NotImplementedError is raised and logged.
-
-By supplying a serializer object, a listener can deserialize a request context
-and arguments from - and serialize return values to - primitive types.
+Note that not all transport drivers implement support for requeueing. In order
+to use this feature, applications should assert that the feature is available
+by passing allow_requeue=True to get_notification_listener(). If the driver
+does not support requeueing, it will raise NotImplementedError at this point.
 """
 
 from oslo.messaging.notify import dispatcher as notify_dispatcher
@@ -100,7 +94,8 @@ from oslo.messaging import server as msg_server
 
 
 def get_notification_listener(transport, targets, endpoints,
-                              executor='blocking', serializer=None):
+                              executor='blocking', serializer=None,
+                              allow_requeue=False):
     """Construct a notification listener
 
     The executor parameter controls how incoming messages will be received and
@@ -117,7 +112,12 @@ def get_notification_listener(transport, targets, endpoints,
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer
+    :param allow_requeue: whether NotificationResult.REQUEUE support is needed
+    :type allow_requeue: bool
+    :raises: NotImplementedError
     """
+    transport._require_driver_features(requeue=allow_requeue)
     dispatcher = notify_dispatcher.NotificationDispatcher(targets, endpoints,
-                                                          serializer)
+                                                          serializer,
+                                                          allow_requeue)
     return msg_server.MessageHandlingServer(transport, dispatcher, executor)

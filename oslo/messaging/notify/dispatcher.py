@@ -44,10 +44,11 @@ class NotificationDispatcher(object):
     message to the endpoints
     """
 
-    def __init__(self, targets, endpoints, serializer):
+    def __init__(self, targets, endpoints, serializer, allow_requeue):
         self.targets = targets
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
+        self.allow_requeue = allow_requeue
 
         self._callbacks_by_priority = {}
         for endpoint, prio in itertools.product(endpoints, PRIORITIES):
@@ -119,7 +120,7 @@ class NotificationDispatcher(object):
                 ret = callback(ctxt, publisher_id, event_type, payload,
                                metadata)
                 ret = NotificationResult.HANDLED if ret is None else ret
-                if ret != NotificationResult.HANDLED:
+                if self.allow_requeue and ret == NotificationResult.REQUEUE:
                     return ret
             finally:
                 localcontext.clear_local_context()

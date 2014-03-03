@@ -33,7 +33,7 @@ class ListenerSetupMixin(object):
             self._expect_messages = expect_messages
             self._received_msgs = 0
             self._listener = messaging.get_notification_listener(
-                transport, targets, endpoints + [self])
+                transport, targets, endpoints + [self], allow_requeue=True)
 
         def info(self, ctxt, publisher_id, event_type, payload):
             self._received_msgs += 1

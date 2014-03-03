@@ -744,3 +744,6 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
                                            connection_pool,
                                            default_exchange,
                                            allowed_remote_exmods)
+
+    def require_features(self, requeue=True):
+        pass

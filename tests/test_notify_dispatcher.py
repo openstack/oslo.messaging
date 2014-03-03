@@ -97,9 +97,8 @@ class TestDispatcher(test_utils.BaseTestCase):
         msg['priority'] = self.priority
 
         targets = [messaging.Target(topic='notifications')]
-        dispatcher = notify_dispatcher.NotificationDispatcher(targets,
-                                                              endpoints,
-                                                              None)
+        dispatcher = notify_dispatcher.NotificationDispatcher(
+            targets, endpoints, None, allow_requeue=True)
 
         # check it listen on wanted topics
         self.assertEqual(sorted(dispatcher._targets_priorities),
@@ -141,9 +140,8 @@ class TestDispatcher(test_utils.BaseTestCase):
     def test_dispatcher_unknown_prio(self, mylog):
         msg = notification_msg.copy()
         msg['priority'] = 'what???'
-        dispatcher = notify_dispatcher.NotificationDispatcher([mock.Mock()],
-                                                              [mock.Mock()],
-                                                              None)
+        dispatcher = notify_dispatcher.NotificationDispatcher(
+            [mock.Mock()], [mock.Mock()], None, allow_requeue=True)
         with dispatcher(mock.Mock(ctxt={}, message=msg)) as callback:
             callback()
         mylog.warning.assert_called_once_with('Unknown priority "what???"')
