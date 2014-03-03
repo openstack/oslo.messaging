@@ -844,8 +844,7 @@ class ZmqIncomingMessage(base.IncomingMessage):
             self.condition.notify()
 
     def requeue(self):
-        raise NotImplementedError('The ZeroMQ driver does not yet support '
-                                  'requeuing messages')
+        pass
 
 
 class ZmqListener(base.Listener):

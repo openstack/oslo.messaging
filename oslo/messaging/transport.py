@@ -78,6 +78,9 @@ class Transport(object):
         self.conf = driver.conf
         self._driver = driver
 
+    def _require_driver_features(self, requeue=False):
+        self._driver.require_features(requeue=requeue)
+
     def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
         if not target.topic:
             raise exceptions.InvalidTarget('A topic is required to send',

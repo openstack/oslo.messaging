@@ -112,6 +112,9 @@ class FakeDriver(base.BaseDriver):
         self._exchanges_lock = threading.Lock()
         self._exchanges = {}
 
+    def require_features(self, requeue=True):
+        pass
+
     @staticmethod
     def _check_serialize(message):
         """Make sure a message intended for rpc can be serialized.

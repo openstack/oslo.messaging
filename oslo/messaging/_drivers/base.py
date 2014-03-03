@@ -67,6 +67,11 @@ class BaseDriver(object):
         self._default_exchange = default_exchange
         self._allowed_remote_exmods = allowed_remote_exmods
 
+    def require_features(self, requeue=False):
+        if requeue:
+            raise NotImplementedError('Message requeueing not supported by '
+                                      'this transport driver')
+
     @abc.abstractmethod
     def send(self, target, ctxt, message,
              wait_for_reply=None, timeout=None, envelope=False):
