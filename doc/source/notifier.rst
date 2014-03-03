@@ -9,3 +9,6 @@ Notifier
 
 .. autoclass:: LoggingNotificationHandler
    :members:
+
+.. autoclass:: PublishErrorsHandler
+   :members:
