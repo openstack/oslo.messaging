@@ -318,16 +318,17 @@ class _MsgIdCache(object):
         """AMQP consumers may read same message twice when exceptions occur
            before ack is returned. This method prevents doing it.
         """
-        if UNIQUE_ID in message_data:
-            msg_id = message_data.get(UNIQUE_ID)
-            if msg_id in self.prev_msgids:
-                raise rpc_common.DuplicateMessageError(msg_id=msg_id)
-
-    def add(self, message_data):
-        if UNIQUE_ID in message_data:
+        try:
             msg_id = message_data.pop(UNIQUE_ID)
-            if msg_id not in self.prev_msgids:
-                self.prev_msgids.append(msg_id)
+        except KeyError:
+            return
+        if msg_id in self.prev_msgids:
+            raise rpc_common.DuplicateMessageError(msg_id=msg_id)
+        return msg_id
+
+    def add(self, msg_id):
+        if msg_id and msg_id not in self.prev_msgids:
+            self.prev_msgids.append(msg_id)
 
 
 def _add_unique_id(msg):

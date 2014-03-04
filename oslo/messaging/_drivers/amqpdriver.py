@@ -31,10 +31,11 @@ LOG = logging.getLogger(__name__)
 
 class AMQPIncomingMessage(base.IncomingMessage):
 
-    def __init__(self, listener, ctxt, message, msg_id, reply_q):
+    def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q):
         super(AMQPIncomingMessage, self).__init__(listener, ctxt,
                                                   dict(message))
 
+        self.unique_id = unique_id
         self.msg_id = msg_id
         self.reply_q = reply_q
         self.acknowledge_callback = message.acknowledge
@@ -67,7 +68,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
             self._send_reply(conn, ending=True)
 
     def acknowledge(self):
-        self.listener.msg_id_cache.add(self.message)
+        self.listener.msg_id_cache.add(self.unique_id)
         self.acknowledge_callback()
 
     def requeue(self):
@@ -92,12 +93,13 @@ class AMQPListener(base.Listener):
         # FIXME(markmc): logging isn't driver specific
         rpc_common._safe_log(LOG.debug, 'received %s', dict(message))
 
-        self.msg_id_cache.check_duplicate_message(message)
+        unique_id = self.msg_id_cache.check_duplicate_message(message)
         ctxt = rpc_amqp.unpack_context(self.conf, message)
 
         self.incoming.append(AMQPIncomingMessage(self,
                                                  ctxt.to_dict(),
                                                  message,
+                                                 unique_id,
                                                  ctxt.msg_id,
                                                  ctxt.reply_q))
 
