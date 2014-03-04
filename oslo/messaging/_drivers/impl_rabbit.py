@@ -31,7 +31,6 @@ from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging.openstack.common import network_utils
-from oslo.messaging.openstack.common import sslutils
 
 # FIXME(markmc): remove this
 _ = lambda s: s
@@ -474,6 +473,26 @@ class Connection(object):
         self.do_consume = None
         self.reconnect()
 
+    # FIXME(markmc): use oslo sslutils when it is available as a library
+    _SSL_PROTOCOLS = {
+        "tlsv1": ssl.PROTOCOL_TLSv1,
+        "sslv23": ssl.PROTOCOL_SSLv23,
+        "sslv3": ssl.PROTOCOL_SSLv3
+    }
+
+    try:
+        _SSL_PROTOCOLS["sslv2"] = ssl.PROTOCOL_SSLv2
+    except AttributeError:
+        pass
+
+    @classmethod
+    def validate_ssl_version(cls, version):
+        key = version.lower()
+        try:
+            return cls._SSL_PROTOCOLS[key]
+        except KeyError:
+            raise RuntimeError(_("Invalid SSL version : %s") % version)
+
     def _fetch_ssl_params(self):
         """Handles fetching what ssl params should be used for the connection
         (if any).
@@ -482,7 +501,7 @@ class Connection(object):
 
         # http://docs.python.org/library/ssl.html - ssl.wrap_socket
         if self.conf.kombu_ssl_version:
-            ssl_params['ssl_version'] = sslutils.validate_ssl_version(
+            ssl_params['ssl_version'] = self.validate_ssl_version(
                 self.conf.kombu_ssl_version)
         if self.conf.kombu_ssl_keyfile:
             ssl_params['keyfile'] = self.conf.kombu_ssl_keyfile
