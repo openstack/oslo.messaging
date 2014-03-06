@@ -13,11 +13,13 @@
 import logging
 
 from oslo.config import cfg
-from oslo import messaging
 
 
 class PublishErrorsHandler(logging.Handler):
     def __init__(self, *args, **kwargs):
+        # NOTE(dhellmann): Avoid a cyclical import by doing this one
+        # at runtime.
+        from oslo import messaging
         logging.Handler.__init__(self, *args, **kwargs)
         self._transport = messaging.get_transport(cfg.CONF)
         self._notifier = messaging.Notifier(self._transport,

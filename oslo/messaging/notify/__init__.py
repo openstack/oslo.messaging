@@ -16,9 +16,11 @@
 __all__ = ['Notifier',
            'LoggingNotificationHandler',
            'get_notification_listener',
-           'NotificationResult']
+           'NotificationResult',
+           'PublishErrorsHandler']
 
 from .notifier import *
 from .listener import *
+from .log_handler import *
 from .logger import *
 from .dispatcher import NotificationResult
