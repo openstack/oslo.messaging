@@ -22,3 +22,4 @@ coverage>=3.6
 # this is required for the docs build jobs
 sphinx>=1.1.2,<1.2
 oslosphinx
+qpid-python
