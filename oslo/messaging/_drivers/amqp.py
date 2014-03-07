@@ -154,92 +154,12 @@ class ConnectionContext(rpc_common.Connection):
         """Caller is done with this connection."""
         self._done()
 
-    def create_consumer(self, topic, proxy, fanout=False):
-        self.connection.create_consumer(topic, proxy, fanout)
-
-    def create_worker(self, topic, proxy, pool_name):
-        self.connection.create_worker(topic, proxy, pool_name)
-
-    def join_consumer_pool(self, callback, pool_name, topic, exchange_name):
-        self.connection.join_consumer_pool(callback,
-                                           pool_name,
-                                           topic,
-                                           exchange_name)
-
-    def consume_in_thread(self):
-        self.connection.consume_in_thread()
-
     def __getattr__(self, key):
         """Proxy all other calls to the Connection instance."""
         if self.connection:
             return getattr(self.connection, key)
         else:
             raise rpc_common.InvalidRPCConnectionReuse()
-
-
-class ReplyProxy(ConnectionContext):
-    """Connection class for RPC replies / callbacks."""
-    def __init__(self, conf, connection_pool):
-        self._call_waiters = {}
-        self._num_call_waiters = 0
-        self._num_call_waiters_wrn_threshold = 10
-        self._reply_q = 'reply_' + uuid.uuid4().hex
-        super(ReplyProxy, self).__init__(conf, connection_pool, pooled=False)
-        self.declare_direct_consumer(self._reply_q, self._process_data)
-        self.consume_in_thread()
-
-    def _process_data(self, message_data):
-        msg_id = message_data.pop('_msg_id', None)
-        waiter = self._call_waiters.get(msg_id)
-        if not waiter:
-            LOG.warn(_('No calling threads waiting for msg_id : %(msg_id)s'
-                       ', message : %(data)s'), {'msg_id': msg_id,
-                                                 'data': message_data})
-            LOG.warn(_('_call_waiters: %s') % str(self._call_waiters))
-        else:
-            waiter.put(message_data)
-
-    def add_call_waiter(self, waiter, msg_id):
-        self._num_call_waiters += 1
-        if self._num_call_waiters > self._num_call_waiters_wrn_threshold:
-            LOG.warn(_('Number of call waiters is greater than warning '
-                       'threshold: %d. There could be a MulticallProxyWaiter '
-                       'leak.') % self._num_call_waiters_wrn_threshold)
-            self._num_call_waiters_wrn_threshold *= 2
-        self._call_waiters[msg_id] = waiter
-
-    def del_call_waiter(self, msg_id):
-        self._num_call_waiters -= 1
-        del self._call_waiters[msg_id]
-
-    def get_reply_q(self):
-        return self._reply_q
-
-
-def msg_reply(conf, msg_id, reply_q, connection_pool, reply=None,
-              failure=None, ending=False, log_failure=True):
-    """Sends a reply or an error on the channel signified by msg_id.
-
-    Failure should be a sys.exc_info() tuple.
-
-    """
-    with ConnectionContext(conf, connection_pool) as conn:
-        if failure:
-            failure = rpc_common.serialize_remote_exception(failure,
-                                                            log_failure)
-
-        msg = {'result': reply, 'failure': failure}
-        if ending:
-            msg['ending'] = True
-        _add_unique_id(msg)
-        # If a reply_q exists, add the msg_id to the reply and pass the
-        # reply_q to direct_send() to use it as the response queue.
-        # Otherwise use the msg_id for backward compatibility.
-        if reply_q:
-            msg['_msg_id'] = msg_id
-            conn.direct_send(reply_q, rpc_common.serialize_msg(msg))
-        else:
-            conn.direct_send(msg_id, rpc_common.serialize_msg(msg))
 
 
 class RpcContext(rpc_common.CommonRpcContext):
@@ -256,14 +176,6 @@ class RpcContext(rpc_common.CommonRpcContext):
         values['msg_id'] = self.msg_id
         values['reply_q'] = self.reply_q
         return self.__class__(**values)
-
-    def reply(self, reply=None, failure=None, ending=False,
-              connection_pool=None, log_failure=True):
-        if self.msg_id:
-            msg_reply(self.conf, self.msg_id, self.reply_q, connection_pool,
-                      reply, failure, ending, log_failure)
-            if ending:
-                self.msg_id = None
 
 
 def unpack_context(conf, msg):

@@ -108,26 +108,6 @@ class RPCException(Exception):
         super(RPCException, self).__init__(message)
 
 
-class RemoteError(RPCException):
-    """Signifies that a remote class has raised an exception.
-
-    Contains a string representation of the type of the original exception,
-    the value of the original exception, and the traceback.  These are
-    sent to the parent as a joined string so printing the exception
-    contains all of the relevant info.
-
-    """
-    msg_fmt = _("Remote error: %(exc_type)s %(value)s\n%(traceback)s.")
-
-    def __init__(self, exc_type=None, value=None, traceback=None):
-        self.exc_type = exc_type
-        self.value = value
-        self.traceback = traceback
-        super(RemoteError, self).__init__(exc_type=exc_type,
-                                          value=value,
-                                          traceback=traceback)
-
-
 class Timeout(RPCException):
     """Signifies that a timeout has occurred.
 
@@ -191,83 +171,6 @@ class Connection(object):
         This method must be called when the connection will no longer be used.
         It will ensure that any resources associated with the connection, such
         as a network connection, and cleaned up.
-        """
-        raise NotImplementedError()
-
-    def create_consumer(self, topic, proxy, fanout=False):
-        """Create a consumer on this connection.
-
-        A consumer is associated with a message queue on the backend message
-        bus.  The consumer will read messages from the queue, unpack them, and
-        dispatch them to the proxy object.  The contents of the message pulled
-        off of the queue will determine which method gets called on the proxy
-        object.
-
-        :param topic: This is a name associated with what to consume from.
-                      Multiple instances of a service may consume from the same
-                      topic. For example, all instances of nova-compute consume
-                      from a queue called "compute".  In that case, the
-                      messages will get distributed amongst the consumers in a
-                      round-robin fashion if fanout=False.  If fanout=True,
-                      every consumer associated with this topic will get a
-                      copy of every message.
-        :param proxy: The object that will handle all incoming messages.
-        :param fanout: Whether or not this is a fanout topic.  See the
-                       documentation for the topic parameter for some
-                       additional comments on this.
-        """
-        raise NotImplementedError()
-
-    def create_worker(self, topic, proxy, pool_name):
-        """Create a worker on this connection.
-
-        A worker is like a regular consumer of messages directed to a
-        topic, except that it is part of a set of such consumers (the
-        "pool") which may run in parallel. Every pool of workers will
-        receive a given message, but only one worker in the pool will
-        be asked to process it. Load is distributed across the members
-        of the pool in round-robin fashion.
-
-        :param topic: This is a name associated with what to consume from.
-                      Multiple instances of a service may consume from the same
-                      topic.
-        :param proxy: The object that will handle all incoming messages.
-        :param pool_name: String containing the name of the pool of workers
-        """
-        raise NotImplementedError()
-
-    def join_consumer_pool(self, callback, pool_name, topic, exchange_name):
-        """Register as a member of a group of consumers.
-
-        Uses given topic from the specified exchange.
-        Exactly one member of a given pool will receive each message.
-
-        A message will be delivered to multiple pools, if more than
-        one is created.
-
-        :param callback: Callable to be invoked for each message.
-        :type callback: callable accepting one argument
-        :param pool_name: The name of the consumer pool.
-        :type pool_name: str
-        :param topic: The routing topic for desired messages.
-        :type topic: str
-        :param exchange_name: The name of the message exchange where
-                              the client should attach. Defaults to
-                              the configured exchange.
-        :type exchange_name: str
-        """
-        raise NotImplementedError()
-
-    def consume_in_thread(self):
-        """Spawn a thread to handle incoming messages.
-
-        Spawn a thread that will be responsible for handling all incoming
-        messages for consumers that were set up on this connection.
-
-        Message dispatching inside of this is expected to be implemented in a
-        non-blocking manner.  An example implementation would be having this
-        thread pull messages in for all of the consumers, but utilize a thread
-        pool for dispatching the messages to the proxy objects.
         """
         raise NotImplementedError()
 
@@ -396,28 +299,6 @@ class CommonRpcContext(object):
         #local.store.context = self
         pass
 
-    def elevated(self, read_deleted=None, overwrite=False):
-        """Return a version of this context with admin flag set."""
-        # TODO(russellb) This method is a bit of a nova-ism.  It makes
-        # some assumptions about the data in the request context sent
-        # across rpc, while the rest of this class does not.  We could get
-        # rid of this if we changed the nova code that uses this to
-        # convert the RpcContext back to its native RequestContext doing
-        # something like nova.context.RequestContext.from_dict(ctxt.to_dict())
-
-        context = self.deepcopy()
-        context.values['is_admin'] = True
-
-        context.values.setdefault('roles', [])
-
-        if 'admin' not in context.values['roles']:
-            context.values['roles'].append('admin')
-
-        if read_deleted is not None:
-            context.values['read_deleted'] = read_deleted
-
-        return context
-
 
 class ClientException(Exception):
     """Encapsulates actual exception expected to be hit by a RPC proxy object.
@@ -427,32 +308,6 @@ class ClientException(Exception):
     """
     def __init__(self):
         self._exc_info = sys.exc_info()
-
-
-def catch_client_exception(exceptions, func, *args, **kwargs):
-    try:
-        return func(*args, **kwargs)
-    except Exception as e:
-        if type(e) in exceptions:
-            raise ClientException()
-        else:
-            raise
-
-
-def client_exceptions(*exceptions):
-    """Decorator for manager methods that raise expected exceptions.
-
-    Marking a Manager method with this decorator allows the declaration
-    of expected exceptions that the RPC layer should not consider fatal,
-    and not log as if they were generated in a real error scenario. Note
-    that this will cause listed exceptions to be wrapped in a
-    ClientException, which is used internally by the RPC layer.
-    """
-    def outer(func):
-        def inner(*args, **kwargs):
-            return catch_client_exception(exceptions, func, *args, **kwargs)
-        return inner
-    return outer
 
 
 def serialize_msg(raw_msg):
