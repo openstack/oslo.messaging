@@ -52,7 +52,7 @@ def _is_qpidd_service_running():
         connection = qpid.messaging.Connection(broker)
         connection.open()
     except Exception:
-        # qpid service is not runnung.
+        # qpid service is not running.
         qpid_running = False
     else:
         connection.close()
