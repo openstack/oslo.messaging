@@ -421,9 +421,9 @@ class NotifyPublisher(TopicPublisher):
 class Connection(object):
     """Connection object."""
 
-    pool = None
+    pools = {}
 
-    def __init__(self, conf, server_params=None):
+    def __init__(self, conf, url):
         self.consumers = []
         self.conf = conf
         self.max_retries = self.conf.rabbit_max_retries
@@ -436,39 +436,54 @@ class Connection(object):
         self.interval_max = 30
         self.memory_transport = False
 
-        if server_params is None:
-            server_params = {}
-        # Keys to translate from server_params to kombu params
-        server_params_to_kombu_params = {'username': 'userid'}
-
         ssl_params = self._fetch_ssl_params()
-        params_list = []
-        for adr in self.conf.rabbit_hosts:
-            hostname, port = network_utils.parse_host_port(
-                adr, default_port=self.conf.rabbit_port)
 
-            params = {
-                'hostname': hostname,
-                'port': port,
-                'userid': self.conf.rabbit_userid,
-                'password': self.conf.rabbit_password,
-                'login_method': self.conf.rabbit_login_method,
-                'virtual_host': self.conf.rabbit_virtual_host,
-            }
+        if url.virtual_host is not None:
+            virtual_host = url.virtual_host
+        else:
+            virtual_host = self.conf.rabbit_virtual_host
 
-            for sp_key, value in six.iteritems(server_params):
-                p_key = server_params_to_kombu_params.get(sp_key, sp_key)
-                params[p_key] = value
+        self.brokers_params = []
+        if url.hosts:
+            for host in url.hosts:
+                params = {
+                    'hostname': host.hostname,
+                    'port': host.port or 5672,
+                    'userid': host.username or '',
+                    'password': host.password or '',
+                    'login_method': self.conf.rabbit_login_method,
+                    'virtual_host': virtual_host
+                }
+                if self.conf.fake_rabbit:
+                    params['transport'] = 'memory'
+                if self.conf.rabbit_use_ssl:
+                    params['ssl'] = ssl_params
 
-            if self.conf.fake_rabbit:
-                params['transport'] = 'memory'
-            if self.conf.rabbit_use_ssl:
-                params['ssl'] = ssl_params
+                self.brokers_params.append(params)
+        else:
+            # Old configuration format
+            for adr in self.conf.rabbit_hosts:
+                hostname, port = network_utils.parse_host_port(
+                    adr, default_port=self.conf.rabbit_port)
 
-            params_list.append(params)
+                params = {
+                    'hostname': hostname,
+                    'port': port,
+                    'userid': self.conf.rabbit_userid,
+                    'password': self.conf.rabbit_password,
+                    'login_method': self.conf.rabbit_login_method,
+                    'virtual_host': virtual_host
+                }
 
-        random.shuffle(params_list)
-        self.params_list = itertools.cycle(params_list)
+                if self.conf.fake_rabbit:
+                    params['transport'] = 'memory'
+                if self.conf.rabbit_use_ssl:
+                    params['ssl'] = ssl_params
+
+                self.brokers_params.append(params)
+
+        random.shuffle(self.brokers_params)
+        self.brokers = itertools.cycle(self.brokers_params)
 
         self.memory_transport = self.conf.fake_rabbit
 
@@ -519,14 +534,14 @@ class Connection(object):
         # Return the extended behavior or just have the default behavior
         return ssl_params or True
 
-    def _connect(self, params):
+    def _connect(self, broker):
         """Connect to rabbit.  Re-establish any queues that may have
         been declared before if we are reconnecting.  Exceptions should
         be handled by the caller.
         """
         if self.connection:
             LOG.info(_("Reconnecting to AMQP server on "
-                     "%(hostname)s:%(port)d") % params)
+                     "%(hostname)s:%(port)d") % broker)
             try:
                 # XXX(nic): when reconnecting to a RabbitMQ cluster
                 # with mirrored queues in use, the attempt to release the
@@ -545,7 +560,7 @@ class Connection(object):
             # Setting this in case the next statement fails, though
             # it shouldn't be doing any network operations, yet.
             self.connection = None
-        self.connection = kombu.connection.BrokerConnection(**params)
+        self.connection = kombu.connection.BrokerConnection(**broker)
         self.connection_errors = self.connection.connection_errors
         self.channel_errors = self.connection.channel_errors
         if self.memory_transport:
@@ -561,7 +576,7 @@ class Connection(object):
         for consumer in self.consumers:
             consumer.reconnect(self.channel)
         LOG.info(_('Connected to AMQP server on %(hostname)s:%(port)d') %
-                 params)
+                 broker)
 
     def reconnect(self):
         """Handles reconnecting and re-establishing queues.
@@ -574,10 +589,10 @@ class Connection(object):
 
         attempt = 0
         while True:
-            params = six.next(self.params_list)
+            broker = six.next(self.brokers)
             attempt += 1
             try:
-                self._connect(params)
+                self._connect(broker)
                 return
             except IOError as e:
                 pass
@@ -596,7 +611,7 @@ class Connection(object):
             log_info = {}
             log_info['err_str'] = str(e)
             log_info['max_retries'] = self.max_retries
-            log_info.update(params)
+            log_info.update(broker)
 
             if self.max_retries and attempt == self.max_retries:
                 msg = _('Unable to connect to AMQP server on '
@@ -775,7 +790,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(rabbit_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 
-        connection_pool = rpc_amqp.get_connection_pool(conf, Connection)
+        connection_pool = rpc_amqp.get_connection_pool(conf, url, Connection)
 
         super(RabbitDriver, self).__init__(conf, url,
                                            connection_pool,

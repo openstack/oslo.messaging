@@ -59,16 +59,17 @@ LOG = logging.getLogger(__name__)
 
 class ConnectionPool(pool.Pool):
     """Class that implements a Pool of Connections."""
-    def __init__(self, conf, connection_cls):
+    def __init__(self, conf, url, connection_cls):
         self.connection_cls = connection_cls
         self.conf = conf
+        self.url = url
         super(ConnectionPool, self).__init__(self.conf.rpc_conn_pool_size)
         self.reply_proxy = None
 
     # TODO(comstud): Timeout connections not used in a while
     def create(self):
         LOG.debug(_('Pool creating new connection'))
-        return self.connection_cls(self.conf)
+        return self.connection_cls(self.conf, self.url)
 
     def empty(self):
         for item in self.iter_free():
@@ -82,18 +83,19 @@ class ConnectionPool(pool.Pool):
         # time code, it gets here via cleanup() and only appears in service.py
         # just before doing a sys.exit(), so cleanup() only happens once and
         # the leakage is not a problem.
-        self.connection_cls.pool = None
+        del self.connection_cls.pools[self.url]
 
 
 _pool_create_sem = threading.Lock()
 
 
-def get_connection_pool(conf, connection_cls):
+def get_connection_pool(conf, url, connection_cls):
     with _pool_create_sem:
         # Make sure only one thread tries to create the connection pool.
-        if not connection_cls.pool:
-            connection_cls.pool = ConnectionPool(conf, connection_cls)
-    return connection_cls.pool
+        if url not in connection_cls.pools:
+            connection_cls.pools[url] = ConnectionPool(conf, url,
+                                                       connection_cls)
+    return connection_cls.pools[url]
 
 
 class ConnectionContext(rpc_common.Connection):
@@ -108,17 +110,16 @@ class ConnectionContext(rpc_common.Connection):
     If possible the function makes sure to return a connection to the pool.
     """
 
-    def __init__(self, conf, connection_pool, pooled=True, server_params=None):
+    def __init__(self, conf, url, connection_pool, pooled=True):
         """Create a new connection, or get one from the pool."""
         self.connection = None
         self.conf = conf
+        self.url = url
         self.connection_pool = connection_pool
         if pooled:
             self.connection = connection_pool.get()
         else:
-            self.connection = connection_pool.connection_cls(
-                conf,
-                server_params=server_params)
+            self.connection = connection_pool.connection_cls(conf, url)
         self.pooled = pooled
 
     def __enter__(self):

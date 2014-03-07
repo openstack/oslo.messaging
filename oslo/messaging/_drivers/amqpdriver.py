@@ -295,8 +295,6 @@ class AMQPDriverBase(base.BaseDriver):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 
-        self._server_params = self._server_params_from_url(self._url)
-
         self._default_exchange = default_exchange
 
         # FIXME(markmc): temp hack
@@ -310,35 +308,11 @@ class AMQPDriverBase(base.BaseDriver):
         self._reply_q_conn = None
         self._waiter = None
 
-    def _server_params_from_url(self, url):
-        sp = {}
-
-        if url.virtual_host is not None:
-            sp['virtual_host'] = url.virtual_host
-
-        if url.hosts:
-            # FIXME(markmc): support multiple hosts
-            host = url.hosts[0]
-
-            sp['hostname'] = host.hostname
-            if host.port is not None:
-                sp['port'] = host.port
-            sp['username'] = host.username or ''
-            sp['password'] = host.password or ''
-
-        return sp
-
     def _get_connection(self, pooled=True):
-        # FIXME(markmc): we don't yet have a connection pool for each
-        # Transport instance, so we'll only use the pool with the
-        # transport configuration from the config file
-        server_params = self._server_params or None
-        if server_params:
-            pooled = False
         return rpc_amqp.ConnectionContext(self.conf,
+                                          self._url,
                                           self._connection_pool,
-                                          pooled=pooled,
-                                          server_params=server_params)
+                                          pooled=pooled)
 
     def _get_reply_q(self):
         with self._reply_q_lock:
