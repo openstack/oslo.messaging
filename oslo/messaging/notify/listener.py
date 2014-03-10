@@ -71,7 +71,9 @@ in one of the targets and if an endpoint implements the method named like the
 priority
 
 Parameters to endpoint methods are the request context supplied by the client,
-the publisher_id of the notification message, the event_type, the payload.
+the publisher_id of the notification message, the event_type, the payload and
+metadata. The metadata parameter is a mapping containing a unique message_id
+and a timestamp.
 
 By supplying a serializer object, a listener can deserialize a request context
 and arguments from - and serialize return values to - primitive types.
