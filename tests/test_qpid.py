@@ -17,6 +17,7 @@ import thread
 import threading
 import time
 
+import mock
 import qpid
 import testscenarios
 
@@ -387,6 +388,45 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
             self.assertEqual(self._expected, messages)
 
 TestQpidTopicAndFanout.generate_scenarios()
+
+
+class TestQpidReconnectOrder(test_utils.BaseTestCase):
+    """Unit Test cases to test reconnection
+    """
+
+    def test_reconnect_order(self):
+        brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
+        brokers_count = len(brokers)
+
+        self.messaging_conf.conf.qpid_hosts = brokers
+
+        with mock.patch('qpid.messaging.Connection') as conn_mock:
+            # starting from the first broker in the list
+            connection = qpid_driver.Connection(self.messaging_conf.conf)
+
+            # reconnect will advance to the next broker, one broker per
+            # attempt, and then wrap to the start of the list once the end is
+            # reached
+            for _ in range(brokers_count):
+                connection.reconnect()
+
+            connection.close()
+
+        expected = []
+        for broker in brokers:
+            expected.extend([mock.call(broker),
+                             mock.call().open(),
+                             mock.call().session(),
+                             mock.call().opened(),
+                             mock.call().opened().__nonzero__(),
+                             mock.call().close()])
+
+        # the last one was closed with close(), not reconnect()
+        expected.extend([mock.call(brokers[0]),
+                         mock.call().open(),
+                         mock.call().session(),
+                         mock.call().close()])
+        conn_mock.assert_has_calls(expected)
 
 
 def synchronized(func):
