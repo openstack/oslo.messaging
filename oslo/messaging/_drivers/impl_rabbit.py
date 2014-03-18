@@ -466,10 +466,7 @@ class Connection(object):
 
             params_list.append(params)
 
-        self.params_list = params_list
-
-        brokers_count = len(self.params_list)
-        self.next_broker_indices = itertools.cycle(range(brokers_count))
+        self.params_list = itertools.cycle(params_list)
 
         self.memory_transport = self.conf.fake_rabbit
 
@@ -575,7 +572,7 @@ class Connection(object):
 
         attempt = 0
         while True:
-            params = self.params_list[next(self.next_broker_indices)]
+            params = six.next(self.params_list)
             attempt += 1
             try:
                 self._connect(params)
