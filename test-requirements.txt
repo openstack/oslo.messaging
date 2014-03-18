@@ -11,9 +11,6 @@ testscenarios>=0.4
 testtools>=0.9.34
 oslotest
 
-# for test_rabbit
-kombu>=2.4.8
-
 # when we can require tox>= 1.4, this can go into tox.ini:
 #  [testenv:cover]
 #  deps = {[testenv]deps} coverage
