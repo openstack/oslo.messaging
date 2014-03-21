@@ -57,6 +57,8 @@ def spawn_with(ctxt, pool):
     thread = pool.spawn(callback)
     thread.link(complete, ctxt.__exit__)
 
+    return thread
+
 
 class EventletExecutor(base.ExecutorBase):
 
