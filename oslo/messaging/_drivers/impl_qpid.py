@@ -16,6 +16,7 @@
 import functools
 import itertools
 import logging
+import random
 import time
 
 from oslo.config import cfg
@@ -467,12 +468,13 @@ class Connection(object):
             ]
 
         params = {
-            'qpid_hosts': self.conf.qpid_hosts,
+            'qpid_hosts': self.conf.qpid_hosts[:],
             'username': self.conf.qpid_username,
             'password': self.conf.qpid_password,
         }
         params.update(server_params or {})
 
+        random.shuffle(params['qpid_hosts'])
         self.brokers = itertools.cycle(params['qpid_hosts'])
 
         self.username = params['username']

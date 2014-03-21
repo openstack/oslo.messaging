@@ -622,17 +622,17 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.conf.rabbit_hosts = brokers
         self.conf.rabbit_max_retries = 1
 
-        info = {'attempt': 0}
+        hostname_sets = set()
 
         def _connect(myself, params):
             # do as little work that is enough to pass connection attempt
             myself.connection = kombu.connection.BrokerConnection(**params)
             myself.connection_errors = myself.connection.connection_errors
 
-            expected_broker = brokers[info['attempt'] % brokers_count]
-            self.assertEqual(expected_broker, params['hostname'])
+            hostname = params['hostname']
+            self.assertNotIn(hostname, hostname_sets)
 
-            info['attempt'] += 1
+            hostname_sets.add(hostname)
 
         # just make sure connection instantiation does not fail with an
         # exception
@@ -645,7 +645,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         # implementation
         self.stubs.UnsetAll()
 
-        for i in range(len(brokers)):
+        for i in range(brokers_count):
             self.assertRaises(driver_common.RPCException, connection.reconnect)
 
         connection.close()

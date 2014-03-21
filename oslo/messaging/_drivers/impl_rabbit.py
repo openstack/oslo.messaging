@@ -15,6 +15,7 @@
 import functools
 import itertools
 import logging
+import random
 import socket
 import ssl
 import time
@@ -466,6 +467,7 @@ class Connection(object):
 
             params_list.append(params)
 
+        random.shuffle(params_list)
         self.params_list = itertools.cycle(params_list)
 
         self.memory_transport = self.conf.fake_rabbit

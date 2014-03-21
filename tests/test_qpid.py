@@ -410,8 +410,6 @@ class TestQpidReconnectOrder(test_utils.BaseTestCase):
             for _ in range(brokers_count):
                 connection.reconnect()
 
-            connection.close()
-
         expected = []
         for broker in brokers:
             expected.extend([mock.call(broker),
@@ -421,12 +419,7 @@ class TestQpidReconnectOrder(test_utils.BaseTestCase):
                              mock.call().opened().__nonzero__(),
                              mock.call().close()])
 
-        # the last one was closed with close(), not reconnect()
-        expected.extend([mock.call(brokers[0]),
-                         mock.call().open(),
-                         mock.call().session(),
-                         mock.call().close()])
-        conn_mock.assert_has_calls(expected)
+        conn_mock.assert_has_calls(expected, any_order=True)
 
 
 def synchronized(func):
