@@ -135,8 +135,6 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
     def setUp(self):
         super(TestMessagingNotifier, self).setUp()
 
-        self.conf.register_opts(msg_notifier._notifier_opts)
-
         self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
         self.stubs.Set(_impl_messaging, 'LOG', self.logger)
         self.stubs.Set(msg_notifier, '_LOG', self.logger)
@@ -149,8 +147,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         if self.v2:
             drivers.append('messagingv2')
 
-        self.config(notification_driver=drivers)
-        self.config(notification_topics=self.topics)
+        self.config(notification_driver=drivers,
+                    notification_topics=self.topics)
 
         transport = _FakeTransport(self.conf)
 
@@ -250,10 +248,6 @@ class TestSerializer(test_utils.BaseTestCase):
 
 
 class TestLogNotifier(test_utils.BaseTestCase):
-
-    def setUp(self):
-        super(TestLogNotifier, self).setUp()
-        self.conf.register_opts(msg_notifier._notifier_opts)
 
     @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):

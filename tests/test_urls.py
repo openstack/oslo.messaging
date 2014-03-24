@@ -13,11 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.config import cfg
 import testscenarios
 
 from oslo import messaging
-from oslo.messaging import transport
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -120,10 +118,6 @@ class TestParseURL(test_utils.BaseTestCase):
                           ]))),
     ]
 
-    def setUp(self):
-        super(TestParseURL, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(transport._transport_opts)
-
     def test_parse_url(self):
         self.config(rpc_backend=None)
 
@@ -222,10 +216,6 @@ class TestFormatURL(test_utils.BaseTestCase):
               aliases=None,
               expected='testtransport://b%24:s%26@host:10//%24')),
     ]
-
-    def setUp(self):
-        super(TestFormatURL, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(transport._transport_opts)
 
     def test_parse_url(self):
         self.config(rpc_backend=self.rpc_backend)

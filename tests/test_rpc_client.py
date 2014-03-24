@@ -17,7 +17,6 @@ from oslo.config import cfg
 import testscenarios
 
 from oslo import messaging
-from oslo.messaging.rpc import client as rpc_client
 from oslo.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
@@ -47,10 +46,6 @@ class TestCastCall(test_utils.BaseTestCase):
               ctxt=dict(user='testuser', project='testtenant'),
               args=dict(bar='blaa', foobar=11.01))),
     ]
-
-    def setUp(self):
-        super(TestCastCall, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(rpc_client._client_opts)
 
     def test_cast_call(self):
         self.config(rpc_response_timeout=None)
@@ -238,10 +233,6 @@ class TestCallTimeout(test_utils.BaseTestCase):
          dict(confval=None, ctor=None, prepare=0, expect=0)),
     ]
 
-    def setUp(self):
-        super(TestCallTimeout, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(rpc_client._client_opts)
-
     def test_call_timeout(self):
         self.config(rpc_response_timeout=self.confval)
 
@@ -276,10 +267,6 @@ class TestSerializer(test_utils.BaseTestCase):
               args=dict(a='a', b='b', c='c'),
               retval='d')),
     ]
-
-    def setUp(self):
-        super(TestSerializer, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(rpc_client._client_opts)
 
     def test_call_serializer(self):
         self.config(rpc_response_timeout=None)
@@ -360,10 +347,6 @@ class TestVersionCap(test_utils.BaseTestCase):
         cls.scenarios = (
             testscenarios.multiply_scenarios(cls._call_vs_cast,
                                              cls._cap_scenarios))
-
-    def setUp(self):
-        super(TestVersionCap, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(rpc_client._client_opts)
 
     def test_version_cap(self):
         self.config(rpc_response_timeout=None)
@@ -458,10 +441,6 @@ class TestCanSendVersion(test_utils.BaseTestCase):
               can_send_version=_notset,
               can_send=False)),
     ]
-
-    def setUp(self):
-        super(TestCanSendVersion, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(rpc_client._client_opts)
 
     def test_version_cap(self):
         self.config(rpc_response_timeout=None)

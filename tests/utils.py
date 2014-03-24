@@ -32,12 +32,10 @@ class BaseTestCase(base.BaseTestCase):
 
     def setUp(self, conf=cfg.CONF):
         super(BaseTestCase, self).setUp()
-        self.conf = conf
-        self.addCleanup(self.conf.reset)
 
         from oslo.messaging import conffixture
-        self.messaging_conf = self.useFixture(
-            conffixture.ConfFixture(self.conf))
+        self.messaging_conf = self.useFixture(conffixture.ConfFixture(conf))
+        self.conf = self.messaging_conf.conf
 
         moxfixture = self.useFixture(moxstubout.MoxStubout())
         self.mox = moxfixture.mox
