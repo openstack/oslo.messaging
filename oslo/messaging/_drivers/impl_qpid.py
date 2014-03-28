@@ -473,10 +473,7 @@ class Connection(object):
         }
         params.update(server_params or {})
 
-        self.brokers = params['qpid_hosts']
-
-        brokers_count = len(self.brokers)
-        self.next_broker_indices = itertools.cycle(range(brokers_count))
+        self.brokers = itertools.cycle(params['qpid_hosts'])
 
         self.username = params['username']
         self.password = params['password']
@@ -515,7 +512,7 @@ class Connection(object):
                 except qpid_exceptions.ConnectionError:
                     pass
 
-            broker = self.brokers[next(self.next_broker_indices)]
+            broker = six.next(self.brokers)
 
             try:
                 self.connection_create(broker)
