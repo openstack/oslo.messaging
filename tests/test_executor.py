@@ -105,8 +105,8 @@ class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
         self.mgr = context_mgr()
 
     def test_normal_run(self):
-        impl_eventlet.spawn_with(self.mgr, pool=eventlet)
-        eventlet.sleep(0)
+        thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
+        thread.wait()
         self.assertEqual(self.before.call_count, 1)
         self.assertEqual(self.callback.call_count, 1)
         self.assertEqual(self.after.call_count, 1)
@@ -114,8 +114,11 @@ class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
 
     def test_excepted_exception(self):
         self.callback.side_effect = ExceptedException
-        impl_eventlet.spawn_with(self.mgr, pool=eventlet)
-        eventlet.sleep(0)
+        thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
+        try:
+            thread.wait()
+        except ExceptedException:
+            pass
         self.assertEqual(self.before.call_count, 1)
         self.assertEqual(self.callback.call_count, 1)
         self.assertEqual(self.after.call_count, 1)
@@ -123,8 +126,11 @@ class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
 
     def test_unexcepted_exception(self):
         self.callback.side_effect = Exception
-        impl_eventlet.spawn_with(self.mgr, pool=eventlet)
-        eventlet.sleep(0)
+        thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
+        try:
+            thread.wait()
+        except Exception:
+            pass
         self.assertEqual(self.before.call_count, 1)
         self.assertEqual(self.callback.call_count, 1)
         self.assertEqual(self.after.call_count, 0)
