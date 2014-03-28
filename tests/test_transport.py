@@ -112,10 +112,6 @@ class GetTransportTestCase(test_utils.BaseTestCase):
                           allowed=[]))),
     ]
 
-    def setUp(self):
-        super(GetTransportTestCase, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(transport._transport_opts)
-
     def test_get_transport(self):
         self.config(rpc_backend=self.rpc_backend,
                     control_exchange=self.control_exchange,
@@ -170,10 +166,6 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
                       msg_contains='Failed to load',
                       driver='testbackend'))),
     ]
-
-    def setUp(self):
-        super(GetTransportSadPathTestCase, self).setUp(conf=cfg.ConfigOpts())
-        self.conf.register_opts(transport._transport_opts)
 
     def test_get_transport_sad(self):
         self.config(rpc_backend=self.rpc_backend,

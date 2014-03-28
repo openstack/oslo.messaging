@@ -23,7 +23,6 @@ class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
     """Tests for log.PublishErrorsHandler"""
     def setUp(self):
         super(PublishErrorsHandlerTestCase, self).setUp()
-        self.conf.register_opts(messaging.notify.notifier._notifier_opts)
         self.publisherrorshandler = (log_handler.
                                      PublishErrorsHandler(logging.ERROR))
 

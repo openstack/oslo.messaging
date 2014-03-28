@@ -52,6 +52,8 @@ class ConfFixture(fixtures.Fixture):
                      'oslo.messaging._drivers.amqp', 'amqp_opts')
         _import_opts(self.conf, 'oslo.messaging.rpc.client', '_client_opts')
         _import_opts(self.conf, 'oslo.messaging.transport', '_transport_opts')
+        _import_opts(self.conf,
+                     'oslo.messaging.notify.notifier', '_notifier_opts')
 
     def setUp(self):
         super(ConfFixture, self).setUp()

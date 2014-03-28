@@ -128,11 +128,11 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
         # 1. qpid driver raises Exception(msg) for invalid topology version
         # 2. flake8 - H202 assertRaises Exception too broad
         exception_msg = ("Invalid value for qpid_topology_version: %d" %
-                         self.messaging_conf.conf.qpid_topology_version)
+                         self.conf.qpid_topology_version)
         recvd_exc_msg = ''
 
         try:
-            self.consumer_cls(self.messaging_conf.conf,
+            self.consumer_cls(self.conf,
                               self.session_receive,
                               msgid_or_topic,
                               consumer_callback)
@@ -143,7 +143,7 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
 
         recvd_exc_msg = ''
         try:
-            self.publisher_cls(self.messaging_conf.conf,
+            self.publisher_cls(self.conf,
                                self.session_send,
                                msgid_or_topic)
         except Exception as e:
@@ -185,11 +185,11 @@ class TestQpidDirectConsumerPublisher(_QpidBaseTestCase):
         self.msgid = str(random.randint(1, 100))
 
         # create a DirectConsumer and DirectPublisher class objects
-        self.dir_cons = qpid_driver.DirectConsumer(self.messaging_conf.conf,
+        self.dir_cons = qpid_driver.DirectConsumer(self.conf,
                                                    self.session_receive,
                                                    self.msgid,
                                                    self.consumer_callback)
-        self.dir_pub = qpid_driver.DirectPublisher(self.messaging_conf.conf,
+        self.dir_pub = qpid_driver.DirectPublisher(self.conf,
                                                    self.session_send,
                                                    self.msgid)
 
@@ -341,7 +341,7 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
 
     def test_qpid_topic_and_fanout(self):
         for receiver_id in range(self.no_receivers):
-            consumer = self.consumer_cls(self.messaging_conf.conf,
+            consumer = self.consumer_cls(self.conf,
                                          self.session_receive,
                                          self.receive_topic,
                                          self.consumer_callback)
@@ -353,7 +353,7 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
             self._receiver_threads.append(thread)
 
         for sender_id in range(self.no_senders):
-            publisher = self.publisher_cls(self.messaging_conf.conf,
+            publisher = self.publisher_cls(self.conf,
                                            self.session_send,
                                            self.topic)
             self._senders.append(publisher)
