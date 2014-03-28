@@ -144,11 +144,11 @@ class GetTransportTestCase(test_utils.BaseTestCase):
             kwargs['allowed_remote_exmods'] = self.allowed
         if self.aliases is not None:
             kwargs['aliases'] = self.aliases
-        transport = messaging.get_transport(self.conf, **kwargs)
+        transport_ = messaging.get_transport(self.conf, **kwargs)
 
-        self.assertIsNotNone(transport)
-        self.assertIs(transport.conf, self.conf)
-        self.assertIs(transport._driver, drvr)
+        self.assertIsNotNone(transport_)
+        self.assertIs(transport_.conf, self.conf)
+        self.assertIs(transport_._driver, drvr)
 
 
 class GetTransportSadPathTestCase(test_utils.BaseTestCase):
