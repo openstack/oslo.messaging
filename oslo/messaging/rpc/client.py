@@ -320,7 +320,7 @@ class RPCClient(object):
         :param method: the method name
         :type method: str
         :param kwargs: a dict of method arguments
-        :param kwargs: dict
+        :type kwargs: dict
         """
         self.prepare().cast(ctxt, method, **kwargs)
 
@@ -355,7 +355,7 @@ class RPCClient(object):
         :param method: the method name
         :type method: str
         :param kwargs: a dict of method arguments
-        :param kwargs: dict
+        :type kwargs: dict
         :raises: MessagingTimeout, RemoteError
         """
         return self.prepare().call(ctxt, method, **kwargs)
