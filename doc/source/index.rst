@@ -24,6 +24,30 @@ Contents
 Release Notes
 =============
 
+1.3.0
+-----
+
+Changes since 1.3.0a9:
+
+* Expose PublishErrorsHandler in the public API
+* 1288425_: Add kombu driver library to requirements.txt
+* 1255239_: Add unit tests for the qpid driver
+* 1261631_: Add unit test for Qpid reconnect order
+* 1282706_: Fixed inconsistent eventlet test failures
+* 1297161_: Fixed pep8 failure due to pyflakes bug
+* 1286984_: Build log_handler documentation
+
+.. _1288425: https://bugs.launchpad.net/oslo.messaging/+bug/1288425
+.. _1255239: https://bugs.launchpad.net/oslo.messaging/+bug/1255239
+.. _1261631: https://bugs.launchpad.net/oslo.messaging/+bug/1261631
+.. _1282706: https://bugs.launchpad.net/oslo.messaging/+bug/1282706
+.. _1297161: https://bugs.launchpad.net/oslo.messaging/+bug/1297161
+.. _1286984: https://bugs.launchpad.net/oslo.messaging/+bug/1286984
+
+Thanks to Alex Holden, ChangBo Guo, Clint Byrum, Doug Hellmann, Ihar
+Hrachyshka, Lance Bragstad and Numan Siddique for their contributions
+to this release.
+
 1.3.0a9
 -------
 
@@ -35,6 +59,9 @@ Changes since 1.3.0a8:
 
 .. _856764: https://bugs.launchpad.net/oslo.messaging/+bug/856764
 .. _1287542: https://bugs.launchpad.net/oslo.messaging/+bug/1287542
+
+Thanks to Chet Burgess, Doug Hellmann and Nicolas Simonds for their
+contributions to this release.
 
 1.3.0a8
 -------
