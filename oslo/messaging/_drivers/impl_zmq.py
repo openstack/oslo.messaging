@@ -742,17 +742,18 @@ def _multi_send(method, context, topic, msg, timeout=None,
         raise rpc_common.Timeout(_("No match from matchmaker."))
 
     # This supports brokerless fanout (addresses > 1)
+    return_val = None
     for queue in queues:
-        (_topic, ip_addr) = queue
+        _topic, ip_addr = queue
         _addr = "tcp://%s:%s" % (ip_addr, conf.rpc_zmq_port)
 
         if method.__name__ == '_cast':
             eventlet.spawn_n(method, _addr, context,
-                             _topic, msg, timeout, envelope,
-                             _msg_id)
-            return
-        return method(_addr, context, _topic, msg, timeout,
-                      envelope, allowed_remote_exmods)
+                             _topic, msg, timeout, envelope, _msg_id)
+        else:
+            return_val = method(_addr, context, _topic, msg, timeout, envelope)
+
+    return return_val
 
 
 def create_connection(conf, new=True):
