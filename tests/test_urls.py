@@ -134,7 +134,7 @@ class TestParseURL(test_utils.BaseTestCase):
                                           self.expect.get('virtual_host'),
                                           hosts)
 
-        self.assertEqual(url, expected)
+        self.assertEqual(expected, url)
 
 
 class TestFormatURL(test_utils.BaseTestCase):
@@ -233,4 +233,4 @@ class TestFormatURL(test_utils.BaseTestCase):
                                      hosts,
                                      self.aliases)
 
-        self.assertEqual(str(url), self.expected)
+        self.assertEqual(self.expected, str(url))

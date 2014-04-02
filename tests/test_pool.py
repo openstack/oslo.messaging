@@ -118,7 +118,7 @@ class PoolTestCase(test_utils.BaseTestCase):
             self.assertIn(o, objs)
             objs.remove(o)
 
-        self.assertEqual(objs, [])
+        self.assertEqual([], objs)
 
 
 PoolTestCase.generate_scenarios()

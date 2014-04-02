@@ -114,7 +114,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                 executor='foo')
         except Exception as ex:
             self.assertIsInstance(ex, messaging.ExecutorLoadFailure)
-            self.assertEqual(ex.executor, 'foo')
+            self.assertEqual('foo', ex.executor)
         else:
             self.assertTrue(False)
 

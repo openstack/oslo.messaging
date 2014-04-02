@@ -84,13 +84,12 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.logger.emit(record)
 
         n = messaging.notify._impl_test.NOTIFICATIONS[0][1]
-        self.assertEqual(n['priority'],
-                         getattr(self, 'queue', self.priority.upper()))
-        self.assertEqual(n['event_type'], 'logrecord')
-        self.assertEqual(n['timestamp'], str(timeutils.utcnow()))
-        self.assertEqual(n['publisher_id'], None)
+        self.assertEqual(getattr(self, 'queue', self.priority.upper()),
+                         n['priority'])
+        self.assertEqual('logrecord', n['event_type'])
+        self.assertEqual(str(timeutils.utcnow()), n['timestamp'])
+        self.assertEqual(None, n['publisher_id'])
         self.assertEqual(
-            n['payload'],
             {'process': os.getpid(),
              'funcName': None,
              'name': 'foo',
@@ -102,7 +101,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
              'msg': 'Something happened',
              'exc_info': None,
              'levelname': logging.getLevelName(levelno),
-             'extra': None})
+             'extra': None},
+            n['payload'])
 
     @testtools.skipUnless(hasattr(logging.config, 'dictConfig'),
                           "Need logging.config.dictConfig (Python >= 2.7)")
@@ -136,11 +136,11 @@ class TestLogNotifier(test_utils.BaseTestCase):
         logger.log(levelno, 'foobar')
 
         n = messaging.notify._impl_test.NOTIFICATIONS[0][1]
-        self.assertEqual(n['priority'],
-                         getattr(self, 'queue', self.priority.upper()))
-        self.assertEqual(n['event_type'], 'logrecord')
-        self.assertEqual(n['timestamp'], str(timeutils.utcnow()))
-        self.assertEqual(n['publisher_id'], None)
+        self.assertEqual(getattr(self, 'queue', self.priority.upper()),
+                         n['priority'])
+        self.assertEqual('logrecord', n['event_type'])
+        self.assertEqual(str(timeutils.utcnow()), n['timestamp'])
+        self.assertEqual(None, n['publisher_id'])
         pathname = __file__
         if pathname.endswith(('.pyc', '.pyo')):
             pathname = pathname[:-1]

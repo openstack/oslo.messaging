@@ -107,10 +107,10 @@ class TestDispatcher(test_utils.BaseTestCase):
                 self.assertIsNotNone(self.ex, ex)
                 self.assertIsInstance(ex, self.ex, ex)
                 if isinstance(ex, messaging.NoSuchMethod):
-                    self.assertEqual(ex.method, self.msg.get('method'))
+                    self.assertEqual(self.msg.get('method'), ex.method)
                 elif isinstance(ex, messaging.UnsupportedVersion):
-                    self.assertEqual(ex.version,
-                                     self.msg.get('version', '1.0'))
+                    self.assertEqual(self.msg.get('version', '1.0'),
+                                     ex.version)
             else:
                 self.assertTrue(self.success, failure)
                 self.assertIsNone(failure)
@@ -129,9 +129,9 @@ class TestDispatcher(test_utils.BaseTestCase):
                     method.assert_called_once_with(
                         self.ctxt, **self.msg.get('args', {}))
                 else:
-                    self.assertEqual(method.call_count, 0)
+                    self.assertEqual(0, method.call_count)
 
-        self.assertEqual(incoming.reply.call_count, 1)
+        self.assertEqual(1, incoming.reply.call_count)
 
 
 class TestSerializer(test_utils.BaseTestCase):
@@ -173,4 +173,4 @@ class TestSerializer(test_utils.BaseTestCase):
         retval = dispatcher._dispatch(self.ctxt, dict(method='foo',
                                                       args=self.args))
         if self.retval is not None:
-            self.assertEqual(retval, 's' + self.retval)
+            self.assertEqual('s' + self.retval, retval)

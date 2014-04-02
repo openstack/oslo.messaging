@@ -104,16 +104,16 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     def test_transport_url_listen(self):
         self._driver.listen(self._target)
-        self.assertEqual(self._server_params[0], self.expected)
+        self.assertEqual(self.expected, self._server_params[0])
 
     def test_transport_url_listen_for_notification(self):
         self._driver.listen_for_notifications(
             [(messaging.Target(topic='topic'), 'info')])
-        self.assertEqual(self._server_params[0], self.expected)
+        self.assertEqual(self.expected, self._server_params[0])
 
     def test_transport_url_send(self):
         self._driver.send(self._target, {}, {})
-        self.assertEqual(self._server_params[0], self.expected)
+        self.assertEqual(self.expected, self._server_params[0])
 
 
 class TestSendReceive(test_utils.BaseTestCase):
@@ -205,8 +205,8 @@ class TestSendReceive(test_utils.BaseTestCase):
 
             received = listener.poll()
             self.assertIsNotNone(received)
-            self.assertEqual(received.ctxt, self.ctxt)
-            self.assertEqual(received.message, {'tx_id': i})
+            self.assertEqual(self.ctxt, received.ctxt)
+            self.assertEqual({'tx_id': i}, received.message)
             msgs.append(received)
 
         # reply in reverse, except reply to the first guy second from last
@@ -229,21 +229,21 @@ class TestSendReceive(test_utils.BaseTestCase):
                     msgs[i].reply(self.reply)
             senders[i].join()
 
-        self.assertEqual(len(replies), len(senders))
+        self.assertEqual(len(senders), len(replies))
         for i, reply in enumerate(replies):
             if self.timeout is not None:
                 self.assertIsInstance(reply, messaging.MessagingTimeout)
             elif self.failure:
                 self.assertIsInstance(reply, ZeroDivisionError)
             elif self.rx_id:
-                self.assertEqual(reply, {'rx_id': order[i]})
+                self.assertEqual({'rx_id': order[i]}, reply)
             else:
-                self.assertEqual(reply, self.reply)
+                self.assertEqual(self.reply, reply)
 
         if not self.timeout and self.failure and not self.expected:
             self.assertTrue(len(errors) > 0, errors)
         else:
-            self.assertEqual(len(errors), 0, errors)
+            self.assertEqual(0, len(errors), errors)
 
 
 TestSendReceive.generate_scenarios()
@@ -300,13 +300,13 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         senders[0].start()
 
         msgs.append(listener.poll())
-        self.assertEqual(msgs[-1].message, {'tx_id': 0})
+        self.assertEqual({'tx_id': 0}, msgs[-1].message)
 
         # Start the second guy, receive his message
         senders[1].start()
 
         msgs.append(listener.poll())
-        self.assertEqual(msgs[-1].message, {'tx_id': 1})
+        self.assertEqual({'tx_id': 1}, msgs[-1].message)
 
         # Reply to both in order, making the second thread queue
         # the reply meant for the first thread
@@ -324,9 +324,9 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         senders[0].join()
 
         # Verify replies were received out of order
-        self.assertEqual(len(replies), len(senders))
-        self.assertEqual(replies[0], {'rx_id': 1})
-        self.assertEqual(replies[1], {'rx_id': 0})
+        self.assertEqual(len(senders), len(replies))
+        self.assertEqual({'rx_id': 1}, replies[0])
+        self.assertEqual({'rx_id': 0}, replies[1])
 
 
 def _declare_queue(target):
@@ -625,7 +625,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             myself.connection_errors = myself.connection.connection_errors
 
             expected_broker = brokers[info['attempt'] % brokers_count]
-            self.assertEqual(params['hostname'], expected_broker)
+            self.assertEqual(expected_broker, params['hostname'])
 
             info['attempt'] += 1
 
