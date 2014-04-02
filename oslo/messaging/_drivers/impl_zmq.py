@@ -909,7 +909,7 @@ class ZmqDriver(base.BaseDriver):
                                       'with oslo.config.cfg.CONF')
 
     def _send(self, target, ctxt, message,
-              wait_for_reply=None, timeout=None, envelope=True):
+              wait_for_reply=None, timeout=None, envelope=False):
 
         # FIXME(markmc): remove this temporary hack
         class Context(object):
