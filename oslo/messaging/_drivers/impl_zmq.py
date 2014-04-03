@@ -939,6 +939,8 @@ class ZmqDriver(base.BaseDriver):
             # NOTE(ewindisch): fanout~ is used because it avoid splitting on
             # and acts as a non-subtle hint to the matchmaker and ZmqProxy.
             topic = 'fanout~' + topic
+        elif target.server:
+            topic = '%s.%s' % (topic, target.server)
 
         reply = _multi_send(method, context, topic, message,
                             envelope=envelope,
