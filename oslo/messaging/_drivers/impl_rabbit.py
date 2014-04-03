@@ -50,8 +50,8 @@ rabbit_opts = [
                help='SSL cert file (valid only if SSL enabled).'),
     cfg.StrOpt('kombu_ssl_ca_certs',
                default='',
-               help=('SSL certification authority file '
-                     '(valid only if SSL enabled).')),
+               help='SSL certification authority file '
+                    '(valid only if SSL enabled).'),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
                  help='How long to wait before reconnecting in response to an '
