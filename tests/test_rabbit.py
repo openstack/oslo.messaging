@@ -275,8 +275,11 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
 
         def reply_waiter(self, msg_id, timeout):
             if wait_conditions:
-                with wait_conditions[0]:
-                    wait_conditions.pop().wait()
+                cond = wait_conditions.pop()
+                with cond:
+                    cond.notify()
+                with cond:
+                    cond.wait()
             return orig_reply_waiter(self, msg_id, timeout)
 
         self.stubs.Set(amqpdriver.ReplyWaiter, 'wait', reply_waiter)
@@ -297,7 +300,9 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         # Start the first guy, receive his message, but delay his polling
         notify_condition = threading.Condition()
         wait_conditions.append(notify_condition)
-        senders[0].start()
+        with notify_condition:
+            senders[0].start()
+            notify_condition.wait()
 
         msgs.append(listener.poll())
         self.assertEqual(msgs[-1].message, {'tx_id': 0})
