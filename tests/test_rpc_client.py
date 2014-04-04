@@ -305,7 +305,7 @@ class TestSerializer(test_utils.BaseTestCase):
         method = client.call if self.call else client.cast
         retval = method(self.ctxt, 'foo', **self.args)
         if self.retval is not None:
-            self.assertEqual(retval, 'd' + self.retval)
+            self.assertEqual('d' + self.retval, retval)
 
 
 class TestVersionCap(test_utils.BaseTestCase):
@@ -464,4 +464,4 @@ class TestCanSendVersion(test_utils.BaseTestCase):
         else:
             can_send = client.can_send_version()
 
-        self.assertEqual(can_send, self.can_send)
+        self.assertEqual(self.can_send, can_send)

@@ -133,11 +133,11 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
         failure = jsonutils.loads(serialized)
 
-        self.assertEqual(failure['class'], self.clsname, failure)
-        self.assertEqual(failure['module'], self.modname)
-        self.assertEqual(failure['message'], self.msg)
-        self.assertEqual(failure['args'], [self.msg])
-        self.assertEqual(failure['kwargs'], self.kwargs)
+        self.assertEqual(self.clsname, failure['class'], failure)
+        self.assertEqual(self.modname, failure['module'])
+        self.assertEqual(self.msg, failure['message'])
+        self.assertEqual([self.msg], failure['args'])
+        self.assertEqual(self.kwargs, failure['kwargs'])
 
         # Note: _Remote prefix not stripped from tracebacks
         tb = cls_error.__class__.__name__ + ': ' + self.msg
@@ -146,7 +146,7 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         if self.log_failure:
             self.assertTrue(len(errors) > 0, errors)
         else:
-            self.assertEqual(len(errors), 0, errors)
+            self.assertEqual(0, len(errors), errors)
 
 
 SerializeRemoteExceptionTestCase.generate_scenarios()
@@ -298,10 +298,10 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         ex = exceptions.deserialize_remote_exception(serialized, self.allowed)
 
         self.assertIsInstance(ex, self.cls)
-        self.assertEqual(ex.__class__.__name__, self.remote_name)
-        self.assertEqual(six.text_type(ex), self.str)
+        self.assertEqual(self.remote_name, ex.__class__.__name__)
+        self.assertEqual(self.str, six.text_type(ex))
         if hasattr(self, 'msg'):
-            self.assertEqual(six.text_type(ex), self.msg)
-            self.assertEqual(ex.args, (self.msg,) + self.remote_args)
+            self.assertEqual(self.msg, six.text_type(ex))
+            self.assertEqual((self.msg,) + self.remote_args, ex.args)
         else:
-            self.assertEqual(ex.args, self.remote_args)
+            self.assertEqual(self.remote_args, ex.args)

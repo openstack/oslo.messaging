@@ -107,10 +107,10 @@ class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
     def test_normal_run(self):
         thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
         thread.wait()
-        self.assertEqual(self.before.call_count, 1)
-        self.assertEqual(self.callback.call_count, 1)
-        self.assertEqual(self.after.call_count, 1)
-        self.assertEqual(self.exception_call.call_count, 0)
+        self.assertEqual(1, self.before.call_count)
+        self.assertEqual(1, self.callback.call_count)
+        self.assertEqual(1, self.after.call_count)
+        self.assertEqual(0, self.exception_call.call_count)
 
     def test_excepted_exception(self):
         self.callback.side_effect = ExceptedException
@@ -119,10 +119,10 @@ class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
             thread.wait()
         except ExceptedException:
             pass
-        self.assertEqual(self.before.call_count, 1)
-        self.assertEqual(self.callback.call_count, 1)
-        self.assertEqual(self.after.call_count, 1)
-        self.assertEqual(self.exception_call.call_count, 1)
+        self.assertEqual(1, self.before.call_count)
+        self.assertEqual(1, self.callback.call_count)
+        self.assertEqual(1, self.after.call_count)
+        self.assertEqual(1, self.exception_call.call_count)
 
     def test_unexcepted_exception(self):
         self.callback.side_effect = Exception
@@ -131,7 +131,7 @@ class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
             thread.wait()
         except Exception:
             pass
-        self.assertEqual(self.before.call_count, 1)
-        self.assertEqual(self.callback.call_count, 1)
-        self.assertEqual(self.after.call_count, 0)
-        self.assertEqual(self.exception_call.call_count, 0)
+        self.assertEqual(1, self.before.call_count)
+        self.assertEqual(1, self.callback.call_count)
+        self.assertEqual(0, self.after.call_count)
+        self.assertEqual(0, self.exception_call.call_count)

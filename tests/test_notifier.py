@@ -243,8 +243,8 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        self.assertEqual(_impl_test.NOTIFICATIONS,
-                         [(dict(user='alice'), message, 'INFO')])
+        self.assertEqual([(dict(user='alice'), message, 'INFO')],
+                         _impl_test.NOTIFICATIONS)
 
 
 class TestLogNotifier(test_utils.BaseTestCase):
@@ -324,7 +324,7 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
     def test_load_notifiers_no_config(self):
         # default routing_notifier_config=""
         self.router._load_notifiers()
-        self.assertEqual(self.router.routing_groups, {})
+        self.assertEqual({}, self.router.routing_groups)
         self.assertEqual(0, len(self.router.used_drivers))
 
     def test_load_notifiers_no_extensions(self):
@@ -341,7 +341,7 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
                                 '_impl_routing.LOG') as mylog:
                     self.router._load_notifiers()
                     self.assertFalse(mylog.debug.called)
-        self.assertEqual(self.router.routing_groups, {})
+        self.assertEqual({}, self.router.routing_groups)
 
     def test_load_notifiers_config(self):
         self.config(routing_notifier_config="routing_notifier.yaml")
@@ -478,4 +478,4 @@ group_1:
             with mock.patch.object(self.router, '_get_drivers_for_message',
                                    drivers_mock):
                 self.router.notify({}, message)
-                self.assertEqual(pm.map.call_args[0][4], ['rpc', 'foo'])
+                self.assertEqual(['rpc', 'foo'], pm.map.call_args[0][4])

@@ -101,10 +101,10 @@ class TestDispatcher(test_utils.BaseTestCase):
             targets, endpoints, None, allow_requeue=True)
 
         # check it listen on wanted topics
-        self.assertEqual(sorted(dispatcher._targets_priorities),
-                         sorted(set((targets[0], prio)
+        self.assertEqual(sorted(set((targets[0], prio)
                                     for prio in itertools.chain.from_iterable(
-                                        self.endpoints))))
+                                        self.endpoints))),
+                         sorted(dispatcher._targets_priorities))
 
         incoming = mock.Mock(ctxt={}, message=msg)
         with dispatcher(incoming) as callback:
@@ -123,18 +123,18 @@ class TestDispatcher(test_utils.BaseTestCase):
                                           })]
                     self.assertEqual(method.call_args_list, expected)
                 else:
-                    self.assertEqual(endpoints[i].call_count, 0)
+                    self.assertEqual(0, endpoints[i].call_count)
 
         if self.ex:
-            self.assertEqual(incoming.acknowledge.call_count, 1)
-            self.assertEqual(incoming.requeue.call_count, 0)
+            self.assertEqual(1, incoming.acknowledge.call_count)
+            self.assertEqual(0, incoming.requeue.call_count)
         elif self.return_value == messaging.NotificationResult.HANDLED \
                 or self.return_value is None:
-            self.assertEqual(incoming.acknowledge.call_count, 1)
-            self.assertEqual(incoming.requeue.call_count, 0)
+            self.assertEqual(1, incoming.acknowledge.call_count)
+            self.assertEqual(0, incoming.requeue.call_count)
         elif self.return_value == messaging.NotificationResult.REQUEUE:
-            self.assertEqual(incoming.acknowledge.call_count, 0)
-            self.assertEqual(incoming.requeue.call_count, 1)
+            self.assertEqual(0, incoming.acknowledge.call_count)
+            self.assertEqual(1, incoming.requeue.call_count)
 
     @mock.patch('oslo.messaging.notify.dispatcher.LOG')
     def test_dispatcher_unknown_prio(self, mylog):

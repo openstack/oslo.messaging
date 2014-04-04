@@ -213,8 +213,8 @@ class TestQpidDirectConsumerPublisher(_QpidBaseTestCase):
         thread1.join()
         thread2.join()
 
-        self.assertEqual(len(self._messages), self.no_msgs)
-        self.assertEqual(self._messages, self._expected)
+        self.assertEqual(self.no_msgs, len(self._messages))
+        self.assertEqual(self._expected, self._messages)
 
 
 TestQpidDirectConsumerPublisher.generate_scenarios()
@@ -381,8 +381,8 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
         # self._messages and compare with the expected messages
         # messages.
 
-        self.assertEqual(len(self._expected), self.no_senders)
-        self.assertEqual(len(self._messages), self.no_receivers)
+        self.assertEqual(self.no_senders, len(self._expected))
+        self.assertEqual(self.no_receivers, len(self._messages))
 
         for key, messages in self._messages.iteritems():
             self.assertEqual(self._expected, messages)
