@@ -42,7 +42,6 @@ zmq = importutils.try_import('eventlet.green.zmq')
 pformat = pprint.pformat
 Timeout = eventlet.timeout.Timeout
 LOG = logging.getLogger(__name__)
-RemoteError = rpc_common.RemoteError
 RPCException = rpc_common.RPCException
 
 # FIXME(markmc): remove this
