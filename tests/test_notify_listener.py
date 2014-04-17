@@ -150,14 +150,14 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
         self._stop_listener(listener_thread)
 
-        expected = [mock.call({'ctxt': '1'}, 'testpublisher',
-                              'an_event.start1', 'test',
-                              {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-                    mock.call({'ctxt': '2'}, 'testpublisher',
-                              'an_event.start2', 'test',
-                              {'timestamp': mock.ANY, 'message_id': mock.ANY})]
-
-        self.assertEqual(sorted(endpoint.info.call_args_list), expected)
+        endpoint.info.assert_has_calls([
+            mock.call({'ctxt': '1'}, 'testpublisher',
+                      'an_event.start1', 'test',
+                      {'timestamp': mock.ANY, 'message_id': mock.ANY}),
+            mock.call({'ctxt': '2'}, 'testpublisher',
+                      'an_event.start2', 'test',
+                      {'timestamp': mock.ANY, 'message_id': mock.ANY})],
+            any_order=True)
 
     def test_two_exchanges(self):
         transport = messaging.get_transport(self.conf, url='fake:')
@@ -192,13 +192,14 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
         self._stop_listener(listener_thread)
 
-        expected = [mock.call({'ctxt': '1'}, 'testpublisher', 'an_event.start',
-                              'test message exchange1',
-                              {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-                    mock.call({'ctxt': '2'}, 'testpublisher', 'an_event.start',
-                              'test message exchange2',
-                              {'timestamp': mock.ANY, 'message_id': mock.ANY})]
-        self.assertEqual(sorted(endpoint.info.call_args_list), expected)
+        endpoint.info.assert_has_calls([
+            mock.call({'ctxt': '1'}, 'testpublisher', 'an_event.start',
+                      'test message exchange1',
+                      {'timestamp': mock.ANY, 'message_id': mock.ANY}),
+            mock.call({'ctxt': '2'}, 'testpublisher', 'an_event.start',
+                      'test message exchange2',
+                      {'timestamp': mock.ANY, 'message_id': mock.ANY})],
+            any_order=True)
 
     def test_two_endpoints(self):
         transport = messaging.get_transport(self.conf, url='fake:')
@@ -242,8 +243,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
         self._stop_listener(listener_thread)
 
-        expected = [mock.call({}, 'testpublisher', 'an_event.start', 'test',
-                              {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-                    mock.call({}, 'testpublisher', 'an_event.start', 'test',
-                              {'timestamp': mock.ANY, 'message_id': mock.ANY})]
-        self.assertEqual(endpoint.info.call_args_list, expected)
+        endpoint.info.assert_has_calls([
+            mock.call({}, 'testpublisher', 'an_event.start', 'test',
+                      {'timestamp': mock.ANY, 'message_id': mock.ANY}),
+            mock.call({}, 'testpublisher', 'an_event.start', 'test',
+                      {'timestamp': mock.ANY, 'message_id': mock.ANY})])
