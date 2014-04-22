@@ -75,7 +75,7 @@ class Notifier(object):
         notifier = notifier.Notifier(get_transport(CONF), 'compute')
 
     and notifications are sent via drivers chosen with the notification_driver
-    config option and on the topics consen with the notification_topics config
+    config option and on the topics chosen with the notification_topics config
     option.
 
     Alternatively, a Notifier object can be instantiated with a specific
