@@ -5,7 +5,7 @@ stevedore>=0.14
 iso8601>=0.1.9
 
 # for jsonutils
-six>=1.5.2
+six>=1.6.0
 
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
