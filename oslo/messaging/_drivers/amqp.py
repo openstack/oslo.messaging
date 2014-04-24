@@ -249,7 +249,3 @@ def _add_unique_id(msg):
     unique_id = uuid.uuid4().hex
     msg.update({UNIQUE_ID: unique_id})
     LOG.debug('UNIQUE_ID is %s.' % (unique_id))
-
-
-def get_control_exchange(conf):
-    return conf.control_exchange

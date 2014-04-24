@@ -167,11 +167,17 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
 
     scenarios = [
         ('direct', dict(consumer_cls=qpid_driver.DirectConsumer,
-                        publisher_cls=qpid_driver.DirectPublisher)),
+                        consumer_kwargs={},
+                        publisher_cls=qpid_driver.DirectPublisher,
+                        publisher_kwargs={})),
         ('topic', dict(consumer_cls=qpid_driver.TopicConsumer,
-                       publisher_cls=qpid_driver.TopicPublisher)),
+                       consumer_kwargs={'exchange_name': 'openstack'},
+                       publisher_cls=qpid_driver.TopicPublisher,
+                       publisher_kwargs={'exchange_name': 'openstack'})),
         ('fanout', dict(consumer_cls=qpid_driver.FanoutConsumer,
-                        publisher_cls=qpid_driver.FanoutPublisher)),
+                        consumer_kwargs={},
+                        publisher_cls=qpid_driver.FanoutPublisher,
+                        publisher_kwargs={})),
     ]
 
     def setUp(self):
@@ -195,7 +201,8 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
             self.consumer_cls(self.conf,
                               self.session_receive,
                               msgid_or_topic,
-                              consumer_callback)
+                              consumer_callback,
+                              **self.consumer_kwargs)
         except Exception as e:
             recvd_exc_msg = e.message
 
@@ -205,7 +212,8 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
         try:
             self.publisher_cls(self.conf,
                                self.session_send,
-                               msgid_or_topic)
+                               topic=msgid_or_topic,
+                               **self.publisher_kwargs)
         except Exception as e:
             recvd_exc_msg = e.message
 
@@ -307,11 +315,15 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
     ]
     _exchange_class = [
         ('topic', dict(consumer_cls=qpid_driver.TopicConsumer,
+                       consumer_kwargs={'exchange_name': 'openstack'},
                        publisher_cls=qpid_driver.TopicPublisher,
+                       publisher_kwargs={'exchange_name': 'openstack'},
                        topic='topictest.test',
                        receive_topic='topictest.test')),
         ('fanout', dict(consumer_cls=qpid_driver.FanoutConsumer,
+                        consumer_kwargs={},
                         publisher_cls=qpid_driver.FanoutPublisher,
+                        publisher_kwargs={},
                         topic='fanouttest',
                         receive_topic='fanouttest')),
     ]
@@ -404,7 +416,8 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
             consumer = self.consumer_cls(self.conf,
                                          self.session_receive,
                                          self.receive_topic,
-                                         self.consumer_callback)
+                                         self.consumer_callback,
+                                         **self.consumer_kwargs)
             self._receivers.append(consumer)
 
             # create receivers threads
@@ -415,7 +428,8 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
         for sender_id in range(self.no_senders):
             publisher = self.publisher_cls(self.conf,
                                            self.session_send,
-                                           self.topic)
+                                           topic=self.topic,
+                                           **self.publisher_kwargs)
             self._senders.append(publisher)
 
             # create sender threads
@@ -448,6 +462,75 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
             self.assertEqual(self._expected, messages)
 
 TestQpidTopicAndFanout.generate_scenarios()
+
+
+class AddressNodeMatcher(object):
+    def __init__(self, node):
+        self.node = node
+
+    def __eq__(self, address):
+        return address.split(';')[0].strip() == self.node
+
+
+class TestDriverInterface(_QpidBaseTestCase):
+    """Unit Test cases to test the amqpdriver with qpid
+    """
+
+    def setUp(self):
+        super(TestDriverInterface, self).setUp()
+        self.config(qpid_topology_version=2)
+        transport = messaging.get_transport(self.conf)
+        self.driver = transport._driver
+
+    def test_listen_and_direct_send(self):
+        target = messaging.Target(exchange="exchange_test",
+                                  topic="topic_test",
+                                  server="server_test")
+
+        with mock.patch('qpid.messaging.Connection') as conn_cls:
+            conn = conn_cls.return_value
+            session = conn.session.return_value
+            session.receiver.side_effect = [mock.Mock(), mock.Mock(),
+                                            mock.Mock()]
+
+            listener = self.driver.listen(target)
+            listener.conn.direct_send("msg_id", {})
+
+        self.assertEqual(3, len(listener.conn.consumers))
+
+        expected_calls = [
+            mock.call(AddressNodeMatcher(
+                'amq.topic/topic/exchange_test/topic_test')),
+            mock.call(AddressNodeMatcher(
+                'amq.topic/topic/exchange_test/topic_test.server_test')),
+            mock.call(AddressNodeMatcher('amq.topic/fanout/topic_test')),
+        ]
+        session.receiver.assert_has_calls(expected_calls)
+        session.sender.assert_called_with(
+            AddressNodeMatcher("amq.direct/msg_id"))
+
+    def test_send(self):
+        target = messaging.Target(exchange="exchange_test",
+                                  topic="topic_test",
+                                  server="server_test")
+        with mock.patch('qpid.messaging.Connection') as conn_cls:
+            conn = conn_cls.return_value
+            session = conn.session.return_value
+
+            self.driver.send(target, {}, {})
+            session.sender.assert_called_with(AddressNodeMatcher(
+                "amq.topic/topic/exchange_test/topic_test.server_test"))
+
+    def test_send_notification(self):
+        target = messaging.Target(exchange="exchange_test",
+                                  topic="topic_test.info")
+        with mock.patch('qpid.messaging.Connection') as conn_cls:
+            conn = conn_cls.return_value
+            session = conn.session.return_value
+
+            self.driver.send_notification(target, {}, {}, "2.0")
+            session.sender.assert_called_with(AddressNodeMatcher(
+                "amq.topic/topic/exchange_test/topic_test.info"))
 
 
 class TestQpidReconnectOrder(test_utils.BaseTestCase):

@@ -248,8 +248,8 @@ class DirectConsumer(ConsumerBase):
 class TopicConsumer(ConsumerBase):
     """Consumer class for 'topic'."""
 
-    def __init__(self, conf, session, topic, callback, name=None,
-                 exchange_name=None):
+    def __init__(self, conf, session, topic, callback, exchange_name,
+                 name=None):
         """Init a 'topic' queue.
 
         :param session: the amqp session to use
@@ -259,7 +259,6 @@ class TopicConsumer(ConsumerBase):
         :param name: optional queue name, defaults to topic
         """
 
-        exchange_name = exchange_name or rpc_amqp.get_control_exchange(conf)
         link_opts = {
             "auto-delete": conf.amqp_auto_delete,
             "durable": conf.amqp_durable_queues,
@@ -376,14 +375,14 @@ class Publisher(object):
 
 class DirectPublisher(Publisher):
     """Publisher class for 'direct'."""
-    def __init__(self, conf, session, msg_id):
+    def __init__(self, conf, session, topic):
         """Init a 'direct' publisher."""
 
         if conf.qpid_topology_version == 1:
-            node_name = "%s/%s" % (msg_id, msg_id)
+            node_name = "%s/%s" % (topic, topic)
             node_opts = {"type": "direct"}
         elif conf.qpid_topology_version == 2:
-            node_name = "amq.direct/%s" % msg_id
+            node_name = "amq.direct/%s" % topic
             node_opts = {}
         else:
             raise_invalid_topology_version(conf)
@@ -394,11 +393,9 @@ class DirectPublisher(Publisher):
 
 class TopicPublisher(Publisher):
     """Publisher class for 'topic'."""
-    def __init__(self, conf, session, topic):
+    def __init__(self, conf, session, exchange_name, topic):
         """Init a 'topic' publisher.
         """
-        exchange_name = rpc_amqp.get_control_exchange(conf)
-
         if conf.qpid_topology_version == 1:
             node_name = "%s/%s" % (exchange_name, topic)
         elif conf.qpid_topology_version == 2:
@@ -430,10 +427,9 @@ class FanoutPublisher(Publisher):
 
 class NotifyPublisher(Publisher):
     """Publisher class for notifications."""
-    def __init__(self, conf, session, topic):
+    def __init__(self, conf, session, exchange_name, topic):
         """Init a 'topic' publisher.
         """
-        exchange_name = rpc_amqp.get_control_exchange(conf)
         node_opts = {"durable": True}
 
         if conf.qpid_topology_version == 1:
@@ -618,7 +614,7 @@ class Connection(object):
                 raise StopIteration
             yield self.ensure(_error_callback, _consume)
 
-    def publisher_send(self, cls, topic, msg):
+    def publisher_send(self, cls, topic, msg, **kwargs):
         """Send to a publisher based on the publisher class."""
 
         def _connect_error(exc):
@@ -627,7 +623,7 @@ class Connection(object):
                           "'%(topic)s': %(err_str)s") % log_info)
 
         def _publisher_send():
-            publisher = cls(self.conf, self.session, topic)
+            publisher = cls(self.conf, self.session, topic=topic, **kwargs)
             publisher.send(msg)
 
         return self.ensure(_connect_error, _publisher_send)
@@ -639,8 +635,8 @@ class Connection(object):
         """
         self.declare_consumer(DirectConsumer, topic, callback)
 
-    def declare_topic_consumer(self, topic, callback=None, queue_name=None,
-                               exchange_name=None):
+    def declare_topic_consumer(self, exchange_name, topic, callback=None,
+                               queue_name=None):
         """Create a 'topic' consumer."""
         self.declare_consumer(functools.partial(TopicConsumer,
                                                 name=queue_name,
@@ -654,9 +650,9 @@ class Connection(object):
 
     def direct_send(self, msg_id, msg):
         """Send a 'direct' message."""
-        self.publisher_send(DirectPublisher, msg_id, msg)
+        self.publisher_send(DirectPublisher, topic=msg_id, msg=msg)
 
-    def topic_send(self, topic, msg, timeout=None):
+    def topic_send(self, exchange_name, topic, msg, timeout=None):
         """Send a 'topic' message."""
         #
         # We want to create a message with attributes, e.g. a TTL. We
@@ -669,15 +665,17 @@ class Connection(object):
         # will need to be altered accordingly.
         #
         qpid_message = qpid_messaging.Message(content=msg, ttl=timeout)
-        self.publisher_send(TopicPublisher, topic, qpid_message)
+        self.publisher_send(TopicPublisher, topic=topic, msg=qpid_message,
+                            exchange_name=exchange_name)
 
     def fanout_send(self, topic, msg):
         """Send a 'fanout' message."""
-        self.publisher_send(FanoutPublisher, topic, msg)
+        self.publisher_send(FanoutPublisher, topic=topic, msg=msg)
 
-    def notify_send(self, topic, msg, **kwargs):
+    def notify_send(self, exchange_name, topic, msg, **kwargs):
         """Send a notify message on a topic."""
-        self.publisher_send(NotifyPublisher, topic, msg)
+        self.publisher_send(NotifyPublisher, topic=topic, msg=msg,
+                            exchange_name=exchange_name)
 
     def consume(self, limit=None, timeout=None):
         """Consume from all queues/consumers."""
