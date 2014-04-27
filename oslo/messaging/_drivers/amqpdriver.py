@@ -137,7 +137,7 @@ class ReplyWaiters(object):
             LOG.warn('No calling threads waiting for msg_id : %(msg_id)s'
                      ', message : %(data)s', {'msg_id': msg_id,
                                               'data': message_data})
-            LOG.warn('_queues: %s' % str(self._queues))
+            LOG.warn('_queues: %s' % self._queues)
         else:
             queue.put(message_data)
 
