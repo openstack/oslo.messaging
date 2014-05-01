@@ -682,7 +682,7 @@ def _call(addr, context, topic, msg, timeout=None,
             )
 
             LOG.debug(_("Sending cast"))
-            _cast(addr, context, topic, payload, envelope)
+            _cast(addr, context, topic, payload, envelope=envelope)
 
             LOG.debug(_("Cast sent; Waiting reply"))
             # Blocks until receives reply
