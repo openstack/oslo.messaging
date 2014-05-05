@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import operator
 import random
 import thread
 import threading
@@ -100,6 +101,65 @@ class _QpidBaseTestCase(test_utils.BaseTestCase):
             else:
                 self.con_receive.close()
                 self.con_send.close()
+
+
+class TestQpidTransportURL(_QpidBaseTestCase):
+
+    scenarios = [
+        ('none', dict(url=None,
+                      expected=[dict(host='localhost:5672',
+                                     username='',
+                                     password='')])),
+        ('empty',
+         dict(url='qpid:///',
+              expected=[dict(host='localhost:5672',
+                             username='',
+                             password='')])),
+        ('localhost',
+         dict(url='qpid://localhost/',
+              expected=[dict(host='localhost',
+                             username='',
+                             password='')])),
+        ('no_creds',
+         dict(url='qpid://host/',
+              expected=[dict(host='host',
+                             username='',
+                             password='')])),
+        ('no_port',
+         dict(url='qpid://user:password@host/',
+              expected=[dict(host='host',
+                             username='user',
+                             password='password')])),
+        ('full_url',
+         dict(url='qpid://user:password@host:10/',
+              expected=[dict(host='host:10',
+                             username='user',
+                             password='password')])),
+        ('full_two_url',
+         dict(url='qpid://user:password@host:10,'
+              'user2:password2@host2:12/',
+              expected=[dict(host='host:10',
+                             username='user',
+                             password='password'),
+                        dict(host='host2:12',
+                             username='user2',
+                             password='password2')
+                        ]
+              )),
+
+    ]
+
+    @mock.patch.object(qpid_driver.Connection, 'reconnect')
+    def test_transport_url(self, *args):
+        transport = messaging.get_transport(self.conf, self.url)
+        self.addCleanup(transport.cleanup)
+        driver = transport._driver
+
+        brokers_params = driver._get_connection().brokers_params
+        self.assertEqual(sorted(self.expected,
+                                key=operator.itemgetter('host')),
+                         sorted(brokers_params,
+                                key=operator.itemgetter('host')))
 
 
 class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
@@ -398,11 +458,12 @@ class TestQpidReconnectOrder(test_utils.BaseTestCase):
         brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
         brokers_count = len(brokers)
 
-        self.messaging_conf.conf.qpid_hosts = brokers
+        self.config(qpid_hosts=brokers)
 
         with mock.patch('qpid.messaging.Connection') as conn_mock:
             # starting from the first broker in the list
-            connection = qpid_driver.Connection(self.messaging_conf.conf)
+            url = messaging.TransportURL.parse(self.conf, None)
+            connection = qpid_driver.Connection(self.conf, url)
 
             # reconnect will advance to the next broker, one broker per
             # attempt, and then wrap to the start of the list once the end is
@@ -412,7 +473,7 @@ class TestQpidReconnectOrder(test_utils.BaseTestCase):
 
         expected = []
         for broker in brokers:
-            expected.extend([mock.call(broker),
+            expected.extend([mock.call("%s:5672" % broker),
                              mock.call().open(),
                              mock.call().session(),
                              mock.call().opened(),
@@ -600,6 +661,9 @@ class FakeQpidSession(object):
         # return the last element of the list as the key
         key = slash_split[-1]
         return key.strip()
+
+    def close(self):
+        pass
 
 _fake_session = FakeQpidSession()
 
