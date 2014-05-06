@@ -788,10 +788,10 @@ class Connection(object):
         """Send a 'fanout' message."""
         self.publisher_send(FanoutPublisher, topic, msg, retry=retry)
 
-    def notify_send(self, exchange_name, topic, msg, **kwargs):
+    def notify_send(self, exchange_name, topic, msg, retry=None, **kwargs):
         """Send a notify message on a topic."""
         self.publisher_send(NotifyPublisher, topic, msg, timeout=None,
-                            exchange_name=exchange_name, **kwargs)
+                            exchange_name=exchange_name, retry=retry, **kwargs)
 
     def consume(self, limit=None, timeout=None):
         """Consume from all queues/consumers."""

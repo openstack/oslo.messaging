@@ -168,7 +168,9 @@ class FakeDriver(base.BaseDriver):
         # transport always works
         return self._send(target, ctxt, message, wait_for_reply, timeout)
 
-    def send_notification(self, target, ctxt, message, version):
+    def send_notification(self, target, ctxt, message, version, retry=None):
+        # NOTE(sileht): retry doesn't need to be implemented, the fake
+        # transport always works
         self._send(target, ctxt, message)
 
     def listen(self, target):

@@ -30,5 +30,5 @@ class TestDriver(notifier._Driver):
 
     "Store notifications in memory for test verification."
 
-    def notify(self, ctxt, message, priority):
-        NOTIFICATIONS.append((ctxt, message, priority))
+    def notify(self, ctxt, message, priority, retry):
+        NOTIFICATIONS.append((ctxt, message, priority, retry))
