@@ -700,7 +700,7 @@ class Connection(object):
 
         def _error_callback(exc):
             if isinstance(exc, socket.timeout):
-                LOG.debug(_('Timed out waiting for RPC response: %s') % exc)
+                LOG.debug('Timed out waiting for RPC response: %s' % exc)
                 raise rpc_common.Timeout()
             else:
                 LOG.exception(_('Failed to consume message from queue: %s') %

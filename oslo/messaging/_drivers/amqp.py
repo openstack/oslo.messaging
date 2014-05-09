@@ -68,7 +68,7 @@ class ConnectionPool(pool.Pool):
 
     # TODO(comstud): Timeout connections not used in a while
     def create(self):
-        LOG.debug(_('Pool creating new connection'))
+        LOG.debug('Pool creating new connection')
         return self.connection_cls(self.conf, self.url)
 
     def empty(self):
@@ -193,7 +193,7 @@ def unpack_context(conf, msg):
     context_dict['reply_q'] = msg.pop('_reply_q', None)
     context_dict['conf'] = conf
     ctx = RpcContext.from_dict(context_dict)
-    rpc_common._safe_log(LOG.debug, _('unpacked context: %s'), ctx.to_dict())
+    rpc_common._safe_log(LOG.debug, 'unpacked context: %s', ctx.to_dict())
     return ctx
 
 
@@ -248,7 +248,7 @@ def _add_unique_id(msg):
     """Add unique_id for checking duplicate messages."""
     unique_id = uuid.uuid4().hex
     msg.update({UNIQUE_ID: unique_id})
-    LOG.debug(_('UNIQUE_ID is %s.') % (unique_id))
+    LOG.debug('UNIQUE_ID is %s.' % (unique_id))
 
 
 def get_control_exchange(conf):

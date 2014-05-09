@@ -70,7 +70,7 @@ class RoutingDriver(notifier._Driver):
         for group in self.routing_groups.values():
             self.used_drivers.update(group.keys())
 
-        LOG.debug(_('loading notifiers from %(namespace)s') %
+        LOG.debug('loading notifiers from %(namespace)s' %
                   {'namespace': self.NOTIFIER_PLUGIN_NAMESPACE})
         self.plugin_manager = dispatch.DispatchExtensionManager(
             namespace=self.NOTIFIER_PLUGIN_NAMESPACE,

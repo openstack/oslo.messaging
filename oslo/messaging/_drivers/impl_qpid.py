@@ -550,7 +550,7 @@ class Connection(object):
                 consumer.reconnect(self.session)
                 self._register_consumer(consumer)
 
-            LOG.debug(_("Re-established AMQP queues"))
+            LOG.debug("Re-established AMQP queues")
 
     def ensure(self, error_callback, method, *args, **kwargs):
         while True:
@@ -600,7 +600,7 @@ class Connection(object):
 
         def _error_callback(exc):
             if isinstance(exc, qpid_exceptions.Empty):
-                LOG.debug(_('Timed out waiting for RPC response: %s') % exc)
+                LOG.debug('Timed out waiting for RPC response: %s' % exc)
                 raise rpc_common.Timeout()
             else:
                 LOG.exception(_('Failed to consume message from queue: %s') %

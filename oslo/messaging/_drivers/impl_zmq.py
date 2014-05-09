@@ -107,7 +107,7 @@ def _serialize(data):
 
 def _deserialize(data):
     """Deserialization wrapper."""
-    LOG.debug(_("Deserializing: %s"), data)
+    LOG.debug("Deserializing: %s", data)
     return jsonutils.loads(data)
 
 
@@ -142,9 +142,9 @@ class ZmqSocket(object):
         str_data = {'addr': addr, 'type': self.socket_s(),
                     'subscribe': subscribe, 'bind': bind}
 
-        LOG.debug(_("Connecting to %(addr)s with %(type)s"), str_data)
-        LOG.debug(_("-> Subscribed to %(subscribe)s"), str_data)
-        LOG.debug(_("-> bind: %(bind)s"), str_data)
+        LOG.debug("Connecting to %(addr)s with %(type)s", str_data)
+        LOG.debug("-> Subscribed to %(subscribe)s", str_data)
+        LOG.debug("-> bind: %(bind)s", str_data)
 
         try:
             if bind:
@@ -164,7 +164,7 @@ class ZmqSocket(object):
         """Subscribe."""
         if not self.can_sub:
             raise RPCException("Cannot subscribe on this socket.")
-        LOG.debug(_("Subscribing to %s"), msg_filter)
+        LOG.debug("Subscribing to %s", msg_filter)
 
         try:
             self.sock.setsockopt(zmq.SUBSCRIBE, msg_filter)
@@ -273,7 +273,7 @@ class InternalContext(object):
 
     def _get_response(self, ctx, proxy, topic, data):
         """Process a curried message and cast the result to topic."""
-        LOG.debug(_("Running func with context: %s"), ctx.to_dict())
+        LOG.debug("Running func with context: %s", ctx.to_dict())
         data.setdefault('version', None)
         data.setdefault('args', {})
 
@@ -286,7 +286,7 @@ class InternalContext(object):
             # ignore these since they are just from shutdowns
             pass
         except rpc_common.ClientException as e:
-            LOG.debug(_("Expected exception during message handling (%s)") %
+            LOG.debug("Expected exception during message handling (%s)" %
                       e._exc_info[1])
             return {'exc':
                     rpc_common.serialize_remote_exception(e._exc_info,
@@ -311,7 +311,7 @@ class InternalContext(object):
             self._get_response(ctx, proxy, topic, payload),
             ctx.replies)
 
-        LOG.debug(_("Sending reply"))
+        LOG.debug("Sending reply")
         _multi_send(_cast, ctx, topic, {
             'method': '-process_reply',
             'args': {
@@ -549,7 +549,7 @@ class ZmqReactor(ZmqBaseReactor):
     def consume(self, sock):
         #TODO(ewindisch): use zero-copy (i.e. references, not copying)
         data = sock.recv()
-        LOG.debug(_("CONSUMER RECEIVED DATA: %s"), data)
+        LOG.debug("CONSUMER RECEIVED DATA: %s", data)
 
         proxy = self.proxies[sock]
 
@@ -603,7 +603,7 @@ class Connection(rpc_common.Connection):
         inaddr = "ipc://%s/zmq_topic_%s" % \
             (CONF.rpc_zmq_ipc_dir, topic)
 
-        LOG.debug(_("Consumer is a zmq.%s"),
+        LOG.debug("Consumer is a zmq.%s",
                   ['PULL', 'SUB'][sock_type == zmq.SUB])
 
         self.reactor.register(proxy, inaddr, sock_type,
@@ -655,7 +655,7 @@ def _call(addr, context, topic, msg, timeout=None,
     # Replies always come into the reply service.
     reply_topic = "zmq_replies.%s" % CONF.rpc_zmq_host
 
-    LOG.debug(_("Creating payload"))
+    LOG.debug("Creating payload")
     # Curry the original request into a reply method.
     mcontext = RpcContext.marshal(context)
     payload = {
@@ -668,7 +668,7 @@ def _call(addr, context, topic, msg, timeout=None,
         }
     }
 
-    LOG.debug(_("Creating queue socket for reply waiter"))
+    LOG.debug("Creating queue socket for reply waiter")
 
     # Messages arriving async.
     # TODO(ewindisch): have reply consumer with dynamic subscription mgmt
@@ -681,14 +681,14 @@ def _call(addr, context, topic, msg, timeout=None,
                 zmq.SUB, subscribe=msg_id, bind=False
             )
 
-            LOG.debug(_("Sending cast"))
+            LOG.debug("Sending cast")
             _cast(addr, context, topic, payload, envelope=envelope)
 
-            LOG.debug(_("Cast sent; Waiting reply"))
+            LOG.debug("Cast sent; Waiting reply")
             # Blocks until receives reply
             msg = msg_waiter.recv()
-            LOG.debug(_("Received message: %s"), msg)
-            LOG.debug(_("Unpacking response"))
+            LOG.debug("Received message: %s", msg)
+            LOG.debug("Unpacking response")
 
             if msg[2] == 'cast':  # Legacy version
                 raw_msg = _deserialize(msg[-1])[-1]
@@ -728,10 +728,10 @@ def _multi_send(method, context, topic, msg, timeout=None,
     Dispatches to the matchmaker and sends message to all relevant hosts.
     """
     conf = CONF
-    LOG.debug(_("%(msg)s") % {'msg': ' '.join(map(pformat, (topic, msg)))})
+    LOG.debug("%(msg)s" % {'msg': ' '.join(map(pformat, (topic, msg)))})
 
     queues = _get_matchmaker().queues(topic)
-    LOG.debug(_("Sending message(s) to: %s"), queues)
+    LOG.debug("Sending message(s) to: %s", queues)
 
     # Don't stack if we have no matchmaker results
     if not queues:
