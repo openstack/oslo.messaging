@@ -32,6 +32,7 @@ import six
 
 from oslo.messaging import _utils as utils
 from oslo.messaging import localcontext
+from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
 from oslo.messaging import target as msg_target
@@ -132,13 +133,13 @@ class RPCDispatcher(object):
             incoming.reply(self._dispatch(incoming.ctxt,
                                           incoming.message))
         except ExpectedException as e:
-            LOG.debug('Expected exception during message handling (%s)' %
+            LOG.debug(u'Expected exception during message handling (%s)' %
                       e.exc_info[1])
             incoming.reply(failure=e.exc_info, log_failure=False)
         except Exception as e:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
-            LOG.error('Exception during message handling: %s', e,
+            LOG.error(_('Exception during message handling: %s'), e,
                       exc_info=exc_info)
             incoming.reply(failure=exc_info)
             # NOTE(dhellmann): Remove circular object reference
