@@ -296,7 +296,7 @@ class CommonRpcContext(object):
         return self.from_dict(self.to_dict())
 
     def update_store(self):
-        #local.store.context = self
+        # local.store.context = self
         pass
 
 
