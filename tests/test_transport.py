@@ -305,3 +305,50 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         self.mox.ReplayAll()
 
         t._listen(self._target)
+
+
+class TestTransportUrlCustomisation(test_utils.BaseTestCase):
+    def setUp(self):
+        super(TestTransportUrlCustomisation, self).setUp()
+        self.url1 = transport.TransportURL.parse(self.conf, "fake://vhost1")
+        self.url2 = transport.TransportURL.parse(self.conf, "fake://vhost2")
+        self.url3 = transport.TransportURL.parse(self.conf, "fake://vhost1")
+
+    def test_hash(self):
+        urls = {}
+        urls[self.url1] = self.url1
+        urls[self.url2] = self.url2
+        urls[self.url3] = self.url3
+        self.assertEqual(2, len(urls))
+
+    def test_eq(self):
+        self.assertEqual(self.url1, self.url3)
+        self.assertNotEqual(self.url1, self.url2)
+
+
+class TestTransportHostCustomisation(test_utils.BaseTestCase):
+    def setUp(self):
+        super(TestTransportHostCustomisation, self).setUp()
+        self.host1 = transport.TransportHost("host1", 5662, "user", "pass")
+        self.host2 = transport.TransportHost("host1", 5662, "user", "pass")
+        self.host3 = transport.TransportHost("host1", 5663, "user", "pass")
+        self.host4 = transport.TransportHost("host1", 5662, "user2", "pass")
+        self.host5 = transport.TransportHost("host1", 5662, "user", "pass2")
+        self.host6 = transport.TransportHost("host2", 5662, "user", "pass")
+
+    def test_hash(self):
+        hosts = {}
+        hosts[self.host1] = self.host1
+        hosts[self.host2] = self.host2
+        hosts[self.host3] = self.host3
+        hosts[self.host4] = self.host4
+        hosts[self.host5] = self.host5
+        hosts[self.host6] = self.host6
+        self.assertEqual(5, len(hosts))
+
+    def test_eq(self):
+        self.assertEqual(self.host1, self.host2)
+        self.assertNotEqual(self.host1, self.host3)
+        self.assertNotEqual(self.host1, self.host4)
+        self.assertNotEqual(self.host1, self.host5)
+        self.assertNotEqual(self.host1, self.host6)

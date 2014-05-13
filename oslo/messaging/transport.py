@@ -197,6 +197,9 @@ class TransportHost(object):
         self.username = username
         self.password = password
 
+    def __hash__(self):
+        return hash((self.hostname, self.port, self.username, self.password))
+
     def __eq__(self, other):
         return vars(self) == vars(other)
 
@@ -262,6 +265,9 @@ class TransportURL(object):
     @transport.setter
     def transport(self, value):
         self._transport = value
+
+    def __hash__(self):
+        return hash((tuple(self.hosts), self.transport, self.virtual_host))
 
     def __eq__(self, other):
         return (self.transport == other.transport and
