@@ -70,17 +70,15 @@ class RoutingDriver(notifier._Driver):
         for group in self.routing_groups.values():
             self.used_drivers.update(group.keys())
 
-        LOG.debug('loading notifiers from %(namespace)s' %
-                  {'namespace': self.NOTIFIER_PLUGIN_NAMESPACE})
+        LOG.debug('loading notifiers from %s', self.NOTIFIER_PLUGIN_NAMESPACE)
         self.plugin_manager = dispatch.DispatchExtensionManager(
             namespace=self.NOTIFIER_PLUGIN_NAMESPACE,
             check_func=self._should_load_plugin,
             invoke_on_load=True,
             invoke_args=None)
         if not list(self.plugin_manager):
-            LOG.warning(_("Failed to load any notifiers "
-                          "for %(namespace)s") %
-                        {'namespace': self.NOTIFIER_PLUGIN_NAMESPACE})
+            LOG.warning(_("Failed to load any notifiers for %s"),
+                        self.NOTIFIER_PLUGIN_NAMESPACE)
 
     def _get_drivers_for_message(self, group, event_type, priority):
         """Which drivers should be called for this event_type
@@ -116,7 +114,7 @@ class RoutingDriver(notifier._Driver):
         """Emit the notification.
         """
         # accepted_drivers is passed in as a result of the map() function
-        LOG.info(_("Routing '%(event)s' notification to '%(driver)s' driver") %
+        LOG.info(_("Routing '%(event)s' notification to '%(driver)s' driver"),
                  {'event': message.get('event_type'), 'driver': ext.name})
         ext.obj.notify(context, message, priority, retry)
 

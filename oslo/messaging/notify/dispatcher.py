@@ -108,7 +108,7 @@ class NotificationDispatcher(object):
         }
         priority = message.get('priority', '').lower()
         if priority not in PRIORITIES:
-            LOG.warning('Unknown priority "%s"' % priority)
+            LOG.warning('Unknown priority "%s"', priority)
             return
 
         payload = self.serializer.deserialize_entity(ctxt,

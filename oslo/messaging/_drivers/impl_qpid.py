@@ -607,7 +607,7 @@ class Connection(object):
         def _connect_error(exc):
             log_info = {'topic': topic, 'err_str': exc}
             LOG.error(_("Failed to declare consumer for topic '%(topic)s': "
-                      "%(err_str)s") % log_info)
+                        "%(err_str)s"), log_info)
 
         def _declare_consumer():
             consumer = consumer_cls(self.conf, self.session, topic, callback)
@@ -621,10 +621,10 @@ class Connection(object):
 
         def _error_callback(exc):
             if isinstance(exc, qpid_exceptions.Empty):
-                LOG.debug('Timed out waiting for RPC response: %s' % exc)
+                LOG.debug('Timed out waiting for RPC response: %s', exc)
                 raise rpc_common.Timeout()
             else:
-                LOG.exception(_('Failed to consume message from queue: %s') %
+                LOG.exception(_('Failed to consume message from queue: %s'),
                               exc)
 
         def _consume():
@@ -645,7 +645,7 @@ class Connection(object):
         def _connect_error(exc):
             log_info = {'topic': topic, 'err_str': exc}
             LOG.exception(_("Failed to publish message to topic "
-                          "'%(topic)s': %(err_str)s") % log_info)
+                          "'%(topic)s': %(err_str)s"), log_info)
 
         def _publisher_send():
             publisher = cls(self.conf, self.session, topic=topic, **kwargs)

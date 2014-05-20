@@ -286,7 +286,7 @@ class InternalContext(object):
             # ignore these since they are just from shutdowns
             pass
         except rpc_common.ClientException as e:
-            LOG.debug("Expected exception during message handling (%s)" %
+            LOG.debug("Expected exception during message handling (%s)",
                       e._exc_info[1])
             return {'exc':
                     rpc_common.serialize_remote_exception(e._exc_info,
@@ -488,7 +488,7 @@ class ZmqProxy(ZmqBaseReactor):
             self.topic_proxy[topic].put_nowait(data)
         except eventlet.queue.Full:
             LOG.error(_("Local per-topic backlog buffer full for topic "
-                        "%(topic)s. Dropping message.") % {'topic': topic})
+                        "%s. Dropping message."), topic)
 
     def consume_in_thread(self):
         """Runs the ZmqProxy service."""
@@ -504,7 +504,7 @@ class ZmqProxy(ZmqBaseReactor):
             if not os.path.isdir(ipc_dir):
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Required IPC directory does not exist at"
-                                " %s") % (ipc_dir, ))
+                                " %s"), ipc_dir)
         try:
             self.register(consumption_proxy,
                           consume_in,
@@ -513,7 +513,7 @@ class ZmqProxy(ZmqBaseReactor):
             if os.access(ipc_dir, os.X_OK):
                 with excutils.save_and_reraise_exception():
                     LOG.error(_("Permission denied to IPC directory at"
-                                " %s") % (ipc_dir, ))
+                                " %s"), ipc_dir)
             with excutils.save_and_reraise_exception():
                 LOG.error(_("Could not create ZeroMQ receiver daemon. "
                             "Socket may already be in use."))
@@ -728,7 +728,7 @@ def _multi_send(method, context, topic, msg, timeout=None,
     Dispatches to the matchmaker and sends message to all relevant hosts.
     """
     conf = CONF
-    LOG.debug("%(msg)s" % {'msg': ' '.join(map(pformat, (topic, msg)))})
+    LOG.debug(' '.join(map(pformat, (topic, msg))))
 
     queues = _get_matchmaker().queues(topic)
     LOG.debug("Sending message(s) to: %s", queues)

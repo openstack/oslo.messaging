@@ -133,7 +133,7 @@ class RPCDispatcher(object):
             incoming.reply(self._dispatch(incoming.ctxt,
                                           incoming.message))
         except ExpectedException as e:
-            LOG.debug(u'Expected exception during message handling (%s)' %
+            LOG.debug(u'Expected exception during message handling (%s)',
                       e.exc_info[1])
             incoming.reply(failure=e.exc_info, log_failure=False)
         except Exception as e:

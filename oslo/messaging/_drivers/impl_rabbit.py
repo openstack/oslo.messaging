@@ -541,7 +541,7 @@ class Connection(object):
         be handled by the caller.
         """
         LOG.info(_("Connecting to AMQP server on "
-                   "%(hostname)s:%(port)d") % broker)
+                   "%(hostname)s:%(port)d"), broker)
         self.connection = kombu.connection.BrokerConnection(**broker)
         self.connection_errors = self.connection.connection_errors
         self.channel_errors = self.connection.channel_errors
@@ -557,7 +557,7 @@ class Connection(object):
             self.channel._new_queue('ae.undeliver')
         for consumer in self.consumers:
             consumer.reconnect(self.channel)
-        LOG.info(_('Connected to AMQP server on %(hostname)s:%(port)d') %
+        LOG.info(_('Connected to AMQP server on %(hostname)s:%(port)d'),
                  broker)
 
     def _disconnect(self):
@@ -643,11 +643,11 @@ class Connection(object):
                 if 'Socket closed' in six.text_type(e):
                     LOG.error(_('AMQP server %(hostname)s:%(port)d closed'
                                 ' the connection. Check login credentials:'
-                                ' %(err_str)s') % log_info)
+                                ' %(err_str)s'), log_info)
                 else:
                     LOG.error(_('AMQP server on %(hostname)s:%(port)d is '
                                 'unreachable: %(err_str)s. Trying again in '
-                                '%(sleep_time)d seconds.') % log_info)
+                                '%(sleep_time)d seconds.'), log_info)
                 time.sleep(sleep_time)
 
     def ensure(self, error_callback, method, retry=None):
@@ -703,7 +703,7 @@ class Connection(object):
         def _connect_error(exc):
             log_info = {'topic': topic, 'err_str': exc}
             LOG.error(_("Failed to declare consumer for topic '%(topic)s': "
-                      "%(err_str)s") % log_info)
+                      "%(err_str)s"), log_info)
 
         def _declare_consumer():
             consumer = consumer_cls(self.conf, self.channel, topic, callback,
@@ -718,10 +718,10 @@ class Connection(object):
 
         def _error_callback(exc):
             if isinstance(exc, socket.timeout):
-                LOG.debug('Timed out waiting for RPC response: %s' % exc)
+                LOG.debug('Timed out waiting for RPC response: %s', exc)
                 raise rpc_common.Timeout()
             else:
-                LOG.exception(_('Failed to consume message from queue: %s') %
+                LOG.exception(_('Failed to consume message from queue: %s'),
                               exc)
                 self.do_consume = True
 
@@ -747,7 +747,7 @@ class Connection(object):
         def _error_callback(exc):
             log_info = {'topic': topic, 'err_str': exc}
             LOG.exception(_("Failed to publish message to topic "
-                          "'%(topic)s': %(err_str)s") % log_info)
+                          "'%(topic)s': %(err_str)s"), log_info)
 
         def _publish():
             publisher = cls(self.conf, self.channel, topic=topic, **kwargs)
