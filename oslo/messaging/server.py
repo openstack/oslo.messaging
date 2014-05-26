@@ -107,9 +107,7 @@ class MessageHandlingServer(object):
         process, thread or co-operatively scheduled coroutine or simply by
         registering a callback with an event loop. Similarly, the executor may
         choose to dispatch messages in a new thread, coroutine or simply the
-        current thread. An RPCServer subclass is available for each I/O
-        strategy supported by the library, so choose the subclass appropriate
-        for your program.
+        current thread.
         """
         if self._executor is not None:
             return
