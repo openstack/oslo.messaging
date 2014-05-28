@@ -32,7 +32,6 @@ matchmaker_redis_opts = [
                default=6379,
                help='Use this port to connect to redis host.'),
     cfg.StrOpt('password',
-               default=None,
                help='Password for Redis server (optional).'),
 ]
 
