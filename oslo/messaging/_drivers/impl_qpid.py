@@ -506,10 +506,10 @@ class Connection(object):
         self.connection.open()
 
     def _register_consumer(self, consumer):
-        self.consumers[str(consumer.get_receiver())] = consumer
+        self.consumers[six.text_type(consumer.get_receiver())] = consumer
 
     def _lookup_consumer(self, receiver):
-        return self.consumers[str(receiver)]
+        return self.consumers[six.text_type(receiver)]
 
     def _disconnect(self):
         # Close the session if necessary

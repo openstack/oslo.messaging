@@ -151,7 +151,7 @@ class ConsumerBase(object):
         passed in here as a dictionary.
         """
         self.callback = callback
-        self.tag = str(tag)
+        self.tag = six.text_type(tag)
         self.kwargs = kwargs
         self.queue = None
         self.reconnect(channel)
@@ -208,7 +208,7 @@ class ConsumerBase(object):
             self.queue.cancel(self.tag)
         except KeyError as e:
             # NOTE(comstud): Kludge to get around a amqplib bug
-            if str(e) != "u'%s'" % self.tag:
+            if six.text_type(e) != "u'%s'" % self.tag:
                 raise
         self.queue = None
 
@@ -617,7 +617,7 @@ class Connection(object):
                 # a protocol response.  (See paste link in LP888621)
                 # So, we check all exceptions for 'timeout' in them
                 # and try to reconnect in this case.
-                if 'timeout' not in str(e):
+                if 'timeout' not in six.text_type(e):
                     raise
 
             log_info = {}
@@ -670,7 +670,7 @@ class Connection(object):
                 # a protocol response.  (See paste link in LP888621)
                 # So, we check all exceptions for 'timeout' in them
                 # and try to reconnect in this case.
-                if 'timeout' not in str(e):
+                if 'timeout' not in six.text_type(e):
                     raise
                 if error_callback:
                     error_callback(e)

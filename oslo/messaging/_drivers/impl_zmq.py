@@ -783,7 +783,8 @@ def fanout_cast(conf, context, topic, msg, **kwargs):
     """Send a message to all listening and expect no reply."""
     # NOTE(ewindisch): fanout~ is used because it avoid splitting on .
     # and acts as a non-subtle hint to the matchmaker and ZmqProxy.
-    _multi_send(_cast, context, 'fanout~' + str(topic), msg, **kwargs)
+    _multi_send(_cast, context, 'fanout~' + six.text_type(topic),
+                msg, **kwargs)
 
 
 def notify(conf, context, topic, msg, envelope):
