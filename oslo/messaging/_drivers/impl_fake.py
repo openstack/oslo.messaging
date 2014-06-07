@@ -126,9 +126,9 @@ class FakeExchangeManager(object):
 class FakeDriver(base.BaseDriver):
 
     def __init__(self, conf, url, default_exchange=None,
-                 allowed_remote_exmods=[]):
+                 allowed_remote_exmods=None):
         super(FakeDriver, self).__init__(conf, url, default_exchange,
-                                         allowed_remote_exmods=[])
+                                         allowed_remote_exmods)
 
         self._exchange_manager = FakeExchangeManager(default_exchange)
 

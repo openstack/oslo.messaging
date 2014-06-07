@@ -134,7 +134,7 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
-def get_transport(conf, url=None, allowed_remote_exmods=[], aliases=None):
+def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
     """A factory method for Transport objects.
 
     This method will construct a Transport object from transport configuration
@@ -164,6 +164,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=[], aliases=None):
     :param aliases: A map of transport alias to transport name
     :type aliases: dict
     """
+    allowed_remote_exmods = allowed_remote_exmods or []
     conf.register_opts(_transport_opts)
 
     if not isinstance(url, TransportURL):

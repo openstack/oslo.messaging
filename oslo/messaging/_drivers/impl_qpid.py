@@ -715,7 +715,7 @@ class Connection(object):
 class QpidDriver(amqpdriver.AMQPDriverBase):
 
     def __init__(self, conf, url,
-                 default_exchange=None, allowed_remote_exmods=[]):
+                 default_exchange=None, allowed_remote_exmods=None):
         conf.register_opts(qpid_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 

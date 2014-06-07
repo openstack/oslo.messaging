@@ -627,7 +627,8 @@ class Connection(rpc_common.Connection):
 
 
 def _cast(addr, context, topic, msg, timeout=None, envelope=False,
-          _msg_id=None, allowed_remote_exmods=[]):
+          _msg_id=None, allowed_remote_exmods=None):
+    allowed_remote_exmods = allowed_remote_exmods or []
     timeout_cast = timeout or CONF.rpc_cast_timeout
     payload = [RpcContext.marshal(context), msg]
 
@@ -645,7 +646,8 @@ def _cast(addr, context, topic, msg, timeout=None, envelope=False,
 
 
 def _call(addr, context, topic, msg, timeout=None,
-          envelope=False, allowed_remote_exmods=[]):
+          envelope=False, allowed_remote_exmods=None):
+    allowed_remote_exmods = allowed_remote_exmods or []
     # timeout_response is how long we wait for a response
     timeout = timeout or CONF.rpc_response_timeout
 
@@ -722,11 +724,12 @@ def _call(addr, context, topic, msg, timeout=None,
 
 
 def _multi_send(method, context, topic, msg, timeout=None,
-                envelope=False, _msg_id=None, allowed_remote_exmods=[]):
+                envelope=False, _msg_id=None, allowed_remote_exmods=None):
     """Wraps the sending of messages.
 
     Dispatches to the matchmaker and sends message to all relevant hosts.
     """
+    allowed_remote_exmods = allowed_remote_exmods or []
     conf = CONF
     LOG.debug(' '.join(map(pformat, (topic, msg))))
 
@@ -892,7 +895,7 @@ class ZmqDriver(base.BaseDriver):
     # FIXME(markmc): allow this driver to be used without eventlet
 
     def __init__(self, conf, url, default_exchange=None,
-                 allowed_remote_exmods=[]):
+                 allowed_remote_exmods=None):
         conf.register_opts(zmq_opts)
         conf.register_opts(impl_eventlet._eventlet_opts)
 

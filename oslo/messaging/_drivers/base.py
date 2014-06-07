@@ -64,11 +64,11 @@ class Listener(object):
 class BaseDriver(object):
 
     def __init__(self, conf, url,
-                 default_exchange=None, allowed_remote_exmods=[]):
+                 default_exchange=None, allowed_remote_exmods=None):
         self.conf = conf
         self._url = url
         self._default_exchange = default_exchange
-        self._allowed_remote_exmods = allowed_remote_exmods
+        self._allowed_remote_exmods = allowed_remote_exmods or []
 
     def require_features(self, requeue=False):
         if requeue:

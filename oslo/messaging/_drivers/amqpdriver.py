@@ -302,7 +302,7 @@ class ReplyWaiter(object):
 class AMQPDriverBase(base.BaseDriver):
 
     def __init__(self, conf, url, connection_pool,
-                 default_exchange=None, allowed_remote_exmods=[]):
+                 default_exchange=None, allowed_remote_exmods=None):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 

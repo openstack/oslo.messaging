@@ -807,7 +807,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
 
     def __init__(self, conf, url,
                  default_exchange=None,
-                 allowed_remote_exmods=[]):
+                 allowed_remote_exmods=None):
         conf.register_opts(rabbit_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 
