@@ -247,8 +247,8 @@ class DirectConsumer(ConsumerBase):
 class TopicConsumer(ConsumerBase):
     """Consumer class for 'topic'."""
 
-    def __init__(self, conf, channel, topic, callback, tag, name=None,
-                 exchange_name=None, **kwargs):
+    def __init__(self, conf, channel, topic, callback, tag, exchange_name,
+                 name=None, **kwargs):
         """Init a 'topic' queue.
 
         :param channel: the amqp channel to use
@@ -256,6 +256,7 @@ class TopicConsumer(ConsumerBase):
         :paramtype topic: str
         :param callback: the callback to call when messages are received
         :param tag: a unique ID for the consumer on the channel
+        :param exchange_name: the exchange name to use
         :param name: optional queue name, defaults to topic
         :paramtype name: str
 
@@ -267,7 +268,6 @@ class TopicConsumer(ConsumerBase):
                    'auto_delete': conf.amqp_auto_delete,
                    'exclusive': False}
         options.update(kwargs)
-        exchange_name = exchange_name or rpc_amqp.get_control_exchange(conf)
         exchange = kombu.entity.Exchange(name=exchange_name,
                                          type='topic',
                                          durable=options['durable'],
@@ -347,7 +347,7 @@ class Publisher(object):
 
 class DirectPublisher(Publisher):
     """Publisher class for 'direct'."""
-    def __init__(self, conf, channel, msg_id, **kwargs):
+    def __init__(self, conf, channel, topic, **kwargs):
         """Init a 'direct' publisher.
 
         Kombu options may be passed as keyword args to override defaults
@@ -357,13 +357,13 @@ class DirectPublisher(Publisher):
                    'auto_delete': True,
                    'exclusive': False}
         options.update(kwargs)
-        super(DirectPublisher, self).__init__(channel, msg_id, msg_id,
+        super(DirectPublisher, self).__init__(channel, topic, topic,
                                               type='direct', **options)
 
 
 class TopicPublisher(Publisher):
     """Publisher class for 'topic'."""
-    def __init__(self, conf, channel, topic, **kwargs):
+    def __init__(self, conf, channel, exchange_name, topic, **kwargs):
         """Init a 'topic' publisher.
 
         Kombu options may be passed as keyword args to override defaults
@@ -372,7 +372,6 @@ class TopicPublisher(Publisher):
                    'auto_delete': conf.amqp_auto_delete,
                    'exclusive': False}
         options.update(kwargs)
-        exchange_name = rpc_amqp.get_control_exchange(conf)
         super(TopicPublisher, self).__init__(channel,
                                              exchange_name,
                                              topic,
@@ -398,10 +397,11 @@ class FanoutPublisher(Publisher):
 class NotifyPublisher(TopicPublisher):
     """Publisher class for 'notify'."""
 
-    def __init__(self, conf, channel, topic, **kwargs):
+    def __init__(self, conf, channel, exchange_name, topic, **kwargs):
         self.durable = kwargs.pop('durable', conf.amqp_durable_queues)
         self.queue_arguments = _get_queue_arguments(conf)
-        super(NotifyPublisher, self).__init__(conf, channel, topic, **kwargs)
+        super(NotifyPublisher, self).__init__(conf, channel, exchange_name,
+                                              topic, **kwargs)
 
     def reconnect(self, channel):
         super(NotifyPublisher, self).reconnect(channel)
@@ -731,7 +731,7 @@ class Connection(object):
                           "'%(topic)s': %(err_str)s") % log_info)
 
         def _publish():
-            publisher = cls(self.conf, self.channel, topic, **kwargs)
+            publisher = cls(self.conf, self.channel, topic=topic, **kwargs)
             publisher.send(msg, timeout)
 
         self.ensure(_error_callback, _publish)
@@ -743,8 +743,8 @@ class Connection(object):
         """
         self.declare_consumer(DirectConsumer, topic, callback)
 
-    def declare_topic_consumer(self, topic, callback=None, queue_name=None,
-                               exchange_name=None):
+    def declare_topic_consumer(self, exchange_name, topic, callback=None,
+                               queue_name=None):
         """Create a 'topic' consumer."""
         self.declare_consumer(functools.partial(TopicConsumer,
                                                 name=queue_name,
@@ -760,17 +760,19 @@ class Connection(object):
         """Send a 'direct' message."""
         self.publisher_send(DirectPublisher, msg_id, msg)
 
-    def topic_send(self, topic, msg, timeout=None):
+    def topic_send(self, exchange_name, topic, msg, timeout=None):
         """Send a 'topic' message."""
-        self.publisher_send(TopicPublisher, topic, msg, timeout)
+        self.publisher_send(TopicPublisher, topic, msg, timeout,
+                            exchange_name=exchange_name)
 
     def fanout_send(self, topic, msg):
         """Send a 'fanout' message."""
         self.publisher_send(FanoutPublisher, topic, msg)
 
-    def notify_send(self, topic, msg, **kwargs):
+    def notify_send(self, exchange_name, topic, msg, **kwargs):
         """Send a notify message on a topic."""
-        self.publisher_send(NotifyPublisher, topic, msg, None, **kwargs)
+        self.publisher_send(NotifyPublisher, topic, msg, timeout=None,
+                            exchange_name=exchange_name, **kwargs)
 
     def consume(self, limit=None, timeout=None):
         """Consume from all queues/consumers."""

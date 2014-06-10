@@ -297,16 +297,15 @@ class AMQPDriverBase(base.BaseDriver):
 
         self._default_exchange = default_exchange
 
-        # FIXME(markmc): temp hack
-        if self._default_exchange:
-            self.conf.set_override('control_exchange', self._default_exchange)
-
         self._connection_pool = connection_pool
 
         self._reply_q_lock = threading.Lock()
         self._reply_q = None
         self._reply_q_conn = None
         self._waiter = None
+
+    def _get_exchange(self, target):
+        return target.exchange or self._default_exchange
 
     def _get_connection(self, pooled=True):
         return rpc_amqp.ConnectionContext(self.conf,
@@ -364,14 +363,16 @@ class AMQPDriverBase(base.BaseDriver):
         try:
             with self._get_connection() as conn:
                 if notify:
-                    conn.notify_send(target.topic, msg)
+                    conn.notify_send(self._get_exchange(target),
+                                     target.topic, msg)
                 elif target.fanout:
                     conn.fanout_send(target.topic, msg)
                 else:
                     topic = target.topic
                     if target.server:
                         topic = '%s.%s' % (target.topic, target.server)
-                    conn.topic_send(topic, msg, timeout=timeout)
+                    conn.topic_send(exchange_name=self._get_exchange(target),
+                                    topic=topic, msg=msg, timeout=timeout)
 
             if wait_for_reply:
                 result = self._waiter.wait(msg_id, timeout)
@@ -394,9 +395,13 @@ class AMQPDriverBase(base.BaseDriver):
 
         listener = AMQPListener(self, conn)
 
-        conn.declare_topic_consumer(target.topic, listener)
-        conn.declare_topic_consumer('%s.%s' % (target.topic, target.server),
-                                    listener)
+        conn.declare_topic_consumer(exchange_name=self._get_exchange(target),
+                                    topic=target.topic,
+                                    callback=listener)
+        conn.declare_topic_consumer(exchange_name=self._get_exchange(target),
+                                    topic='%s.%s' % (target.topic,
+                                                     target.server),
+                                    callback=listener)
         conn.declare_fanout_consumer(target.topic, listener)
 
         return listener
@@ -406,9 +411,10 @@ class AMQPDriverBase(base.BaseDriver):
 
         listener = AMQPListener(self, conn)
         for target, priority in targets_and_priorities:
-            conn.declare_topic_consumer('%s.%s' % (target.topic, priority),
-                                        callback=listener,
-                                        exchange_name=target.exchange)
+            conn.declare_topic_consumer(
+                exchange_name=self._get_exchange(target),
+                topic='%s.%s' % (target.topic, priority),
+                callback=listener)
         return listener
 
     def cleanup(self):
