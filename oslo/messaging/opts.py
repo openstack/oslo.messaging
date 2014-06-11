@@ -21,7 +21,6 @@ import copy
 import itertools
 
 from oslo.messaging._drivers import amqp
-from oslo.messaging._drivers import common as drivers_common
 from oslo.messaging._drivers import impl_qpid
 from oslo.messaging._drivers import impl_rabbit
 from oslo.messaging._drivers import impl_zmq
@@ -35,7 +34,6 @@ from oslo.messaging import transport
 
 _global_opt_lists = [
     amqp.amqp_opts,
-    drivers_common._exception_opts,
     impl_qpid.qpid_opts,
     impl_rabbit.rabbit_opts,
     impl_zmq.zmq_opts,
