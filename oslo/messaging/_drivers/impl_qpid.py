@@ -573,10 +573,10 @@ class Connection(object):
 
             LOG.debug("Re-established AMQP queues")
 
-    def ensure(self, error_callback, method, retry=None, *args, **kwargs):
+    def ensure(self, error_callback, method, retry=None):
         while True:
             try:
-                return method(*args, **kwargs)
+                return method()
             except (qpid_exceptions.Empty,
                     qpid_exceptions.MessagingError) as e:
                 if error_callback:
