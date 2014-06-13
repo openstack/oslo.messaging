@@ -20,7 +20,6 @@ import logging
 import sys
 import traceback
 
-from oslo.config import cfg
 from oslo import messaging
 import six
 
@@ -72,18 +71,6 @@ _VERSION_KEY = 'oslo.version'
 _MESSAGE_KEY = 'oslo.message'
 
 _REMOTE_POSTFIX = '_Remote'
-
-_exception_opts = [
-    cfg.ListOpt('allowed_rpc_exception_modules',
-                default=['oslo.messaging.exceptions',
-                         'nova.exception',
-                         'cinder.exception',
-                         _EXCEPTIONS_MODULE,
-                         ],
-                help='Modules of exceptions that are permitted to be '
-                     'recreated upon receiving exception data from an rpc '
-                     'call.'),
-]
 
 
 class RPCException(Exception):
