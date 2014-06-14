@@ -645,10 +645,10 @@ class Connection(object):
                             '%(sleep_time)d seconds.') % log_info)
                 time.sleep(sleep_time)
 
-    def ensure(self, error_callback, method, retry=None, *args, **kwargs):
+    def ensure(self, error_callback, method, retry=None):
         while True:
             try:
-                return method(*args, **kwargs)
+                return method()
             except self.connection_errors as e:
                 if error_callback:
                     error_callback(e)
