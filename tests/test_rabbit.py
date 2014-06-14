@@ -20,6 +20,7 @@ import uuid
 
 import fixtures
 import kombu
+import mock
 import testscenarios
 
 from oslo import messaging
@@ -630,14 +631,14 @@ TestReplyWireFormat.generate_scenarios()
 
 class RpcKombuHATestCase(test_utils.BaseTestCase):
 
-    def test_reconnect_order(self):
-        brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
-        brokers_count = len(brokers)
-
-        self.config(rabbit_hosts=brokers,
-                    rabbit_max_retries=1)
+    def setUp(self):
+        super(RpcKombuHATestCase, self).setUp()
+        self.brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
+        self.config(rabbit_hosts=self.brokers)
 
         hostname_sets = set()
+        self.info = {'attempt': 0,
+                     'fail': False}
 
         def _connect(myself, params):
             # do as little work that is enough to pass connection attempt
@@ -646,8 +647,11 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
 
             hostname = params['hostname']
             self.assertNotIn(hostname, hostname_sets)
-
             hostname_sets.add(hostname)
+
+            self.info['attempt'] += 1
+            if self.info['fail']:
+                raise IOError('fake fail')
 
         # just make sure connection instantiation does not fail with an
         # exception
@@ -655,13 +659,39 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
 
         # starting from the first broker in the list
         url = messaging.TransportURL.parse(self.conf, None)
-        connection = rabbit_driver.Connection(self.conf, url)
+        self.connection = rabbit_driver.Connection(self.conf, url)
+        self.addCleanup(self.connection.close)
 
-        # now that we have connection object, revert to the real 'connect'
-        # implementation
-        self.stubs.UnsetAll()
+        self.info.update({'attempt': 0,
+                          'fail': True})
+        hostname_sets.clear()
 
-        for i in range(brokers_count):
-            self.assertRaises(driver_common.RPCException, connection.reconnect)
+    def test_reconnect_order(self):
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.reconnect,
+                          retry=len(self.brokers) - 1)
+        self.assertEqual(len(self.brokers), self.info['attempt'])
 
-        connection.close()
+    def test_ensure_four_retry(self):
+        mock_callback = mock.Mock(side_effect=IOError)
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.ensure, None, mock_callback,
+                          retry=4)
+        self.assertEqual(5, self.info['attempt'])
+        self.assertEqual(1, mock_callback.call_count)
+
+    def test_ensure_one_retry(self):
+        mock_callback = mock.Mock(side_effect=IOError)
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.ensure, None, mock_callback,
+                          retry=1)
+        self.assertEqual(2, self.info['attempt'])
+        self.assertEqual(1, mock_callback.call_count)
+
+    def test_ensure_no_retry(self):
+        mock_callback = mock.Mock(side_effect=IOError)
+        self.assertRaises(messaging.MessageDeliveryFailure,
+                          self.connection.ensure, None, mock_callback,
+                          retry=0)
+        self.assertEqual(1, self.info['attempt'])
+        self.assertEqual(1, mock_callback.call_count)

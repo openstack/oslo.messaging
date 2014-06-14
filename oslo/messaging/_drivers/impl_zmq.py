@@ -939,7 +939,10 @@ class ZmqDriver(base.BaseDriver):
         if wait_for_reply:
             return reply[-1]
 
-    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
+             retry=None):
+        # NOTE(sileht): retry is not implemented because this driver never
+        # retry anything
         return self._send(target, ctxt, message, wait_for_reply, timeout)
 
     def send_notification(self, target, ctxt, message, version):
