@@ -750,7 +750,8 @@ def _multi_send(method, context, topic, msg, timeout=None,
             eventlet.spawn_n(method, _addr, context,
                              _topic, msg, timeout, envelope, _msg_id)
         else:
-            return_val = method(_addr, context, _topic, msg, timeout, envelope)
+            return_val = method(_addr, context, _topic, msg, timeout,
+                                envelope, allowed_remote_exmods)
 
     return return_val
 
