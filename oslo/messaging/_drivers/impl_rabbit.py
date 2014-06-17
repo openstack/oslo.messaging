@@ -640,9 +640,14 @@ class Connection(object):
                 sleep_time = min(sleep_time, self.interval_max)
 
                 log_info['sleep_time'] = sleep_time
-                LOG.error(_('AMQP server on %(hostname)s:%(port)d is '
-                            'unreachable: %(err_str)s. Trying again in '
-                            '%(sleep_time)d seconds.') % log_info)
+                if 'Socket closed' in six.text_type(e):
+                    LOG.error(_('AMQP server %(hostname)s:%(port)d closed'
+                                ' the connection. Check login credentials:'
+                                ' %(err_str)s') % log_info)
+                else:
+                    LOG.error(_('AMQP server on %(hostname)s:%(port)d is '
+                                'unreachable: %(err_str)s. Trying again in '
+                                '%(sleep_time)d seconds.') % log_info)
                 time.sleep(sleep_time)
 
     def ensure(self, error_callback, method, retry=None):
