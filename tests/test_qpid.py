@@ -482,6 +482,13 @@ class TestDriverInterface(_QpidBaseTestCase):
         transport = messaging.get_transport(self.conf)
         self.driver = transport._driver
 
+        original_get_connection = self.driver._get_connection
+        p = mock.patch.object(self.driver, '_get_connection',
+                              side_effect=lambda pooled=True:
+                              original_get_connection(False))
+        p.start()
+        self.addCleanup(p.stop)
+
     def test_listen_and_direct_send(self):
         target = messaging.Target(exchange="exchange_test",
                                   topic="topic_test",
