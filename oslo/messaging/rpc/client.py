@@ -246,6 +246,18 @@ class RPCClient(object):
 
     but this is probably only useful in limited circumstances as a wrapper
     class will usually help to make the code much more obvious.
+
+    By default, cast() and call() will block until the message is successfully
+    sent. However, the retry parameter can be used to have message sending
+    fail with a MessageDeliveryFailure after the given number of retries. For
+    example::
+
+        client = messaging.RPCClient(transport, target, retry=None)
+        client.call(ctxt, 'sync')
+        try:
+            client.prepare(retry=0).cast(ctxt, 'ping')
+        except messaging.MessageDeliveryFailure:
+            LOG.error("Failed to send ping message")
     """
 
     def __init__(self, transport, target,
