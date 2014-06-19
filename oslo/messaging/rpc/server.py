@@ -40,9 +40,6 @@ RPC servers have start(), stop() and wait() messages to begin handling
 requests, stop handling requests and wait for all in-process requests to
 complete.
 
-An RPC server class is provided for each supported I/O handling framework.
-Currently BlockingRPCServer and eventlet.RPCServer are available.
-
 A simple example of an RPC server with multiple endpoints might be::
 
     from oslo.config import cfg
@@ -70,7 +67,8 @@ A simple example of an RPC server with multiple endpoints might be::
         ServerControlEndpoint(self),
         TestEndpoint(),
     ]
-    server = messaging.get_rpc_server(transport, target, endpoints)
+    server = messaging.get_rpc_server(transport, target, endpoints,
+                                      executor='eventlet')
     server.start()
     server.wait()
 
