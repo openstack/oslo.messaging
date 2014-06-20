@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import datetime
 import logging
 import sys
@@ -528,11 +527,10 @@ group_1:
              extension.Extension('bar', None, None, bar_driver)],
         )
 
-        with contextlib.nested(
-            mock.patch.object(self.router, '_get_notifier_config_file',
-                              config_file),
-            mock.patch('stevedore.dispatch.DispatchExtensionManager',
-                       return_value=pm)):
+        with mock.patch.object(self.router, '_get_notifier_config_file',
+                               config_file):
+            with mock.patch('stevedore.dispatch.DispatchExtensionManager',
+                            return_value=pm):
                 self.notifier.info({}, 'my_event', {})
                 self.assertFalse(bar_driver.info.called)
                 rpc_driver.notify.assert_called_once_with(
