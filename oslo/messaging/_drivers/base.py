@@ -53,8 +53,11 @@ class Listener(object):
         self.driver = driver
 
     @abc.abstractmethod
-    def poll(self):
-        "Blocking until a message is pending and return IncomingMessage."
+    def poll(self, timeout=None):
+        """Blocking until a message is pending and return IncomingMessage.
+        Return None after timeout seconds if timeout is set and no message is
+        ending.
+        """
 
 
 @six.add_metaclass(abc.ABCMeta)
