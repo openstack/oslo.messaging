@@ -49,7 +49,7 @@ class _Driver(object):
         self.transport = transport
 
     @abc.abstractmethod
-    def notify(self, ctxt, msg, priority):
+    def notify(self, ctxt, msg, priority, retry):
         pass
 
 
@@ -96,7 +96,7 @@ class Notifier(object):
 
     def __init__(self, transport, publisher_id=None,
                  driver=None, topic=None,
-                 serializer=None):
+                 serializer=None, retry=None):
         """Construct a Notifier object.
 
         :param transport: the transport to use for sending messages
@@ -109,11 +109,17 @@ class Notifier(object):
         :type topic: str
         :param serializer: an optional entity serializer
         :type serializer: Serializer
+        :param retry: an connection retries configuration
+                      None or -1 means to retry forever
+                      0 means no retry
+                      N means N retries
+        :type retry: int
         """
         transport.conf.register_opts(_notifier_opts)
 
         self.transport = transport
         self.publisher_id = publisher_id
+        self.retry = retry
 
         self._driver_names = ([driver] if driver is not None
                               else transport.conf.notification_driver)
@@ -130,12 +136,12 @@ class Notifier(object):
             invoke_kwds={
                 'topics': self._topics,
                 'transport': self.transport,
-            },
+            }
         )
 
     _marker = object()
 
-    def prepare(self, publisher_id=_marker):
+    def prepare(self, publisher_id=_marker, retry=_marker):
         """Return a specialized Notifier instance.
 
         Returns a new Notifier instance with the supplied publisher_id. Allows
@@ -144,10 +150,16 @@ class Notifier(object):
 
         :param publisher_id: field in notifications sent, e.g. 'compute.host1'
         :type publisher_id: str
+        :param retry: an connection retries configuration
+                      None or -1 means to retry forever
+                      0 means no retry
+                      N means N retries
+        :type retry: int
         """
-        return _SubNotifier._prepare(self, publisher_id)
+        return _SubNotifier._prepare(self, publisher_id, retry=retry)
 
-    def _notify(self, ctxt, event_type, payload, priority, publisher_id=None):
+    def _notify(self, ctxt, event_type, payload, priority, publisher_id=None,
+                retry=None):
         payload = self._serializer.serialize_entity(ctxt, payload)
         ctxt = self._serializer.serialize_context(ctxt)
 
@@ -160,7 +172,7 @@ class Notifier(object):
 
         def do_notify(ext):
             try:
-                ext.obj.notify(ctxt, msg, priority)
+                ext.obj.notify(ctxt, msg, priority, retry or self.retry)
             except Exception as e:
                 _LOG.exception("Problem '%(e)s' attempting to send to "
                                "notification system. Payload=%(payload)s",
@@ -178,6 +190,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'AUDIT')
 
@@ -190,6 +203,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'DEBUG')
 
@@ -202,6 +216,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'INFO')
 
@@ -214,6 +229,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'WARN')
 
@@ -228,6 +244,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'ERROR')
 
@@ -240,6 +257,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'CRITICAL')
 
@@ -258,6 +276,7 @@ class Notifier(object):
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
+        :raises: MessageDeliveryFailure
         """
         self._notify(ctxt, event_type, payload, 'SAMPLE')
 
@@ -266,10 +285,11 @@ class _SubNotifier(Notifier):
 
     _marker = Notifier._marker
 
-    def __init__(self, base, publisher_id):
+    def __init__(self, base, publisher_id, retry):
         self._base = base
         self.transport = base.transport
         self.publisher_id = publisher_id
+        self.retry = retry
 
         self._serializer = self._base._serializer
         self._driver_mgr = self._base._driver_mgr
@@ -278,7 +298,9 @@ class _SubNotifier(Notifier):
         super(_SubNotifier, self)._notify(ctxt, event_type, payload, priority)
 
     @classmethod
-    def _prepare(cls, base, publisher_id=_marker):
+    def _prepare(cls, base, publisher_id=_marker, retry=_marker):
         if publisher_id is cls._marker:
             publisher_id = base.publisher_id
-        return cls(base, publisher_id)
+        if retry is cls._marker:
+            retry = base.retry
+        return cls(base, publisher_id, retry=retry)

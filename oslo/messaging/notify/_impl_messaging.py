@@ -38,13 +38,14 @@ class MessagingDriver(notifier._Driver):
         super(MessagingDriver, self).__init__(conf, topics, transport)
         self.version = version
 
-    def notify(self, ctxt, message, priority):
+    def notify(self, ctxt, message, priority, retry):
         priority = priority.lower()
         for topic in self.topics:
             target = messaging.Target(topic='%s.%s' % (topic, priority))
             try:
                 self.transport._send_notification(target, ctxt, message,
-                                                  version=self.version)
+                                                  version=self.version,
+                                                  retry=retry)
             except Exception:
                 LOG.exception("Could not send notification to %(topic)s. "
                               "Payload=%(message)s",

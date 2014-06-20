@@ -89,11 +89,12 @@ class Transport(object):
                                  wait_for_reply=wait_for_reply,
                                  timeout=timeout, retry=retry)
 
-    def _send_notification(self, target, ctxt, message, version):
+    def _send_notification(self, target, ctxt, message, version, retry=None):
         if not target.topic:
             raise exceptions.InvalidTarget('A topic is required to send',
                                            target)
-        self._driver.send_notification(target, ctxt, message, version)
+        self._driver.send_notification(target, ctxt, message, version,
+                                       retry=retry)
 
     def _listen(self, target):
         if not (target.topic and target.server):

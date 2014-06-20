@@ -174,10 +174,11 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         notifier = self._setup_notifier(transport, topic="topic")
 
         def mock_notifier_exchange(name):
-            def side_effect(target, ctxt, message, version):
+            def side_effect(target, ctxt, message, version, retry):
                 target.exchange = name
                 return transport._driver.send_notification(target, ctxt,
-                                                           message, version)
+                                                           message, version,
+                                                           retry=retry)
             transport._send_notification = mock.MagicMock(
                 side_effect=side_effect)
 

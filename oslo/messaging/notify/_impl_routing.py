@@ -104,21 +104,23 @@ class RoutingDriver(notifier._Driver):
 
         return list(accepted_drivers)
 
-    def _filter_func(self, ext, context, message, priority, accepted_drivers):
+    def _filter_func(self, ext, context, message, priority, retry,
+                     accepted_drivers):
         """True/False if the driver should be called for this message.
         """
         # context is unused here, but passed in by map()
         return ext.name in accepted_drivers
 
-    def _call_notify(self, ext, context, message, priority, accepted_drivers):
+    def _call_notify(self, ext, context, message, priority, retry,
+                     accepted_drivers):
         """Emit the notification.
         """
         # accepted_drivers is passed in as a result of the map() function
         LOG.info(_("Routing '%(event)s' notification to '%(driver)s' driver") %
                  {'event': message.get('event_type'), 'driver': ext.name})
-        ext.obj.notify(context, message, priority)
+        ext.obj.notify(context, message, priority, retry)
 
-    def notify(self, context, message, priority):
+    def notify(self, context, message, priority, retry):
         if not self.plugin_manager:
             self._load_notifiers()
 
@@ -131,4 +133,5 @@ class RoutingDriver(notifier._Driver):
                 self._get_drivers_for_message(group, event_type,
                                               priority.lower()))
         self.plugin_manager.map(self._filter_func, self._call_notify, context,
-                                message, priority, list(accepted_drivers))
+                                message, priority, retry,
+                                list(accepted_drivers))

@@ -389,9 +389,9 @@ class AMQPDriverBase(base.BaseDriver):
         return self._send(target, ctxt, message, wait_for_reply, timeout,
                           retry=retry)
 
-    def send_notification(self, target, ctxt, message, version):
+    def send_notification(self, target, ctxt, message, version, retry=None):
         return self._send(target, ctxt, message,
-                          envelope=(version == 2.0), notify=True)
+                          envelope=(version == 2.0), notify=True, retry=retry)
 
     def listen(self, target):
         conn = self._get_connection(pooled=False)

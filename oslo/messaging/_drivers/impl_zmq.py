@@ -945,9 +945,11 @@ class ZmqDriver(base.BaseDriver):
         # retry anything
         return self._send(target, ctxt, message, wait_for_reply, timeout)
 
-    def send_notification(self, target, ctxt, message, version):
+    def send_notification(self, target, ctxt, message, version, retry=None):
         # NOTE(ewindisch): dot-priority in rpc notifier does not
         # work with our assumptions.
+        # NOTE(sileht): retry is not implemented because this driver never
+        # retry anything
         target = target(topic=target.topic.replace('.', '-'))
         return self._send(target, ctxt, message, envelope=(version == 2.0))
 

@@ -44,7 +44,7 @@ class _FakeTransport(object):
     def __init__(self, conf):
         self.conf = conf
 
-    def _send_notification(self, target, ctxt, message, version):
+    def _send_notification(self, target, ctxt, message, version, retry=None):
         pass
 
 
@@ -123,6 +123,13 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         ('ctxt', dict(ctxt={'user': 'bob'})),
     ]
 
+    _retry = [
+        ('unconfigured', dict()),
+        ('None', dict(retry=None)),
+        ('0', dict(retry=0)),
+        ('5', dict(retry=5)),
+    ]
+
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._v1,
@@ -131,7 +138,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                                                          cls._topics,
                                                          cls._priority,
                                                          cls._payload,
-                                                         cls._context)
+                                                         cls._context,
+                                                         cls._retry)
 
     def setUp(self):
         super(TestMessagingNotifier, self).setUp()
@@ -159,8 +167,13 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         else:
             notifier = messaging.Notifier(transport)
 
+        prepare_kwds = {}
+        if hasattr(self, 'retry'):
+            prepare_kwds['retry'] = self.retry
         if hasattr(self, 'prep_pub_id'):
-            notifier = notifier.prepare(publisher_id=self.prep_pub_id)
+            prepare_kwds['publisher_id'] = self.prep_pub_id
+        if prepare_kwds:
+            notifier = notifier.prepare(**prepare_kwds)
 
         self.mox.StubOutWithMock(transport, '_send_notification')
 
@@ -187,6 +200,10 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         for send_kwargs in sends:
             for topic in self.topics:
+                if hasattr(self, 'retry'):
+                    send_kwargs['retry'] = self.retry
+                else:
+                    send_kwargs['retry'] = None
                 target = messaging.Target(topic='%s.%s' % (topic,
                                                            self.priority))
                 transport._send_notification(target, self.ctxt, message,
@@ -244,7 +261,7 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        self.assertEqual([(dict(user='alice'), message, 'INFO')],
+        self.assertEqual([(dict(user='alice'), message, 'INFO', None)],
                          _impl_test.NOTIFICATIONS)
 
 
@@ -299,7 +316,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.mox.ReplayAll()
 
         msg = {'event_type': 'foo'}
-        driver.notify(None, msg, "sample")
+        driver.notify(None, msg, "sample", None)
 
 
 class TestRoutingNotifier(test_utils.BaseTestCase):
@@ -467,11 +484,11 @@ group_1:
 
         # Good ...
         self.assertTrue(self.router._filter_func(ext, {}, {}, 'info',
-                        ['foo', 'rpc']))
+                        None, ['foo', 'rpc']))
 
         # Bad
         self.assertFalse(self.router._filter_func(ext, {}, {}, 'info',
-                                                  ['foo']))
+                                                  None, ['foo']))
 
     def test_notify(self):
         self.router.routing_groups = {'group_1': None, 'group_2': None}
@@ -482,7 +499,7 @@ group_1:
             with mock.patch.object(self.router, '_get_drivers_for_message',
                                    drivers_mock):
                 self.notifier.info({}, 'my_event', {})
-                self.assertEqual(['rpc', 'foo'], pm.map.call_args[0][5])
+                self.assertEqual(['rpc', 'foo'], pm.map.call_args[0][6])
 
     def test_notify_filtered(self):
         self.config(routing_notifier_config="routing_notifier.yaml")
@@ -518,6 +535,7 @@ group_1:
                        return_value=pm)):
                 self.notifier.info({}, 'my_event', {})
                 self.assertFalse(bar_driver.info.called)
-                rpc_driver.notify.assert_called_once_with({}, mock.ANY, 'INFO')
+                rpc_driver.notify.assert_called_once_with(
+                    {}, mock.ANY, 'INFO', None)
                 rpc2_driver.notify.assert_called_once_with(
-                    {}, mock.ANY, 'INFO')
+                    {}, mock.ANY, 'INFO', None)
