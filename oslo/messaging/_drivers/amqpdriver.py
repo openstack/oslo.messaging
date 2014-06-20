@@ -137,7 +137,7 @@ class ReplyWaiters(object):
             LOG.warn('No calling threads waiting for msg_id : %(msg_id)s'
                      ', message : %(data)s', {'msg_id': msg_id,
                                               'data': message_data})
-            LOG.warn('_queues: %s' % self._queues)
+            LOG.warn('_queues: %s', self._queues)
         else:
             queue.put(message_data)
 
@@ -150,7 +150,7 @@ class ReplyWaiters(object):
         self._queues[msg_id] = queue
         if len(self._queues) > self._wrn_threshold:
             LOG.warn('Number of call queues is greater than warning '
-                     'threshold: %d. There could be a leak.' %
+                     'threshold: %d. There could be a leak.',
                      self._wrn_threshold)
             self._wrn_threshold *= 2
 
@@ -348,7 +348,7 @@ class AMQPDriverBase(base.BaseDriver):
         if wait_for_reply:
             msg_id = uuid.uuid4().hex
             msg.update({'_msg_id': msg_id})
-            LOG.debug('MSG_ID is %s' % (msg_id))
+            LOG.debug('MSG_ID is %s', msg_id)
             msg.update({'_reply_q': self._get_reply_q()})
 
         rpc_amqp._add_unique_id(msg)

@@ -145,4 +145,5 @@ class TestDispatcher(test_utils.BaseTestCase):
             [mock.Mock()], [mock.Mock()], None, allow_requeue=True)
         with dispatcher(mock.Mock(ctxt={}, message=msg)) as callback:
             callback()
-        mylog.warning.assert_called_once_with('Unknown priority "what???"')
+        mylog.warning.assert_called_once_with('Unknown priority "%s"',
+                                              'what???')
