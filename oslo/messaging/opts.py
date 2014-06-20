@@ -38,7 +38,6 @@ _global_opt_lists = [
     impl_rabbit.rabbit_opts,
     impl_zmq.zmq_opts,
     matchmaker.matchmaker_opts,
-    matchmaker_redis.matchmaker_redis_opts,
     impl_eventlet._eventlet_opts,
     notifier._notifier_opts,
     client._client_opts,
@@ -47,6 +46,7 @@ _global_opt_lists = [
 
 _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
+    ('matchmaker_redis', matchmaker_redis.matchmaker_redis_opts),
     ('matchmaker_ring', matchmaker_ring.matchmaker_opts),
 ]
 
