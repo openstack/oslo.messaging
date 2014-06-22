@@ -72,7 +72,7 @@ class Notifier(object):
     A Notifier object can be instantiated with a transport object and a
     publisher ID:
 
-        notifier = notifier.Notifier(get_transport(CONF), 'compute')
+        notifier = messaging.Notifier(get_transport(CONF), 'compute')
 
     and notifications are sent via drivers chosen with the notification_driver
     config option and on the topics chosen with the notification_topics config
