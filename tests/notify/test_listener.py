@@ -92,7 +92,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertIsInstance(listener.dispatcher,
                               dispatcher.NotificationDispatcher)
         self.assertIs(listener.dispatcher.endpoints, endpoints)
-        self.assertIs(listener.executor, 'blocking')
+        self.assertEqual('blocking', listener.executor)
 
     def test_no_target_topic(self):
         transport = messaging.get_transport(self.conf, url='fake:')

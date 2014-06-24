@@ -108,7 +108,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIsInstance(server.dispatcher, messaging.RPCDispatcher)
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
-        self.assertIs(server.executor, 'blocking')
+        self.assertEqual('blocking', server.executor)
 
     def test_no_target_server(self):
         transport = messaging.get_transport(self.conf, url='fake:')
