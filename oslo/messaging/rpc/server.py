@@ -68,7 +68,7 @@ A simple example of an RPC server with multiple endpoints might be::
         TestEndpoint(),
     ]
     server = messaging.get_rpc_server(transport, target, endpoints,
-                                      executor='eventlet')
+                                      executor='blocking')
     server.start()
     server.wait()
 
