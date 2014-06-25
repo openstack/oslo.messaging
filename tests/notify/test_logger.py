@@ -28,7 +28,7 @@ import testtools
 
 from oslo import messaging
 from oslo.messaging.openstack.common import timeutils
-from tests import test_notifier
+from tests.notify import test_notifier
 from tests import utils as test_utils
 
 
