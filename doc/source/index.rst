@@ -24,6 +24,123 @@ Contents
 Release Notes
 =============
 
+1.4.0.0a1
+---------
+
+Changes since 1.3.0:
+
+Dependency changes:
+
+* Newer oslo.config is required (1.2.1, previously 1.2.0)
+* Newer six is required (1.7.0, previously 1.5.2)
+* Hacking 0.9.1 is now required for testing (previously 0.8.0)
+
+New features:
+
+* 1282639_: A new 'retry' parameter to control transport reconnection retries in RPC clients and notifiers.
+* 1316891_: TransportURL objects are now hashable.
+* Full support of multiple hosts in transport URLs.
+* Listener.poll() now has an optional timeout parameter in preparion for trollius/asyncio support.
+
+Bug fixes:
+
+* 1316681_: Fix the notify method of the routing notifier.
+* 1325750_: Clarify confusing rabbitmq log message if credentials checking fails.
+* 1256345_: Allow setting 'exchange' in the target object used by RPC clients and servers.
+* 1310397_: Enable log messages to handle exceptions containing unicode.
+* 1314129_: Synced jsonutils from oslo-incubator to solve slowness on python 2.6.
+
+Logging:
+
+* Initial infrastructure to allow translating log messages.
+* 1321274_: Replace string format arguments with function parameters.
+* 1317950_: Debug level logs should not be translated.
+* 1286306_: Remove str() from LOG.* and exceptions.
+
+Python3:
+
+* Removes use of contextlib.nested.
+* 1280033_: Use six rather than the py3kcompat oslo-incubator module.
+
+Tests:
+
+* Import run_cross_tests.sh from oslo-incubator.
+* Ensures listener queues exist in fake driver.
+* 1331459_: Disable connection pool in qpid interfaces tests.
+* 1283926_: Fixed the issue for pop exception (rabbit tests race condition).
+
+RabbitMQ driver:
+
+* 1261631_: Select AMQP message broker at random.
+
+Qpid driver:
+
+* 1318742_: Explicitly name subscription queue for responses.
+* 1300318_: Ensure routing key is specified in the address for a direct producer.
+* 1261631_: Select AMQP message broker at random.
+* 1303890_: Update ensure()/reconnect() to catch MessagingError.
+
+ZeroMQ driver:
+
+* 1330460_: Handle unused allowed_remote_exmods in _multi_send.
+* 1332588_: Set correct group for matchmaker_redis options.
+* 1301132_: zmq: switch back to not using message envelopes.
+* Fix passing envelope variable as timeout.
+* 1300539_: Logical error in blockless fanout of zmq.
+* 1301132_: Oslo-messaging-zmq-receiver cannot recive any messages.
+
+Docs:
+
+* RPC server doc: use the blocking executor.
+* Cleaned up references to executor specific RPCServer types.
+* Add an example usage of RPCClient retry parameter.
+* Fix typo in docstring of notify/notifier.
+
+Cleanups:
+
+* Improve layout of unit test directory.
+* 1327473_: Removes the use of mutables as default args.
+* rabbit/qpid: remove the args/kwargs from ensure().
+* Removes unused config option - allowed_rpc_exception_modules
+* 1323975_: remove default=None for config options
+* Use a for loop to set the defaults for __call__ params
+* Use mock's call assert methods over call_args_list
+* Remove rendundant parentheses of cfg help strings
+* Remove old drivers dead code
+* 1277104_: Trival:Fix assertEqual arguments order
+
+Thanks to Aaron Rosen, Ala Rezmerita, Andreas Jaeger, Boris Pavlovic,
+ChangBo Guo, Christian Berendt, Davanum Srinivas, Doug Hellmann, Elena
+Ezhova, Eric Guo, Gauvain Pocentek, Gordon Sim, Ihar Hrachyshka, James
+Carey, Jamie Lennox, Joshua Harlow, Li Ma, Mark McLoughlin, Mehdi
+Abaakouk, Numan Siddique, Russell Bryant, Victor Stinner and
+zhangjialong for their contributions to this release.
+
+.. _1256345: https://bugs.launchpad.net/oslo.messaging/+bug/1256345
+.. _1261631: https://bugs.launchpad.net/oslo.messaging/+bug/1261631
+.. _1277104: https://bugs.launchpad.net/oslo.messaging/+bug/1277104
+.. _1280033: https://bugs.launchpad.net/oslo.messaging/+bug/1280033
+.. _1282639: https://bugs.launchpad.net/oslo.messaging/+bug/1282639
+.. _1283926: https://bugs.launchpad.net/oslo.messaging/+bug/1283926
+.. _1286306: https://bugs.launchpad.net/oslo.messaging/+bug/1286306
+.. _1300318: https://bugs.launchpad.net/oslo.messaging/+bug/1300318
+.. _1300539: https://bugs.launchpad.net/oslo.messaging/+bug/1300539
+.. _1301132: https://bugs.launchpad.net/oslo.messaging/+bug/1301132
+.. _1303890: https://bugs.launchpad.net/oslo.messaging/+bug/1303890
+.. _1310397: https://bugs.launchpad.net/oslo.messaging/+bug/1310397
+.. _1314129: https://bugs.launchpad.net/oslo.messaging/+bug/1314129
+.. _1316681: https://bugs.launchpad.net/oslo.messaging/+bug/1316681
+.. _1316891: https://bugs.launchpad.net/oslo.messaging/+bug/1316891
+.. _1317950: https://bugs.launchpad.net/oslo.messaging/+bug/1317950
+.. _1318742: https://bugs.launchpad.net/oslo.messaging/+bug/1318742
+.. _1321274: https://bugs.launchpad.net/oslo.messaging/+bug/1321274
+.. _1323975: https://bugs.launchpad.net/oslo.messaging/+bug/1323975
+.. _1325750: https://bugs.launchpad.net/oslo.messaging/+bug/1325750
+.. _1327473: https://bugs.launchpad.net/oslo.messaging/+bug/1327473
+.. _1330460: https://bugs.launchpad.net/oslo.messaging/+bug/1330460
+.. _1331459: https://bugs.launchpad.net/oslo.messaging/+bug/1331459
+.. _1332588: https://bugs.launchpad.net/oslo.messaging/+bug/1332588
+
 1.3.0
 -----
 
