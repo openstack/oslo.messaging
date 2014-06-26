@@ -199,8 +199,8 @@ def serialize_remote_exception(failure_info, log_failure=True):
 
     # NOTE(matiu): With cells, it's possible to re-raise remote, remote
     # exceptions. Lets turn it back into the original exception type.
-    cls_name = str(failure.__class__.__name__)
-    mod_name = str(failure.__class__.__module__)
+    cls_name = six.text_type(failure.__class__.__name__)
+    mod_name = six.text_type(failure.__class__.__module__)
     if (cls_name.endswith(_REMOTE_POSTFIX) and
             mod_name.endswith(_REMOTE_POSTFIX)):
         cls_name = cls_name[:-len(_REMOTE_POSTFIX)]
@@ -221,7 +221,7 @@ def serialize_remote_exception(failure_info, log_failure=True):
 
 
 def deserialize_remote_exception(data, allowed_remote_exmods):
-    failure = jsonutils.loads(str(data))
+    failure = jsonutils.loads(six.text_type(data))
 
     trace = failure.get('tb', [])
     message = failure.get('message', "") + "\n" + "\n".join(trace)

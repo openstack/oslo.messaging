@@ -183,9 +183,7 @@ def unpack_context(conf, msg):
     """Unpack context from msg."""
     context_dict = {}
     for key in list(msg.keys()):
-        # NOTE(vish): Some versions of Python don't like unicode keys
-        #             in kwargs.
-        key = str(key)
+        key = six.text_type(key)
         if key.startswith('_context_'):
             value = msg.pop(key)
             context_dict[key[9:]] = value
