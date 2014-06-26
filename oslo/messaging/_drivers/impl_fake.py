@@ -45,7 +45,7 @@ class FakeListener(base.Listener):
         self._exchange_manager = exchange_manager
         self._targets = targets
 
-        # NOTE(sileht): Ensure that all needed queues exists even the listener
+        # NOTE(sileht): Ensure that all needed queues exists even the listener
         # have not been polled yet
         for target in self._targets:
             exchange = self._exchange_manager.get_exchange(target.exchange)
