@@ -35,7 +35,7 @@ class ListenerSetupMixin(object):
             self._listener = messaging.get_notification_listener(
                 transport, targets, endpoints + [self], allow_requeue=True)
 
-        def info(self, ctxt, publisher_id, event_type, payload):
+        def info(self, ctxt, publisher_id, event_type, payload, metadata):
             self._received_msgs += 1
             if self._expect_messages == self._received_msgs:
                 # Check start() does nothing with a running listener
