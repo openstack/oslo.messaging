@@ -33,7 +33,7 @@ class ListenerSetupMixin(object):
             self._expect_messages = expect_messages
             self._received_msgs = 0
             self._listener = messaging.get_notification_listener(
-                transport, targets, endpoints + [self], allow_requeue=True)
+                transport, targets, [self] + endpoints, allow_requeue=True)
 
         def info(self, ctxt, publisher_id, event_type, payload, metadata):
             self._received_msgs += 1
@@ -61,6 +61,7 @@ class ListenerSetupMixin(object):
 
     def _stop_listener(self, thread):
         thread.join(timeout=5)
+        return thread.isAlive()
 
     def _setup_notifier(self, transport, topic='testtopic',
                         publisher_id='testpublisher'):
@@ -128,7 +129,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         notifier = self._setup_notifier(transport)
         notifier.info({}, 'an_event.start', 'test message')
 
-        self._stop_listener(listener_thread)
+        self.assertFalse(self._stop_listener(listener_thread))
 
         endpoint.info.assert_called_once_with(
             {}, 'testpublisher', 'an_event.start', 'test message',
@@ -148,7 +149,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         notifier = self._setup_notifier(transport, topic='topic2')
         notifier.info({'ctxt': '2'}, 'an_event.start2', 'test')
 
-        self._stop_listener(listener_thread)
+        self.assertFalse(self._stop_listener(listener_thread))
 
         endpoint.info.assert_has_calls([
             mock.call({'ctxt': '1'}, 'testpublisher',
@@ -168,7 +169,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                     exchange="exchange1"),
                    messaging.Target(topic="topic",
                                     exchange="exchange2")]
-        listener_thread = self._setup_listener(transport, [endpoint], 3,
+        listener_thread = self._setup_listener(transport, [endpoint], 2,
                                                targets=targets)
 
         notifier = self._setup_notifier(transport, topic="topic")
@@ -191,7 +192,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         notifier.info({'ctxt': '2'},
                       'an_event.start', 'test message exchange2')
 
-        self._stop_listener(listener_thread)
+        self.assertFalse(self._stop_listener(listener_thread))
 
         endpoint.info.assert_has_calls([
             mock.call({'ctxt': '1'}, 'testpublisher', 'an_event.start',
@@ -214,7 +215,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         notifier = self._setup_notifier(transport)
         notifier.info({}, 'an_event.start', 'test')
 
-        self._stop_listener(listener_thread)
+        self.assertFalse(self._stop_listener(listener_thread))
 
         endpoint1.info.assert_called_once_with(
             {}, 'testpublisher', 'an_event.start', 'test', {
@@ -242,7 +243,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         notifier = self._setup_notifier(transport)
         notifier.info({}, 'an_event.start', 'test')
 
-        self._stop_listener(listener_thread)
+        self.assertFalse(self._stop_listener(listener_thread))
 
         endpoint.info.assert_has_calls([
             mock.call({}, 'testpublisher', 'an_event.start', 'test',
