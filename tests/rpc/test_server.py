@@ -15,6 +15,7 @@
 
 import threading
 
+import mock
 import testscenarios
 
 from oslo.config import cfg
@@ -109,6 +110,25 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
         self.assertEqual('blocking', server.executor)
+
+    def test_server_wait_method(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+        target = messaging.Target(topic='foo', server='bar')
+        endpoints = [object()]
+        serializer = object()
+
+        server = messaging.get_rpc_server(transport, target, endpoints,
+                                          serializer=serializer)
+        # Mocking executor
+        server._executor = mock.Mock()
+        # Here assigning executor's listener object to listener variable
+        # before calling wait method, beacuse in wait method we are
+        # setting executor to None.
+        listener = server._executor.listener
+        # call server wait method
+        server.wait()
+        self.assertIsNone(server._executor)
+        self.assertEqual(1, listener.cleanup.call_count)
 
     def test_no_target_server(self):
         transport = messaging.get_transport(self.conf, url='fake:')

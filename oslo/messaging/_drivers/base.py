@@ -59,6 +59,15 @@ class Listener(object):
         ending.
         """
 
+    def cleanup(self):
+        """Cleanup listener.
+        Close connection used by listener if any. For some listeners like
+        zmq there is no connection so no need to close connection.
+        As this is listener specific method, overwrite it in to derived class
+        if cleanup of listener required.
+        """
+        pass
+
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseDriver(object):
