@@ -161,7 +161,20 @@ class ConsumerBase(object):
         self.channel = channel
         self.kwargs['channel'] = channel
         self.queue = kombu.entity.Queue(**self.kwargs)
-        self.queue.declare()
+        try:
+            self.queue.declare()
+        except Exception as e:
+            # NOTE: This exception may be triggered by a race condition.
+            # Simply retrying will solve the error most of the time and
+            # should work well enough as a workaround until the race condition
+            # itself can be fixed.
+            # TODO(jrosenboom): In order to be able to match the Execption
+            # more specifically, we have to refactor ConsumerBase to use
+            # 'channel_errors' of the kombu connection object that
+            # has created the channel.
+            # See https://bugs.launchpad.net/neutron/+bug/1318721 for details.
+            LOG.exception(_("Declaring queue failed with (%s), retrying"), e)
+            self.queue.declare()
 
     def _callback_handler(self, message, callback):
         """Call callback with deserialized message.
