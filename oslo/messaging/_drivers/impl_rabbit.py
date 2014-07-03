@@ -101,6 +101,11 @@ rabbit_opts = [
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
 
+    # Support for rabbit heartbeat mechanism to check if the connection to rabbit is alive
+    cfg.IntOpt('rabbit_heartbeat',
+               default=60,
+               help='seconds between rabbit keep-alive heartbeat.')
+
     # FIXME(markmc): this was toplevel in openstack.common.rpc
     cfg.BoolOpt('fake_rabbit',
                 default=False,
@@ -489,6 +494,9 @@ class Connection(object):
         self.memory_transport = self.conf.fake_rabbit
 
         self.connection = None
+
+        # The thread that sends heartbeat
+        self._heartbeat_thread = None
         self.do_consume = None
         self.reconnect()
 
@@ -551,6 +559,7 @@ class Connection(object):
         self.do_consume = True
         self.consumer_num = itertools.count(1)
         self.connection.connect()
+        self._start_heartbeat_thread()
         self.channel = self.connection.channel()
         # work around 'memory' transport bug in 1.1.3
         if self.memory_transport:
@@ -578,6 +587,42 @@ class Connection(object):
             except self.connection_errors:
                 pass
             self.connection = None
+
+    def _start_heartbeat_thread(self):
+        if not self._heartbeat_thread:
+            self._heartbeat_thread = eventlet.spawn(self._send_heartbeat)
+
+    def _cancel_heartbeat_thread(self):
+        if self._heartbeat_thread:
+            self._heartbeat_thread.kill()
+            self._heartbeat_thread = None
+
+    def _send_heartbeat(self):
+        """
+        Kombu supports 'heartbeat' for rabbitmq. To support that the 'Connection'
+        object takes a 'heartbeat' parameter and in addition 'heartbeat_check' needs
+        to be called see following for more detail
+        http://kombu.readthedocs.org/en/latest/reference/kombu.connection.html
+        Even though Kombu doc talks about heartbeat every second, the rabbit doc suggest
+        that it should receive hearbeat before the heartbeat interval expires. This
+        thread uses rabbit negotiated heartbeat /2 as the sleep interval.
+        """
+        interval = self.conf.rabbit_heartbeat/2
+        while True:
+            try:
+                if self.connection and self.connection.connected:
+                    LOG.debug('Calling heartbeat_check on AMQP connection')
+                    interval = self.connection.get_heartbeat_interval()/2
+                    self.connection.heartbeat_check()
+                else:
+                    LOG.debug('Connection is not up, skipping heartbeat')
+            except Exception as e:
+                # It is not clear how the code should behave in case of error, there doesn't
+                # seem to be a simple way of notifying existing operation and cancel them, in
+                # worst case those operations will error out.
+                LOG.warn('Error performing heartbeat_check ' + str(e))
+            time.sleep(interval)
+
 
     def reconnect(self, retry=None):
         """Handles reconnecting and re-establishing queues.
@@ -683,6 +728,7 @@ class Connection(object):
     def close(self):
         """Close/release this connection."""
         if self.connection:
+            self._cancel_heartbeat_thread()
             self.connection.release()
             self.connection = None
 
