@@ -231,9 +231,9 @@ class TransportURL(object):
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
-    :param transport: a transport name e.g. 'rabbit' or 'qpid'
+    :param transport: a transport name for example 'rabbit' or 'qpid'
     :type transport: str
-    :param virtual_host: a virtual host path e.g. '/'
+    :param virtual_host: a virtual host path for example '/'
     :type virtual_host: str
     :param hosts: a list of TransportHost objects
     :type hosts: list
@@ -378,7 +378,7 @@ class TransportURL(object):
         url = parse.urlparse(url)
 
         # Make sure there's not a query string; that could identify
-        # requirements we can't comply with (e.g., ssl), so reject it if
+        # requirements we can't comply with (for example ssl), so reject it if
         # it's present
         if '?' in url.path or url.query:
             raise InvalidTransportURL(url.geturl(),

@@ -61,7 +61,7 @@ class ConfFixture(fixtures.Fixture):
 
     @property
     def transport_driver(self):
-        """The transport driver - e.g. 'rabbit', 'qpid' or 'fake'."""
+        """The transport driver - for example 'rabbit', 'qpid' or 'fake'."""
         return self.conf.rpc_backend
 
     @transport_driver.setter

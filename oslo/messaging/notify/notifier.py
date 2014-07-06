@@ -101,7 +101,8 @@ class Notifier(object):
 
         :param transport: the transport to use for sending messages
         :type transport: oslo.messaging.Transport
-        :param publisher_id: field in notifications sent, e.g. 'compute.host1'
+        :param publisher_id: field in notifications sent, for example
+                             'compute.host1'
         :type publisher_id: str
         :param driver: a driver to lookup from oslo.messaging.notify.drivers
         :type driver: str
@@ -148,7 +149,8 @@ class Notifier(object):
         sending notifications from multiple publisher_ids without the overhead
         of notification driver loading.
 
-        :param publisher_id: field in notifications sent, e.g. 'compute.host1'
+        :param publisher_id: field in notifications sent, for example
+                             'compute.host1'
         :type publisher_id: str
         :param retry: an connection retries configuration
                       None or -1 means to retry forever
@@ -186,7 +188,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
@@ -199,7 +202,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
@@ -212,7 +216,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
@@ -225,7 +230,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
@@ -240,7 +246,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
@@ -253,7 +260,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
@@ -272,7 +280,8 @@ class Notifier(object):
 
         :param ctxt: a request context dict
         :type ctxt: dict
-        :param event_type: describes the event, e.g. 'compute.create_instance'
+        :param event_type: describes the event, for example
+                           'compute.create_instance'
         :type event_type: str
         :param payload: the notification payload
         :type payload: dict
