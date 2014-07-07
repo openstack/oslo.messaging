@@ -116,7 +116,10 @@ class AMQPListener(base.Listener):
                 timeout = deadline - time.time()
                 if timeout < 0:
                     return None
-                self.conn.consume(limit=1, timeout=timeout)
+                try:
+                    self.conn.consume(limit=1, timeout=timeout)
+                except rpc_common.Timeout:
+                    return None
             else:
                 self.conn.consume(limit=1)
 

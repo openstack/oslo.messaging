@@ -265,6 +265,23 @@ class TestSendReceive(test_utils.BaseTestCase):
 TestSendReceive.generate_scenarios()
 
 
+class TestPollAsync(test_utils.BaseTestCase):
+
+    def setUp(self):
+        super(TestPollAsync, self).setUp()
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
+
+    def test_poll_timeout(self):
+        transport = messaging.get_transport(self.conf)
+        self.addCleanup(transport.cleanup)
+        driver = transport._driver
+        target = messaging.Target(topic='testtopic')
+        listener = driver.listen(target)
+        received = listener.poll(timeout=0.050)
+        self.assertIsNone(received)
+
+
 class TestRacyWaitForReply(test_utils.BaseTestCase):
 
     def setUp(self):
