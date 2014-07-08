@@ -24,6 +24,37 @@ Contents
 Release Notes
 =============
 
+1.4.0.0a3
+---------
+
+Changes since 1.4.0.0a2:
+
+* cleanup:  replaced 'e.g.' with 'for example'.
+* trollius: fix AMQPListener for polling with timeout.
+* cleanup: fixed pep8 issue E265.
+* docs: remove duplicate docs for MessageHandlingServer.
+* docs: add 'docs' tox environment.
+* cleanup: use assertEqual() instead assertIs() for strings.
+* tests: re-organize the unit tests directory.
+
+Thanks to Boris Pavlovic, Christian Berendt, Mark McLoughlin,
+Victor Stinner and YAMAMOTO Takashi for their contributions to
+this release.
+
+1.4.0.0a2
+---------
+
+Changes since 1.4.0.0a1:
+
+* docs: fix Notifier instantiation example.
+* docs: cleanup formatting of examples in TransportURL docs.
+* tests: fix slow notification listener unit tests.
+* cleanup: remove unprintable character from source file.
+* python3: replace usage of str() with six.text_type.
+
+Thanks to Aaron Rosen, Gauvain Pocentek, Mark McLoughlin, Paul Michali
+and Thomas Herve for their contributions to this release.
+
 1.4.0.0a1
 ---------
 
