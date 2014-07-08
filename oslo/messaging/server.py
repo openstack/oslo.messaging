@@ -75,7 +75,8 @@ class MessageHandlingServer(object):
         :type transport: Transport
         :param dispatcher: a callable which is invoked for each method
         :type dispatcher: callable
-        :param executor: name of message executor - e.g. 'eventlet', 'blocking'
+        :param executor: name of message executor - for example
+                         'eventlet', 'blocking'
         :type executor: str
         """
         self.conf = transport.conf

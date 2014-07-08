@@ -680,7 +680,7 @@ class Connection(object):
     def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None):
         """Send a 'topic' message."""
         #
-        # We want to create a message with attributes, e.g. a TTL. We
+        # We want to create a message with attributes, for example a TTL. We
         # don't really need to keep 'msg' in its JSON format any longer
         # so let's create an actual Qpid message here and get some
         # value-add on the go.
