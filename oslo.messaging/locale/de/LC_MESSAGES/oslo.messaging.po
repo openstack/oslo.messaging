@@ -1,18 +1,20 @@
-# Translations template for oslo.messaging.
+# German translations for oslo.messaging.
 # Copyright (C) 2014 ORGANIZATION
 # This file is distributed under the same license as the oslo.messaging
 # project.
-# FIRST AUTHOR <EMAIL@ADDRESS>, 2014.
 #
-#, fuzzy
+# Translators:
+# Andreas Jaeger <jaegerandi@gmail.com>, 2014
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging 1.4.0.0a3.2.g3d956f5\n"
+"Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
 "POT-Creation-Date: 2014-07-14 06:09+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
+"PO-Revision-Date: 2014-07-10 18:39+0000\n"
+"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
+"Language-Team: German "
+"(http://www.transifex.com/projects/p/oslomessaging/language/de/)\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -21,22 +23,22 @@ msgstr ""
 #: oslo/messaging/notify/_impl_routing.py:80
 #, python-format
 msgid "Failed to load any notifiers for %s"
-msgstr ""
+msgstr "Es konnten keine Notifiers für %s geladen werden"
 
 #: oslo/messaging/notify/_impl_routing.py:117
 #, python-format
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
-msgstr ""
+msgstr "'%(event)s' Notfikation wird zum Treiber '%(driver)s' geroutet."
 
 #: oslo/messaging/openstack/common/excutils.py:62
 #, python-format
 msgid "Original exception being dropped: %s"
-msgstr ""
+msgstr "Ursprüngliche Exception wurde gedropt: %s"
 
 #: oslo/messaging/openstack/common/excutils.py:91
 #, python-format
 msgid "Unexpected exception occurred %d time(s)... retrying."
-msgstr ""
+msgstr "Unerwartete Exception trat %d mal auf... Neuer Versuch."
 
 #: oslo/messaging/openstack/common/gettextutils.py:320
 msgid "Message objects do not support addition."
@@ -66,5 +68,5 @@ msgstr ""
 #: oslo/messaging/rpc/dispatcher.py:142
 #, python-format
 msgid "Exception during message handling: %s"
-msgstr ""
+msgstr "Exception während Messagebehandlung: %s"
 
