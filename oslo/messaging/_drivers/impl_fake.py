@@ -132,7 +132,7 @@ class FakeExchangeManager(object):
     def get_exchange(self, name):
         if name is None:
             name = self._default_exchange
-        while self._exchanges_lock:
+        with self._exchanges_lock:
             return self._exchanges.setdefault(name, FakeExchange(name))
 
 
