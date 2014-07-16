@@ -67,10 +67,13 @@ class NoSuchMethod(RPCDispatcherError, AttributeError):
 class UnsupportedVersion(RPCDispatcherError):
     "Raised if there is no endpoint which supports the requested version."
 
-    def __init__(self, version):
+    def __init__(self, version, method=None):
         msg = "Endpoint does not support RPC version %s" % version
+        if method:
+            msg = "%s. Attempted method: %s" % (msg, method)
         super(UnsupportedVersion, self).__init__(msg)
         self.version = version
+        self.method = method
 
 
 class RPCDispatcher(object):
@@ -183,4 +186,4 @@ class RPCDispatcher(object):
         if found_compatible:
             raise NoSuchMethod(method)
         else:
-            raise UnsupportedVersion(version)
+            raise UnsupportedVersion(version, method=method)
