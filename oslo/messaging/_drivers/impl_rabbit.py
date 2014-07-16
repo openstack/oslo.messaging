@@ -227,9 +227,9 @@ class DirectConsumer(ConsumerBase):
         Other kombu options may be passed
         """
         # Default options
-        options = {'durable': False,
+        options = {'durable': conf.amqp_durable_queues,
                    'queue_arguments': _get_queue_arguments(conf),
-                   'auto_delete': True,
+                   'auto_delete': conf.amqp_auto_delete,
                    'exclusive': False}
         options.update(kwargs)
         exchange = kombu.entity.Exchange(name=msg_id,
@@ -300,9 +300,9 @@ class FanoutConsumer(ConsumerBase):
         queue_name = '%s_fanout_%s' % (topic, unique)
 
         # Default options
-        options = {'durable': False,
+        options = {'durable': conf.amqp_durable_queues,
                    'queue_arguments': _get_queue_arguments(conf),
-                   'auto_delete': True,
+                   'auto_delete': conf.amqp_auto_delete,
                    'exclusive': False}
         options.update(kwargs)
         exchange = kombu.entity.Exchange(name=exchange_name, type='fanout',
@@ -318,22 +318,41 @@ class FanoutConsumer(ConsumerBase):
 class Publisher(object):
     """Base Publisher class."""
 
-    def __init__(self, channel, exchange_name, routing_key, **kwargs):
+    def __init__(self, conf, channel, exchange_name, routing_key, **kwargs):
         """Init the Publisher class with the exchange_name, routing_key,
         and other options
         """
         self.exchange_name = exchange_name
         self.routing_key = routing_key
         self.kwargs = kwargs
+        self.options = {
+            'durable': conf.amqp_durable_queues,
+            'queue_arguments': _get_queue_arguments(conf),
+            'auto_delete': conf.amqp_auto_delete,
+            'exclusive': False,
+            }
+        self.options.update(kwargs)
         self.reconnect(channel)
 
     def reconnect(self, channel):
         """Re-establish the Producer after a rabbit reconnection."""
         self.exchange = kombu.entity.Exchange(name=self.exchange_name,
-                                              **self.kwargs)
+                                              **self.options)
         self.producer = kombu.messaging.Producer(exchange=self.exchange,
                                                  channel=channel,
                                                  routing_key=self.routing_key)
+
+        # NOTE(noelbk) If rabbit dies, the consumer can be
+        # disconnected before the publisher sends, and if the
+        # publisher hasn't delared the queue, the publisher's message
+        # may be lost.
+        self.queue = kombu.entity.Queue(channel=channel,
+                                        exchange=self.exchange,
+                                        name=self.exchange_name,
+                                        routing_key=self.routing_key,
+                                        **self.options)
+        self.queue.declare()
+
 
     def send(self, msg, timeout=None):
         """Send a message."""
@@ -353,13 +372,8 @@ class DirectPublisher(Publisher):
 
         Kombu options may be passed as keyword args to override defaults
         """
-
-        options = {'durable': False,
-                   'auto_delete': True,
-                   'exclusive': False}
-        options.update(kwargs)
-        super(DirectPublisher, self).__init__(channel, topic, topic,
-                                              type='direct', **options)
+        super(DirectPublisher, self).__init__(conf, channel, topic, topic,
+                                              type='direct', **kwargs)
 
 
 class TopicPublisher(Publisher):
@@ -369,15 +383,12 @@ class TopicPublisher(Publisher):
 
         Kombu options may be passed as keyword args to override defaults
         """
-        options = {'durable': conf.amqp_durable_queues,
-                   'auto_delete': conf.amqp_auto_delete,
-                   'exclusive': False}
-        options.update(kwargs)
-        super(TopicPublisher, self).__init__(channel,
+        super(TopicPublisher, self).__init__(conf,
+                                             channel,
                                              exchange_name,
                                              topic,
                                              type='topic',
-                                             **options)
+                                             **kwargs)
 
 
 class FanoutPublisher(Publisher):
@@ -387,37 +398,13 @@ class FanoutPublisher(Publisher):
 
         Kombu options may be passed as keyword args to override defaults
         """
-        options = {'durable': False,
-                   'auto_delete': True,
-                   'exclusive': False}
-        options.update(kwargs)
-        super(FanoutPublisher, self).__init__(channel, '%s_fanout' % topic,
-                                              None, type='fanout', **options)
+        super(FanoutPublisher, self).__init__(conf, channel, '%s_fanout' % topic,
+                                              None, type='fanout', **kwargs)
 
 
 class NotifyPublisher(TopicPublisher):
     """Publisher class for 'notify'."""
-
-    def __init__(self, conf, channel, exchange_name, topic, **kwargs):
-        self.durable = kwargs.pop('durable', conf.amqp_durable_queues)
-        self.queue_arguments = _get_queue_arguments(conf)
-        super(NotifyPublisher, self).__init__(conf, channel, exchange_name,
-                                              topic, **kwargs)
-
-    def reconnect(self, channel):
-        super(NotifyPublisher, self).reconnect(channel)
-
-        # NOTE(jerdfelt): Normally the consumer would create the queue, but
-        # we do this to ensure that messages don't get dropped if the
-        # consumer is started after we do
-        queue = kombu.entity.Queue(channel=channel,
-                                   exchange=self.exchange,
-                                   durable=self.durable,
-                                   name=self.routing_key,
-                                   routing_key=self.routing_key,
-                                   queue_arguments=self.queue_arguments)
-        queue.declare()
-
+    pass
 
 class Connection(object):
     """Connection object."""
