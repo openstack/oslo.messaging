@@ -19,9 +19,9 @@ import logging
 import random
 import time
 
-from oslo.config import cfg
 import six
 
+from oslo.config import cfg
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common

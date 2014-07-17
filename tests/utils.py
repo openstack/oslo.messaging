@@ -19,8 +19,9 @@
 
 """Common utilities used in testing"""
 
-from oslo.config import cfg
 import six
+
+from oslo.config import cfg
 
 from oslotest import base
 from oslotest import moxstubout

@@ -16,9 +16,9 @@
 import threading
 
 import mock
-from oslo.config import cfg
 import testscenarios
 
+from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging.notify import dispatcher
 from tests import utils as test_utils

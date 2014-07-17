@@ -15,9 +15,9 @@
 #    under the License.
 
 import contextlib
-import eventlet
 import threading
 
+import eventlet
 import mock
 import testscenarios
 

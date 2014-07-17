@@ -28,9 +28,9 @@ import logging
 import threading
 import uuid
 
-from oslo.config import cfg
 import six
 
+from oslo.config import cfg
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._drivers import pool
 

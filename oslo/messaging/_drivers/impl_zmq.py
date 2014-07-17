@@ -25,10 +25,10 @@ import uuid
 
 import eventlet
 import greenlet
-from oslo.config import cfg
 import six
 from six import moves
 
+from oslo.config import cfg
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)

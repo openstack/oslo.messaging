@@ -20,9 +20,9 @@ import logging
 import sys
 import traceback
 
-from oslo import messaging
 import six
 
+from oslo import messaging
 from oslo.messaging import _utils as utils
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils

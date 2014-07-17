@@ -16,11 +16,11 @@
 import fnmatch
 import logging
 
-from oslo.config import cfg
 import six
 from stevedore import dispatch
 import yaml
 
+from oslo.config import cfg
 from oslo.messaging.notify import notifier
 from oslo.messaging.openstack.common.gettextutils import _  # noqa
 

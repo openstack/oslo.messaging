@@ -21,7 +21,6 @@ import json
 import logging
 
 from oslo.config import cfg
-
 from oslo.messaging._drivers import matchmaker as mm
 
 # FIXME(markmc): remove this

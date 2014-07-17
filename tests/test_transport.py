@@ -15,11 +15,11 @@
 
 import fixtures
 from mox3 import mox
-from oslo.config import cfg
 import six
 from stevedore import driver
 import testscenarios
 
+from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging import transport
 from tests import utils as test_utils

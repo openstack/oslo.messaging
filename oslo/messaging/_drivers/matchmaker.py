@@ -20,6 +20,7 @@ import contextlib
 import logging
 
 import eventlet
+
 from oslo.config import cfg
 
 # FIXME(markmc): remove this

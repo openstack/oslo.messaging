@@ -15,7 +15,6 @@
 #    under the License.
 
 from oslo import messaging
-
 from tests import utils as test_utils
 
 

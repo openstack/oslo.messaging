@@ -11,6 +11,7 @@
 # under the License.
 
 import logging
+
 import mock
 
 from oslo import messaging
