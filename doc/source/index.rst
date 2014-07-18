@@ -172,6 +172,28 @@ zhangjialong for their contributions to this release.
 .. _1331459: https://bugs.launchpad.net/oslo.messaging/+bug/1331459
 .. _1332588: https://bugs.launchpad.net/oslo.messaging/+bug/1332588
 
+1.3.1
+-----
+
+Changes since 1.3.0:
+
+* 1318742_: Explicitly name subscription queue for responses.
+* 1300318_: Ensure routing key is specified in the address for a direct producer.
+* 1303890_: Update ensure()/reconnect() to catch MessagingError.
+* 1283926_: Fixed the issue for pop exception (rabbit tests race condition).
+* Ensures listener queues exist in fake driver.
+* Fixes incorrect exchange lock in fake driver
+
+.. _1283926: https://bugs.launchpad.net/oslo.messaging/+bug/1283926
+.. _1300318: https://bugs.launchpad.net/oslo.messaging/+bug/1300318
+.. _1303890: https://bugs.launchpad.net/oslo.messaging/+bug/1303890
+.. _1318742: https://bugs.launchpad.net/oslo.messaging/+bug/1318742
+
+
+Thanks to Alan Pevec, Gordon Sim, Mark McLoughlin, Matt Riedemann,
+Mehdi Abaakouk, Nejc Saje, Numan Siddique and Russell Bryant for their
+contributions to this release.
+
 1.3.0
 -----
 
