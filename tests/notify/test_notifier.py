@@ -382,7 +382,7 @@ group_2:
                             return_value=self._fake_extension_manager(
                                 mock.MagicMock())):
                 self.router._load_notifiers()
-                groups = self.router.routing_groups.keys()
+                groups = list(self.router.routing_groups.keys())
                 groups.sort()
                 self.assertEqual(['group_1', 'group_2'], groups)
 

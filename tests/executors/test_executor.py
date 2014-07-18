@@ -16,8 +16,12 @@
 
 import contextlib
 import threading
+import unittest
 
-import eventlet
+try:
+    import eventlet
+except ImportError:
+    raise unittest.SkipTest("Eventlet not available")
 import mock
 import testscenarios
 

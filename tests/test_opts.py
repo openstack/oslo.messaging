@@ -12,10 +12,16 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import unittest
 
 import pkg_resources
 
-from oslo.messaging import opts
+try:
+    from oslo.messaging import opts
+except ImportError:
+    import six
+    if six.PY3:
+        raise unittest.SkipTest
 from tests import utils as test_utils
 
 
