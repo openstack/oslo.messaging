@@ -18,7 +18,9 @@ import logging
 import socket
 import ssl
 import time
+import threading
 import uuid
+import weakref
 
 import kombu
 import kombu.connection
@@ -98,6 +100,10 @@ rabbit_opts = [
                 help='Use HA queues in RabbitMQ (x-ha-policy: all). '
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
+
+    cfg.IntOpt('rabbit_heartbeat',
+               default=60,
+               help='seconds between rabbit keep-alive heartbeat.'),
 
     # FIXME(markmc): this was toplevel in openstack.common.rpc
     cfg.BoolOpt('fake_rabbit',
@@ -422,6 +428,11 @@ class Connection(object):
 
     pool = None
 
+    _CONNECTIONS = []
+
+    def enable_heartbeat_reconnect(self):
+        self._CONNECTIONS.append(weakref.ref(self))
+
     def __init__(self, conf, server_params=None):
         self.consumers = []
         self.conf = conf
@@ -561,6 +572,9 @@ class Connection(object):
         LOG.info(_('Connected to AMQP server on %(hostname)s:%(port)d') %
                  params)
 
+    def send_heartbeat(self):
+        self.connection.heartbeat_check()
+
     def reconnect(self):
         """Handles reconnecting and re-establishing queues.
         Will retry up to self.max_retries number of times.
@@ -648,7 +662,16 @@ class Connection(object):
 
     def close(self):
         """Close/release this connection."""
-        self.connection.release()
+        if not self.connection:
+            return
+
+        try:
+            self.connection.release()
+            self.connection.close()
+        except self.connection_errors:
+            pass
+        # Setting this in case the next statement fails, though
+        # it shouldn't be doing any network operations, yet.
         self.connection = None
 
     def reset(self):
@@ -758,12 +781,48 @@ class Connection(object):
 
     def consume(self, limit=None, timeout=None):
         """Consume from all queues/consumers."""
-        it = self.iterconsume(limit=limit, timeout=timeout)
+        if timeout:
+            deadline = time.time() + timeout
+        else:
+            deadline = None
         while True:
             try:
-                six.next(it)
-            except StopIteration:
-                return
+                it = self.iterconsume(limit=limit, timeout=1)
+                while True:
+                    try:
+                        six.next(it)
+                    except StopIteration:
+                        return
+            except rpc_common.Timeout:
+                pass
+            if deadline and deadline - time.time() < 0:
+                raise rpc_common.Timeout()
+
+
+class HeartbeatThread(threading.Thread):
+    def __init__(self, driver, conn):
+        super(HeartbeatThread, self).__init__()
+        self._conn = conn
+        self._driver = driver
+        self.daemon = True
+
+    def run(self):
+        while True:
+            try:
+                self._conn.send_heartbeat()
+            except Exception:
+                LOG.exception('Heartbeats failed. trying to reconnect')
+                compacted_list = [c for c in Connection._CONNECTIONS if c()]
+                Connection._CONNECTIONS = compacted_list
+                for connection in Connection._CONNECTIONS:
+                    connection = connection()
+                    if not connection:  # Weakref not valid
+                        continue
+                    connection.reconnect()
+            try:
+                self._conn.connection.connection.drain_events(timeout=1)
+            except Exception:
+                pass
 
 
 class RabbitDriver(amqpdriver.AMQPDriverBase):
@@ -772,6 +831,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
                  allowed_remote_exmods=[]):
         conf.register_opts(rabbit_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
+        self._heartbeat = None
 
         connection_pool = rpc_amqp.get_connection_pool(conf, Connection)
 
@@ -779,6 +839,19 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
                                            connection_pool,
                                            default_exchange,
                                            allowed_remote_exmods)
+
+    def _get_connection(self, pooled=True):
+        if not self._heartbeat:
+            temp_server_params = self._server_params
+
+            self._server_params = {'heartbeat': self.conf.rabbit_heartbeat}
+            heartbeat_connection = super(RabbitDriver, self)._get_connection(pooled=False)
+            self._server_params = temp_server_params
+
+            self._heartbeat = HeartbeatThread(self, heartbeat_connection)
+            self._heartbeat.start()
+
+        return super(RabbitDriver, self)._get_connection(pooled)
 
     def require_features(self, requeue=True):
         pass
