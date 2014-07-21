@@ -226,7 +226,7 @@ class TestSendReceive(test_utils.BaseTestCase):
             msgs.append(received)
 
         # reply in reverse, except reply to the first guy second from last
-        order = list(range(len(senders)-1, -1, -1))
+        order = list(range(len(senders) - 1, -1, -1))
         if len(order) > 1:
             order[-1], order[-2] = order[-2], order[-1]
 
