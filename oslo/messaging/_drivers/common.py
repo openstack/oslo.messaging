@@ -520,7 +520,7 @@ class DecayingTimer(object):
             self._ends_at = time.time() + max(0, self._duration)
         return self
 
-    def check_return(self, timeout_callback, *args, **kwargs):
+    def check_return(self, timeout_callback=None, *args, **kwargs):
         maximum = kwargs.pop('maximum', None)
         if self._duration is None:
             return None if maximum is None else maximum
@@ -529,7 +529,7 @@ class DecayingTimer(object):
                                " that has not been started")
 
         left = self._ends_at - time.time()
-        if left <= 0:
+        if left <= 0 and timeout_callback is not None:
             timeout_callback(*args, **kwargs)
 
         return left if maximum is None else min(left, maximum)
