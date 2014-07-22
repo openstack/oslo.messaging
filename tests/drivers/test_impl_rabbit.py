@@ -247,8 +247,27 @@ class TestSendReceive(test_utils.BaseTestCase):
                         raise ZeroDivisionError
                     except Exception:
                         failure = sys.exc_info()
-                    msgs[i].reply(failure=failure,
-                                  log_failure=not self.expected)
+
+                    # NOTE(noelbk) confirm that Publisher exchanges
+                    # are always declared with passive=True
+                    outer_self = self
+                    test_exchange_was_called = [False]
+                    old_init = kombu.entity.Exchange.__init__
+
+                    def new_init(self, *args, **kwargs):
+                        test_exchange_was_called[0] = True
+                        outer_self.assertTrue(kwargs['passive'])
+                        old_init(self, *args, **kwargs)
+                    kombu.entity.Exchange.__init__ = new_init
+
+                    try:
+                        msgs[i].reply(failure=failure,
+                                      log_failure=not self.expected)
+                    finally:
+                        kombu.entity.Exchange.__init__ = old_init
+
+                    self.assertTrue(test_exchange_was_called[0])
+
                 elif self.rx_id:
                     msgs[i].reply({'rx_id': i})
                 else:
