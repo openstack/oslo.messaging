@@ -64,6 +64,10 @@ class AMQPIncomingMessage(base.IncomingMessage):
             conn.direct_send(self.msg_id, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None, log_failure=True):
+        if not self.msg_id:
+            # NOTE(Alexei_987) not sending reply, if msg_id is empty
+            #    because reply should not be expected by caller side
+            return
         with self.listener.driver._get_connection() as conn:
             self._send_reply(conn, reply, failure, log_failure=log_failure)
             self._send_reply(conn, ending=True)
