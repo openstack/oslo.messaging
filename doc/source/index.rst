@@ -24,6 +24,21 @@ Contents
 Release Notes
 =============
 
+1.4.0.0a4
+---------
+
+Changes since 1.4.0.0a3:
+
+* 1314129_: on python 2.6 use simplejson for better performance
+* 1342088_: fix bogus locking in fake driver
+* Enabled hacking checks H305 and H307
+
+.. _1314129: https://bugs.launchpad.net/oslo.messaging/+bug/1314129
+.. _1342088: https://bugs.launchpad.net/oslo.messaging/+bug/1342088
+
+Thanks to Christian Berendt, Ihar Hrachyshka and Nejc Saje for their
+contributions to this release.
+
 1.4.0.0a3
 ---------
 
