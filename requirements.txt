@@ -1,4 +1,4 @@
-oslo.config>=1.2.1
+oslo.config>=1.4.0.0a3
 stevedore>=0.14
 
 # for timeutils
