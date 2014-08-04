@@ -132,12 +132,15 @@ class RabbitMessage(dict):
     def __init__(self, raw_message):
         super(RabbitMessage, self).__init__(
             rpc_common.deserialize_msg(raw_message.payload))
+        LOG.warn('RabbitMessage.Init: recevied message %s' % raw_message)
         self._raw_message = raw_message
 
     def acknowledge(self):
+        LOG.warn('RabbitMessage.acknowledge: message %s' % self._raw_message)
         self._raw_message.ack()
 
     def requeue(self):
+        LOG.warn('RabbitMessage.requeue: message %s' % self._raw_message)
         self._raw_message.requeue()
 
 
@@ -164,7 +167,11 @@ class ConsumerBase(object):
         """Re-declare the queue after a rabbit reconnect."""
         self.channel = channel
         self.kwargs['channel'] = channel
+        if self.kwargs.pop('auto_delete', False):
+            self.kwargs.setdefault('queue_arguments', {})[
+                'x-expires'] = 60 * 60 * 1000
         self.queue = kombu.entity.Queue(**self.kwargs)
+        LOG.warn('ConsumerBase.reconnect: declare queue with expiration %s' % self.kwargs.get('name', 'N/A'))
         self.queue.declare()
 
     def _callback_handler(self, message, callback):
@@ -173,6 +180,7 @@ class ConsumerBase(object):
         Messages that are processed and ack'ed.
         """
 
+        LOG.warn('ConsumerBase._callback_handler: recevied message %s' % message)
         try:
             callback(RabbitMessage(message))
         except Exception:
@@ -208,6 +216,7 @@ class ConsumerBase(object):
 
     def cancel(self):
         """Cancel the consuming from the queue, if it has started."""
+        LOG.warn('ConsumerBase.cancel: canceling %s' % self.tag)
         try:
             self.queue.cancel(self.tag)
         except KeyError as e:
@@ -340,6 +349,10 @@ class Publisher(object):
                                                  routing_key=self.routing_key)
 
     def send(self, msg, timeout=None):
+        LOG.warn('Publisher.send: sending message {2} to {0} with '
+                 'routing key {1}'.format(msg, 
+                 self.exchange_name if self.exchange_name else 'default', 
+                 self.routing_key)
         """Send a message."""
         if timeout:
             #
@@ -420,6 +433,7 @@ class NotifyPublisher(TopicPublisher):
                                    name=self.routing_key,
                                    routing_key=self.routing_key,
                                    queue_arguments=self.queue_arguments)
+        LOG.warn('NotifyPublisher.reconnect: declare queue {0} on {1} exchange'.format(self.routing_key, self.exchange_name))
         queue.declare()
 
 
@@ -706,7 +720,7 @@ class Connection(object):
 
         def _error_callback(exc):
             if isinstance(exc, socket.timeout):
-                LOG.debug(_('Timed out waiting for RPC response: %s') %
+                LOG.warn(_('Timed out waiting for RPC response: %s') %
                           str(exc))
                 raise rpc_common.Timeout()
             else:
@@ -719,6 +733,7 @@ class Connection(object):
                 queues_head = self.consumers[:-1]  # not fanout.
                 queues_tail = self.consumers[-1]  # fanout
                 for queue in queues_head:
+                    LOG.warn('Connection._consume: will block until queue is consumed %s' % queue)
                     queue.consume(nowait=True)
                 queues_tail.consume(nowait=False)
                 self.do_consume = False
