@@ -33,6 +33,7 @@ from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
 from oslo.messaging.openstack.common import excutils
+from oslo.messaging.openstack.common.gettextutils import _
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
 
@@ -43,9 +44,6 @@ pformat = pprint.pformat
 Timeout = eventlet.timeout.Timeout
 LOG = logging.getLogger(__name__)
 RPCException = rpc_common.RPCException
-
-# FIXME(markmc): remove this
-_ = lambda s: s
 
 zmq_opts = [
     cfg.StrOpt('rpc_zmq_bind_address', default='*',

@@ -22,9 +22,7 @@ import logging
 import eventlet
 
 from oslo.config import cfg
-
-# FIXME(markmc): remove this
-_ = lambda s: s
+from oslo.messaging.openstack.common.gettextutils import _
 
 matchmaker_opts = [
     cfg.IntOpt('matchmaker_heartbeat_freq',

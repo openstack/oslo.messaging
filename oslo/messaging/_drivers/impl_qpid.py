@@ -26,12 +26,10 @@ from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging import exceptions
+from oslo.messaging.openstack.common.gettextutils import _
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
 from oslo.messaging.openstack.common import network_utils
-
-# FIXME(markmc): remove this
-_ = lambda s: s
 
 qpid_codec = importutils.try_import("qpid.codec010")
 qpid_messaging = importutils.try_import("qpid.messaging")
