@@ -77,6 +77,7 @@ zmq_opts = [
                help='Directory for holding IPC sockets.'),
 
     cfg.StrOpt('rpc_zmq_host', default=socket.gethostname(),
+               sample_default='localhost',
                help='Name of this node. Must be a valid hostname, FQDN, or '
                     'IP address. Must match "host" option, if running Nova.'),
 
