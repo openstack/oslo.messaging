@@ -482,7 +482,8 @@ group_1:
             with mock.patch.object(self.router, '_get_drivers_for_message',
                                    drivers_mock):
                 self.notifier.info({}, 'my_event', {})
-                self.assertEqual(pm.map.call_args[0][5], ['rpc', 'foo'])
+                self.assertEqual(sorted(pm.map.call_args[0][5]),
+                                 sorted(['rpc', 'foo']))
 
     def test_notify_filtered(self):
         self.config(routing_notifier_config="routing_notifier.yaml")
