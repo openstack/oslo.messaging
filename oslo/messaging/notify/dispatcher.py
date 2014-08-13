@@ -103,7 +103,7 @@ class NotificationDispatcher(object):
         publisher_id = message.get('publisher_id')
         event_type = message.get('event_type')
         metadata = {
-            'message_id':  message.get('message_id'),
+            'message_id': message.get('message_id'),
             'timestamp': message.get('timestamp')
         }
         priority = message.get('priority', '').lower()
