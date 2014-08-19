@@ -14,12 +14,16 @@
 
 import operator
 import random
-import thread
 import threading
 import time
+import unittest
 
 import mock
-import qpid
+try:
+    import qpid
+except ImportError:
+    raise unittest.SkipTest("qpid not available")
+from six.moves import _thread
 import testscenarios
 
 from oslo import messaging
@@ -368,7 +372,7 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
             msgcontent = msg
 
         splitmsg = msgcontent.split('-')
-        key = thread.get_ident()
+        key = _thread.get_ident()
 
         if key not in self._messages:
             self._messages[key] = dict()

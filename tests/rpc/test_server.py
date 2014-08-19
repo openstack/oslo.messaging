@@ -287,7 +287,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             client.call({}, 'ping', arg='foo')
         except Exception as ex:
             self.assertIsInstance(ex, ValueError)
-            self.assertEqual('dsfoo', ex[0])
+            self.assertEqual('dsfoo', str(ex))
         else:
             self.assertTrue(False)
 
@@ -308,7 +308,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             client.call({}, 'ping', arg='foo')
         except Exception as ex:
             self.assertIsInstance(ex, ValueError)
-            self.assertEqual('dsfoo', ex[0])
+            self.assertEqual('dsfoo', str(ex))
         else:
             self.assertTrue(False)
 

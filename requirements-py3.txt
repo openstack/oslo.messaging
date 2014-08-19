@@ -1,0 +1,20 @@
+oslo.config>=1.2.1
+stevedore>=0.14
+
+# for timeutils
+iso8601>=0.1.9
+
+# for jsonutils
+six>=1.7.0
+
+# used by openstack/common/gettextutils.py
+Babel>=1.3
+
+# for the routing notifier
+PyYAML>=3.1.0
+
+# rabbit driver is the default
+kombu>=2.4.8
+
+# middleware
+WebOb>=1.2.3

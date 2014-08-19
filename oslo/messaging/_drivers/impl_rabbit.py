@@ -606,11 +606,11 @@ class Connection(object):
             try:
                 self._connect(broker)
                 return
-            except IOError as e:
-                pass
-            except self.connection_errors as e:
-                pass
-            except Exception as e:
+            except IOError as ex:
+                e = ex
+            except self.connection_errors as ex:
+                e = ex
+            except Exception as ex:
                 # NOTE(comstud): Unfortunately it's possible for amqplib
                 # to return an error not covered by its transport
                 # connection_errors in the case of a timeout waiting for
@@ -619,6 +619,7 @@ class Connection(object):
                 # and try to reconnect in this case.
                 if 'timeout' not in six.text_type(e):
                     raise
+                e = ex
 
             log_info = {}
             log_info['err_str'] = e
