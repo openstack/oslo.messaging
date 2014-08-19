@@ -54,7 +54,8 @@ A simple example of an RPC server with multiple endpoints might be::
             self.server = server
 
         def stop(self, ctx):
-            self.server.stop()
+            if server:
+                self.server.stop()
 
     class TestEndpoint(object):
 
@@ -64,7 +65,7 @@ A simple example of an RPC server with multiple endpoints might be::
     transport = messaging.get_transport(cfg.CONF)
     target = messaging.Target(topic='test', server='server1')
     endpoints = [
-        ServerControlEndpoint(self),
+        ServerControlEndpoint(None),
         TestEndpoint(),
     ]
     server = messaging.get_rpc_server(transport, target, endpoints,
