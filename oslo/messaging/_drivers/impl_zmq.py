@@ -32,10 +32,11 @@ from oslo.config import cfg
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
-from oslo.messaging.openstack.common import excutils
 from oslo.messaging.openstack.common.gettextutils import _
-from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
+from oslo.utils import excutils
+from oslo.utils import importutils
+
 
 zmq = importutils.try_import('eventlet.green.zmq')
 

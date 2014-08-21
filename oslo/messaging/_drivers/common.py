@@ -25,7 +25,6 @@ import six
 from oslo import messaging
 from oslo.messaging import _utils as utils
 from oslo.messaging.openstack.common.gettextutils import _
-from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
 
 LOG = logging.getLogger(__name__)
@@ -232,7 +231,8 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
         return messaging.RemoteError(name, failure.get('message'), trace)
 
     try:
-        mod = importutils.import_module(module)
+        __import__(module)
+        mod = sys.modules[module]
         klass = getattr(mod, name)
         if not issubclass(klass, Exception):
             raise TypeError("Can only deserialize Exceptions")

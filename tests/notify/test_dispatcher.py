@@ -20,7 +20,7 @@ import testscenarios
 
 from oslo import messaging
 from oslo.messaging.notify import dispatcher as notify_dispatcher
-from oslo.messaging.openstack.common import timeutils
+from oslo.utils import timeutils
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios

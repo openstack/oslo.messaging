@@ -33,7 +33,7 @@ from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging import exceptions
 from oslo.messaging.openstack.common.gettextutils import _
-from oslo.messaging.openstack.common import network_utils
+from oslo.utils import netutils
 
 rabbit_opts = [
     cfg.StrOpt('kombu_ssl_version',
@@ -462,7 +462,7 @@ class Connection(object):
         else:
             # Old configuration format
             for adr in self.conf.rabbit_hosts:
-                hostname, port = network_utils.parse_host_port(
+                hostname, port = netutils.parse_host_port(
                     adr, default_port=self.conf.rabbit_port)
 
                 params = {

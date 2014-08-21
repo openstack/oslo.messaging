@@ -31,8 +31,8 @@ from oslo.messaging.notify import _impl_messaging
 from oslo.messaging.notify import _impl_test
 from oslo.messaging.notify import notifier as msg_notifier
 from oslo.messaging.openstack.common import jsonutils
-from oslo.messaging.openstack.common import timeutils
 from oslo.messaging import serializer as msg_serializer
+from oslo.utils import timeutils
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -147,7 +147,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         self.stubs.Set(_impl_messaging, 'LOG', self.logger)
         self.stubs.Set(msg_notifier, '_LOG', self.logger)
 
-    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo.utils.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):
         drivers = []
         if self.v1:
@@ -223,7 +223,7 @@ class TestSerializer(test_utils.BaseTestCase):
         super(TestSerializer, self).setUp()
         self.addCleanup(_impl_test.reset)
 
-    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo.utils.timeutils.utcnow')
     def test_serializer(self, mock_utcnow):
         transport = _FakeTransport(self.conf)
 
@@ -266,7 +266,7 @@ class TestSerializer(test_utils.BaseTestCase):
 
 class TestLogNotifier(test_utils.BaseTestCase):
 
-    @mock.patch('oslo.messaging.openstack.common.timeutils.utcnow')
+    @mock.patch('oslo.utils.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):
         self.config(notification_driver=['log'])
 

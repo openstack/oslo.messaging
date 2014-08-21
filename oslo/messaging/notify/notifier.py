@@ -23,8 +23,8 @@ import six
 from stevedore import named
 
 from oslo.config import cfg
-from oslo.messaging.openstack.common import timeutils
 from oslo.messaging import serializer as msg_serializer
+from oslo.utils import timeutils
 
 _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',

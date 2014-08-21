@@ -21,7 +21,7 @@ import greenlet
 
 from oslo.config import cfg
 from oslo.messaging._executors import base
-from oslo.messaging.openstack.common import excutils
+from oslo.utils import excutils
 
 _eventlet_opts = [
     cfg.IntOpt('rpc_thread_pool_size',

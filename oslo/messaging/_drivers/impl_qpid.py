@@ -27,9 +27,9 @@ from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging import exceptions
 from oslo.messaging.openstack.common.gettextutils import _
-from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
-from oslo.messaging.openstack.common import network_utils
+from oslo.utils import importutils
+from oslo.utils import netutils
 
 qpid_codec = importutils.try_import("qpid.codec010")
 qpid_messaging = importutils.try_import("qpid.messaging")
@@ -475,7 +475,7 @@ class Connection(object):
         else:
             # Old configuration format
             for adr in self.conf.qpid_hosts:
-                hostname, port = network_utils.parse_host_port(
+                hostname, port = netutils.parse_host_port(
                     adr, default_port=5672)
 
                 params = {
