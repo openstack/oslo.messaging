@@ -16,17 +16,20 @@
 
 import contextlib
 import threading
-import unittest
 
 try:
     import eventlet
 except ImportError:
-    raise unittest.SkipTest("Eventlet not available")
+    eventlet = None
 import mock
 import testscenarios
+import testtools
 
 from oslo.messaging._executors import impl_blocking
-from oslo.messaging._executors import impl_eventlet
+try:
+    from oslo.messaging._executors import impl_eventlet
+except ImportError:
+    impl_eventlet = None
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -34,14 +37,15 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 class TestExecutor(test_utils.BaseTestCase):
 
-    _impl = [('blocking', dict(executor=impl_blocking.BlockingExecutor,
-                               stop_before_return=True)),
-             ('eventlet', dict(executor=impl_eventlet.EventletExecutor,
-                               stop_before_return=False))]
-
     @classmethod
     def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._impl)
+        impl = [('blocking', dict(executor=impl_blocking.BlockingExecutor,
+                                  stop_before_return=True))]
+        if impl_eventlet is not None:
+            impl.append(
+                ('eventlet', dict(executor=impl_eventlet.EventletExecutor,
+                                  stop_before_return=False)))
+        cls.scenarios = testscenarios.multiply_scenarios(impl)
 
     @staticmethod
     def _run_in_thread(executor):
@@ -90,6 +94,7 @@ class ExceptedException(Exception):
 
 
 class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
+    @testtools.skipIf(impl_eventlet is None, "Eventlet not available")
     def setUp(self):
         super(EventletContextManagerSpawnTest, self).setUp()
         self.before = mock.Mock()

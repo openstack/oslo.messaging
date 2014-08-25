@@ -12,20 +12,21 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import unittest
-
 import pkg_resources
+import testtools
 
 try:
     from oslo.messaging import opts
 except ImportError:
-    import six
-    if six.PY3:
-        raise unittest.SkipTest
+    opts = None
 from tests import utils as test_utils
 
 
 class OptsTestCase(test_utils.BaseTestCase):
+
+    @testtools.skipIf(opts is None, "Options not importable")
+    def setUp(self):
+        super(OptsTestCase, self).setUp()
 
     def _test_list_opts(self, result):
         self.assertEqual(3, len(result))
