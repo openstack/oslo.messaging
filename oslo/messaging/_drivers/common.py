@@ -24,11 +24,9 @@ import six
 
 from oslo import messaging
 from oslo.messaging import _utils as utils
+from oslo.messaging.openstack.common.gettextutils import _
 from oslo.messaging.openstack.common import importutils
 from oslo.messaging.openstack.common import jsonutils
-
-# FIXME(markmc): remove this
-_ = lambda s: s
 
 LOG = logging.getLogger(__name__)
 

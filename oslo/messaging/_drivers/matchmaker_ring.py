@@ -22,9 +22,7 @@ import logging
 
 from oslo.config import cfg
 from oslo.messaging._drivers import matchmaker as mm
-
-# FIXME(markmc): remove this
-_ = lambda s: s
+from oslo.messaging.openstack.common.gettextutils import _
 
 matchmaker_opts = [
     # Matchmaker ring file
