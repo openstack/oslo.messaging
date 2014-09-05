@@ -35,54 +35,9 @@ from six import moves
 
 from oslo.config import cfg
 from oslo.messaging._drivers.protocols.amqp import eventloop
+from oslo.messaging._drivers.protocols.amqp import opts
 
 LOG = logging.getLogger(__name__)
-
-_amqp1_opts = [
-    cfg.StrOpt('server_request_prefix',
-               default='exclusive',
-               help="address prefix used when sending to a specific server"),
-
-    cfg.StrOpt('broadcast_prefix',
-               default='broadcast',
-               help="address prefix used when broadcasting to all servers"),
-
-    cfg.StrOpt('group_request_prefix',
-               default='unicast',
-               help="address prefix when sending to any server in group"),
-
-    cfg.StrOpt('container_name',
-               default=None,
-               help='Name for the AMQP container'),
-
-    cfg.IntOpt('idle_timeout',
-               default=0,  # disabled
-               help='Timeout for inactive connections (in seconds)'),
-
-    cfg.BoolOpt('trace',
-                default=False,
-                help='Debug: dump AMQP frames to stdout'),
-
-    cfg.StrOpt('ssl_ca_file',
-               default='',
-               help="CA certificate PEM file for verifing server certificate"),
-
-    cfg.StrOpt('ssl_cert_file',
-               default='',
-               help='Identifying certificate PEM file to present to clients'),
-
-    cfg.StrOpt('ssl_key_file',
-               default='',
-               help='Private key PEM file used to sign cert_file certificate'),
-
-    cfg.StrOpt('ssl_key_password',
-               default=None,
-               help='Password for decrypting ssl_key_file (if encrypted)'),
-
-    cfg.BoolOpt('allow_insecure_clients',
-                default=False,
-                help='Accept clients using either SSL or plain TCP')
-]
 
 
 class Task(object):
@@ -287,24 +242,27 @@ class Controller(pyngus.ConnectionEventHandler):
         self._servers = {}
         self.hosts = Hosts(hosts)
 
-        opt_group = cfg.OptGroup(name='amqp1',
-                                 title='AMQP 1.0 options')
+        opt_group = cfg.OptGroup(name='oslo_messaging_amqp',
+                                 title='AMQP 1.0 driver options')
         config.register_group(opt_group)
-        config.register_opts(_amqp1_opts, group=opt_group)
+        config.register_opts(opts.amqp1_opts, group=opt_group)
 
-        self.server_request_prefix = config.amqp1.server_request_prefix
-        self.broadcast_prefix = config.amqp1.broadcast_prefix
-        self.group_request_prefix = config.amqp1.group_request_prefix
-        self._container_name = config.amqp1.container_name
+        self.server_request_prefix = \
+            config.oslo_messaging_amqp.server_request_prefix
+        self.broadcast_prefix = config.oslo_messaging_amqp.broadcast_prefix
+        self.group_request_prefix = \
+            config.oslo_messaging_amqp.group_request_prefix
+        self._container_name = config.oslo_messaging_amqp.container_name
         if not self._container_name:
             self._container_name = "container-%s" % uuid.uuid4().hex
-        self.idle_timeout = config.amqp1.idle_timeout
-        self.trace_protocol = config.amqp1.trace
-        self.ssl_ca_file = config.amqp1.ssl_ca_file
-        self.ssl_cert_file = config.amqp1.ssl_cert_file
-        self.ssl_key_file = config.amqp1.ssl_key_file
-        self.ssl_key_password = config.amqp1.ssl_key_password
-        self.ssl_allow_insecure = config.amqp1.allow_insecure_clients
+        self.idle_timeout = config.oslo_messaging_amqp.idle_timeout
+        self.trace_protocol = config.oslo_messaging_amqp.trace
+        self.ssl_ca_file = config.oslo_messaging_amqp.ssl_ca_file
+        self.ssl_cert_file = config.oslo_messaging_amqp.ssl_cert_file
+        self.ssl_key_file = config.oslo_messaging_amqp.ssl_key_file
+        self.ssl_key_password = config.oslo_messaging_amqp.ssl_key_password
+        self.ssl_allow_insecure = \
+            config.oslo_messaging_amqp.allow_insecure_clients
         self.separator = "."
         self.fanout_qualifier = "all"
         self.default_exchange = default_exchange

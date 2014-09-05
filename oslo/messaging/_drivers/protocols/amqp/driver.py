@@ -24,57 +24,16 @@ import logging
 import threading
 import time
 
+import proton
 from six import moves
 
 from oslo import messaging
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common
-from oslo.messaging.openstack.common import importutils
+from oslo.messaging._drivers.protocols.amqp import controller
 from oslo.messaging.openstack.common import jsonutils
 from oslo.messaging import target as messaging_target
 
-# TODO(kgiusti): this module depends on platform specific libraries (proton)
-# which are not available on all systems (yet).  The unittest loader will
-# attempt to directly import this driver even if the dependent libraries are
-# not installed. Since the default set of unit tests do not exercise this
-# driver, we shouldn't cause them to fail due to the missing
-# dependencies. These hacks allow the import to succeed without raising an
-# import error and causing all the tests to fail. [Note: to run the set of test
-# for this driver, use the 'amqp1' test environment - e.g. 'tox -eamqp1']
-#
-# Remove these hacks once the qpid-proton C libraries are available via Ubuntu
-# base repos and can be added to the base test-requirements.txt [they are
-# already available via EPEL]:
-
-
-class _FakeController(object):
-    """A mocked Controller to use if the controller module fails to import
-    due to missing dependencies.  Stubs out the _amqp1_opts option list and
-    provides a fake 'Task' superclass so the sub-classes SendTask, ListenTask,
-    and ReplyTask defined by this module will parse correctly on import.
-
-    This allows the tests to import the driver.py module without failing even
-    if the proton libraries are not installed.  Be aware that attempting to use
-    (instantiate) the PythonDriver will raise a NotImplementedError if the fake
-    controller is in use.  This is by design since the driver really cannot
-    work without the real controller and its dependencies.
-    """
-    fake_controller = True
-    Task = type('Task', (object,), {})
-    _amqp1_opts = list()
-
-
-proton = importutils.try_import("proton")
-try:
-    from oslo.messaging._drivers.protocols.amqp import controller
-except ImportError:
-    controller = _FakeController()
-
-
-def get_opts():
-    """Provide access to the controller's configuration options."""
-    return controller._amqp1_opts
-# TODO(kgiusti) End of hack
 
 LOG = logging.getLogger(__name__)
 
