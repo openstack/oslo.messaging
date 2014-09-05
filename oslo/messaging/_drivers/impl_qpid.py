@@ -478,6 +478,9 @@ class Connection(object):
                 hostname, port = netutils.parse_host_port(
                     adr, default_port=5672)
 
+                if ':' in hostname:
+                    hostname = '[' + hostname + ']'
+
                 params = {
                     'host': '%s:%d' % (hostname, port),
                     'username': self.conf.qpid_username,
