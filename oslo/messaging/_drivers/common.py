@@ -69,6 +69,8 @@ _MESSAGE_KEY = 'oslo.message'
 
 _REMOTE_POSTFIX = '_Remote'
 
+_SANITIZE = ['_context_auth_token', 'auth_token', 'new_pass']
+
 
 class RPCException(Exception):
     msg_fmt = _("An unknown RPC related exception occurred.")
@@ -159,21 +161,21 @@ class Connection(object):
         raise NotImplementedError()
 
 
+def _fix_passwords(d):
+    """Sanitizes the password fields in the dictionary."""
+    for k in six.iterkeys(d):
+        if k.lower().find('password') != -1:
+            d[k] = '<SANITIZED>'
+        elif k.lower() in _SANITIZE:
+            d[k] = '<SANITIZED>'
+        elif isinstance(d[k], dict):
+            _fix_passwords(d[k])
+
+    return d
+
+
 def _safe_log(log_func, msg, msg_data):
     """Sanitizes the msg_data field before logging."""
-    SANITIZE = ['_context_auth_token', 'auth_token', 'new_pass']
-
-    def _fix_passwords(d):
-        """Sanitizes the password fields in the dictionary."""
-        for k in six.iterkeys(d):
-            if k.lower().find('password') != -1:
-                d[k] = '<SANITIZED>'
-            elif k.lower() in SANITIZE:
-                d[k] = '<SANITIZED>'
-            elif isinstance(d[k], dict):
-                _fix_passwords(d[k])
-        return d
-
     return log_func(msg, _fix_passwords(copy.deepcopy(msg_data)))
 
 
