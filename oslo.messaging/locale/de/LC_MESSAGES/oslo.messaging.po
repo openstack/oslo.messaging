@@ -9,7 +9,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-07-14 06:09+0000\n"
+"POT-Creation-Date: 2014-09-07 06:09+0000\n"
 "PO-Revision-Date: 2014-07-10 18:39+0000\n"
 "Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language-Team: German "
@@ -29,16 +29,6 @@ msgstr "Es konnten keine Notifiers für %s geladen werden"
 #, python-format
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
 msgstr "'%(event)s' Notfikation wird zum Treiber '%(driver)s' geroutet."
-
-#: oslo/messaging/openstack/common/excutils.py:62
-#, python-format
-msgid "Original exception being dropped: %s"
-msgstr "Ursprüngliche Exception wurde gedropt: %s"
-
-#: oslo/messaging/openstack/common/excutils.py:91
-#, python-format
-msgid "Unexpected exception occurred %d time(s)... retrying."
-msgstr "Unerwartete Exception trat %d mal auf... Neuer Versuch."
 
 #: oslo/messaging/openstack/common/gettextutils.py:320
 msgid "Message objects do not support addition."
