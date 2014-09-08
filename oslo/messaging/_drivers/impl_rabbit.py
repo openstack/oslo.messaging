@@ -78,7 +78,7 @@ rabbit_opts = [
                secret=True),
     cfg.StrOpt('rabbit_login_method',
                default='AMQPLAIN',
-               help='the RabbitMQ login method'),
+               help='The RabbitMQ login method.'),
     cfg.StrOpt('rabbit_virtual_host',
                default='/',
                help='The RabbitMQ virtual host.'),

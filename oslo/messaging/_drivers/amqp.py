@@ -39,10 +39,10 @@ amqp_opts = [
                 default=False,
                 deprecated_name='rabbit_durable_queues',
                 deprecated_group='DEFAULT',
-                help='Use durable queues in amqp.'),
+                help='Use durable queues in AMQP.'),
     cfg.BoolOpt('amqp_auto_delete',
                 default=False,
-                help='Auto-delete queues in amqp.'),
+                help='Auto-delete queues in AMQP.'),
 
     # FIXME(markmc): this was toplevel in openstack.common.rpc
     cfg.IntOpt('rpc_conn_pool_size',
