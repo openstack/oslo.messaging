@@ -20,6 +20,7 @@ Contents
    exceptions
    opts
    conffixture
+   contributing
 
 Release Notes
 =============
