@@ -22,7 +22,7 @@ import logging
 import eventlet
 
 from oslo.config import cfg
-from oslo.messaging.openstack.common.gettextutils import _
+from oslo.messaging._i18n import _
 
 matchmaker_opts = [
     cfg.IntOpt('matchmaker_heartbeat_freq',

@@ -30,9 +30,9 @@ import sys
 
 import six
 
+from oslo.messaging._i18n import _
 from oslo.messaging import _utils as utils
 from oslo.messaging import localcontext
-from oslo.messaging.openstack.common.gettextutils import _  # noqa
 from oslo.messaging import serializer as msg_serializer
 from oslo.messaging import server as msg_server
 from oslo.messaging import target as msg_target

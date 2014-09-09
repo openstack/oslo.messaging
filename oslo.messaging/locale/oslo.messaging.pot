@@ -18,6 +18,272 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 
+#: oslo/messaging/_drivers/common.py:74
+msgid "An unknown RPC related exception occurred."
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:86
+msgid "Exception in string format operation"
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:101
+#, python-format
+msgid ""
+"Timeout while waiting on RPC response - topic: \"%(topic)s\", RPC method:"
+" \"%(method)s\" info: \"%(info)s\""
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:118 oslo/messaging/_drivers/common.py:119
+#: oslo/messaging/_drivers/common.py:120
+msgid "<unknown>"
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:124
+#, python-format
+msgid "Found duplicate message(%(msg_id)s). Skipping it."
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:128
+msgid "Invalid reuse of an RPC connection."
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:132
+#, python-format
+msgid "Specified RPC version, %(version)s, not supported by this endpoint."
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:137
+#, python-format
+msgid ""
+"Specified RPC envelope version, %(version)s, not supported by this "
+"endpoint."
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:142
+#, python-format
+msgid "Specified RPC version cap, %(version_cap)s, is too low"
+msgstr ""
+
+#: oslo/messaging/_drivers/common.py:189
+#, python-format
+msgid "Returning exception %s to caller"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:90
+#, python-format
+msgid "Invalid value for qpid_topology_version: %d"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:208
+msgid "Failed to process message... skipping it."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:554
+#, python-format
+msgid ""
+"Unable to connect to AMQP server on %(broker)s after %(retry)d tries: "
+"%(e)s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:560
+#, python-format
+msgid ""
+"Unable to connect to AMQP server on %(broker)s: %(e)s. Sleeping %(delay)s"
+" seconds"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:566
+#, python-format
+msgid "Connected to AMQP server on %s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:614
+#: oslo/messaging/_drivers/impl_rabbit.py:704
+#, python-format
+msgid "Failed to declare consumer for topic '%(topic)s': %(err_str)s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:632
+#: oslo/messaging/_drivers/impl_rabbit.py:723
+#, python-format
+msgid "Failed to consume message from queue: %s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:640
+msgid "Error processing message.  Skipping it."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_qpid.py:652
+#: oslo/messaging/_drivers/impl_rabbit.py:748
+#, python-format
+msgid "Failed to publish message to topic '%(topic)s': %(err_str)s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:173
+msgid "Failed to process message ... skipping it."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:511
+#, python-format
+msgid "Invalid SSL version : %s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:541
+#, python-format
+msgid "Connecting to AMQP server on %(hostname)s:%(port)d"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:558
+#, python-format
+msgid "Connected to AMQP server on %(hostname)s:%(port)d"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:570
+#, python-format
+msgid "Delaying reconnect for %1.1f seconds..."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:628
+#, python-format
+msgid ""
+"Unable to connect to AMQP server on %(hostname)s:%(port)d after %(retry)d"
+" tries: %(err_str)s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:643
+#, python-format
+msgid ""
+"AMQP server %(hostname)s:%(port)d closed the connection. Check login "
+"credentials: %(err_str)s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_rabbit.py:647
+#, python-format
+msgid ""
+"AMQP server on %(hostname)s:%(port)d is unreachable: %(err_str)s. Trying "
+"again in %(sleep_time)d seconds."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:105
+msgid "JSON serialization failed."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:155
+msgid "Could not open socket."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:209
+msgid "You cannot recv on this socket."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:214
+msgid "You cannot send on this socket."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:295
+msgid "Exception during message handling"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:348
+msgid "RPC message did not include method."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:380
+msgid "Registering reactor"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:392
+msgid "In reactor registered"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:396
+msgid "Consuming socket"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:446
+#, python-format
+msgid "Creating proxy for topic: %s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:452
+msgid "Topic contained dangerous characters."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:484
+msgid "Topic socket file creation failed."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:490
+#, python-format
+msgid "Local per-topic backlog buffer full for topic %s. Dropping message."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:506
+#, python-format
+msgid "Required IPC directory does not exist at %s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:515
+#, python-format
+msgid "Permission denied to IPC directory at %s"
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:518
+msgid "Could not create ZeroMQ receiver daemon. Socket may already be in use."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:571
+msgid "ZMQ Envelope version unsupported or unknown."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:599
+msgid "Skipping topic registration. Already registered."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:702
+msgid "Unsupported or unknown ZMQ envelope returned."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:709
+msgid "RPC Message Invalid."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:741
+msgid "No matchmaker results. Not casting."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:744
+msgid "No match from matchmaker."
+msgstr ""
+
+#: oslo/messaging/_drivers/impl_zmq.py:829
+#, python-format
+msgid "rpc_zmq_matchmaker = %(orig)s is deprecated; use %(new)s instead"
+msgstr ""
+
+#: oslo/messaging/_drivers/matchmaker.py:44
+msgid "Match not found by MatchMaker."
+msgstr ""
+
+#: oslo/messaging/_drivers/matchmaker.py:78
+msgid "Matchmaker does not implement registration or heartbeat."
+msgstr ""
+
+#: oslo/messaging/_drivers/matchmaker.py:214
+#, python-format
+msgid "Matchmaker unregistered: %(key)s, %(host)s"
+msgstr ""
+
+#: oslo/messaging/_drivers/matchmaker.py:226
+msgid "Register before starting heartbeat."
+msgstr ""
+
+#: oslo/messaging/_drivers/matchmaker_ring.py:73
+#: oslo/messaging/_drivers/matchmaker_ring.py:91
+#, python-format
+msgid "No key defining hosts for topic '%s', see ringfile"
+msgstr ""
+
 #: oslo/messaging/notify/_impl_routing.py:80
 #, python-format
 msgid "Failed to load any notifiers for %s"

@@ -22,7 +22,7 @@ import logging
 
 from oslo.config import cfg
 from oslo.messaging._drivers import matchmaker as mm
-from oslo.messaging.openstack.common.gettextutils import _
+from oslo.messaging._i18n import _
 
 matchmaker_opts = [
     # Matchmaker ring file
