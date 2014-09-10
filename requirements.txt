@@ -22,3 +22,6 @@ PyYAML>=3.1.0
 
 # rabbit driver is the default
 kombu>=2.4.8
+
+# middleware
+WebOb>=1.2.3
