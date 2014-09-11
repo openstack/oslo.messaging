@@ -20,6 +20,7 @@ Contents
    exceptions
    opts
    conffixture
+   AMQP1.0
    contributing
 
 Release Notes
