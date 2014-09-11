@@ -980,7 +980,7 @@ class ZmqDriver(base.BaseDriver):
         # because zeromq doesn't support requeing message
         conn = create_connection(self.conf)
 
-        listener = ZmqListener(self, None)
+        listener = ZmqListener(self)
         for target, priority in targets_and_priorities:
             # NOTE(ewindisch): dot-priority in rpc notifier does not
             # work with our assumptions.
