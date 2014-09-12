@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-07 06:09+0000\n"
+"POT-Creation-Date: 2014-09-12 06:06+0000\n"
 "PO-Revision-Date: 2014-09-02 09:15+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom) (http://www.transifex.com/projects/p/"
@@ -19,3 +19,8 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: oslo/messaging/notify/middleware.py:42
+#, python-format
+msgid "An exception occurred processing the API call: %s "
+msgstr ""
