@@ -7,9 +7,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging 1.4.0.0a3.2.g3d956f5\n"
+"Project-Id-Version: oslo.messaging 1.4.0.0a5.12.ge363401\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-07-14 06:09+0000\n"
+"POT-Creation-Date: 2014-09-12 06:06+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,4 +17,9 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
+
+#: oslo/messaging/notify/middleware.py:42
+#, python-format
+msgid "An exception occurred processing the API call: %s "
+msgstr ""
 
