@@ -3,7 +3,7 @@
 # process, which may cause wedges in the gate later.
 
 oslo.config>=1.4.0.0a3
-oslo.utils>=0.2.0
+oslo.utils>=0.3.0                       # Apache-2.0
 stevedore>=0.14
 
 # for jsonutils
@@ -12,7 +12,7 @@ six>=1.7.0
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
 
-eventlet>=0.13.0
+eventlet>=0.15.1
 
 # used by openstack/common/gettextutils.py
 Babel>=1.3
