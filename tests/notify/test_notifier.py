@@ -30,8 +30,8 @@ from oslo.messaging.notify import _impl_log
 from oslo.messaging.notify import _impl_messaging
 from oslo.messaging.notify import _impl_test
 from oslo.messaging.notify import notifier as msg_notifier
-from oslo.messaging.openstack.common import jsonutils
 from oslo.messaging import serializer as msg_serializer
+from oslo.serialization import jsonutils
 from oslo.utils import timeutils
 from tests import utils as test_utils
 

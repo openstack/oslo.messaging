@@ -31,8 +31,8 @@ from oslo import messaging
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common
 from oslo.messaging._drivers.protocols.amqp import controller
-from oslo.messaging.openstack.common import jsonutils
 from oslo.messaging import target as messaging_target
+from oslo.serialization import jsonutils
 
 
 LOG = logging.getLogger(__name__)

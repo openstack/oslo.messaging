@@ -27,7 +27,7 @@ from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging import exceptions
 from oslo.messaging.openstack.common.gettextutils import _
-from oslo.messaging.openstack.common import jsonutils
+from oslo.serialization import jsonutils
 from oslo.utils import importutils
 from oslo.utils import netutils
 

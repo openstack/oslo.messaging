@@ -18,7 +18,7 @@
 import logging
 
 from oslo.messaging.notify import notifier
-from oslo.messaging.openstack.common import jsonutils
+from oslo.serialization import jsonutils
 
 
 class LogDriver(notifier._Driver):

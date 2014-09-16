@@ -25,7 +25,7 @@ import six
 from oslo import messaging
 from oslo.messaging import _utils as utils
 from oslo.messaging.openstack.common.gettextutils import _
-from oslo.messaging.openstack.common import jsonutils
+from oslo.serialization import jsonutils
 
 LOG = logging.getLogger(__name__)
 

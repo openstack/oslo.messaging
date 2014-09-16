@@ -27,7 +27,7 @@ from oslo import messaging
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as driver_common
 from oslo.messaging._drivers import impl_rabbit as rabbit_driver
-from oslo.messaging.openstack.common import jsonutils
+from oslo.serialization import jsonutils
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
