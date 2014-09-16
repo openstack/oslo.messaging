@@ -27,7 +27,7 @@ from oslo.messaging._drivers import impl_zmq
 from oslo.messaging._drivers import matchmaker
 from oslo.messaging._drivers import matchmaker_redis
 from oslo.messaging._drivers import matchmaker_ring
-from oslo.messaging._drivers.protocols.amqp import driver as amqp1_driver
+from oslo.messaging._drivers.protocols.amqp import opts as amqp_opts
 from oslo.messaging._executors import impl_eventlet
 from oslo.messaging.notify import notifier
 from oslo.messaging.rpc import client
@@ -43,13 +43,13 @@ _global_opt_lists = [
     notifier._notifier_opts,
     client._client_opts,
     transport._transport_opts,
-    amqp1_driver.get_opts()
 ]
 
 _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
     ('matchmaker_redis', matchmaker_redis.matchmaker_redis_opts),
     ('matchmaker_ring', matchmaker_ring.matchmaker_opts),
+    ('oslo_messaging_amqp', amqp_opts.amqp1_opts),
 ]
 
 

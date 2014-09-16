@@ -24,7 +24,6 @@ from six import moves
 import testtools
 
 from oslo import messaging
-from oslo.messaging._drivers.protocols.amqp import driver as amqp_driver
 from oslo.messaging.openstack.common import importutils
 from tests import utils as test_utils
 
@@ -32,6 +31,9 @@ from tests import utils as test_utils
 # dependencies are installed.  This should be removed once the proton libraries
 # are available in the base repos for all supported platforms.
 pyngus = importutils.try_import("pyngus")
+if pyngus:
+    from oslo.messaging._drivers.protocols.amqp import driver as amqp_driver
+
 
 LOG = logging.getLogger(__name__)
 
