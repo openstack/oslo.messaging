@@ -24,7 +24,7 @@ from six import moves
 import testtools
 
 from oslo import messaging
-from oslo.messaging.openstack.common import importutils
+from oslo.utils import importutils
 from tests import utils as test_utils
 
 # TODO(kgiusti) Conditionally run these tests only if the necessary
