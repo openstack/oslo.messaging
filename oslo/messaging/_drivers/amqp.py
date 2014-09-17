@@ -107,16 +107,15 @@ class ConnectionContext(rpc_common.Connection):
     If possible the function makes sure to return a connection to the pool.
     """
 
-    def __init__(self, conf, url, connection_pool, pooled=True):
+    def __init__(self, connection_pool, pooled=True):
         """Create a new connection, or get one from the pool."""
         self.connection = None
-        self.conf = conf
-        self.url = url
         self.connection_pool = connection_pool
         if pooled:
             self.connection = connection_pool.get()
         else:
-            self.connection = connection_pool.connection_cls(conf, url)
+            # a non-pooled connection is requested, so create a new connection
+            self.connection = connection_pool.create()
         self.pooled = pooled
 
     def __enter__(self):
