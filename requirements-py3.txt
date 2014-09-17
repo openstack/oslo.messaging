@@ -2,8 +2,8 @@
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
 
-oslo.config>=1.2.1
-oslo.utils>=0.2.0
+oslo.config>=1.4.0.0a3
+oslo.utils>=0.3.0                       # Apache-2.0
 stevedore>=0.14
 
 # for jsonutils
