@@ -15,7 +15,7 @@ import logging
 from oslo.config import cfg
 
 
-class PublishErrorsHandler(logging.Handler):
+class LoggingErrorNotificationHandler(logging.Handler):
     def __init__(self, *args, **kwargs):
         # NOTE(dhellmann): Avoid a cyclical import by doing this one
         # at runtime.
@@ -36,3 +36,6 @@ class PublishErrorsHandler(logging.Handler):
             return
         self._notifier.error(None, 'error_notification',
                              dict(error=record.msg))
+
+
+PublishErrorsHandler = LoggingErrorNotificationHandler
