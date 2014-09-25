@@ -7,9 +7,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging 1.4.0.0a4.39.gfbee941\n"
+"Project-Id-Version: oslo.messaging 1.4.1.33.g8d242bd\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-07 06:09+0000\n"
+"POT-Creation-Date: 2014-09-25 06:24+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -36,21 +36,6 @@ msgstr ""
 msgid ""
 "Message objects do not support str() because they may contain non-ascii "
 "characters. Please use unicode() or translate() instead."
-msgstr ""
-
-#: oslo/messaging/openstack/common/strutils.py:92
-#, python-format
-msgid "Unrecognized value '%(val)s', acceptable values are: %(acceptable)s"
-msgstr ""
-
-#: oslo/messaging/openstack/common/strutils.py:197
-#, python-format
-msgid "Invalid unit system: \"%s\""
-msgstr ""
-
-#: oslo/messaging/openstack/common/strutils.py:206
-#, python-format
-msgid "Invalid string format: %s"
 msgstr ""
 
 #: oslo/messaging/rpc/dispatcher.py:142
