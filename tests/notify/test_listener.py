@@ -28,39 +28,60 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 class ListenerSetupMixin(object):
 
-    class Listener(object):
-        def __init__(self, transport, targets, endpoints, expect_messages):
+    class ListenerTracker(object):
+        def __init__(self, expect_messages):
             self._expect_messages = expect_messages
             self._received_msgs = 0
-            self._listener = messaging.get_notification_listener(
-                transport, targets, [self] + endpoints, allow_requeue=True)
+            self.listeners = []
 
         def info(self, ctxt, publisher_id, event_type, payload, metadata):
             self._received_msgs += 1
             if self._expect_messages == self._received_msgs:
-                # Check start() does nothing with a running listener
-                self._listener.start()
-                self._listener.stop()
-                self._listener.wait()
+                self.stop()
 
-        def start(self):
-            self._listener.start()
+        def stop(self):
+            for listener in self.listeners:
+                # Check start() does nothing with a running listener
+                listener.start()
+                listener.stop()
+                listener.wait()
+            self.listeners = []
+
+    def setUp(self):
+        self.trackers = {}
+        self.addCleanup(self._stop_trackers)
+
+    def _stop_trackers(self):
+        for pool in self.trackers:
+            self.trackers[pool].stop()
+        self.trackers = {}
 
     def _setup_listener(self, transport, endpoints, expect_messages,
-                        targets=None):
-        listener = self.Listener(transport,
-                                 targets=targets or [
-                                     messaging.Target(topic='testtopic')],
-                                 expect_messages=expect_messages,
-                                 endpoints=endpoints)
+                        targets=None, pool=None):
+
+        if pool is None:
+            tracker_name = '__default__'
+        else:
+            tracker_name = pool
+
+        if targets is None:
+            targets = [messaging.Target(topic='testtopic')]
+
+        tracker = self.trackers.setdefault(
+            tracker_name, self.ListenerTracker(expect_messages))
+        listener = messaging.get_notification_listener(
+            transport, targets=targets, endpoints=[tracker] + endpoints,
+            allow_requeue=True, pool=pool)
+        tracker.listeners.append(listener)
 
         thread = threading.Thread(target=listener.start)
         thread.daemon = True
+        thread.listener = listener
         thread.start()
         return thread
 
     def _stop_listener(self, thread):
-        thread.join(timeout=5)
+        thread.join(timeout=15)
         return thread.isAlive()
 
     def _setup_notifier(self, transport, topic='testtopic',
@@ -78,6 +99,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
     def setUp(self):
         super(TestNotifyListener, self).setUp(conf=cfg.ConfigOpts())
+        ListenerSetupMixin.setUp(self)
 
     def test_constructor(self):
         transport = messaging.get_transport(self.conf, url='fake:')
@@ -250,3 +272,80 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                       {'timestamp': mock.ANY, 'message_id': mock.ANY}),
             mock.call({}, 'testpublisher', 'an_event.start', 'test',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY})])
+
+    def test_two_pools(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        endpoint1 = mock.Mock()
+        endpoint1.info.return_value = None
+        endpoint2 = mock.Mock()
+        endpoint2.info.return_value = None
+
+        targets = [messaging.Target(topic="topic")]
+        listener1_thread = self._setup_listener(transport, [endpoint1], 2,
+                                                targets=targets, pool="pool1")
+        listener2_thread = self._setup_listener(transport, [endpoint2], 2,
+                                                targets=targets, pool="pool2")
+
+        notifier = self._setup_notifier(transport, topic="topic")
+        notifier.info({'ctxt': '0'}, 'an_event.start', 'test message0')
+        notifier.info({'ctxt': '1'}, 'an_event.start', 'test message1')
+
+        self.assertFalse(self._stop_listener(listener2_thread))
+        self.assertFalse(self._stop_listener(listener1_thread))
+
+        def mocked_endpoint_call(i):
+            return mock.call({'ctxt': '%d' % i}, 'testpublisher',
+                             'an_event.start', 'test message%d' % i,
+                             {'timestamp': mock.ANY, 'message_id': mock.ANY})
+
+        endpoint1.info.assert_has_calls([mocked_endpoint_call(0),
+                                         mocked_endpoint_call(1)])
+        endpoint2.info.assert_has_calls([mocked_endpoint_call(0),
+                                         mocked_endpoint_call(1)])
+
+    def test_two_pools_three_listener(self):
+        transport = messaging.get_transport(self.conf, url='fake:')
+
+        endpoint1 = mock.Mock()
+        endpoint1.info.return_value = None
+        endpoint2 = mock.Mock()
+        endpoint2.info.return_value = None
+        endpoint3 = mock.Mock()
+        endpoint3.info.return_value = None
+
+        targets = [messaging.Target(topic="topic")]
+        listener1_thread = self._setup_listener(transport, [endpoint1], 100,
+                                                targets=targets, pool="pool1")
+        listener2_thread = self._setup_listener(transport, [endpoint2], 100,
+                                                targets=targets, pool="pool2")
+        listener3_thread = self._setup_listener(transport, [endpoint3], 100,
+                                                targets=targets, pool="pool2")
+
+        def mocked_endpoint_call(i):
+            return mock.call({'ctxt': '%d' % i}, 'testpublisher',
+                             'an_event.start', 'test message%d' % i,
+                             {'timestamp': mock.ANY, 'message_id': mock.ANY})
+
+        notifier = self._setup_notifier(transport, topic="topic")
+        mocked_endpoint1_calls = []
+        for i in range(0, 100):
+            notifier.info({'ctxt': '%d' % i}, 'an_event.start',
+                          'test message%d' % i)
+            mocked_endpoint1_calls.append(mocked_endpoint_call(i))
+
+        self.assertFalse(self._stop_listener(listener3_thread))
+        self.assertFalse(self._stop_listener(listener2_thread))
+        self.assertFalse(self._stop_listener(listener1_thread))
+
+        self.assertEqual(100, endpoint1.info.call_count)
+        endpoint1.info.assert_has_calls(mocked_endpoint1_calls)
+
+        self.assertNotEqual(0, endpoint2.info.call_count)
+        self.assertNotEqual(0, endpoint3.info.call_count)
+
+        self.assertEqual(100, endpoint2.info.call_count +
+                         endpoint3.info.call_count)
+        for call in mocked_endpoint1_calls:
+            self.assertIn(call, endpoint2.info.mock_calls +
+                          endpoint3.info.mock_calls)

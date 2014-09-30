@@ -103,13 +103,14 @@ class Transport(object):
                                            target)
         return self._driver.listen(target)
 
-    def _listen_for_notifications(self, targets_and_priorities):
+    def _listen_for_notifications(self, targets_and_priorities, pool):
         for target, priority in targets_and_priorities:
             if not target.topic:
                 raise exceptions.InvalidTarget('A target must have '
                                                'topic specified',
                                                target)
-        return self._driver.listen_for_notifications(targets_and_priorities)
+        return self._driver.listen_for_notifications(
+            targets_and_priorities, pool)
 
     def cleanup(self):
         """Release all resources associated with this transport."""

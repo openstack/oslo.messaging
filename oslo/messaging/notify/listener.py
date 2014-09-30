@@ -61,7 +61,9 @@ A simple example of a notification listener with multiple endpoints might be::
         NotificationEndpoint(),
         ErrorEndpoint(),
     ]
-    server = messaging.get_notification_listener(transport, targets, endpoints)
+    pool = "listener-workers"
+    server = messaging.get_notification_listener(transport, targets, endpoints,
+                                                 pool)
     server.start()
     server.wait()
 
@@ -77,6 +79,10 @@ and a timestamp.
 
 By supplying a serializer object, a listener can deserialize a request context
 and arguments from - and serialize return values to - primitive types.
+
+By supplying a pool name you can create multiple groups of listeners consuming
+notifications and that each group only receives one copy of each
+notification.
 
 An endpoint method can explicitly return messaging.NotificationResult.HANDLED
 to acknowledge a message or messaging.NotificationResult.REQUEUE to requeue the
@@ -97,7 +103,7 @@ from oslo.messaging import server as msg_server
 
 def get_notification_listener(transport, targets, endpoints,
                               executor='blocking', serializer=None,
-                              allow_requeue=False):
+                              allow_requeue=False, pool=None):
     """Construct a notification listener
 
     The executor parameter controls how incoming messages will be received and
@@ -117,10 +123,12 @@ def get_notification_listener(transport, targets, endpoints,
     :type serializer: Serializer
     :param allow_requeue: whether NotificationResult.REQUEUE support is needed
     :type allow_requeue: bool
+    :param pool: the pool name
+    :type pool: str
     :raises: NotImplementedError
     """
     transport._require_driver_features(requeue=allow_requeue)
     dispatcher = notify_dispatcher.NotificationDispatcher(targets, endpoints,
                                                           serializer,
-                                                          allow_requeue)
+                                                          allow_requeue, pool)
     return msg_server.MessageHandlingServer(transport, dispatcher, executor)

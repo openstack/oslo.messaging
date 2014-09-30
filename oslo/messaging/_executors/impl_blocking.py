@@ -36,7 +36,10 @@ class BlockingExecutor(base.ExecutorBase):
     def start(self):
         self._running = True
         while self._running:
-            with self.dispatcher(self.listener.poll()) as callback:
+            message = self.listener.poll(timeout=0.01)
+            if not message:
+                continue
+            with self.dispatcher(message) as callback:
                 callback()
 
     def stop(self):

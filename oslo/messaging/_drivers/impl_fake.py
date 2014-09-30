@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import json
 import threading
 import time
@@ -40,16 +41,17 @@ class FakeIncomingMessage(base.IncomingMessage):
 
 class FakeListener(base.Listener):
 
-    def __init__(self, driver, exchange_manager, targets):
+    def __init__(self, driver, exchange_manager, targets, pool=None):
         super(FakeListener, self).__init__(driver)
         self._exchange_manager = exchange_manager
         self._targets = targets
+        self._pool = pool
 
         # NOTE(sileht): Ensure that all needed queues exists even the listener
         # have not been polled yet
         for target in self._targets:
             exchange = self._exchange_manager.get_exchange(target.exchange)
-            exchange.ensure_queue(target)
+            exchange.ensure_queue(target, pool)
 
     def poll(self, timeout=None):
         if timeout is not None:
@@ -59,7 +61,8 @@ class FakeListener(base.Listener):
         while True:
             for target in self._targets:
                 exchange = self._exchange_manager.get_exchange(target.exchange)
-                (ctxt, message, reply_q, requeue) = exchange.poll(target)
+                (ctxt, message, reply_q, requeue) = exchange.poll(target,
+                                                                  self._pool)
                 if message is not None:
                     message = FakeIncomingMessage(self, ctxt, message,
                                                   reply_q, requeue)
@@ -83,15 +86,21 @@ class FakeExchange(object):
         self._topic_queues = {}
         self._server_queues = {}
 
-    def ensure_queue(self, target):
+    def ensure_queue(self, target, pool):
         with self._queues_lock:
             if target.server:
                 self._get_server_queue(target.topic, target.server)
             else:
-                self._get_topic_queue(target.topic)
+                self._get_topic_queue(target.topic, pool)
 
-    def _get_topic_queue(self, topic):
-        return self._topic_queues.setdefault(topic, [])
+    def _get_topic_queue(self, topic, pool=None):
+        if pool and (topic, pool) not in self._topic_queues:
+            # NOTE(sileht): if the pool name is set, we need to
+            # copy all the already delivered messages from the
+            # default queue to this queue
+            self._topic_queues[(topic, pool)] = copy.deepcopy(
+                self._get_topic_queue(topic))
+        return self._topic_queues.setdefault((topic, pool), [])
 
     def _get_server_queue(self, topic, server):
         return self._server_queues.setdefault((topic, server), [])
@@ -105,7 +114,11 @@ class FakeExchange(object):
             elif server is not None:
                 queues = [self._get_server_queue(topic, server)]
             else:
-                queues = [self._get_topic_queue(topic)]
+                # NOTE(sileht): ensure at least the queue without
+                # pool name exists
+                self._get_topic_queue(topic)
+                queues = [q for t, q in self._topic_queues.items()
+                          if t[0] == topic]
 
             def requeue():
                 self.deliver_message(topic, ctxt, message, server=server,
@@ -114,12 +127,12 @@ class FakeExchange(object):
             for queue in queues:
                 queue.append((ctxt, message, reply_q, requeue))
 
-    def poll(self, target):
+    def poll(self, target, pool):
         with self._queues_lock:
             if target.server:
                 queue = self._get_server_queue(target.topic, target.server)
             else:
-                queue = self._get_topic_queue(target.topic)
+                queue = self._get_topic_queue(target.topic, pool)
             return queue.pop(0) if queue else (None, None, None, None)
 
 
@@ -208,11 +221,11 @@ class FakeDriver(base.BaseDriver):
                                                   exchange=exchange)])
         return listener
 
-    def listen_for_notifications(self, targets_and_priorities):
+    def listen_for_notifications(self, targets_and_priorities, pool):
         targets = [messaging.Target(topic='%s.%s' % (target.topic, priority),
                                     exchange=target.exchange)
                    for target, priority in targets_and_priorities]
-        listener = FakeListener(self, self._exchange_manager, targets)
+        listener = FakeListener(self, self._exchange_manager, targets, pool)
 
         return listener
 

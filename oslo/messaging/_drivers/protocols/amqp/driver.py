@@ -265,8 +265,11 @@ class ProtonDriver(base.BaseDriver):
         return listener
 
     @_ensure_connect_called
-    def listen_for_notifications(self, targets_and_priorities):
+    def listen_for_notifications(self, targets_and_priorities, pool):
         LOG.debug("Listen for notifications %s", targets_and_priorities)
+        if pool:
+            raise NotImplementedError('"pool" not implemented by'
+                                      'this transport driver')
         listener = ProtonListener(self)
         for target, priority in targets_and_priorities:
             topic = '%s.%s' % (target.topic, priority)
