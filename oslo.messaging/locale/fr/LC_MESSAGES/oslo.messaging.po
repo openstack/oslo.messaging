@@ -1,0 +1,51 @@
+# French translations for oslo.messaging.
+# Copyright (C) 2014 ORGANIZATION
+# This file is distributed under the same license as the oslo.messaging
+# project.
+#
+# Translators:
+# Jonathan Dupart <jonathan+transifex@dupart.org>, 2014
+# Maxime COQUEREL <max.coquerel@gmail.com>, 2014
+msgid ""
+msgstr ""
+"Project-Id-Version:  oslo.messaging\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2014-10-01 06:09+0000\n"
+"PO-Revision-Date: 2014-09-25 09:33+0000\n"
+"Last-Translator: Jonathan Dupart <jonathan+transifex@dupart.org>\n"
+"Language-Team: French "
+"(http://www.transifex.com/projects/p/oslomessaging/language/fr/)\n"
+"Plural-Forms: nplurals=2; plural=(n > 1)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 1.3\n"
+
+#: oslo/messaging/notify/_impl_routing.py:80
+#, python-format
+msgid "Failed to load any notifiers for %s"
+msgstr "Echec de chargement des notifications pour %s"
+
+#: oslo/messaging/notify/_impl_routing.py:117
+#, python-format
+msgid "Routing '%(event)s' notification to '%(driver)s' driver"
+msgstr "Routage '%(event)s' notification du pilote %(driver)s'"
+
+#: oslo/messaging/openstack/common/gettextutils.py:320
+msgid "Message objects do not support addition."
+msgstr "Les objets message ne supporte pas l'ajout."
+
+#: oslo/messaging/openstack/common/gettextutils.py:330
+msgid ""
+"Message objects do not support str() because they may contain non-ascii "
+"characters. Please use unicode() or translate() instead."
+msgstr ""
+"Les objets message ne supportent pas str() car il peuvent contenir des "
+"caractères non-ascii. Merci d'utiliser unicode() ou translate() à la "
+"place."
+
+#: oslo/messaging/rpc/dispatcher.py:142
+#, python-format
+msgid "Exception during message handling: %s"
+msgstr "Exception lors de la manipulation du message: %s"
+
