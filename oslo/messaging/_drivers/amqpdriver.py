@@ -127,6 +127,10 @@ class AMQPListener(base.Listener):
             else:
                 self.conn.consume(limit=1)
 
+    def cleanup(self):
+        # Closes listener connection
+        self.conn.close()
+
 
 class ReplyWaiters(object):
 

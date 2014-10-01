@@ -140,4 +140,7 @@ class MessageHandlingServer(object):
         """
         if self._executor is not None:
             self._executor.wait()
+            # Close listener connection after processing all messages
+            self._executor.listener.cleanup()
+
         self._executor = None
