@@ -32,7 +32,7 @@ from oslo.config import cfg
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
-from oslo.messaging.openstack.common.gettextutils import _
+from oslo.messaging._i18n import _
 from oslo.serialization import jsonutils
 from oslo.utils import excutils
 from oslo.utils import importutils

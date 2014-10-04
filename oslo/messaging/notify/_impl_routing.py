@@ -21,8 +21,8 @@ from stevedore import dispatch
 import yaml
 
 from oslo.config import cfg
+from oslo.messaging._i18n import _
 from oslo.messaging.notify import notifier
-from oslo.messaging.openstack.common.gettextutils import _  # noqa
 
 
 LOG = logging.getLogger(__name__)
