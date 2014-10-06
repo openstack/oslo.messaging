@@ -17,7 +17,6 @@ See http://docs.openstack.org/developer/oslo.i18n/usage.html
 """
 
 from oslo import i18n
-from oslo.messaging.openstack.common import gettextutils
 
 
 _translators = i18n.TranslatorFactory(domain='oslo.messaging')
@@ -34,20 +33,3 @@ _LI = _translators.log_info
 _LW = _translators.log_warning
 _LE = _translators.log_error
 _LC = _translators.log_critical
-
-# Parts in oslo-incubator are still using gettextutils._(), _LI(), etc., from
-# oslo-incubator. Until these parts are changed to use oslo.i18n, Keystone
-# needs to do something to allow them to work. One option is to continue to
-# initialize gettextutils, but with the way that Nova has initialization
-# spread out over mutltiple entry points, we'll monkey-patch
-# gettextutils._(), _LI(), etc., to use our oslo.i18n versions.
-
-# FIXME(dims): Remove the monkey-patching and update openstack-common.conf and
-# do a sync with oslo-incubator to remove gettextutils once oslo-incubator
-# isn't using oslo-incubator gettextutils any more.
-
-gettextutils._ = _
-gettextutils._LI = _LI
-gettextutils._LW = _LW
-gettextutils._LE = _LE
-gettextutils._LC = _LC

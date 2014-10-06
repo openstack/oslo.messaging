@@ -26,9 +26,9 @@ import webob.dec
 
 from oslo.config import cfg
 from oslo import messaging
+from oslo.messaging._i18n import _LE
 from oslo.messaging import notify
 from oslo.messaging.openstack.common import context
-from oslo.messaging.openstack.common.gettextutils import _LE
 from oslo.messaging.openstack.common.middleware import base
 
 LOG = logging.getLogger(__name__)
