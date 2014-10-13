@@ -14,7 +14,7 @@ six>=1.7.0
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
 
-eventlet>=0.15.1
+eventlet>=0.15.2
 
 # used by oslo.i18n
 Babel>=1.3
