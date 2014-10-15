@@ -111,6 +111,8 @@ class TestDispatcher(test_utils.BaseTestCase):
                 elif isinstance(ex, messaging.UnsupportedVersion):
                     self.assertEqual(self.msg.get('version', '1.0'),
                                      ex.version)
+                    if ex.method:
+                        self.assertEqual(self.msg.get('method'), ex.method)
             else:
                 self.assertTrue(self.success, failure)
                 self.assertIsNone(failure)
