@@ -104,7 +104,7 @@ class MatchMakerRedis(mm_common.HeartbeatMatchMakerBase):
             # If we could not update the expiration, the key
             # might have been pruned. Re-register, creating a new
             # key in Redis.
-            self.register(self.topic_host[host], host)
+            self.register(self.host_topic[host], host)
 
     def is_alive(self, topic, host):
         if self.redis.ttl(host) == -1:
