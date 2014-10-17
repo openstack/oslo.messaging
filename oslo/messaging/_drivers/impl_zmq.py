@@ -759,46 +759,6 @@ def _multi_send(method, context, topic, msg, timeout=None,
     return return_val
 
 
-def create_connection(conf, new=True):
-    return Connection(conf)
-
-
-def multicall(conf, *args, **kwargs):
-    """Multiple calls."""
-    return _multi_send(_call, *args, **kwargs)
-
-
-def call(conf, *args, **kwargs):
-    """Send a message, expect a response."""
-    data = _multi_send(_call, *args, **kwargs)
-    return data[-1]
-
-
-def cast(conf, *args, **kwargs):
-    """Send a message expecting no reply."""
-    _multi_send(_cast, *args, **kwargs)
-
-
-def fanout_cast(conf, context, topic, msg, **kwargs):
-    """Send a message to all listening and expect no reply."""
-    # NOTE(ewindisch): fanout~ is used because it avoid splitting on .
-    # and acts as a non-subtle hint to the matchmaker and ZmqProxy.
-    _multi_send(_cast, context, 'fanout~' + six.text_type(topic),
-                msg, **kwargs)
-
-
-def notify(conf, context, topic, msg, envelope):
-    """Send notification event.
-
-    Notifications are sent to topic-priority.
-    This differs from the AMQP drivers which send to topic.priority.
-    """
-    # NOTE(ewindisch): dot-priority in rpc notifier does not
-    # work with our assumptions.
-    topic = topic.replace('.', '-')
-    cast(conf, context, topic, msg, envelope=envelope)
-
-
 def cleanup():
     """Clean up resources in use by implementation."""
     global ZMQ_CTX
@@ -964,7 +924,7 @@ class ZmqDriver(base.BaseDriver):
         return self._send(target, ctxt, message, envelope=(version == 2.0))
 
     def listen(self, target):
-        conn = create_connection(self.conf)
+        conn = Connection(self.conf)
 
         listener = ZmqListener(self)
 
@@ -980,7 +940,7 @@ class ZmqDriver(base.BaseDriver):
     def listen_for_notifications(self, targets_and_priorities):
         # NOTE(sileht): this listener implementation is limited
         # because zeromq doesn't support requeing message
-        conn = create_connection(self.conf)
+        conn = Connection(self.conf)
 
         listener = ZmqListener(self)
         for target, priority in targets_and_priorities:
