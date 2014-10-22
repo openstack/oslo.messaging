@@ -5,13 +5,14 @@
 #
 # Translators:
 # Andreas Jaeger <jaegerandi@gmail.com>, 2014
+# Ettore Atalan <atalanttore@googlemail.com>, 2014
 msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-25 06:24+0000\n"
-"PO-Revision-Date: 2014-07-10 18:39+0000\n"
-"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
+"POT-Creation-Date: 2014-10-22 06:17+0000\n"
+"PO-Revision-Date: 2014-10-14 14:05+0000\n"
+"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: German "
 "(http://www.transifex.com/projects/p/oslomessaging/language/de/)\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
@@ -30,17 +31,7 @@ msgstr "Es konnten keine Notifiers für %s geladen werden"
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
 msgstr "'%(event)s' Notfikation wird zum Treiber '%(driver)s' geroutet."
 
-#: oslo/messaging/openstack/common/gettextutils.py:320
-msgid "Message objects do not support addition."
-msgstr ""
-
-#: oslo/messaging/openstack/common/gettextutils.py:330
-msgid ""
-"Message objects do not support str() because they may contain non-ascii "
-"characters. Please use unicode() or translate() instead."
-msgstr ""
-
-#: oslo/messaging/rpc/dispatcher.py:142
+#: oslo/messaging/rpc/dispatcher.py:145
 #, python-format
 msgid "Exception during message handling: %s"
 msgstr "Exception während Messagebehandlung: %s"

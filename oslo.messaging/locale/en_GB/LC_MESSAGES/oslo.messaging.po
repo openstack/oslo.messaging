@@ -9,8 +9,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-09-25 06:24+0000\n"
-"PO-Revision-Date: 2014-09-25 01:36+0000\n"
+"POT-Creation-Date: 2014-10-22 06:17+0000\n"
+"PO-Revision-Date: 2014-10-14 14:05+0000\n"
 "Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: English (United Kingdom) "
 "(http://www.transifex.com/projects/p/oslomessaging/language/en_GB/)\n"
@@ -30,19 +30,7 @@ msgstr "Failed to load any notifiers for %s"
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
 msgstr "Routing '%(event)s' notification to '%(driver)s' driver"
 
-#: oslo/messaging/openstack/common/gettextutils.py:320
-msgid "Message objects do not support addition."
-msgstr "Message objects do not support addition."
-
-#: oslo/messaging/openstack/common/gettextutils.py:330
-msgid ""
-"Message objects do not support str() because they may contain non-ascii "
-"characters. Please use unicode() or translate() instead."
-msgstr ""
-"Message objects do not support str() because they may contain non-ascii "
-"characters. Please use unicode() or translate() instead."
-
-#: oslo/messaging/rpc/dispatcher.py:142
+#: oslo/messaging/rpc/dispatcher.py:145
 #, python-format
 msgid "Exception during message handling: %s"
 msgstr "Exception during message handling: %s"
