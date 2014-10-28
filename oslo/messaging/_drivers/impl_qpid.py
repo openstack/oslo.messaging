@@ -227,7 +227,6 @@ class DirectConsumer(ConsumerBase):
         """
 
         link_opts = {
-            "auto-delete": conf.amqp_auto_delete,
             "exclusive": True,
             "durable": conf.amqp_durable_queues,
         }
