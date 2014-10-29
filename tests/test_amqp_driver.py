@@ -283,6 +283,62 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
+class TestAuthentication(test_utils.BaseTestCase):
+
+    def setUp(self):
+        super(TestAuthentication, self).setUp()
+        LOG.error("Starting Authentication Test")
+        # for simplicity, encode the credentials as they would appear 'on the
+        # wire' in a SASL frame - username and password prefixed by zero.
+        user_credentials = ["\0joe\0secret"]
+        self._broker = FakeBroker(sasl_mechanisms="PLAIN",
+                                  user_credentials=user_credentials)
+        self._broker.start()
+
+    def tearDown(self):
+        super(TestAuthentication, self).tearDown()
+        self._broker.stop()
+        LOG.error("Authentication Test Ended")
+
+    def test_authentication_ok(self):
+        """Verify that username and password given in TransportHost are
+        accepted by the broker.
+        """
+
+        addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
+                                            self._broker.port)
+        url = messaging.TransportURL.parse(self.conf, addr)
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+        target = messaging.Target(topic="test-topic")
+        listener = _ListenerThread(driver.listen(target), 1)
+        rc = driver.send(target, {"context": True},
+                         {"method": "echo"}, wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_authentication_failure(self):
+        """Verify that a bad password given in TransportHost is
+        rejected by the broker.
+        """
+
+        addr = "amqp://joe:badpass@%s:%d" % (self._broker.host,
+                                             self._broker.port)
+        url = messaging.TransportURL.parse(self.conf, addr)
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+        target = messaging.Target(topic="test-topic")
+        _ListenerThread(driver.listen(target), 1)
+        self.assertRaises(messaging.MessagingTimeout,
+                          driver.send,
+                          target, {"context": True},
+                          {"method": "echo"},
+                          wait_for_reply=True,
+                          timeout=2.0)
+        driver.cleanup()
+
+
+@testtools.skipUnless(pyngus, "proton modules not present")
 class TestFailover(test_utils.BaseTestCase):
 
     def setUp(self):
@@ -362,7 +418,8 @@ class FakeBroker(threading.Thread):
         class Connection(pyngus.ConnectionEventHandler):
             """A single AMQP connection."""
 
-            def __init__(self, server, socket_, name):
+            def __init__(self, server, socket_, name,
+                         sasl_mechanisms, user_credentials):
                 """Create a Connection using socket_."""
                 self.socket = socket_
                 self.name = name
@@ -370,8 +427,11 @@ class FakeBroker(threading.Thread):
                 self.connection = server.container.create_connection(name,
                                                                      self)
                 self.connection.user_context = self
-                self.connection.pn_sasl.mechanisms("ANONYMOUS")
-                self.connection.pn_sasl.server()
+                self.sasl_mechanisms = sasl_mechanisms
+                self.user_credentials = user_credentials
+                if sasl_mechanisms:
+                    self.connection.pn_sasl.mechanisms(sasl_mechanisms)
+                    self.connection.pn_sasl.server()
                 self.connection.open()
                 self.sender_links = set()
                 self.closed = False
@@ -436,7 +496,14 @@ class FakeBroker(threading.Thread):
                                         link_handle, addr)
 
             def sasl_step(self, connection, pn_sasl):
-                pn_sasl.done(pn_sasl.OK)  # always permit
+                if self.sasl_mechanisms == 'PLAIN':
+                    credentials = pn_sasl.recv()
+                    if not credentials:
+                        return  # wait until some arrives
+                    if credentials not in self.user_credentials:
+                        # failed
+                        return pn_sasl.done(pn_sasl.AUTH)
+                pn_sasl.done(pn_sasl.OK)
 
         class SenderLink(pyngus.SenderEventHandler):
             """An AMQP sending link."""
@@ -513,7 +580,9 @@ class FakeBroker(threading.Thread):
                  broadcast_prefix="broadcast",
                  group_prefix="unicast",
                  address_separator=".",
-                 sock_addr="", sock_port=0):
+                 sock_addr="", sock_port=0,
+                 sasl_mechanisms="ANONYMOUS",
+                 user_credentials=None):
         """Create a fake broker listening on sock_addr:sock_port."""
         if not pyngus:
             raise AssertionError("pyngus module not present")
@@ -522,6 +591,8 @@ class FakeBroker(threading.Thread):
         self._broadcast_prefix = broadcast_prefix + address_separator
         self._group_prefix = group_prefix + address_separator
         self._address_separator = address_separator
+        self._sasl_mechanisms = sasl_mechanisms
+        self._user_credentials = user_credentials
         self._wakeup_pipe = os.pipe()
         self._my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._my_socket.bind((sock_addr, sock_port))
@@ -581,7 +652,9 @@ class FakeBroker(threading.Thread):
                     # create a new Connection for it:
                     client_socket, client_address = self._my_socket.accept()
                     name = str(client_address)
-                    conn = FakeBroker.Connection(self, client_socket, name)
+                    conn = FakeBroker.Connection(self, client_socket, name,
+                                                 self._sasl_mechanisms,
+                                                 self._user_credentials)
                     self._connections[conn.name] = conn
                 elif r is self._wakeup_pipe[0]:
                     os.read(self._wakeup_pipe[0], 512)

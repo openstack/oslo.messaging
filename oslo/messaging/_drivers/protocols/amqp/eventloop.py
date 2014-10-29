@@ -101,12 +101,12 @@ class _SocketConnection():
                     self._handler.socket_error(str(e))
                     return pyngus.Connection.EOS
 
-    def connect(self, hostname, port, sasl_mechanisms="ANONYMOUS"):
+    def connect(self, host):
         """Connect to host:port and start the AMQP protocol."""
-        addr = socket.getaddrinfo(hostname, port,
+        addr = socket.getaddrinfo(host.hostname, host.port,
                                   socket.AF_INET, socket.SOCK_STREAM)
         if not addr:
-            key = "%s:%i" % (hostname, port)
+            key = "%s:%i" % (host.hostname, host.port)
             error = "Invalid peer address '%s'" % key
             LOG.error(error)
             self._handler.socket_error(error)
@@ -124,9 +124,14 @@ class _SocketConnection():
                 return
         self.socket = my_socket
 
-        if sasl_mechanisms:
-            pn_sasl = self.connection.pn_sasl
-            pn_sasl.mechanisms(sasl_mechanisms)
+        # determine the proper SASL mechanism: PLAIN if a username/password is
+        # present, else ANONYMOUS
+        pn_sasl = self.connection.pn_sasl
+        if host.username:
+            password = host.password if host.password else ""
+            pn_sasl.plain(host.username, password)
+        else:
+            pn_sasl.mechanisms("ANONYMOUS")
             # TODO(kgiusti): server if accepting inbound connections
             pn_sasl.client()
         self.connection.open()
@@ -259,10 +264,9 @@ class Thread(threading.Thread):
         LOG.info("eventloop shutdown requested")
         self._shutdown = True
 
-    def connect(self, hostname, port, handler, properties=None, name=None,
-                sasl_mechanisms="ANONYMOUS"):
+    def connect(self, host, handler, properties=None, name=None):
         """Get a _SocketConnection to a peer represented by url."""
-        key = name or "%s:%i" % (hostname, port)
+        key = name or "%s:%i" % (host.hostname, host.port)
         # return pre-existing
         conn = self._container.get_connection(key)
         if conn:
@@ -273,7 +277,7 @@ class Thread(threading.Thread):
         # no name was provided, the host:port combination
         sc = _SocketConnection(key, self._container,
                                properties, handler=handler)
-        sc.connect(hostname, port, sasl_mechanisms)
+        sc.connect(host)
         return sc
 
     def run(self):
