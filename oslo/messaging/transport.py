@@ -340,25 +340,14 @@ class TransportURL(object):
         Netloc is parsed following the sequence bellow:
 
         * It is first split by ',' in order to support multiple hosts
-        * The last parsed username and password will be propagated to the rest
-          of hosts specified::
+        * Username and password should be specified for each host, in
+          case of lack of specification they will be omitted::
 
             user:pass@host1:port1,host2:port2
 
             [
               {"username": "user", "password": "pass", "host": "host1:port1"},
-              {"username": "user", "password": "pass", "host": "host2:port2"}
-            ]
-
-        * In order to avoid the above propagation, it is possible to alter the
-          order in which the hosts are specified or specify a set of fake
-          credentials using ",:@host2:port2"::
-
-            user:pass@host1:port1,:@host2:port2
-
-            [
-              {"username": "user", "password": "pass", "host": "host1:port1"},
-              {"username": "", "password": "", "host": "host2:port2"}
+              {"host": "host2:port2"}
             ]
 
         :param conf: a ConfigOpts instance
