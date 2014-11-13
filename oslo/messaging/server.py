@@ -56,7 +56,7 @@ class ServerListenError(MessagingServerError):
 class MessageHandlingServer(object):
     """Server for handling messages.
 
-    Connect a transport to a dispatcher that knows how process the
+    Connect a transport to a dispatcher that knows how to process the
     message using an executor that knows how the app wants to create
     new tasks.
     """
