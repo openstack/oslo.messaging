@@ -21,6 +21,7 @@ messaging protocol.  The driver sends messages and creates subscriptions via
 """
 
 import logging
+import os
 import threading
 import time
 
@@ -190,25 +191,36 @@ class ProtonDriver(base.BaseDriver):
 
         super(ProtonDriver, self).__init__(conf, url, default_exchange,
                                            allowed_remote_exmods)
+        # TODO(grs): handle authentication etc
+        self._hosts = url.hosts
+        self._conf = conf
+        self._default_exchange = default_exchange
 
-        # Create a Controller that connects to the messaging service:
-        self._ctrl = controller.Controller(url.hosts, default_exchange, conf)
-
-        # lazy connection setup - don't cause the controller to connect until
+        # lazy connection setup - don't create the controller until
         # after the first messaging request:
-        self._connect_called = False
+        self._ctrl = None
+        self._pid = None
         self._lock = threading.Lock()
 
     def _ensure_connect_called(func):
-        """Causes the controller to connect to the messaging service when it is
-        first used. It is safe to push tasks to it whether connected or not,
-        but those tasks won't be processed until connection completes.
+        """Causes a new controller to be created when the messaging service is
+        first used by the current process. It is safe to push tasks to it
+        whether connected or not, but those tasks won't be processed until
+        connection completes.
         """
         def wrap(self, *args, **kws):
             with self._lock:
-                connect_called = self._connect_called
-                self._connect_called = True
-            if not connect_called:
+                old_pid = self._pid
+                self._pid = os.getpid()
+
+            if old_pid != self._pid:
+                if self._ctrl is not None:
+                    LOG.warning("Process forked after connection established!")
+                    self._ctrl.shutdown(wait=False)
+                # Create a Controller that connects to the messaging service:
+                self._ctrl = controller.Controller(self._hosts,
+                                                   self._default_exchange,
+                                                   self._conf)
                 self._ctrl.connect()
             return func(self, *args, **kws)
         return wrap
@@ -274,6 +286,7 @@ class ProtonDriver(base.BaseDriver):
 
     def cleanup(self):
         """Release all resources."""
-        LOG.debug("Cleaning up ProtonDriver")
-        self._ctrl.destroy()
-        self._ctrl = None
+        if self._ctrl:
+            self._ctrl.shutdown()
+            self._ctrl = None
+        LOG.info("AMQP 1.0 messaging driver shutdown")

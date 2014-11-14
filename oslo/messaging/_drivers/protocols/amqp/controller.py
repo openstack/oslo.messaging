@@ -57,8 +57,11 @@ class Replies(pyngus.ReceiverEventHandler):
         self._correlation = {}  # map of correlation-id to response queue
         self._ready = False
         self._on_ready = on_ready
+        rname = "Consumer-%s:src=[dynamic]:tgt=replies" % uuid.uuid4().hex
         self._receiver = connection.create_receiver("replies",
-                                                    event_handler=self)
+                                                    event_handler=self,
+                                                    name=rname)
+
         # capacity determines the maximum number of reply messages this link
         # can receive. As messages are received and credit is consumed, this
         # driver will 'top up' the credit back to max capacity.  This number
@@ -253,8 +256,6 @@ class Controller(pyngus.ConnectionEventHandler):
         self.group_request_prefix = \
             config.oslo_messaging_amqp.group_request_prefix
         self._container_name = config.oslo_messaging_amqp.container_name
-        if not self._container_name:
-            self._container_name = "container-%s" % uuid.uuid4().hex
         self.idle_timeout = config.oslo_messaging_amqp.idle_timeout
         self.trace_protocol = config.oslo_messaging_amqp.trace
         self.ssl_ca_file = config.oslo_messaging_amqp.ssl_ca_file
@@ -290,14 +291,13 @@ class Controller(pyngus.ConnectionEventHandler):
         self._tasks.put(task)
         self._schedule_task_processing()
 
-    def destroy(self):
+    def shutdown(self, wait=True, timeout=None):
         """Shutdown the messaging service."""
         if self.processor:
-            self.processor.wakeup(lambda: self._start_shutdown())
-            LOG.info("Waiting for eventloop to exit")
-            self.processor.join()
+            LOG.debug("Waiting for eventloop to exit")
+            self.processor.shutdown(wait, timeout)
             self.processor = None
-        LOG.info("Eventloop exited, driver shut down")
+        LOG.debug("Eventloop exited, driver shut down")
 
     # The remaining methods are reserved to run from the eventloop thread only!
     # They must not be invoked directly!
