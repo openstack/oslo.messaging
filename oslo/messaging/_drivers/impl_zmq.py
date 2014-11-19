@@ -88,7 +88,6 @@ zmq_opts = [
 
 CONF = cfg.CONF
 
-ZMQ_CTX = None  # ZeroMQ Context, must be global.
 matchmaker = None  # memoized matchmaker object
 
 
@@ -119,7 +118,8 @@ class ZmqSocket(object):
     """
 
     def __init__(self, addr, zmq_type, bind=True, subscribe=None):
-        self.sock = _get_ctxt().socket(zmq_type)
+        self.ctxt = zmq.Context(CONF.rpc_zmq_contexts)
+        self.sock = self.ctxt.socket(zmq_type)
         self.addr = addr
         self.type = zmq_type
         self.subscriptions = []
@@ -196,6 +196,7 @@ class ZmqSocket(object):
         try:
             # Default is to linger
             self.sock.close()
+            self.ctxt.term()
         except Exception:
             # While this is a bad thing to happen,
             # it would be much worse if some of the code calling this
@@ -759,27 +760,6 @@ def _multi_send(method, context, topic, msg, timeout=None,
     return return_val
 
 
-def cleanup():
-    """Clean up resources in use by implementation."""
-    global ZMQ_CTX
-    if ZMQ_CTX:
-        ZMQ_CTX.term()
-    ZMQ_CTX = None
-
-    global matchmaker
-    matchmaker = None
-
-
-def _get_ctxt():
-    if not zmq:
-        raise ImportError("Failed to import eventlet.green.zmq")
-
-    global ZMQ_CTX
-    if not ZMQ_CTX:
-        ZMQ_CTX = zmq.Context(CONF.rpc_zmq_contexts)
-    return ZMQ_CTX
-
-
 def _get_matchmaker(*args, **kwargs):
     global matchmaker
     if not matchmaker:
@@ -858,6 +838,8 @@ class ZmqDriver(base.BaseDriver):
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
+        if not zmq:
+            raise ImportError("Failed to import eventlet.green.zmq")
         conf.register_opts(zmq_opts)
         conf.register_opts(impl_eventlet._eventlet_opts)
 
@@ -954,4 +936,4 @@ class ZmqDriver(base.BaseDriver):
         return listener
 
     def cleanup(self):
-        cleanup()
+        pass
