@@ -190,11 +190,9 @@ class ProtonDriver(base.BaseDriver):
 
         super(ProtonDriver, self).__init__(conf, url, default_exchange,
                                            allowed_remote_exmods)
-        # TODO(grs): handle authentication etc
-        hosts = [(h.hostname, h.port or 5672) for h in url.hosts]
 
         # Create a Controller that connects to the messaging service:
-        self._ctrl = controller.Controller(hosts, default_exchange, conf)
+        self._ctrl = controller.Controller(url.hosts, default_exchange, conf)
 
         # lazy connection setup - don't cause the controller to connect until
         # after the first messaging request:

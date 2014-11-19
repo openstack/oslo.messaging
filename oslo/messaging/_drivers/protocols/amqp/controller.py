@@ -25,17 +25,18 @@ functions scheduled by the Controller.
 """
 
 import abc
-import collections
 import logging
 import threading
 import uuid
 
+import proton
 import pyngus
 from six import moves
 
 from oslo.config import cfg
 from oslo.messaging._drivers.protocols.amqp import eventloop
 from oslo.messaging._drivers.protocols.amqp import opts
+from oslo.messaging import transport
 
 LOG = logging.getLogger(__name__)
 
@@ -188,25 +189,24 @@ class Server(pyngus.ReceiverEventHandler):
 
 
 class Hosts(object):
-    """An order list of peer addresses.  Connection failover progresses from
-    one host to the next.
+    """An order list of TransportHost addresses. Connection failover
+    progresses from one host to the next.
     """
-    HostnamePort = collections.namedtuple('HostnamePort',
-                                          ['hostname', 'port'])
-
     def __init__(self, entries=None):
-        self._entries = [self.HostnamePort(h, p) for h, p in entries or []]
+        self._entries = entries[:] if entries else []
+        for entry in self._entries:
+            entry.port = entry.port or 5672
         self._current = 0
 
-    def add(self, hostname, port=5672):
-        self._entries.append(self.HostnamePort(hostname, port))
+    def add(self, transport_host):
+        self._entries.append(transport_host)
 
     @property
     def current(self):
         if len(self._entries):
             return self._entries[self._current]
         else:
-            return self.HostnamePort("localhost", 5672)
+            return transport.TransportHost(hostname="localhost", port=5672)
 
     def next(self):
         if len(self._entries) > 1:
@@ -217,7 +217,7 @@ class Hosts(object):
         return '<Hosts ' + str(self) + '>'
 
     def __str__(self):
-        return ", ".join(["%s:%i" % e for e in self._entries])
+        return ", ".join(["%r" % th for th in self._entries])
 
 
 class Controller(pyngus.ConnectionEventHandler):
@@ -394,8 +394,7 @@ class Controller(pyngus.ConnectionEventHandler):
 
     def _do_connect(self):
         """Establish connection and reply subscription on processor thread."""
-        hostname = self.hosts.current.hostname
-        port = self.hosts.current.port
+        host = self.hosts.current
         conn_props = {}
         if self.idle_timeout:
             conn_props["idle-time-out"] = float(self.idle_timeout)
@@ -412,7 +411,7 @@ class Controller(pyngus.ConnectionEventHandler):
                                             self.ssl_key_file,
                                             self.ssl_key_password)
             conn_props["x-ssl-allow-cleartext"] = self.ssl_allow_insecure
-        self._socket_connection = self.processor.connect(hostname, port,
+        self._socket_connection = self.processor.connect(host,
                                                          handler=self,
                                                          properties=conn_props)
         LOG.debug("Connection initiated")
@@ -535,6 +534,17 @@ class Controller(pyngus.ConnectionEventHandler):
                      reason or "no reason given")
             self._socket_connection.connection.close()
 
+    def sasl_done(self, connection, pn_sasl, outcome):
+        """This is a Pyngus callback invoked by Pyngus when the SASL handshake
+        has completed.  The outcome of the handshake will be OK on success or
+        AUTH on failure.
+        """
+        if outcome == proton.SASL.AUTH:
+            LOG.error("Unable to connect to %s:%s, authentication failure.",
+                      self.hosts.current.hostname, self.hosts.current.port)
+            # requires user intervention, treat it like a connection failure:
+            self._handle_connection_loss()
+
     def _complete_shutdown(self):
         """The AMQP Connection has closed, and the driver shutdown is complete.
         Clean up controller resources and exit.
@@ -574,6 +584,6 @@ class Controller(pyngus.ConnectionEventHandler):
             self._reconnecting = False
             self._senders = {}
             self._socket_connection.reset()
-            hostname, port = self.hosts.next()
-            LOG.info("Reconnecting to: %s:%i", hostname, port)
-            self._socket_connection.connect(hostname, port)
+            host = self.hosts.next()
+            LOG.info("Reconnecting to: %s:%i", host.hostname, host.port)
+            self._socket_connection.connect(host)
