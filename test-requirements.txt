@@ -18,6 +18,9 @@ oslotest>=1.2.0  # Apache-2.0
 # for test_qpid
 qpid-python
 
+# for test_matchmaker_redis
+redis>=2.10.0
+
 # when we can require tox>= 1.4, this can go into tox.ini:
 #  [testenv:cover]
 #  deps = {[testenv]deps} coverage
