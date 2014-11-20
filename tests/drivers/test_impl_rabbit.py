@@ -13,7 +13,6 @@
 #    under the License.
 
 import datetime
-import operator
 import sys
 import threading
 import uuid
@@ -21,6 +20,7 @@ import uuid
 import fixtures
 import kombu
 import mock
+from oslotest import mockpatch
 import testscenarios
 
 from oslo import messaging
@@ -49,87 +49,43 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
         ('none', dict(url=None,
-                      expected=[dict(hostname='localhost',
-                                     port=5672,
-                                     userid='guest',
-                                     password='guest',
-                                     virtual_host='/')])),
+                      expected=["amqp://guest:guest@localhost:5672//"])),
         ('empty',
          dict(url='rabbit:///',
-              expected=[dict(hostname='localhost',
-                             port=5672,
-                             userid='guest',
-                             password='guest',
-                             virtual_host='')])),
+              expected=['amqp://guest:guest@localhost:5672/'])),
         ('localhost',
          dict(url='rabbit://localhost/',
-              expected=[dict(hostname='localhost',
-                             port=5672,
-                             userid='',
-                             password='',
-                             virtual_host='')])),
+              expected=['amqp://:@localhost:5672/'])),
         ('virtual_host',
          dict(url='rabbit:///vhost',
-              expected=[dict(hostname='localhost',
-                             port=5672,
-                             userid='guest',
-                             password='guest',
-                             virtual_host='vhost')])),
+              expected=['amqp://guest:guest@localhost:5672/vhost'])),
         ('no_creds',
          dict(url='rabbit://host/virtual_host',
-              expected=[dict(hostname='host',
-                             port=5672,
-                             userid='',
-                             password='',
-                             virtual_host='virtual_host')])),
+              expected=['amqp://:@host:5672/virtual_host'])),
         ('no_port',
          dict(url='rabbit://user:password@host/virtual_host',
-              expected=[dict(hostname='host',
-                             port=5672,
-                             userid='user',
-                             password='password',
-                             virtual_host='virtual_host')])),
+              expected=['amqp://user:password@host:5672/virtual_host'])),
         ('full_url',
          dict(url='rabbit://user:password@host:10/virtual_host',
-              expected=[dict(hostname='host',
-                             port=10,
-                             userid='user',
-                             password='password',
-                             virtual_host='virtual_host')])),
+              expected=['amqp://user:password@host:10/virtual_host'])),
         ('full_two_url',
          dict(url='rabbit://user:password@host:10,'
               'user2:password2@host2:12/virtual_host',
-              expected=[dict(hostname='host',
-                             port=10,
-                             userid='user',
-                             password='password',
-                             virtual_host='virtual_host'),
-                        dict(hostname='host2',
-                             port=12,
-                             userid='user2',
-                             password='password2',
-                             virtual_host='virtual_host')
-                        ]
+              expected=["amqp://user:password@host:10/virtual_host",
+                        "amqp://user2:password2@host2:12/virtual_host"]
               )),
-
     ]
 
-    def test_transport_url(self):
-        self.messaging_conf.in_memory = True
+    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
+    def test_transport_url(self, fake_ensure):
+        self.messaging_conf.in_memory = False
 
         transport = messaging.get_transport(self.conf, self.url)
         self.addCleanup(transport.cleanup)
         driver = transport._driver
 
-        brokers_params = driver._get_connection().brokers_params[:]
-        brokers_params = [dict((k, v) for k, v in broker.items()
-                               if k not in ['transport', 'login_method'])
-                          for broker in brokers_params]
-
-        self.assertEqual(sorted(self.expected,
-                                key=operator.itemgetter('hostname')),
-                         sorted(brokers_params,
-                                key=operator.itemgetter('hostname')))
+        urls = driver._get_connection()._url.split(";")
+        self.assertEqual(sorted(self.expected), sorted(urls))
 
 
 class TestSendReceive(test_utils.BaseTestCase):
@@ -674,62 +630,38 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
         self.config(rabbit_hosts=self.brokers)
 
-        hostname_sets = set()
-        self.info = {'attempt': 0,
-                     'fail': False}
-
-        def _connect(myself, params):
-            # do as little work that is enough to pass connection attempt
-            myself.connection = kombu.connection.BrokerConnection(**params)
-            myself.connection_errors = myself.connection.connection_errors
-
-            hostname = params['hostname']
-            self.assertNotIn(hostname, hostname_sets)
-            hostname_sets.add(hostname)
-
-            self.info['attempt'] += 1
-            if self.info['fail']:
-                raise IOError('fake fail')
-
-        # just make sure connection instantiation does not fail with an
-        # exception
-        self.stubs.Set(rabbit_driver.Connection, '_connect', _connect)
+        self.kombu_connect = mock.Mock()
+        self.useFixture(mockpatch.Patch(
+            'kombu.connection.Connection.connect',
+            side_effect=self.kombu_connect))
+        self.useFixture(mockpatch.Patch(
+            'kombu.connection.Connection.channel'))
 
         # starting from the first broker in the list
         url = messaging.TransportURL.parse(self.conf, None)
         self.connection = rabbit_driver.Connection(self.conf, url)
         self.addCleanup(self.connection.close)
 
-        self.info.update({'attempt': 0,
-                          'fail': True})
-        hostname_sets.clear()
-
-    def test_reconnect_order(self):
-        self.assertRaises(messaging.MessageDeliveryFailure,
-                          self.connection.reconnect,
-                          retry=len(self.brokers) - 1)
-        self.assertEqual(len(self.brokers), self.info['attempt'])
-
     def test_ensure_four_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
         self.assertRaises(messaging.MessageDeliveryFailure,
                           self.connection.ensure, None, mock_callback,
                           retry=4)
-        self.assertEqual(5, self.info['attempt'])
-        self.assertEqual(1, mock_callback.call_count)
+        self.assertEqual(5, self.kombu_connect.call_count)
+        self.assertEqual(6, mock_callback.call_count)
 
     def test_ensure_one_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
         self.assertRaises(messaging.MessageDeliveryFailure,
                           self.connection.ensure, None, mock_callback,
                           retry=1)
-        self.assertEqual(2, self.info['attempt'])
-        self.assertEqual(1, mock_callback.call_count)
+        self.assertEqual(2, self.kombu_connect.call_count)
+        self.assertEqual(3, mock_callback.call_count)
 
     def test_ensure_no_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
         self.assertRaises(messaging.MessageDeliveryFailure,
                           self.connection.ensure, None, mock_callback,
                           retry=0)
-        self.assertEqual(1, self.info['attempt'])
-        self.assertEqual(1, mock_callback.call_count)
+        self.assertEqual(1, self.kombu_connect.call_count)
+        self.assertEqual(2, mock_callback.call_count)
