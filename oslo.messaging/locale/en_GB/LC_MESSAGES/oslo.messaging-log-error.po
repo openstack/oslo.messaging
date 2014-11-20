@@ -1,0 +1,27 @@
+# Translations template for oslo.messaging.
+# Copyright (C) 2014 ORGANIZATION
+# This file is distributed under the same license as the oslo.messaging
+# project.
+#
+# Translators:
+# Andi Chandler <andi@gowling.com>, 2014
+msgid ""
+msgstr ""
+"Project-Id-Version: oslo.messaging\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2014-11-20 06:11+0000\n"
+"PO-Revision-Date: 2014-11-03 23:02+0000\n"
+"Last-Translator: Andi Chandler <andi@gowling.com>\n"
+"Language-Team: English (United Kingdom) (http://www.transifex.com/projects/p/"
+"oslomessaging/language/en_GB/)\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 1.3\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: oslo/messaging/notify/middleware.py:42
+#, python-format
+msgid "An exception occurred processing the API call: %s "
+msgstr "An exception occurred processing the API call: %s "
