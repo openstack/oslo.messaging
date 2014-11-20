@@ -330,9 +330,7 @@ class AMQPDriverBase(base.BaseDriver):
         return target.exchange or self._default_exchange
 
     def _get_connection(self, pooled=True):
-        return rpc_amqp.ConnectionContext(self.conf,
-                                          self._url,
-                                          self._connection_pool,
+        return rpc_amqp.ConnectionContext(self._connection_pool,
                                           pooled=pooled)
 
     def _get_reply_q(self):
