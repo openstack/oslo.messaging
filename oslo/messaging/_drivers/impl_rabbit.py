@@ -39,8 +39,8 @@ rabbit_opts = [
     cfg.StrOpt('kombu_ssl_version',
                default='',
                help='SSL version to use (valid only if SSL enabled). '
-                    'valid values are TLSv1, SSLv23 and SSLv3. SSLv2 may '
-                    'be available on some distributions.'
+                    'valid values are TLSv1 and SSLv23. SSLv2 and '
+                    'SSLv3 may be available on some distributions.'
                ),
     cfg.StrOpt('kombu_ssl_keyfile',
                default='',
@@ -493,12 +493,16 @@ class Connection(object):
     # FIXME(markmc): use oslo sslutils when it is available as a library
     _SSL_PROTOCOLS = {
         "tlsv1": ssl.PROTOCOL_TLSv1,
-        "sslv23": ssl.PROTOCOL_SSLv23,
-        "sslv3": ssl.PROTOCOL_SSLv3
+        "sslv23": ssl.PROTOCOL_SSLv23
     }
 
     try:
         _SSL_PROTOCOLS["sslv2"] = ssl.PROTOCOL_SSLv2
+    except AttributeError:
+        pass
+
+    try:
+        _SSL_PROTOCOLS["sslv3"] = ssl.PROTOCOL_SSLv3
     except AttributeError:
         pass
 
