@@ -118,23 +118,28 @@ class RPCDispatcher(object):
         endpoint_version = target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
 
-    def _do_dispatch(self, endpoint, method, ctxt, args):
+    def _do_dispatch(self, endpoint, method, ctxt, args, executor_callback):
         ctxt = self.serializer.deserialize_context(ctxt)
         new_args = dict()
         for argname, arg in six.iteritems(args):
             new_args[argname] = self.serializer.deserialize_entity(ctxt, arg)
-        result = getattr(endpoint, method)(ctxt, **new_args)
+        func = getattr(endpoint, method)
+        if executor_callback:
+            result = executor_callback(func, ctxt, **new_args)
+        else:
+            result = func(ctxt, **new_args)
         return self.serializer.serialize_entity(ctxt, result)
 
     @contextlib.contextmanager
-    def __call__(self, incoming):
+    def __call__(self, incoming, executor_callback=None):
         incoming.acknowledge()
-        yield lambda: self._dispatch_and_reply(incoming)
+        yield lambda: self._dispatch_and_reply(incoming, executor_callback)
 
-    def _dispatch_and_reply(self, incoming):
+    def _dispatch_and_reply(self, incoming, executor_callback):
         try:
             incoming.reply(self._dispatch(incoming.ctxt,
-                                          incoming.message))
+                                          incoming.message,
+                                          executor_callback))
         except ExpectedException as e:
             LOG.debug(u'Expected exception during message handling (%s)',
                       e.exc_info[1])
@@ -150,7 +155,7 @@ class RPCDispatcher(object):
             # exc_info.
             del exc_info
 
-    def _dispatch(self, ctxt, message):
+    def _dispatch(self, ctxt, message, executor_callback=None):
         """Dispatch an RPC message to the appropriate endpoint method.
 
         :param ctxt: the request context
@@ -177,7 +182,8 @@ class RPCDispatcher(object):
             if hasattr(endpoint, method):
                 localcontext.set_local_context(ctxt)
                 try:
-                    return self._do_dispatch(endpoint, method, ctxt, args)
+                    return self._do_dispatch(endpoint, method, ctxt, args,
+                                             executor_callback)
                 finally:
                     localcontext.clear_local_context()
 

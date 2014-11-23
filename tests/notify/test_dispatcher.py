@@ -35,7 +35,7 @@ notification_msg = dict(
 )
 
 
-class TestDispatcher(test_utils.BaseTestCase):
+class TestDispatcherScenario(test_utils.BaseTestCase):
 
     scenarios = [
         ('no_endpoints',
@@ -137,6 +137,9 @@ class TestDispatcher(test_utils.BaseTestCase):
             self.assertEqual(0, incoming.acknowledge.call_count)
             self.assertEqual(1, incoming.requeue.call_count)
 
+
+class TestDispatcher(test_utils.BaseTestCase):
+
     @mock.patch('oslo.messaging.notify.dispatcher.LOG')
     def test_dispatcher_unknown_prio(self, mylog):
         msg = notification_msg.copy()
@@ -147,3 +150,22 @@ class TestDispatcher(test_utils.BaseTestCase):
             callback()
         mylog.warning.assert_called_once_with('Unknown priority "%s"',
                                               'what???')
+
+    def test_dispatcher_executor_callback(self):
+        endpoint = mock.Mock(spec=['warn'])
+        endpoint_method = endpoint.warn
+        endpoint_method.return_value = messaging.NotificationResult.HANDLED
+
+        targets = [messaging.Target(topic='notifications')]
+        dispatcher = notify_dispatcher.NotificationDispatcher(
+            targets, [endpoint], None, allow_requeue=True)
+
+        msg = notification_msg.copy()
+        msg['priority'] = 'warn'
+
+        incoming = mock.Mock(ctxt={}, message=msg)
+        executor_callback = mock.Mock()
+        with dispatcher(incoming, executor_callback) as callback:
+            callback()
+        self.assertTrue(executor_callback.called)
+        self.assertEqual(executor_callback.call_args[0][0], endpoint_method)
