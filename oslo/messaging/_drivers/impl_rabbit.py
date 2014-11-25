@@ -41,8 +41,9 @@ rabbit_opts = [
     cfg.StrOpt('kombu_ssl_version',
                default='',
                help='SSL version to use (valid only if SSL enabled). '
-                    'valid values are TLSv1 and SSLv23. SSLv2 and '
-                    'SSLv3 may be available on some distributions.'
+                    'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
+                    'TLSv1_1, and TLSv1_2 may be available on some '
+                    'distributions.'
                ),
     cfg.StrOpt('kombu_ssl_keyfile',
                default='',
@@ -499,15 +500,18 @@ class Connection(object):
         "sslv23": ssl.PROTOCOL_SSLv23
     }
 
-    try:
-        _SSL_PROTOCOLS["sslv2"] = ssl.PROTOCOL_SSLv2
-    except AttributeError:
-        pass
-
-    try:
-        _SSL_PROTOCOLS["sslv3"] = ssl.PROTOCOL_SSLv3
-    except AttributeError:
-        pass
+    _OPTIONAL_PROTOCOLS = {
+        'sslv2': 'PROTOCOL_SSLv2',
+        'sslv3': 'PROTOCOL_SSLv3',
+        'tlsv1_1': 'PROTOCOL_TLSv1_1',
+        'tlsv1_2': 'PROTOCOL_TLSv1_2',
+    }
+    for protocol in _OPTIONAL_PROTOCOLS:
+        try:
+            _SSL_PROTOCOLS[protocol] = getattr(ssl,
+                                               _OPTIONAL_PROTOCOLS[protocol])
+        except AttributeError:
+            pass
 
     @classmethod
     def validate_ssl_version(cls, version):
