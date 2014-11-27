@@ -235,7 +235,7 @@ class Thread(threading.Thread):
 
         # Configure a container
         if container_name is None:
-            container_name = uuid.uuid4().hex
+            container_name = "Container-" + uuid.uuid4().hex
         self._container = pyngus.Container(container_name)
 
         self.name = "Thread for Proton container: %s" % self._container.name
@@ -245,24 +245,26 @@ class Thread(threading.Thread):
 
     def wakeup(self, request=None):
         """Wake up the eventloop thread, Optionally providing a callable to run
-        when the eventloop wakes up.
+        when the eventloop wakes up.  Thread safe.
         """
         self._requests.wakeup(request)
+
+    def shutdown(self, wait=True, timeout=None):
+        """Shutdown the eventloop thread.  Thread safe.
+        """
+        LOG.debug("eventloop shutdown requested")
+        self._shutdown = True
+        self.wakeup()
+        if wait:
+            self.join(timeout=timeout)
+        LOG.debug("eventloop shutdown complete")
+
+    # the following methods are not thread safe - they must be run from the
+    # eventloop thread
 
     def schedule(self, request, delay):
         """Invoke request after delay seconds."""
         self._schedule.schedule(request, delay)
-
-    def destroy(self):
-        """Stop the processing thread, releasing all resources.
-        """
-        LOG.debug("Stopping Proton container %s", self._container.name)
-        self.wakeup(lambda: self.shutdown())
-        self.join()
-
-    def shutdown(self):
-        LOG.info("eventloop shutdown requested")
-        self._shutdown = True
 
     def connect(self, host, handler, properties=None, name=None):
         """Get a _SocketConnection to a peer represented by url."""
@@ -311,6 +313,13 @@ class Thread(threading.Thread):
                                 str(serror))
                     continue
                 raise  # assuming fatal...
+
+            # don't process any I/O or timers if woken up by a shutdown:
+            # if we've been forked we don't want to do I/O on the parent's
+            # sockets
+            if self._shutdown:
+                break
+
             readable, writable, ignore = results
 
             for r in readable:
