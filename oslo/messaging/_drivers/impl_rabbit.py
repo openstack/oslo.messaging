@@ -15,6 +15,7 @@
 import functools
 import itertools
 import logging
+import os
 import socket
 import ssl
 import time
@@ -472,6 +473,8 @@ class Connection(object):
                     hostname, port,
                     virtual_host)
 
+        self._initial_pid = os.getpid()
+
         self.do_consume = True
 
         self.channel = None
@@ -552,6 +555,14 @@ class Connection(object):
         retry = 0 means no retry
         retry = N means N retries
         """
+
+        current_pid = os.getpid()
+        if self._initial_pid != current_pid:
+            LOG.warn("Process forked after connection established! "
+                     "This can results to unpredictable behavior. "
+                     "See: http://docs.openstack.org/developer/"
+                     "oslo.messaging/transport.html")
+            self._initial_pid = current_pid
 
         if retry is None:
             retry = self.max_retries
