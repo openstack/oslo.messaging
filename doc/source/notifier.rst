@@ -10,5 +10,5 @@ Notifier
 .. autoclass:: LoggingNotificationHandler
    :members:
 
-.. autoclass:: PublishErrorsHandler
+.. autoclass:: LoggingErrorNotificationHandler
    :members:
