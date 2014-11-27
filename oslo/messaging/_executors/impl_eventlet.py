@@ -75,6 +75,7 @@ class EventletExecutor(base.ExecutorBase):
         self.conf.register_opts(_eventlet_opts)
         self._thread = None
         self._greenpool = greenpool.GreenPool(self.conf.rpc_thread_pool_size)
+        self._running = False
 
     def start(self):
         if self._thread is not None:
@@ -83,19 +84,22 @@ class EventletExecutor(base.ExecutorBase):
         @excutils.forever_retry_uncaught_exceptions
         def _executor_thread():
             try:
-                while True:
-                    incoming = self.listener.poll()
-                    spawn_with(ctxt=self.dispatcher(incoming),
-                               pool=self._greenpool)
+                while self._running:
+                    incoming = self.listener.poll(timeout=base.POLL_TIMEOUT)
+                    if incoming is not None:
+                        spawn_with(ctxt=self.dispatcher(incoming),
+                                   pool=self._greenpool)
             except greenlet.GreenletExit:
                 return
 
+        self._running = True
         self._thread = eventlet.spawn(_executor_thread)
 
     def stop(self):
         if self._thread is None:
             return
-        self._thread.kill()
+        self._running = False
+        self._thread.cancel()
 
     def wait(self):
         if self._thread is None:
