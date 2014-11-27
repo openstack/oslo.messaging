@@ -44,11 +44,13 @@ class NotificationDispatcher(object):
     message to the endpoints
     """
 
-    def __init__(self, targets, endpoints, serializer, allow_requeue):
+    def __init__(self, targets, endpoints, serializer, allow_requeue,
+                 pool=None):
         self.targets = targets
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
         self.allow_requeue = allow_requeue
+        self.pool = pool
 
         self._callbacks_by_priority = {}
         for endpoint, prio in itertools.product(endpoints, PRIORITIES):
@@ -61,7 +63,8 @@ class NotificationDispatcher(object):
                                                          priorities))
 
     def _listen(self, transport):
-        return transport._listen_for_notifications(self._targets_priorities)
+        return transport._listen_for_notifications(self._targets_priorities,
+                                                   pool=self.pool)
 
     @contextlib.contextmanager
     def __call__(self, incoming):

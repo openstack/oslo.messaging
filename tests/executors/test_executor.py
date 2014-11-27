@@ -71,7 +71,7 @@ class TestExecutor(test_utils.BaseTestCase):
         incoming_message = mock.MagicMock(ctxt={},
                                           message={'payload': 'data'})
 
-        def fake_poll():
+        def fake_poll(timeout=None):
             if self.stop_before_return:
                 executor.stop()
                 return incoming_message
