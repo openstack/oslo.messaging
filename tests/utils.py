@@ -36,6 +36,7 @@ class BaseTestCase(base.BaseTestCase):
 
         from oslo.messaging import conffixture
         self.messaging_conf = self.useFixture(conffixture.ConfFixture(conf))
+        self.messaging_conf.transport_driver = 'fake'
         self.conf = self.messaging_conf.conf
 
         moxfixture = self.useFixture(moxstubout.MoxStubout())
