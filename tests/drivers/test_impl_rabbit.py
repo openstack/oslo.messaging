@@ -628,7 +628,10 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
     def setUp(self):
         super(RpcKombuHATestCase, self).setUp()
         self.brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
-        self.config(rabbit_hosts=self.brokers)
+        self.config(rabbit_hosts=self.brokers,
+                    rabbit_retry_interval=0.01,
+                    rabbit_retry_backoff=0.01,
+                    kombu_reconnect_delay=0)
 
         self.kombu_connect = mock.Mock()
         self.useFixture(mockpatch.Patch(
