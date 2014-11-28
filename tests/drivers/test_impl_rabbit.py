@@ -78,6 +78,7 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
     def test_transport_url(self, fake_ensure):
+        self.messaging_conf.transport_driver = 'rabbit'
         self.messaging_conf.in_memory = False
 
         transport = messaging.get_transport(self.conf, self.url)
