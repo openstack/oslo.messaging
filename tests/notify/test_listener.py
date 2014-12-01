@@ -62,6 +62,10 @@ class ListenerSetupMixin(object):
             if self._expect_messages == self._received_msgs:
                 self.stop()
 
+        def wait_for(self, expect_messages):
+            while expect_messages != self._received_msgs:
+                pass
+
         def stop(self):
             for listener in self.listeners:
                 # Check start() does nothing with a running listener
@@ -351,6 +355,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                           'test message%d' % i)
             mocked_endpoint1_calls.append(mocked_endpoint_call(i))
 
+        self.trackers['pool2'].wait_for(25)
         listener2_thread.stop()
 
         for i in range(0, 25):
@@ -358,6 +363,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                           'test message%d' % i)
             mocked_endpoint1_calls.append(mocked_endpoint_call(i))
 
+        self.trackers['pool2'].wait_for(50)
         listener2_thread.start()
         listener3_thread.stop()
 
@@ -366,6 +372,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                           'test message%d' % i)
             mocked_endpoint1_calls.append(mocked_endpoint_call(i))
 
+        self.trackers['pool2'].wait_for(75)
         listener3_thread.start()
 
         for i in range(0, 25):
