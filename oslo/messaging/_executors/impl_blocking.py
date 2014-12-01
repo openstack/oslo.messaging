@@ -13,7 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 from oslo.messaging._executors import base
+from oslo.messaging._i18n import _
+
+LOG = logging.getLogger(__name__)
 
 
 class BlockingExecutor(base.ExecutorBase):
@@ -36,11 +41,13 @@ class BlockingExecutor(base.ExecutorBase):
     def start(self):
         self._running = True
         while self._running:
-            message = self.listener.poll(timeout=0.01)
-            if not message:
-                continue
-            with self.dispatcher(message) as callback:
-                callback()
+            try:
+                incoming = self.listener.poll(timeout=base.POLL_TIMEOUT)
+                if incoming is not None:
+                    with self.dispatcher(incoming) as callback:
+                        callback()
+            except Exception:
+                LOG.exception(_("Unexpected exception occurred."))
 
     def stop(self):
         self._running = False

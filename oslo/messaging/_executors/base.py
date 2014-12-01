@@ -16,6 +16,10 @@ import abc
 
 import six
 
+# NOTE(sileht): value choosen according the best practice from kombu
+# http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
+POLL_TIMEOUT = 1
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ExecutorBase(object):
