@@ -38,10 +38,12 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
     def setUp(self):
         super(TestRabbitDriverLoad, self).setUp()
         self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = True
 
-    def test_driver_load(self):
+    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.reset')
+    def test_driver_load(self, fake_ensure, fake_reset):
         transport = messaging.get_transport(self.conf)
+        self.addCleanup(transport.cleanup)
         self.assertIsInstance(transport._driver, rabbit_driver.RabbitDriver)
 
 
@@ -50,6 +52,8 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
     scenarios = [
         ('none', dict(url=None,
                       expected=["amqp://guest:guest@localhost:5672//"])),
+        ('memory', dict(url='kombu+memory:////',
+                        expected=["memory:///"])),
         ('empty',
          dict(url='rabbit:///',
               expected=['amqp://guest:guest@localhost:5672/'])),
@@ -76,11 +80,13 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
               )),
     ]
 
-    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
-    def test_transport_url(self, fake_ensure):
+    def setUp(self):
+        super(TestRabbitTransportURL, self).setUp()
         self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = False
 
+    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.reset')
+    def test_transport_url(self, fake_ensure_connection, fake_reset):
         transport = messaging.get_transport(self.conf, self.url)
         self.addCleanup(transport.cleanup)
         driver = transport._driver
@@ -129,13 +135,8 @@ class TestSendReceive(test_utils.BaseTestCase):
                                                          cls._failure,
                                                          cls._timeout)
 
-    def setUp(self):
-        super(TestSendReceive, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = True
-
     def test_send_receive(self):
-        transport = messaging.get_transport(self.conf)
+        transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
         driver = transport._driver
@@ -224,13 +225,8 @@ TestSendReceive.generate_scenarios()
 
 class TestPollAsync(test_utils.BaseTestCase):
 
-    def setUp(self):
-        super(TestPollAsync, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = True
-
     def test_poll_timeout(self):
-        transport = messaging.get_transport(self.conf)
+        transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
         driver = transport._driver
         target = messaging.Target(topic='testtopic')
@@ -241,13 +237,8 @@ class TestPollAsync(test_utils.BaseTestCase):
 
 class TestRacyWaitForReply(test_utils.BaseTestCase):
 
-    def setUp(self):
-        super(TestRacyWaitForReply, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = True
-
     def test_send_receive(self):
-        transport = messaging.get_transport(self.conf)
+        transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
         driver = transport._driver
@@ -430,9 +421,6 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRequestWireFormat, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = True
-
         self.uuids = []
         self.orig_uuid4 = uuid.uuid4
         self.useFixture(fixtures.MonkeyPatch('uuid.uuid4', self.mock_uuid4))
@@ -445,7 +433,7 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
         if hasattr(self, 'skip_msg'):
             self.skipTest(self.skip_msg)
 
-        transport = messaging.get_transport(self.conf)
+        transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
         driver = transport._driver
@@ -574,16 +562,11 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
                                                          cls._context,
                                                          cls._target)
 
-    def setUp(self):
-        super(TestReplyWireFormat, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
-        self.messaging_conf.in_memory = True
-
     def test_reply_wire_format(self):
         if hasattr(self, 'skip_msg'):
             self.skipTest(self.skip_msg)
 
-        transport = messaging.get_transport(self.conf)
+        transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
         driver = transport._driver

@@ -69,21 +69,6 @@ class ConfFixture(fixtures.Fixture):
         self.conf.set_override('rpc_backend', value)
 
     @property
-    def in_memory(self):
-        """Use an in-memory transport; currently supported by rabbit driver."""
-        if (('rabbit' in self.transport_driver or
-             'kombu' in self.transport_driver)):
-            return self.conf.fake_rabbit
-        else:
-            return False
-
-    @in_memory.setter
-    def in_memory(self, value):
-        if (('rabbit' in self.transport_driver or
-             'kombu' in self.transport_driver)):
-            self.conf.set_override('fake_rabbit', value)
-
-    @property
     def response_timeout(self):
         """Default number of seconds to wait for a response from a call."""
         return self.conf.rpc_response_timeout

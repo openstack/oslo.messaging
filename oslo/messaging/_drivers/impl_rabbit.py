@@ -100,11 +100,6 @@ rabbit_opts = [
                 help='Use HA queues in RabbitMQ (x-ha-policy: all). '
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
-
-    # FIXME(markmc): this was toplevel in openstack.common.rpc
-    cfg.BoolOpt('fake_rabbit',
-                default=False,
-                help='If passed, use a fake RabbitMQ provider.'),
 ]
 
 LOG = logging.getLogger(__name__)
@@ -446,11 +441,7 @@ class Connection(object):
             virtual_host = self.conf.rabbit_virtual_host
 
         self._url = ''
-        if self.conf.fake_rabbit:
-            # TODO(sileht): use memory://virtual_host into
-            # unit tests to remove cfg.CONF.fake_rabbit
-            self._url = 'memory://%s/' % virtual_host
-        elif url.hosts:
+        if url.hosts:
             for host in url.hosts:
                 transport = url.transport.replace('kombu+', '')
                 transport = url.transport.replace('rabbit', 'amqp')
@@ -461,6 +452,11 @@ class Connection(object):
                     parse.quote(host.password or ''),
                     host.hostname or '', str(host.port or 5672),
                     virtual_host)
+        elif url.transport.startswith('kombu+'):
+            # NOTE(sileht): url have a + but no hosts
+            # (like kombu+memory:///), pass it to kombu as-is
+            transport = url.transport.replace('kombu+', '')
+            self._url = "%s://%s" % (transport, virtual_host)
         else:
             for adr in self.conf.rabbit_hosts:
                 hostname, port = netutils.parse_host_port(
@@ -489,7 +485,7 @@ class Connection(object):
                  {'hostname': self.connection.hostname,
                   'port': self.connection.port})
 
-        if self.conf.fake_rabbit:
+        if self._url.startswith('memory://'):
             # Kludge to speed up tests.
             self.connection.transport.polling_interval = 0.0
 
