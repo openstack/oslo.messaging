@@ -749,7 +749,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(rabbit_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 
-        connection_pool = rpc_amqp.get_connection_pool(conf, url, Connection)
+        connection_pool = rpc_amqp.ConnectionPool(conf, url, Connection)
 
         super(RabbitDriver, self).__init__(conf, url,
                                            connection_pool,

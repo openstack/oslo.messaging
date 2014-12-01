@@ -25,7 +25,6 @@ uses AMQP, but is deprecated and predates this code.
 
 import collections
 import logging
-import threading
 import uuid
 
 import six
@@ -71,28 +70,6 @@ class ConnectionPool(pool.Pool):
     def empty(self):
         for item in self.iter_free():
             item.close()
-        # Force a new connection pool to be created.
-        # Note that this was added due to failing unit test cases. The issue
-        # is the above "while loop" gets all the cached connections from the
-        # pool and closes them, but never returns them to the pool, a pool
-        # leak. The unit tests hang waiting for an item to be returned to the
-        # pool. The unit tests get here via the tearDown() method. In the run
-        # time code, it gets here via cleanup() and only appears in service.py
-        # just before doing a sys.exit(), so cleanup() only happens once and
-        # the leakage is not a problem.
-        del self.connection_cls.pools[self.url]
-
-
-_pool_create_sem = threading.Lock()
-
-
-def get_connection_pool(conf, url, connection_cls):
-    with _pool_create_sem:
-        # Make sure only one thread tries to create the connection pool.
-        if url not in connection_cls.pools:
-            connection_cls.pools[url] = ConnectionPool(conf, url,
-                                                       connection_cls)
-    return connection_cls.pools[url]
 
 
 class ConnectionContext(rpc_common.Connection):

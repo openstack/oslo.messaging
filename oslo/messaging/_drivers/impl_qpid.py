@@ -723,7 +723,7 @@ class QpidDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(qpid_opts)
         conf.register_opts(rpc_amqp.amqp_opts)
 
-        connection_pool = rpc_amqp.get_connection_pool(conf, url, Connection)
+        connection_pool = rpc_amqp.ConnectionPool(conf, url, Connection)
 
         super(QpidDriver, self).__init__(conf, url,
                                          connection_pool,
