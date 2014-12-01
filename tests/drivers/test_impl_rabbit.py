@@ -15,6 +15,7 @@
 import datetime
 import sys
 import threading
+import time
 import uuid
 
 import fixtures
@@ -45,6 +46,28 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
         transport = messaging.get_transport(self.conf)
         self.addCleanup(transport.cleanup)
         self.assertIsInstance(transport._driver, rabbit_driver.RabbitDriver)
+
+
+class TestRabbitIterconsume(test_utils.BaseTestCase):
+
+    def test_iterconsume_timeout(self):
+        transport = messaging.get_transport(self.conf, 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        deadline = time.time() + 3
+        with transport._driver._get_connection() as conn:
+            conn.iterconsume(timeout=3)
+            # kombu memory transport doesn't really raise error
+            # so just simulate a real driver behavior
+            conn.connection.connection.recoverable_channel_errors = (IOError,)
+            conn.declare_fanout_consumer("notif.info", lambda msg: True)
+            with mock.patch('kombu.connection.Connection.drain_events',
+                            side_effect=IOError):
+                try:
+                    conn.consume(timeout=3)
+                except driver_common.Timeout:
+                    pass
+
+        self.assertEqual(0, int(deadline - time.time()))
 
 
 class TestRabbitTransportURL(test_utils.BaseTestCase):
