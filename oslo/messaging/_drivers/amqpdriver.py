@@ -172,8 +172,9 @@ class ReplyWaiters(object):
         self._queues[msg_id] = queue
         if len(self._queues) > self._wrn_threshold:
             LOG.warn('Number of call queues is greater than warning '
-                     'threshold: %d. There could be a leak.',
-                     self._wrn_threshold)
+                     'threshold: %d. There could be a leak. Increasing'
+                     ' threshold to: %d', self._wrn_threshold,
+                     self._wrn_threshold * 2)
             self._wrn_threshold *= 2
 
     def remove(self, msg_id):
