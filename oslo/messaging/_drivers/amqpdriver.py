@@ -182,8 +182,8 @@ class ReplyWaiters(object):
         queue = self._queues.get(msg_id)
         if not queue:
             LOG.info(_LI('No calling threads waiting for msg_id : %s'), msg_id)
-            LOG.debug(' queues: %(queues)s, message: %(message)',
-                      {'queues': self._queues, 'message': message_data})
+            LOG.debug(' queues: %(queues)s, message: %(message)s',
+                      {'queues': len(self._queues), 'message': message_data})
         else:
             queue.put(message_data)
 
