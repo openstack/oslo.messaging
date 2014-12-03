@@ -439,6 +439,7 @@ class NotifyPublisher(TopicPublisher):
 
     def __init__(self, conf, channel, exchange_name, topic, **kwargs):
         self.durable = kwargs.pop('durable', conf.amqp_durable_queues)
+        self.auto_delete = kwargs.pop('auto_delete', conf.amqp_auto_delete)
         self.queue_arguments = _get_queue_arguments(conf)
         super(NotifyPublisher, self).__init__(conf, channel, exchange_name,
                                               topic, **kwargs)
@@ -452,6 +453,7 @@ class NotifyPublisher(TopicPublisher):
         queue = kombu.entity.Queue(channel=channel,
                                    exchange=self.exchange,
                                    durable=self.durable,
+                                   auto_delete=self.auto_delete,
                                    name=self.routing_key,
                                    routing_key=self.routing_key,
                                    queue_arguments=self.queue_arguments)
