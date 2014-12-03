@@ -17,6 +17,7 @@ import testscenarios
 
 from oslo.config import cfg
 from oslo import messaging
+from oslo.messaging import exceptions
 from oslo.messaging import serializer as msg_serializer
 from tests import utils as test_utils
 
@@ -281,6 +282,26 @@ class TestCallRetry(test_utils.BaseTestCase):
         if self.prepare is not _notset:
             client = client.prepare(retry=self.prepare)
         client.call({}, 'foo')
+
+
+class TestCallFanout(test_utils.BaseTestCase):
+
+    scenarios = [
+        ('target', dict(prepare=_notset, target={'fanout': True})),
+        ('prepare', dict(prepare={'fanout': True}, target={})),
+        ('both', dict(prepare={'fanout': True}, target={'fanout': True})),
+    ]
+
+    def test_call_fanout(self):
+        transport = _FakeTransport(self.conf)
+        client = messaging.RPCClient(transport,
+                                     messaging.Target(**self.target))
+
+        if self.prepare is not _notset:
+            client = client.prepare(**self.prepare)
+
+        self.assertRaises(exceptions.InvalidTarget,
+                          client.call, {}, 'foo')
 
 
 class TestSerializer(test_utils.BaseTestCase):
