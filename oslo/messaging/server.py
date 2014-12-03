@@ -126,7 +126,8 @@ class MessageHandlingServer(object):
 
         Once this method returns, no new incoming messages will be handled by
         the server. However, the server may still be in the process of handling
-        some messages.
+        some messages, and underlying driver resources associated to this
+        server are still in use. See 'wait' for more details.
         """
         if self._executor is not None:
             self._executor.stop()
@@ -137,6 +138,9 @@ class MessageHandlingServer(object):
         After calling stop(), there may still be some some existing messages
         which have not been completely processed. The wait() method blocks
         until all message processing has completed.
+
+        Once it's finished, the underlying driver resources associated to this
+        server are released (like closing useless network connections).
         """
         if self._executor is not None:
             self._executor.wait()
