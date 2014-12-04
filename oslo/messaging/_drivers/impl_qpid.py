@@ -16,6 +16,7 @@
 import functools
 import itertools
 import logging
+import os
 import random
 import time
 
@@ -490,6 +491,7 @@ class Connection(object):
         random.shuffle(self.brokers_params)
         self.brokers = itertools.cycle(self.brokers_params)
 
+        self._initial_pid = os.getpid()
         self.reconnect()
 
     def _connect(self, broker):
@@ -578,6 +580,21 @@ class Connection(object):
             LOG.debug("Re-established AMQP queues")
 
     def ensure(self, error_callback, method, retry=None):
+
+        current_pid = os.getpid()
+        if self._initial_pid != current_pid:
+            # NOTE(sileht):
+            # to get the same level of fork support that rabbit driver have
+            # (ie: allow fork before the first connection established)
+            # we could use the kombu workaround:
+            # https://github.com/celery/kombu/blob/master/kombu/transport/
+            # qpid_patches.py#L67
+            LOG.warn("Process forked! "
+                     "This can results to unpredictable behavior. "
+                     "See: http://docs.openstack.org/developer/"
+                     "oslo.messaging/transport.html")
+            self._initial_pid = current_pid
+
         while True:
             try:
                 return method()
