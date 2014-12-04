@@ -590,7 +590,7 @@ class Connection(object):
             # https://github.com/celery/kombu/blob/master/kombu/transport/
             # qpid_patches.py#L67
             LOG.warn("Process forked! "
-                     "This can results to unpredictable behavior. "
+                     "This can result in unpredictable behavior. "
                      "See: http://docs.openstack.org/developer/"
                      "oslo.messaging/transport.html")
             self._initial_pid = current_pid
