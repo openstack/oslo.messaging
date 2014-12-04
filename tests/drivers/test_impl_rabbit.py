@@ -24,6 +24,7 @@ import mock
 from oslotest import mockpatch
 import testscenarios
 
+from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as driver_common
@@ -32,6 +33,24 @@ from oslo.serialization import jsonutils
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
+
+
+class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
+
+    def setUp(self):
+        super(TestDeprecatedRabbitDriverLoad, self).setUp(
+            conf=cfg.ConfigOpts())
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.config(fake_rabbit=True)
+
+    def test_driver_load(self):
+        transport = messaging.get_transport(self.conf)
+        self.addCleanup(transport.cleanup)
+        driver = transport._driver
+        url = driver._get_connection()._url
+
+        self.assertIsInstance(driver, rabbit_driver.RabbitDriver)
+        self.assertEqual('memory:////', url)
 
 
 class TestRabbitDriverLoad(test_utils.BaseTestCase):

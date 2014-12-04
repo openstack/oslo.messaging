@@ -100,6 +100,12 @@ rabbit_opts = [
                 help='Use HA queues in RabbitMQ (x-ha-policy: all). '
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
+
+    # NOTE(sileht): deprecated option since oslo.messaging 1.5.0,
+    cfg.BoolOpt('fake_rabbit',
+                default=False,
+                help='Deprecated, use rpc_backend=kombu+memory or '
+                'rpc_backend=fake'),
 ]
 
 LOG = logging.getLogger(__name__)
@@ -441,7 +447,12 @@ class Connection(object):
             virtual_host = self.conf.rabbit_virtual_host
 
         self._url = ''
-        if url.hosts:
+        if self.conf.fake_rabbit:
+            LOG.warn("Deprecated: fake_rabbit option is deprecated, set "
+                     "rpc_backend to kombu+memory or use the fake "
+                     "driver instead.")
+            self._url = 'memory://%s/' % virtual_host
+        elif url.hosts:
             for host in url.hosts:
                 transport = url.transport.replace('kombu+', '')
                 transport = url.transport.replace('rabbit', 'amqp')
