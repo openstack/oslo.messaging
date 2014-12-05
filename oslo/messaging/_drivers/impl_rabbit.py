@@ -579,7 +579,7 @@ class Connection(object):
         current_pid = os.getpid()
         if self._initial_pid != current_pid:
             LOG.warn("Process forked after connection established! "
-                     "This can results to unpredictable behavior. "
+                     "This can result in unpredictable behavior. "
                      "See: http://docs.openstack.org/developer/"
                      "oslo.messaging/transport.html")
             self._initial_pid = current_pid
