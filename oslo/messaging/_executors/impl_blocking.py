@@ -42,7 +42,7 @@ class BlockingExecutor(base.ExecutorBase):
         self._running = True
         while self._running:
             try:
-                incoming = self.listener.poll(timeout=base.POLL_TIMEOUT)
+                incoming = self.listener.poll()
                 if incoming is not None:
                     with self.dispatcher(incoming) as callback:
                         callback()
@@ -51,6 +51,7 @@ class BlockingExecutor(base.ExecutorBase):
 
     def stop(self):
         self._running = False
+        self.listener.stop()
 
     def wait(self):
         pass

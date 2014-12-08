@@ -17,7 +17,6 @@ __all__ = ['AMQPDriverBase']
 
 import logging
 import threading
-import time
 import uuid
 
 from six import moves
@@ -94,6 +93,7 @@ class AMQPListener(base.Listener):
         self.conn = conn
         self.msg_id_cache = rpc_amqp._MsgIdCache()
         self.incoming = []
+        self._stopped = threading.Event()
 
     def __call__(self, message):
         # FIXME(markmc): logging isn't driver specific
@@ -110,23 +110,17 @@ class AMQPListener(base.Listener):
                                                  ctxt.reply_q))
 
     def poll(self, timeout=None):
-        if timeout is not None:
-            deadline = time.time() + timeout
-        else:
-            deadline = None
-        while True:
+        while not self._stopped.is_set():
             if self.incoming:
                 return self.incoming.pop(0)
-            if deadline is not None:
-                timeout = deadline - time.time()
-                if timeout < 0:
-                    return None
-                try:
-                    self.conn.consume(limit=1, timeout=timeout)
-                except rpc_common.Timeout:
-                    return None
-            else:
-                self.conn.consume(limit=1)
+            try:
+                self.conn.consume(limit=1, timeout=timeout)
+            except rpc_common.Timeout:
+                return None
+
+    def stop(self):
+        self._stopped.set()
+        self.conn.stop_consuming()
 
     def cleanup(self):
         # Closes listener connection

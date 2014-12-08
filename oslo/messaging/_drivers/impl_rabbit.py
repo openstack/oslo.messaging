@@ -497,6 +497,7 @@ class Connection(object):
         self._initial_pid = os.getpid()
 
         self.do_consume = True
+        self._consume_loop_stopped = False
 
         self.channel = None
         self.connection = kombu.connection.Connection(
@@ -715,8 +716,15 @@ class Connection(object):
                 queues_tail.consume(nowait=False)
                 self.do_consume = False
 
+            # NOTE(sileht):
+            # maximun value choosen according the best practice from kombu:
+            # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
             poll_timeout = 1 if timeout is None else min(timeout, 1)
             while True:
+                if self._consume_loop_stopped:
+                    self._consume_loop_stopped = False
+                    raise StopIteration
+
                 try:
                     return self.connection.drain_events(timeout=poll_timeout)
                 except socket.timeout as exc:
@@ -789,6 +797,9 @@ class Connection(object):
                 six.next(it)
             except StopIteration:
                 return
+
+    def stop_consuming(self):
+        self._consume_loop_stopped = True
 
 
 class RabbitDriver(amqpdriver.AMQPDriverBase):
