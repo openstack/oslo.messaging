@@ -120,6 +120,12 @@ class ZmqSocket(object):
     def __init__(self, addr, zmq_type, bind=True, subscribe=None):
         self.ctxt = zmq.Context(CONF.rpc_zmq_contexts)
         self.sock = self.ctxt.socket(zmq_type)
+
+        # Enable IPv6-support in libzmq.
+        # When IPv6 is enabled, a socket will connect to, or accept
+        # connections from, both IPv4 and IPv6 hosts.
+        self.sock.ipv6 = True
+
         self.addr = addr
         self.type = zmq_type
         self.subscriptions = []
