@@ -130,6 +130,12 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
               expected=["amqp://user:password@host:10/virtual_host",
                         "amqp://user2:password2@host2:12/virtual_host"]
               )),
+        ('qpid',
+         dict(url='kombu+qpid://user:password@host:10/virtual_host',
+              expected=['qpid://user:password@host:10/virtual_host'])),
+        ('rabbit',
+         dict(url='kombu+rabbit://user:password@host:10/virtual_host',
+              expected=['amqp://user:password@host:10/virtual_host'])),
     ]
 
     def setUp(self):
@@ -143,7 +149,13 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
         self.addCleanup(transport.cleanup)
         driver = transport._driver
 
-        urls = driver._get_connection()._url.split(";")
+        # NOTE(sileht): some kombu transport can depend on library that
+        # we don't want to depend yet, because selecting the transport
+        # is experimental, only amqp is supported
+        # for example kombu+qpid depends of qpid-tools
+        # so, mock the connection.info to skip call to qpid-tools
+        with mock.patch('kombu.connection.Connection.info'):
+            urls = driver._get_connection()._url.split(";")
         self.assertEqual(sorted(self.expected), sorted(urls))
 
 
