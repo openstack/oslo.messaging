@@ -31,30 +31,6 @@ from oslo.messaging._i18n import _LI
 LOG = logging.getLogger(__name__)
 
 
-class _DecayingTimer(object):
-    def __init__(self, duration=None):
-        self._duration = duration
-        self._ends_at = None
-
-    def start(self):
-        if self._duration is not None:
-            self._ends_at = time.time() + max(0, self._duration)
-        return self
-
-    def check_return(self, msg_id):
-        if self._duration is None:
-            return None
-        if self._ends_at is None:
-            raise RuntimeError("Can not check/return a timeout from a timer"
-                               " that has not been started")
-        left = self._ends_at - time.time()
-        if left <= 0:
-            raise messaging.MessagingTimeout('Timed out waiting for a '
-                                             'reply to message ID %s'
-                                             % msg_id)
-        return left
-
-
 class AMQPIncomingMessage(base.IncomingMessage):
 
     def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q):
@@ -231,6 +207,11 @@ class ReplyWaiter(object):
     def unlisten(self, msg_id):
         self.waiters.remove(msg_id)
 
+    @staticmethod
+    def _raise_timeout_exception(msg_id):
+        raise messaging.MessagingTimeout(
+            'Timed out waiting for a reply to message ID %s' % msg_id)
+
     def _process_reply(self, data):
         result = None
         ending = False
@@ -256,15 +237,15 @@ class ReplyWaiter(object):
 
                 self.waiters.put(incoming_msg_id, message_data)
 
+            timeout = timer.check_return(self._raise_timeout_exception, msg_id)
             try:
-                self.conn.consume(limit=1, timeout=timer.check_return(msg_id))
+                self.conn.consume(limit=1, timeout=timeout)
             except rpc_common.Timeout:
-                raise messaging.MessagingTimeout('Timed out waiting for a '
-                                                 'reply to message ID %s'
-                                                 % msg_id)
+                self._raise_timeout_exception(msg_id)
 
     def _poll_queue(self, msg_id, timer):
-        message = self.waiters.get(msg_id, timeout=timer.check_return(msg_id))
+        timeout = timer.check_return(self._raise_timeout_exception, msg_id)
+        message = self.waiters.get(msg_id, timeout=timeout)
         if message is self.waiters.WAKE_UP:
             return None, None, True  # lock was released
 
@@ -293,7 +274,7 @@ class ReplyWaiter(object):
         # have the first thread take responsibility for passing replies not
         # intended for itself to the appropriate thread.
         #
-        timer = _DecayingTimer(duration=timeout).start()
+        timer = rpc_common.DecayingTimer(duration=timeout).start()
         final_reply = None
         while True:
             if self.conn_lock.acquire(False):
