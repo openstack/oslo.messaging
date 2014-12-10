@@ -106,6 +106,9 @@ def get_rpc_server(transport, target, endpoints,
     dispatched. By default, the most simple executor is used - the blocking
     executor.
 
+    If the eventlet executor is used, the threading and time library need to be
+    monkeypatched.
+
     :param transport: the messaging transport
     :type transport: Transport
     :param target: the exchange, topic and server to listen on

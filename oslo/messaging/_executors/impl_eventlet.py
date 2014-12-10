@@ -13,15 +13,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import sys
 
 import eventlet
+from eventlet.green import threading as greenthreading
 from eventlet import greenpool
 import greenlet
 
 from oslo.config import cfg
 from oslo.messaging._executors import base
+from oslo.messaging import localcontext
 from oslo.utils import excutils
+
+LOG = logging.getLogger(__name__)
 
 _eventlet_opts = [
     cfg.IntOpt('rpc_thread_pool_size',
@@ -76,6 +81,14 @@ class EventletExecutor(base.ExecutorBase):
         self._thread = None
         self._greenpool = greenpool.GreenPool(self.conf.rpc_thread_pool_size)
         self._running = False
+
+        if not isinstance(localcontext._STORE, greenthreading.local):
+            LOG.debug('eventlet executor in use but the threading module '
+                      'has not been monkeypatched or has been '
+                      'monkeypatched after the oslo.messaging library '
+                      'have been loaded. This will results in unpredictable '
+                      'behavior. In the future, we will raise a '
+                      'RuntimeException in this case.')
 
     def start(self):
         if self._thread is not None:

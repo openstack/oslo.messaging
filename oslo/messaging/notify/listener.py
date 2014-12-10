@@ -110,6 +110,9 @@ def get_notification_listener(transport, targets, endpoints,
     dispatched. By default, the most simple executor is used - the blocking
     executor.
 
+    If the eventlet executor is used, the threading and time library need to be
+    monkeypatched.
+
     :param transport: the messaging transport
     :type transport: Transport
     :param targets: the exchanges and topics to listen on
