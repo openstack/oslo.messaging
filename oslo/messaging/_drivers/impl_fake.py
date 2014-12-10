@@ -46,6 +46,7 @@ class FakeListener(base.Listener):
         self._exchange_manager = exchange_manager
         self._targets = targets
         self._pool = pool
+        self._stopped = threading.Event()
 
         # NOTE(sileht): Ensure that all needed queues exists even the listener
         # have not been polled yet
@@ -58,7 +59,7 @@ class FakeListener(base.Listener):
             deadline = time.time() + timeout
         else:
             deadline = None
-        while True:
+        while not self._stopped.is_set():
             for target in self._targets:
                 exchange = self._exchange_manager.get_exchange(target.exchange)
                 (ctxt, message, reply_q, requeue) = exchange.poll(target,
@@ -76,6 +77,9 @@ class FakeListener(base.Listener):
                 pause = 0.050
             time.sleep(pause)
         return None
+
+    def stop(self):
+        self._stopped.set()
 
 
 class FakeExchange(object):

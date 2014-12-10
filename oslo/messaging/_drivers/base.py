@@ -56,8 +56,14 @@ class Listener(object):
     def poll(self, timeout=None):
         """Blocking until a message is pending and return IncomingMessage.
         Return None after timeout seconds if timeout is set and no message is
-        ending.
+        ending or if the listener have been stopped.
         """
+
+    def stop(self):
+        """Stop listener.
+        Stop the listener message polling
+        """
+        pass
 
     def cleanup(self):
         """Cleanup listener.

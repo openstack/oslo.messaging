@@ -39,12 +39,10 @@ class TestExecutor(test_utils.BaseTestCase):
 
     @classmethod
     def generate_scenarios(cls):
-        impl = [('blocking', dict(executor=impl_blocking.BlockingExecutor,
-                                  stop_before_return=True))]
+        impl = [('blocking', dict(executor=impl_blocking.BlockingExecutor))]
         if impl_eventlet is not None:
             impl.append(
-                ('eventlet', dict(executor=impl_eventlet.EventletExecutor,
-                                  stop_before_return=False)))
+                ('eventlet', dict(executor=impl_eventlet.EventletExecutor)))
         cls.scenarios = testscenarios.multiply_scenarios(impl)
 
     @staticmethod
@@ -72,13 +70,9 @@ class TestExecutor(test_utils.BaseTestCase):
                                           message={'payload': 'data'})
 
         def fake_poll(timeout=None):
-            if self.stop_before_return:
-                executor.stop()
+            if listener.poll.call_count == 1:
                 return incoming_message
-            else:
-                if listener.poll.call_count == 1:
-                    return incoming_message
-                executor.stop()
+            executor.stop()
 
         listener.poll.side_effect = fake_poll
 

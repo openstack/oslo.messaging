@@ -460,6 +460,8 @@ class Connection(object):
         self.consumers = {}
         self.conf = conf
 
+        self._consume_loop_stopped = False
+
         self.brokers_params = []
         if url.hosts:
             for host in url.hosts:
@@ -651,8 +653,16 @@ class Connection(object):
             LOG.exception(_('Failed to consume message from queue: %s'), exc)
 
         def _consume():
+            # NOTE(sileht):
+            # maximun value choosen according the best practice from kombu:
+            # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
             poll_timeout = 1 if timeout is None else min(timeout, 1)
+
             while True:
+                if self._consume_loop_stopped:
+                    self._consume_loop_stopped = False
+                    raise StopIteration
+
                 try:
                     nxt_receiver = self.session.next_receiver(
                         timeout=poll_timeout)
@@ -744,6 +754,9 @@ class Connection(object):
                 six.next(it)
             except StopIteration:
                 return
+
+    def stop_consuming(self):
+        self._consume_loop_stopped = True
 
 
 class QpidDriver(amqpdriver.AMQPDriverBase):

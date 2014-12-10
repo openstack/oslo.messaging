@@ -85,7 +85,7 @@ class EventletExecutor(base.ExecutorBase):
         def _executor_thread():
             try:
                 while self._running:
-                    incoming = self.listener.poll(timeout=base.POLL_TIMEOUT)
+                    incoming = self.listener.poll()
                     if incoming is not None:
                         spawn_with(ctxt=self.dispatcher(incoming),
                                    pool=self._greenpool)
@@ -99,6 +99,7 @@ class EventletExecutor(base.ExecutorBase):
         if self._thread is None:
             return
         self._running = False
+        self.listener.stop()
         self._thread.cancel()
 
     def wait(self):
