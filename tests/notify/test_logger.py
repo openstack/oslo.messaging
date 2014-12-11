@@ -17,10 +17,6 @@ import logging
 import logging.config
 import os
 import sys
-try:
-    import threading
-except ImportError:
-    threading = None
 
 import mock
 import testscenarios
@@ -39,13 +35,6 @@ logging.AUDIT = logging.INFO + 1
 logging.addLevelName(logging.AUDIT, 'AUDIT')
 
 
-def get_thread_ident():
-    if threading is not None:
-        return threading.current_thread().ident
-    else:
-        return None
-
-
 class TestLogNotifier(test_utils.BaseTestCase):
 
     scenarios = [
@@ -62,6 +51,10 @@ class TestLogNotifier(test_utils.BaseTestCase):
         super(TestLogNotifier, self).setUp()
         self.addCleanup(messaging.notify._impl_test.reset)
         self.config(notification_driver=['test'])
+        # NOTE(jamespage) disable thread information logging for testing
+        # as this causes test failures when zmq tests monkey_patch via
+        # eventlet
+        logging.logThreads = 0
 
     @mock.patch('oslo.utils.timeutils.utcnow')
     def test_logger(self, mock_utcnow):
@@ -93,7 +86,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
             {'process': os.getpid(),
              'funcName': None,
              'name': 'foo',
-             'thread': get_thread_ident(),
+             'thread': None,
              'levelno': levelno,
              'processName': 'MainProcess',
              'pathname': '/foo/bar',
@@ -149,7 +142,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
             {'process': os.getpid(),
              'funcName': 'test_logging_conf',
              'name': 'default',
-             'thread': get_thread_ident(),
+             'thread': None,
              'levelno': levelno,
              'processName': 'MainProcess',
              'pathname': pathname,

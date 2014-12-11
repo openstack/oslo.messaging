@@ -64,7 +64,7 @@ class ListenerSetupMixin(object):
 
         def wait_for(self, expect_messages):
             while expect_messages != self._received_msgs:
-                pass
+                yield
 
         def stop(self):
             for listener in self.listeners:

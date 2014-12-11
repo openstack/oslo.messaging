@@ -32,7 +32,7 @@ from oslo.config import cfg
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
-from oslo.messaging._i18n import _
+from oslo.messaging._i18n import _, _LE
 from oslo.serialization import jsonutils
 from oslo.utils import excutils
 from oslo.utils import importutils
@@ -180,6 +180,10 @@ class ZmqSocket(object):
         self.sock.setsockopt(zmq.UNSUBSCRIBE, msg_filter)
         self.subscriptions.remove(msg_filter)
 
+    @property
+    def closed(self):
+        return self.sock is None or self.sock.closed
+
     def close(self):
         if self.sock is None or self.sock.closed:
             return
@@ -257,7 +261,10 @@ class RpcContext(rpc_common.CommonRpcContext):
 
     @classmethod
     def marshal(self, ctx):
-        ctx_data = ctx.to_dict()
+        if not isinstance(ctx, dict):
+            ctx_data = ctx.to_dict()
+        else:
+            ctx_data = ctx
         return _serialize(ctx_data)
 
     @classmethod
@@ -395,7 +402,7 @@ class ZmqBaseReactor(ConsumerBase):
     def consume_in_thread(self):
         def _consume(sock):
             LOG.info(_("Consuming socket"))
-            while True:
+            while not sock.closed:
                 self.consume(sock)
 
         for k in self.proxies.keys():
@@ -408,11 +415,11 @@ class ZmqBaseReactor(ConsumerBase):
             t.wait()
 
     def close(self):
-        for s in self.sockets:
-            s.close()
-
         for t in self.threads:
             t.kill()
+
+        for s in self.sockets:
+            s.close()
 
 
 class ZmqProxy(ZmqBaseReactor):
@@ -612,9 +619,15 @@ class Connection(rpc_common.Connection):
         self.topics.append(topic)
 
     def close(self):
-        _get_matchmaker().stop_heartbeat()
+        mm = _get_matchmaker()
+        mm.stop_heartbeat()
         for topic in self.topics:
-            _get_matchmaker().unregister(topic, CONF.rpc_zmq_host)
+            try:
+                mm.unregister(topic, CONF.rpc_zmq_host)
+            except Exception as err:
+                LOG.error(_LE('Unable to unregister topic %(topic)s'
+                              ' from matchmaker: %(err)s') %
+                          {'topic': topic, 'err': err})
 
         self.reactor.close()
         self.topics = []
@@ -634,6 +647,7 @@ def _cast(addr, context, topic, msg, timeout=None, envelope=False,
     payload = [RpcContext.marshal(context), msg]
 
     with Timeout(timeout_cast, exception=rpc_common.Timeout):
+        conn = None
         try:
             conn = ZmqClient(addr)
 
@@ -642,7 +656,7 @@ def _cast(addr, context, topic, msg, timeout=None, envelope=False,
         except zmq.ZMQError:
             raise RPCException("Cast failed. ZMQ Socket Exception")
         finally:
-            if 'conn' in vars():
+            if conn is not None:
                 conn.close()
 
 
@@ -684,12 +698,14 @@ def _call(addr, context, topic, msg, timeout=None,
                 zmq.SUB, subscribe=msg_id, bind=False
             )
 
-            LOG.debug("Sending cast")
+            LOG.debug("Sending cast: %s", topic)
             _cast(addr, context, topic, payload, envelope=envelope)
 
             LOG.debug("Cast sent; Waiting reply")
             # Blocks until receives reply
             msg = msg_waiter.recv()
+            if msg is None:
+                raise rpc_common.Timeout()
             LOG.debug("Received message: %s", msg)
             LOG.debug("Unpacking response")
 
@@ -789,7 +805,7 @@ class ZmqIncomingMessage(base.IncomingMessage):
             self.condition.notify()
 
     def requeue(self):
-        pass
+        LOG.debug("WARNING: requeue not supported")
 
 
 class ZmqListener(base.Listener):
@@ -858,18 +874,10 @@ class ZmqDriver(base.BaseDriver):
             raise NotImplementedError('The ZeroMQ driver currently only works '
                                       'with oslo.config.cfg.CONF')
 
+        self.listeners = []
+
     def _send(self, target, ctxt, message,
               wait_for_reply=None, timeout=None, envelope=False):
-
-        # FIXME(markmc): remove this temporary hack
-        class Context(object):
-            def __init__(self, d):
-                self.d = d
-
-            def to_dict(self):
-                return self.d
-
-        context = Context(ctxt)
 
         if wait_for_reply:
             method = _call
@@ -884,7 +892,7 @@ class ZmqDriver(base.BaseDriver):
         elif target.server:
             topic = '%s.%s' % (topic, target.server)
 
-        reply = _multi_send(method, context, topic, message,
+        reply = _multi_send(method, ctxt, topic, message,
                             envelope=envelope,
                             allowed_remote_exmods=self._allowed_remote_exmods)
 
@@ -916,6 +924,7 @@ class ZmqDriver(base.BaseDriver):
         conn.create_consumer(target.topic, listener, fanout=True)
 
         conn.consume_in_thread()
+        self.listeners.append(conn)
 
         return listener
 
@@ -934,8 +943,11 @@ class ZmqDriver(base.BaseDriver):
             conn.create_consumer('%s-%s' % (target.topic, priority),
                                  listener)
         conn.consume_in_thread()
+        self.listeners.append(conn)
 
         return listener
 
     def cleanup(self):
-        pass
+        for c in self.listeners:
+            c.close()
+        self.listeners = []
