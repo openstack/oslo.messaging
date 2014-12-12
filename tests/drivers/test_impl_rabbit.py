@@ -55,16 +55,26 @@ class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
 
 class TestRabbitDriverLoad(test_utils.BaseTestCase):
 
-    def setUp(self):
-        super(TestRabbitDriverLoad, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
+    scenarios = [
+        ('rabbit', dict(transport_driver='rabbit',
+                        url='amqp://guest:guest@localhost:5672//')),
+        ('kombu', dict(transport_driver='kombu',
+                       url='amqp://guest:guest@localhost:5672//')),
+        ('rabbit+memory', dict(transport_driver='kombu+memory',
+                               url='memory:///'))
+    ]
 
     @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
     @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.reset')
     def test_driver_load(self, fake_ensure, fake_reset):
+        self.messaging_conf.transport_driver = self.transport_driver
         transport = messaging.get_transport(self.conf)
         self.addCleanup(transport.cleanup)
-        self.assertIsInstance(transport._driver, rabbit_driver.RabbitDriver)
+        driver = transport._driver
+        url = driver._get_connection()._url
+
+        self.assertIsInstance(driver, rabbit_driver.RabbitDriver)
+        self.assertEqual(self.url, url)
 
 
 class TestRabbitIterconsume(test_utils.BaseTestCase):
