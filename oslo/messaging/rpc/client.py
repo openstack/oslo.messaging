@@ -136,6 +136,10 @@ class _CallContext(object):
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
+        if self.target.fanout:
+            raise exceptions.InvalidTarget('A call cannot be used with fanout',
+                                           self.target)
+
         msg = self._make_message(ctxt, method, kwargs)
         msg_ctxt = self.serializer.serialize_context(ctxt)
 
