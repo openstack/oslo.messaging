@@ -127,7 +127,7 @@ class MatchMakerRedis(mm_common.HeartbeatMatchMakerBase):
             # No value is needed, we just
             # care if it exists. Sets aren't viable
             # because only keys can expire.
-            pipe.set(key_host, '')
+            pipe.sadd(key_host, '')
 
             pipe.execute()
 
