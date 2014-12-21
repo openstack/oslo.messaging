@@ -30,16 +30,19 @@ try:
     from oslo.messaging._executors import impl_eventlet
 except ImportError:
     impl_eventlet = None
+from oslo.messaging._executors import impl_thread
 from tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class TestExecutor(test_utils.BaseTestCase):
-
     @classmethod
     def generate_scenarios(cls):
-        impl = [('blocking', dict(executor=impl_blocking.BlockingExecutor))]
+        impl = [
+            ('blocking', dict(executor=impl_blocking.BlockingExecutor)),
+            ('threaded', dict(executor=impl_thread.ThreadExecutor)),
+        ]
         if impl_eventlet is not None:
             impl.append(
                 ('eventlet', dict(executor=impl_eventlet.EventletExecutor)))

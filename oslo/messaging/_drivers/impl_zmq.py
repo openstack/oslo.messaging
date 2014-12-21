@@ -31,7 +31,7 @@ from six import moves
 from oslo.config import cfg
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
-from oslo.messaging._executors import impl_eventlet  # FIXME(markmc)
+from oslo.messaging._executors import base as executor_base  # FIXME(markmc)
 from oslo.messaging._i18n import _, _LE
 from oslo.serialization import jsonutils
 from oslo.utils import excutils
@@ -857,7 +857,7 @@ class ZmqDriver(base.BaseDriver):
         if not zmq:
             raise ImportError("Failed to import eventlet.green.zmq")
         conf.register_opts(zmq_opts)
-        conf.register_opts(impl_eventlet._eventlet_opts)
+        conf.register_opts(executor_base._pool_opts)
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)

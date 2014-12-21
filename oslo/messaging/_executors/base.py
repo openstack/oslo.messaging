@@ -16,6 +16,14 @@ import abc
 
 import six
 
+from oslo.config import cfg
+
+_pool_opts = [
+    cfg.IntOpt('rpc_thread_pool_size',
+               default=64,
+               help='Size of RPC thread pool.'),
+]
+
 
 @six.add_metaclass(abc.ABCMeta)
 class ExecutorBase(object):
@@ -36,3 +44,11 @@ class ExecutorBase(object):
     @abc.abstractmethod
     def wait(self):
         "Wait until the executor has stopped polling."
+
+
+class PooledExecutorBase(ExecutorBase):
+    """An executor that uses a rpc thread pool of a given size."""
+
+    def __init__(self, conf, listener, callback):
+        super(PooledExecutorBase, self).__init__(conf, listener, callback)
+        self.conf.register_opts(_pool_opts)

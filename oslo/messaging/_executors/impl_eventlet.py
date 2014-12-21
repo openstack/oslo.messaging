@@ -21,18 +21,11 @@ from eventlet.green import threading as greenthreading
 from eventlet import greenpool
 import greenlet
 
-from oslo.config import cfg
 from oslo.messaging._executors import base
 from oslo.messaging import localcontext
 from oslo.utils import excutils
 
 LOG = logging.getLogger(__name__)
-
-_eventlet_opts = [
-    cfg.IntOpt('rpc_thread_pool_size',
-               default=64,
-               help='Size of RPC greenthread pool.'),
-]
 
 
 def spawn_with(ctxt, pool):
@@ -64,7 +57,7 @@ def spawn_with(ctxt, pool):
     return thread
 
 
-class EventletExecutor(base.ExecutorBase):
+class EventletExecutor(base.PooledExecutorBase):
 
     """A message executor which integrates with eventlet.
 
@@ -77,7 +70,6 @@ class EventletExecutor(base.ExecutorBase):
 
     def __init__(self, conf, listener, dispatcher):
         super(EventletExecutor, self).__init__(conf, listener, dispatcher)
-        self.conf.register_opts(_eventlet_opts)
         self._thread = None
         self._greenpool = greenpool.GreenPool(self.conf.rpc_thread_pool_size)
         self._running = False
