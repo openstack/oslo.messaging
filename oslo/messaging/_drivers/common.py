@@ -27,6 +27,7 @@ from oslo import messaging
 from oslo.messaging._i18n import _
 from oslo.messaging import _utils as utils
 from oslo.serialization import jsonutils
+from oslo.utils import strutils
 
 LOG = logging.getLogger(__name__)
 
@@ -69,8 +70,6 @@ _VERSION_KEY = 'oslo.version'
 _MESSAGE_KEY = 'oslo.message'
 
 _REMOTE_POSTFIX = '_Remote'
-
-_SANITIZE = ['_context_auth_token', 'auth_token', 'new_pass']
 
 
 class RPCException(Exception):
@@ -162,22 +161,9 @@ class Connection(object):
         raise NotImplementedError()
 
 
-def _fix_passwords(d):
-    """Sanitizes the password fields in the dictionary."""
-    for k in six.iterkeys(d):
-        if k.lower().find('password') != -1:
-            d[k] = '<SANITIZED>'
-        elif k.lower() in _SANITIZE:
-            d[k] = '<SANITIZED>'
-        elif isinstance(d[k], dict):
-            _fix_passwords(d[k])
-
-    return d
-
-
 def _safe_log(log_func, msg, msg_data):
     """Sanitizes the msg_data field before logging."""
-    return log_func(msg, _fix_passwords(copy.deepcopy(msg_data)))
+    return log_func(msg, strutils.mask_password(six.text_type(msg_data)))
 
 
 def serialize_remote_exception(failure_info, log_failure=True):
