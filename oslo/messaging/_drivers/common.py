@@ -346,14 +346,13 @@ class DecayingTimer(object):
     def start(self):
         if self._duration is not None:
             self._ends_at = time.time() + max(0, self._duration)
-        return self
 
     def check_return(self, timeout_callback, *args, **kwargs):
         if self._duration is None:
             return None
         if self._ends_at is None:
-            raise RuntimeError("Can not check/return a timeout from a timer"
-                               " that has not been started")
+            raise RuntimeError(_("Can not check/return a timeout from a timer"
+                               " that has not been started."))
 
         maximum = kwargs.pop('maximum', None)
         left = self._ends_at - time.time()

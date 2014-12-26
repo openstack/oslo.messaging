@@ -25,6 +25,7 @@ from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging._i18n import _
 from oslo.messaging._i18n import _LI
 
 LOG = logging.getLogger(__name__)
@@ -204,7 +205,7 @@ class ReplyWaiter(object):
     @staticmethod
     def _raise_timeout_exception(msg_id):
         raise messaging.MessagingTimeout(
-            'Timed out waiting for a reply to message ID %s' % msg_id)
+            _('Timed out waiting for a reply to message ID %s.') % msg_id)
 
     def _process_reply(self, data):
         result = None
@@ -268,7 +269,8 @@ class ReplyWaiter(object):
         # have the first thread take responsibility for passing replies not
         # intended for itself to the appropriate thread.
         #
-        timer = rpc_common.DecayingTimer(duration=timeout).start()
+        timer = rpc_common.DecayingTimer(duration=timeout)
+        timer.start()
         final_reply = None
         while True:
             if self.conn_lock.acquire(False):
