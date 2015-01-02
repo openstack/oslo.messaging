@@ -2,6 +2,6 @@
 Configuration Options
 ----------------------
 
-.. currentmodule:: oslo.messaging.opts
+.. currentmodule:: oslo_messaging.opts
 
 .. autofunction:: list_opts

@@ -21,7 +21,7 @@ import testscenarios
 from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging.notify import dispatcher
-from tests import utils as test_utils
+from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
@@ -63,6 +63,8 @@ class ListenerSetupMixin(object):
                 self.stop()
 
         def wait_for(self, expect_messages):
+            print('expecting %d messages have %d' %
+                  (expect_messages, self._received_msgs))
             while expect_messages != self._received_msgs:
                 yield
 

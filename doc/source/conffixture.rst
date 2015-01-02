@@ -2,7 +2,7 @@
 Testing Configurations
 ----------------------
 
-.. currentmodule:: oslo.messaging.conffixture
+.. currentmodule:: oslo_messaging.conffixture
 
 .. autoclass:: ConfFixture
    :members:

@@ -22,7 +22,7 @@ from six import moves
 from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging.notify import notifier
-from tests import utils as test_utils
+from oslo_messaging.tests import utils as test_utils
 
 
 class TestServerEndpoint(object):

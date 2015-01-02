@@ -24,8 +24,9 @@ import testtools
 
 from oslo import messaging
 from oslo.utils import timeutils
-from tests.notify import test_notifier
-from tests import utils as test_utils
+import oslo_messaging
+from oslo_messaging.tests.notify import test_notifier
+from oslo_messaging.tests import utils as test_utils
 
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -49,7 +50,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestLogNotifier, self).setUp()
-        self.addCleanup(messaging.notify._impl_test.reset)
+        self.addCleanup(oslo_messaging.notify._impl_test.reset)
         self.config(notification_driver=['test'])
         # NOTE(jamespage) disable thread information logging for testing
         # as this causes test failures when zmq tests monkey_patch via
@@ -58,7 +59,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo.utils.timeutils.utcnow')
     def test_logger(self, mock_utcnow):
-        with mock.patch('oslo.messaging.transport.get_transport',
+        with mock.patch('oslo_messaging.transport.get_transport',
                         return_value=test_notifier._FakeTransport(self.conf)):
             self.logger = messaging.LoggingNotificationHandler('test://')
 
@@ -76,7 +77,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
         self.logger.emit(record)
 
-        n = messaging.notify._impl_test.NOTIFICATIONS[0][1]
+        n = oslo_messaging.notify._impl_test.NOTIFICATIONS[0][1]
         self.assertEqual(getattr(self, 'queue', self.priority.upper()),
                          n['priority'])
         self.assertEqual('logrecord', n['event_type'])
@@ -101,7 +102,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
                           "Need logging.config.dictConfig (Python >= 2.7)")
     @mock.patch('oslo.utils.timeutils.utcnow')
     def test_logging_conf(self, mock_utcnow):
-        with mock.patch('oslo.messaging.transport.get_transport',
+        with mock.patch('oslo_messaging.transport.get_transport',
                         return_value=test_notifier._FakeTransport(self.conf)):
             logging.config.dictConfig({
                 'version': 1,
@@ -128,7 +129,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         lineno = sys._getframe().f_lineno + 1
         logger.log(levelno, 'foobar')
 
-        n = messaging.notify._impl_test.NOTIFICATIONS[0][1]
+        n = oslo_messaging.notify._impl_test.NOTIFICATIONS[0][1]
         self.assertEqual(getattr(self, 'queue', self.priority.upper()),
                          n['priority'])
         self.assertEqual('logrecord', n['event_type'])

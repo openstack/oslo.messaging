@@ -2,7 +2,7 @@
 Target
 ------
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autoclass:: Target
 

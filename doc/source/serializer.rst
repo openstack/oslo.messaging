@@ -2,7 +2,7 @@
 Serializer
 ----------
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autoclass:: Serializer
    :members:

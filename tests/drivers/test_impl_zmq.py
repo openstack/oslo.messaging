@@ -22,7 +22,7 @@ import testtools
 
 from oslo import messaging
 from oslo.utils import importutils
-from tests import utils as test_utils
+from oslo_messaging.tests import utils as test_utils
 
 # NOTE(jamespage) the zmq driver implementation is currently tied
 # to eventlet so we have to monkey_patch to support testing

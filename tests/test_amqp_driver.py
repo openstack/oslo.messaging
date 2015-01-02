@@ -25,7 +25,7 @@ import testtools
 
 from oslo import messaging
 from oslo.utils import importutils
-from tests import utils as test_utils
+from oslo_messaging.tests import utils as test_utils
 
 # TODO(kgiusti) Conditionally run these tests only if the necessary
 # dependencies are installed.  This should be removed once the proton libraries

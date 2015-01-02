@@ -2,9 +2,9 @@
 Server
 ------
 
-.. automodule:: oslo.messaging.rpc.server
+.. automodule:: oslo_messaging.rpc.server
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autofunction:: get_rpc_server
 

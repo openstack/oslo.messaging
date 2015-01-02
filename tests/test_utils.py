@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo.messaging._drivers import common
-from oslo.messaging import _utils as utils
-from tests import utils as test_utils
+from oslo_messaging._drivers import common
+from oslo_messaging import _utils as utils
+from oslo_messaging.tests import utils as test_utils
 
 
 class VersionIsCompatibleTestCase(test_utils.BaseTestCase):

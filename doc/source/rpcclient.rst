@@ -2,7 +2,7 @@
 RPC Client
 ----------
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autoclass:: RPCClient
    :members:

@@ -27,8 +27,8 @@ import testscenarios
 import testtools
 
 from oslo import messaging
-from oslo.messaging._drivers import impl_qpid as qpid_driver
-from tests import utils as test_utils
+from oslo_messaging._drivers import impl_qpid as qpid_driver
+from oslo_messaging.tests import utils as test_utils
 
 
 load_tests = testscenarios.load_tests_apply_scenarios

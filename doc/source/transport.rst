@@ -2,7 +2,7 @@
 Transport
 ---------
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autofunction:: get_transport
 

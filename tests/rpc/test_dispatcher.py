@@ -18,7 +18,7 @@ import testscenarios
 
 from oslo import messaging
 from oslo.messaging import serializer as msg_serializer
-from tests import utils as test_utils
+from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

@@ -26,11 +26,11 @@ import testscenarios
 
 from oslo.config import cfg
 from oslo import messaging
-from oslo.messaging._drivers import amqpdriver
-from oslo.messaging._drivers import common as driver_common
-from oslo.messaging._drivers import impl_rabbit as rabbit_driver
 from oslo.serialization import jsonutils
-from tests import utils as test_utils
+from oslo_messaging._drivers import amqpdriver
+from oslo_messaging._drivers import common as driver_common
+from oslo_messaging._drivers import impl_rabbit as rabbit_driver
+from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
@@ -64,8 +64,8 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
                                url='memory:///'))
     ]
 
-    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
-    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.reset')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
     def test_driver_load(self, fake_ensure, fake_reset):
         self.messaging_conf.transport_driver = self.transport_driver
         transport = messaging.get_transport(self.conf)
@@ -136,8 +136,8 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
         super(TestRabbitTransportURL, self).setUp()
         self.messaging_conf.transport_driver = 'rabbit'
 
-    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.ensure')
-    @mock.patch('oslo.messaging._drivers.impl_rabbit.Connection.reset')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
     def test_transport_url(self, fake_ensure_connection, fake_reset):
         transport = messaging.get_transport(self.conf, self.url)
         self.addCleanup(transport.cleanup)

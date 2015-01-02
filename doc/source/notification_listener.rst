@@ -2,9 +2,9 @@
 Notification Listener
 ---------------------
 
-.. automodule:: oslo.messaging.notify.listener
+.. automodule:: oslo_messaging.notify.listener
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autofunction:: get_notification_listener
 

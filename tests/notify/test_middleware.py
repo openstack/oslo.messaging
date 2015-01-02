@@ -19,7 +19,7 @@ import mock
 import webob
 
 from oslo.messaging.notify import middleware
-from tests import utils
+from oslo_messaging.tests import utils
 
 
 class FakeApp(object):

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import warnings
+
 from .exceptions import *
 from .localcontext import *
 from .notify import *
@@ -21,3 +23,16 @@ from .serializer import *
 from .server import *
 from .target import *
 from .transport import *
+
+
+def deprecated():
+    new_name = __name__.replace('.', '_')
+    warnings.warn(
+        ('The oslo namespace package is deprecated. Please use %s instead.' %
+         new_name),
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+deprecated()

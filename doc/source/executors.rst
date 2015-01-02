@@ -2,9 +2,9 @@
 Executors
 ---------
 
-.. automodule:: oslo.messaging._executors
+.. automodule:: oslo_messaging._executors
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 ==============
 Executor types

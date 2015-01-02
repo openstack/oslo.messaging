@@ -16,8 +16,8 @@ import mock
 
 from oslo import messaging
 from oslo.messaging.notify import log_handler
-from tests.notify import test_notifier
-from tests import utils as test_utils
+from oslo_messaging.tests.notify import test_notifier
+from oslo_messaging.tests import utils as test_utils
 
 
 class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
@@ -46,7 +46,7 @@ class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
         self.publisherrorshandler.emit(logrecord)
         self.assertTrue(self.stub_flg)
 
-    @mock.patch.object(messaging.notify.notifier.Notifier, '_notify')
+    @mock.patch('oslo_messaging.notify.notifier.Notifier._notify')
     def test_emit_notification(self, mock_notify):
         logrecord = logging.LogRecord(name='name', level='ERROR',
                                       pathname='/tmp', lineno=1, msg='Message',

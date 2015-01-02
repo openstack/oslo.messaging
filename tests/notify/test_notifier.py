@@ -26,14 +26,14 @@ import testscenarios
 import yaml
 
 from oslo import messaging
-from oslo.messaging.notify import _impl_log
-from oslo.messaging.notify import _impl_messaging
-from oslo.messaging.notify import _impl_test
-from oslo.messaging.notify import notifier as msg_notifier
 from oslo.messaging import serializer as msg_serializer
 from oslo.serialization import jsonutils
 from oslo.utils import timeutils
-from tests import utils as test_utils
+from oslo_messaging.notify import _impl_log
+from oslo_messaging.notify import _impl_messaging
+from oslo_messaging.notify import _impl_test
+from oslo_messaging.notify import notifier as msg_notifier
+from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
@@ -358,7 +358,7 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
                                config_file):
             with mock.patch('stevedore.dispatch.DispatchExtensionManager',
                             return_value=self._empty_extension_manager()):
-                with mock.patch('oslo.messaging.notify.'
+                with mock.patch('oslo_messaging.notify.'
                                 '_impl_routing.LOG') as mylog:
                     self.router._load_notifiers()
                     self.assertFalse(mylog.debug.called)

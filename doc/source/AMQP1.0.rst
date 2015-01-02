@@ -2,7 +2,7 @@
 AMQP 1.0 Protocol Support
 -------------------------
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 ============
 Introduction

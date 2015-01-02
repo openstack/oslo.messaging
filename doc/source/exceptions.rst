@@ -2,7 +2,7 @@
 Exceptions
 ----------
 
-.. currentmodule:: oslo.messaging
+.. currentmodule:: oslo_messaging
 
 .. autoexception:: ClientSendError
 .. autoexception:: DriverLoadFailure
