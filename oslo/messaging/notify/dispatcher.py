@@ -67,25 +67,26 @@ class NotificationDispatcher(object):
                                                    pool=self.pool)
 
     @contextlib.contextmanager
-    def __call__(self, incoming):
+    def __call__(self, incoming, executor_callback=None):
         result_wrapper = []
 
         yield lambda: result_wrapper.append(
-            self._dispatch_and_handle_error(incoming))
+            self._dispatch_and_handle_error(incoming, executor_callback))
 
         if result_wrapper[0] == NotificationResult.HANDLED:
             incoming.acknowledge()
         else:
             incoming.requeue()
 
-    def _dispatch_and_handle_error(self, incoming):
+    def _dispatch_and_handle_error(self, incoming, executor_callback):
         """Dispatch a notification message to the appropriate endpoint method.
 
         :param incoming: the incoming notification message
         :type ctxt: IncomingMessage
         """
         try:
-            return self._dispatch(incoming.ctxt, incoming.message)
+            return self._dispatch(incoming.ctxt, incoming.message,
+                                  executor_callback)
         except Exception:
             # sys.exc_info() is deleted by LOG.exception().
             exc_info = sys.exc_info()
@@ -93,7 +94,7 @@ class NotificationDispatcher(object):
                       exc_info=exc_info)
             return NotificationResult.HANDLED
 
-    def _dispatch(self, ctxt, message):
+    def _dispatch(self, ctxt, message, executor_callback=None):
         """Dispatch an RPC message to the appropriate endpoint method.
 
         :param ctxt: the request context
@@ -120,8 +121,12 @@ class NotificationDispatcher(object):
         for callback in self._callbacks_by_priority.get(priority, []):
             localcontext.set_local_context(ctxt)
             try:
-                ret = callback(ctxt, publisher_id, event_type, payload,
-                               metadata)
+                if executor_callback:
+                    ret = executor_callback(callback, ctxt, publisher_id,
+                                            event_type, payload, metadata)
+                else:
+                    ret = callback(ctxt, publisher_id, event_type, payload,
+                                   metadata)
                 ret = NotificationResult.HANDLED if ret is None else ret
                 if self.allow_requeue and ret == NotificationResult.REQUEUE:
                     return ret
