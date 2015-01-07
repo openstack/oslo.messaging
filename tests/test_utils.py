@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo.messaging._drivers import common
 from oslo.messaging import _utils as utils
 from tests import utils as test_utils
 
@@ -47,3 +48,17 @@ class VersionIsCompatibleTestCase(test_utils.BaseTestCase):
 
     def test_version_is_compatible_no_rev_is_zero(self):
         self.assertTrue(utils.version_is_compatible('1.23.0', '1.23'))
+
+
+class TimerTestCase(test_utils.BaseTestCase):
+    def test_duration_is_none(self):
+        t = common.DecayingTimer()
+        t.start()
+        remaining = t.check_return(None)
+        self.assertEqual(None, remaining)
+
+    def test_duration_is_none_and_maximun_set(self):
+        t = common.DecayingTimer()
+        t.start()
+        remaining = t.check_return(None, maximum=2)
+        self.assertEqual(2, remaining)
