@@ -27,7 +27,6 @@ from oslo import messaging
 from oslo.messaging._i18n import _
 from oslo.messaging import _utils as utils
 from oslo.serialization import jsonutils
-from oslo.utils import strutils
 
 LOG = logging.getLogger(__name__)
 
@@ -159,11 +158,6 @@ class Connection(object):
         as a network connection, and cleaned up.
         """
         raise NotImplementedError()
-
-
-def _safe_log(log_func, msg, msg_data):
-    """Sanitizes the msg_data field before logging."""
-    return log_func(msg, strutils.mask_password(six.text_type(msg_data)))
 
 
 def serialize_remote_exception(failure_info, log_failure=True):

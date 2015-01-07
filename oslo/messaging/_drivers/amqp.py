@@ -32,6 +32,7 @@ import six
 from oslo.config import cfg
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._drivers import pool
+from oslo.utils import strutils
 
 amqp_opts = [
     cfg.BoolOpt('amqp_durable_queues',
@@ -164,7 +165,8 @@ def unpack_context(conf, msg):
     context_dict['reply_q'] = msg.pop('_reply_q', None)
     context_dict['conf'] = conf
     ctx = RpcContext.from_dict(context_dict)
-    rpc_common._safe_log(LOG.debug, 'unpacked context: %s', ctx.to_dict())
+    LOG.debug(u'unpacked context: %s',
+              strutils.mask_password(six.text_type(ctx.to_dict())))
     return ctx
 
 
