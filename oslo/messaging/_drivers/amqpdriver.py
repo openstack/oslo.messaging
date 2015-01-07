@@ -96,11 +96,14 @@ class AMQPListener(base.Listener):
         self._stopped = threading.Event()
 
     def __call__(self, message):
-        # FIXME(markmc): logging isn't driver specific
-        rpc_common._safe_log(LOG.debug, 'received %s', dict(message))
+        ctxt = rpc_amqp.unpack_context(self.conf, message)
+
+        # FIXME(sileht): Don't log the message until strutils is more
+        # efficient, (rpc_amqp.unpack_context already log the context)
+        # LOG.debug(u'received: %s',
+        #           strutils.mask_password(six.text_type(dict(message))))
 
         unique_id = self.msg_id_cache.check_duplicate_message(message)
-        ctxt = rpc_amqp.unpack_context(self.conf, message)
 
         self.incoming.append(AMQPIncomingMessage(self,
                                                  ctxt.to_dict(),
