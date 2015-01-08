@@ -701,7 +701,8 @@ class Connection(object):
     def iterconsume(self, limit=None, timeout=None):
         """Return an iterator that will consume from all queues/consumers."""
 
-        timer = rpc_common.DecayingTimer(duration=timeout).start()
+        timer = rpc_common.DecayingTimer(duration=timeout)
+        timer.start()
 
         def _raise_timeout(exc):
             LOG.debug('Timed out waiting for RPC response: %s', exc)
