@@ -34,6 +34,7 @@ from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import amqpdriver
 from oslo.messaging._drivers import common as rpc_common
 from oslo.messaging._i18n import _
+from oslo.messaging._i18n import _LI
 from oslo.messaging import exceptions
 from oslo.utils import netutils
 
@@ -504,13 +505,13 @@ class Connection(object):
             self._url, ssl=self._ssl_params, login_method=self._login_method,
             failover_strategy="shuffle")
 
-        LOG.info(_('Connecting to AMQP server on %(hostname)s:%(port)d'),
+        LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)d'),
                  {'hostname': self.connection.hostname,
                   'port': self.connection.port})
         # NOTE(sileht): just ensure the connection is setuped at startup
         self.ensure(error_callback=None,
                     method=lambda channel: True)
-        LOG.info(_('Connected to AMQP server on %(hostname)s:%(port)d'),
+        LOG.info(_LI('Connected to AMQP server on %(hostname)s:%(port)d'),
                  {'hostname': self.connection.hostname,
                   'port': self.connection.port})
 
@@ -631,6 +632,11 @@ class Connection(object):
             self.consumer_num = itertools.count(1)
             for consumer in self.consumers:
                 consumer.reconnect(new_channel)
+
+            LOG.info(_LI('Reconnected to AMQP server on '
+                         '%(hostname)s:%(port)d'),
+                     {'hostname': self.connection.hostname,
+                      'port': self.connection.port})
 
         recoverable_errors = (self.connection.recoverable_channel_errors +
                               self.connection.recoverable_connection_errors)
