@@ -24,12 +24,8 @@ from oslo import messaging
 from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
 
-# NOTE(jamespage) the zmq driver implementation is currently tied
-# to eventlet so we have to monkey_patch to support testing
 # eventlet is not yet py3 compatible, so skip if not installed
 eventlet = importutils.try_import('eventlet')
-if eventlet:
-    eventlet.monkey_patch()
 
 impl_zmq = importutils.try_import('oslo.messaging._drivers.impl_zmq')
 
