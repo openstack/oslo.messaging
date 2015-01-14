@@ -39,7 +39,7 @@ from six import moves
 LOG = logging.getLogger(__name__)
 
 
-class _SocketConnection():
+class _SocketConnection(object):
     """Associates a pyngus Connection with a python network socket,
     and handles all connection-related I/O and timer events.
     """
