@@ -124,7 +124,7 @@ class NotificationDispatcher(object):
             if screen and not screen.match(ctxt, publisher_id, event_type,
                                            metadata, payload):
                 continue
-            localcontext.set_local_context(ctxt)
+            localcontext._set_local_context(ctxt)
             try:
                 if executor_callback:
                     ret = executor_callback(callback, ctxt, publisher_id,
@@ -136,5 +136,5 @@ class NotificationDispatcher(object):
                 if self.allow_requeue and ret == NotificationResult.REQUEUE:
                     return ret
             finally:
-                localcontext.clear_local_context()
+                localcontext._clear_local_context()
         return NotificationResult.HANDLED

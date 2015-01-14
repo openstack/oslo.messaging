@@ -17,15 +17,21 @@ __all__ = [
     'get_local_context',
     'set_local_context',
     'clear_local_context',
+    '_set_local_context',
+    '_clear_local_context',
 ]
 
 import threading
 import uuid
 
+from oslo_messaging.openstack.common import versionutils
+
 _KEY = '_%s_%s' % (__name__.replace('.', '_'), uuid.uuid4().hex)
 _STORE = threading.local()
 
 
+@versionutils.deprecated(as_of=versionutils.deprecated.KILO,
+                         in_favor_of='oslo_context.context.get_current')
 def get_local_context(ctxt):
     """Retrieve the RPC endpoint request context for the current thread.
 
@@ -41,7 +47,12 @@ def get_local_context(ctxt):
     return getattr(_STORE, _KEY, None)
 
 
+@versionutils.deprecated(as_of=versionutils.deprecated.KILO)
 def set_local_context(ctxt):
+    _set_local_context(ctxt)
+
+
+def _set_local_context(ctxt):
     """Set the request context for the current thread.
 
     :param ctxt: a deserialized request context
@@ -50,6 +61,11 @@ def set_local_context(ctxt):
     setattr(_STORE, _KEY, ctxt)
 
 
+@versionutils.deprecated(as_of=versionutils.deprecated.KILO)
 def clear_local_context():
+    _clear_local_context()
+
+
+def _clear_local_context():
     """Clear the request context for the current thread."""
     delattr(_STORE, _KEY)

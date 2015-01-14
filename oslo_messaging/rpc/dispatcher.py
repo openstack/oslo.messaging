@@ -180,12 +180,12 @@ class RPCDispatcher(object):
                 continue
 
             if hasattr(endpoint, method):
-                localcontext.set_local_context(ctxt)
+                localcontext._set_local_context(ctxt)
                 try:
                     return self._do_dispatch(endpoint, method, ctxt, args,
                                              executor_callback)
                 finally:
-                    localcontext.clear_local_context()
+                    localcontext._clear_local_context()
 
             found_compatible = True
 
