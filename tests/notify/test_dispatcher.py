@@ -107,8 +107,9 @@ class TestDispatcherScenario(test_utils.BaseTestCase):
                          sorted(dispatcher._targets_priorities))
 
         incoming = mock.Mock(ctxt={}, message=msg)
-        with dispatcher(incoming) as callback:
-            callback()
+        callback = dispatcher(incoming)
+        callback.run()
+        callback.done()
 
         # check endpoint callbacks are called or not
         for i, endpoint_methods in enumerate(self.endpoints):
@@ -146,8 +147,9 @@ class TestDispatcher(test_utils.BaseTestCase):
         msg['priority'] = 'what???'
         dispatcher = notify_dispatcher.NotificationDispatcher(
             [mock.Mock()], [mock.Mock()], None, allow_requeue=True, pool=None)
-        with dispatcher(mock.Mock(ctxt={}, message=msg)) as callback:
-            callback()
+        callback = dispatcher(mock.Mock(ctxt={}, message=msg))
+        callback.run()
+        callback.done()
         mylog.warning.assert_called_once_with('Unknown priority "%s"',
                                               'what???')
 
@@ -165,7 +167,8 @@ class TestDispatcher(test_utils.BaseTestCase):
 
         incoming = mock.Mock(ctxt={}, message=msg)
         executor_callback = mock.Mock()
-        with dispatcher(incoming, executor_callback) as callback:
-            callback()
+        callback = dispatcher(incoming, executor_callback)
+        callback.run()
+        callback.done()
         self.assertTrue(executor_callback.called)
         self.assertEqual(executor_callback.call_args[0][0], endpoint_method)
