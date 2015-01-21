@@ -18,9 +18,9 @@ import socket
 
 import fixtures
 import mock
+from oslo_utils import importutils
 import testtools
 
-from oslo.utils import importutils
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
 

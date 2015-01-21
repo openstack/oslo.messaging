@@ -16,11 +16,11 @@
 import fnmatch
 import logging
 
+from oslo_config import cfg
 import six
 from stevedore import dispatch
 import yaml
 
-from oslo.config import cfg
 from oslo_messaging._i18n import _
 from oslo_messaging.notify import notifier
 

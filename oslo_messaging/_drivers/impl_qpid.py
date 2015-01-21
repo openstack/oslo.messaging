@@ -20,12 +20,12 @@ import os
 import random
 import time
 
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import importutils
+from oslo_utils import netutils
 import six
 
-from oslo.config import cfg
-from oslo.serialization import jsonutils
-from oslo.utils import importutils
-from oslo.utils import netutils
 from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as rpc_common

@@ -15,10 +15,10 @@
 
 import sys
 
+from oslo_serialization import jsonutils
 import six
 import testscenarios
 
-from oslo.serialization import jsonutils
 import oslo_messaging
 from oslo_messaging._drivers import common as exceptions
 from oslo_messaging.tests import utils as test_utils

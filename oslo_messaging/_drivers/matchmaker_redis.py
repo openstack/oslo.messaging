@@ -16,8 +16,9 @@ The MatchMaker classes should accept a Topic or Fanout exchange key and
 return keys for direct exchanges, per (approximate) AMQP parlance.
 """
 
-from oslo.config import cfg
-from oslo.utils import importutils
+from oslo_config import cfg
+from oslo_utils import importutils
+
 from oslo_messaging._drivers import matchmaker as mm_common
 
 redis = importutils.try_import('redis')

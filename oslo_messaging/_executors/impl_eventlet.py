@@ -20,8 +20,8 @@ import eventlet
 from eventlet.green import threading as greenthreading
 from eventlet import greenpool
 import greenlet
+from oslo_utils import excutils
 
-from oslo.utils import excutils
 from oslo_messaging._executors import base
 from oslo_messaging import localcontext
 

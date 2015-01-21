@@ -14,12 +14,12 @@
 #    under the License.
 
 import fixtures
+from oslo_config import cfg
 import six
 from six.moves import mox
 from stevedore import driver
 import testscenarios
 
-from oslo.config import cfg
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
 from oslo_messaging import transport

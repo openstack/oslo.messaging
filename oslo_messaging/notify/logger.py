@@ -16,7 +16,8 @@ Driver for the Python logging package that sends log records as a notification.
 """
 import logging
 
-from oslo.config import cfg
+from oslo_config import cfg
+
 from oslo_messaging.notify import notifier
 from oslo_messaging import transport
 

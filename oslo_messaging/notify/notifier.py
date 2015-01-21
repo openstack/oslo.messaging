@@ -19,11 +19,11 @@ import abc
 import logging
 import uuid
 
+from oslo_config import cfg
+from oslo_utils import timeutils
 import six
 from stevedore import named
 
-from oslo.config import cfg
-from oslo.utils import timeutils
 from oslo_messaging import serializer as msg_serializer
 
 _notifier_opts = [
@@ -104,7 +104,7 @@ class Notifier(object):
         :param publisher_id: field in notifications sent, for example
                              'compute.host1'
         :type publisher_id: str
-        :param driver: a driver to lookup from oslo.messaging.notify.drivers
+        :param driver: a driver to lookup from oslo_messaging.notify.drivers
         :type driver: str
         :param topic: the topic which to send messages on
         :type topic: str

@@ -20,7 +20,8 @@ import itertools
 import json
 import logging
 
-from oslo.config import cfg
+from oslo_config import cfg
+
 from oslo_messaging._drivers import matchmaker as mm
 from oslo_messaging._i18n import _
 

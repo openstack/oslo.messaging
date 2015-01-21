@@ -19,12 +19,10 @@
 
 """Common utilities used in testing"""
 
-import six
-
-from oslo.config import cfg
-
+from oslo_config import cfg
 from oslotest import base
 from oslotest import moxstubout
+import six
 
 TRUE_VALUES = ('true', '1', 'yes')
 

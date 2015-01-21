@@ -16,11 +16,11 @@
 import itertools
 
 import mock
+from oslo_utils import timeutils
 import testscenarios
 
 from oslo import messaging
 from oslo.messaging.notify import dispatcher as notify_dispatcher
-from oslo.utils import timeutils
 from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios

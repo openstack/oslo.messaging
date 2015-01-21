@@ -23,9 +23,9 @@ __all__ = [
     'RemoteError',
 ]
 
+from oslo_config import cfg
 import six
 
-from oslo.config import cfg
 from oslo_messaging._drivers import base as driver_base
 from oslo_messaging import _utils as utils
 from oslo_messaging import exceptions

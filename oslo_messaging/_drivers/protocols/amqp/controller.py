@@ -29,11 +29,11 @@ import logging
 import threading
 import uuid
 
+from oslo_config import cfg
 import proton
 import pyngus
 from six import moves
 
-from oslo.config import cfg
 from oslo_messaging._drivers.protocols.amqp import eventloop
 from oslo_messaging._drivers.protocols.amqp import opts
 from oslo_messaging import transport

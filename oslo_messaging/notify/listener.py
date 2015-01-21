@@ -40,7 +40,7 @@ and eventlet executors available.
 
 A simple example of a notification listener with multiple endpoints might be::
 
-    from oslo.config import cfg
+    from oslo_config import cfg
     import oslo_messaging
 
     class NotificationEndpoint(object):

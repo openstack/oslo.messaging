@@ -21,11 +21,11 @@ import uuid
 import fixtures
 import kombu
 import mock
+from oslo_config import cfg
+from oslo_serialization import jsonutils
 from oslotest import mockpatch
 import testscenarios
 
-from oslo.config import cfg
-from oslo.serialization import jsonutils
 import oslo_messaging
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as driver_common

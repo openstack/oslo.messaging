@@ -25,10 +25,10 @@ import os
 import threading
 import time
 
+from oslo_serialization import jsonutils
 import proton
 from six import moves
 
-from oslo.serialization import jsonutils
 import oslo_messaging
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common

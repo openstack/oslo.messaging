@@ -12,9 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import importutils
 import testtools
 
-from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
 
 # NOTE(jamespage) matchmaker tied directly to eventlet

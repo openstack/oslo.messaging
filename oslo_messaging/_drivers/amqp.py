@@ -27,10 +27,10 @@ import collections
 import logging
 import uuid
 
+from oslo_config import cfg
+from oslo_utils import strutils
 import six
 
-from oslo.config import cfg
-from oslo.utils import strutils
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers import pool
 

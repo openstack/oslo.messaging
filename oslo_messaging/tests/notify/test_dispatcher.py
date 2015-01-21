@@ -16,9 +16,9 @@
 import itertools
 
 import mock
+from oslo_utils import timeutils
 import testscenarios
 
-from oslo.utils import timeutils
 import oslo_messaging
 from oslo_messaging.notify import dispatcher as notify_dispatcher
 from oslo_messaging.tests import utils as test_utils

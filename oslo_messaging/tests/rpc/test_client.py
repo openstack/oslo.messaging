@@ -13,9 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
 import testscenarios
 
-from oslo.config import cfg
 import oslo_messaging
 from oslo_messaging import exceptions
 from oslo_messaging import serializer as msg_serializer

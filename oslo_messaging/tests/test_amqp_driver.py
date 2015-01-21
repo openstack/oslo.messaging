@@ -20,10 +20,10 @@ import threading
 import time
 import uuid
 
+from oslo_utils import importutils
 from six import moves
 import testtools
 
-from oslo.utils import importutils
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
 

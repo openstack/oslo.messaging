@@ -20,8 +20,8 @@ import contextlib
 import logging
 
 import eventlet
+from oslo_config import cfg
 
-from oslo.config import cfg
 from oslo_messaging._i18n import _
 
 matchmaker_opts = [

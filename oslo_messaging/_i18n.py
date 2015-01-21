@@ -16,10 +16,10 @@ See http://docs.openstack.org/developer/oslo.i18n/usage.html
 
 """
 
-from oslo import i18n
+import oslo_i18n
 
 
-_translators = i18n.TranslatorFactory(domain='oslo.messaging')
+_translators = oslo_i18n.TranslatorFactory(domain='oslo.messaging')
 
 # The primary translation function using the well-known name "_"
 _ = _translators.primary

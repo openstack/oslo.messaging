@@ -17,9 +17,9 @@ import time
 import uuid
 
 import fixtures
+from oslo_config import cfg
 from six import moves
 
-from oslo.config import cfg
 import oslo_messaging
 from oslo_messaging.notify import notifier
 from oslo_messaging.tests import utils as test_utils

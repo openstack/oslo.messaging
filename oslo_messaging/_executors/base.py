@@ -14,9 +14,8 @@
 
 import abc
 
+from oslo_config import cfg
 import six
-
-from oslo.config import cfg
 
 _pool_opts = [
     cfg.IntOpt('rpc_thread_pool_size',

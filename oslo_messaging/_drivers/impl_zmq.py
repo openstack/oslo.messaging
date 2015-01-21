@@ -25,17 +25,17 @@ import uuid
 
 import eventlet
 import greenlet
+from oslo_config import cfg
+from oslo_serialization import jsonutils
+from oslo_utils import excutils
+from oslo_utils import importutils
 import six
 from six import moves
 
-from oslo.config import cfg
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._executors import base as executor_base  # FIXME(markmc)
 from oslo_messaging._i18n import _, _LE
-from oslo.serialization import jsonutils
-from oslo.utils import excutils
-from oslo.utils import importutils
 
 
 zmq = importutils.try_import('eventlet.green.zmq')
