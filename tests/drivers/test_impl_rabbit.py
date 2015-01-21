@@ -27,6 +27,7 @@ import testscenarios
 from oslo.config import cfg
 from oslo import messaging
 from oslo.serialization import jsonutils
+from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
@@ -44,6 +45,8 @@ class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
         self.config(fake_rabbit=True, group="oslo_messaging_rabbit")
 
     def test_driver_load(self):
+        self.config(heartbeat_timeout_threshold=0,
+                    group='oslo_messaging_rabbit')
         transport = messaging.get_transport(self.conf)
         self.addCleanup(transport.cleanup)
         driver = transport._driver
@@ -67,6 +70,8 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
     def test_driver_load(self, fake_ensure, fake_reset):
+        self.config(heartbeat_timeout_threshold=0,
+                    group='oslo_messaging_rabbit')
         self.messaging_conf.transport_driver = self.transport_driver
         transport = messaging.get_transport(self.conf)
         self.addCleanup(transport.cleanup)
@@ -83,7 +88,7 @@ class TestRabbitIterconsume(test_utils.BaseTestCase):
         transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
         deadline = time.time() + 3
-        with transport._driver._get_connection() as conn:
+        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
             conn.iterconsume(timeout=3)
             # kombu memory transport doesn't really raise error
             # so just simulate a real driver behavior
@@ -140,6 +145,8 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRabbitTransportURL, self).setUp()
+        self.config(heartbeat_timeout_threshold=0,
+                    group='oslo_messaging_rabbit')
         self.messaging_conf.transport_driver = 'rabbit'
 
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
@@ -200,6 +207,8 @@ class TestSendReceive(test_utils.BaseTestCase):
                                                          cls._timeout)
 
     def test_send_receive(self):
+        self.config(heartbeat_timeout_threshold=0,
+                    group='oslo_messaging_rabbit')
         transport = messaging.get_transport(self.conf, 'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
@@ -710,7 +719,8 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
 
         # starting from the first broker in the list
         url = messaging.TransportURL.parse(self.conf, None)
-        self.connection = rabbit_driver.Connection(self.conf, url)
+        self.connection = rabbit_driver.Connection(self.conf, url,
+                                                   amqp.PURPOSE_SEND)
         self.addCleanup(self.connection.close)
 
     def test_ensure_four_retry(self):

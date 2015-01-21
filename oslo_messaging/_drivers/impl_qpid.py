@@ -462,7 +462,7 @@ class Connection(object):
 
     pools = {}
 
-    def __init__(self, conf, url):
+    def __init__(self, conf, url, purpose):
         if not qpid_messaging:
             raise ImportError("Failed to import qpid.messaging")
 
