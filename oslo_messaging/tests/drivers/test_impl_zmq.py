@@ -416,8 +416,9 @@ class TestZmqListener(test_utils.BaseTestCase):
         kwargs = {'a': 1, 'b': 2}
         m = mock.Mock()
         ctxt = mock.Mock(autospec=impl_zmq.RpcContext)
-        eventlet.spawn_n(listener.dispatch, ctxt, 0,
-                         m.fake_method, 'name.space', **kwargs)
+        message = {'namespace': 'name.space', 'method': m.fake_method,
+                   'args': kwargs}
+        eventlet.spawn_n(listener.dispatch, ctxt, message)
         resp = listener.poll(timeout=10)
         msg = {'method': m.fake_method, 'namespace': 'name.space',
                'args': kwargs}
