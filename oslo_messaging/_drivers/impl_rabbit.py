@@ -515,9 +515,15 @@ class Connection(object):
                  {'hostname': self.connection.hostname,
                   'port': self.connection.port})
 
+        # NOTE(sileht):
+        # value choosen according the best practice from kombu:
+        # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
+        self._poll_timeout = 1
+
         if self._url.startswith('memory://'):
             # Kludge to speed up tests.
             self.connection.transport.polling_interval = 0.0
+            self._poll_timeout = 0.05
 
     # FIXME(markmc): use oslo sslutils when it is available as a library
     _SSL_PROTOCOLS = {
@@ -723,10 +729,8 @@ class Connection(object):
                 queues_tail.consume(nowait=False)
                 self.do_consume = False
 
-            # NOTE(sileht):
-            # maximun value choosen according the best practice from kombu:
-            # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
-            poll_timeout = 1 if timeout is None else min(timeout, 1)
+            poll_timeout = (self._poll_timeout if timeout is None
+                            else min(timeout, self._poll_timeout))
             while True:
                 if self._consume_loop_stopped:
                     self._consume_loop_stopped = False
@@ -735,8 +739,8 @@ class Connection(object):
                 try:
                     return self.connection.drain_events(timeout=poll_timeout)
                 except socket.timeout as exc:
-                    poll_timeout = timer.check_return(_raise_timeout, exc,
-                                                      maximum=1)
+                    poll_timeout = timer.check_return(
+                        _raise_timeout, exc, maximum=self._poll_timeout)
 
         for iteration in itertools.count(0):
             if limit and iteration >= limit:
