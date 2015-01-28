@@ -42,6 +42,7 @@ from oslo_messaging import exceptions
 rabbit_opts = [
     cfg.StrOpt('kombu_ssl_version',
                default='',
+               deprecated_group='DEFAULT',
                help='SSL version to use (valid only if SSL enabled). '
                     'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
                     'TLSv1_1, and TLSv1_2 may be available on some '
@@ -49,57 +50,72 @@ rabbit_opts = [
                ),
     cfg.StrOpt('kombu_ssl_keyfile',
                default='',
+               deprecated_group='DEFAULT',
                help='SSL key file (valid only if SSL enabled).'),
     cfg.StrOpt('kombu_ssl_certfile',
                default='',
+               deprecated_group='DEFAULT',
                help='SSL cert file (valid only if SSL enabled).'),
     cfg.StrOpt('kombu_ssl_ca_certs',
                default='',
+               deprecated_group='DEFAULT',
                help='SSL certification authority file '
                     '(valid only if SSL enabled).'),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
+                 deprecated_group='DEFAULT',
                  help='How long to wait before reconnecting in response to an '
                       'AMQP consumer cancel notification.'),
     cfg.StrOpt('rabbit_host',
                default='localhost',
+               deprecated_group='DEFAULT',
                help='The RabbitMQ broker address where a single node is '
                     'used.'),
     cfg.IntOpt('rabbit_port',
                default=5672,
+               deprecated_group='DEFAULT',
                help='The RabbitMQ broker port where a single node is used.'),
     cfg.ListOpt('rabbit_hosts',
                 default=['$rabbit_host:$rabbit_port'],
+                deprecated_group='DEFAULT',
                 help='RabbitMQ HA cluster host:port pairs.'),
     cfg.BoolOpt('rabbit_use_ssl',
                 default=False,
+                deprecated_group='DEFAULT',
                 help='Connect over SSL for RabbitMQ.'),
     cfg.StrOpt('rabbit_userid',
                default='guest',
+               deprecated_group='DEFAULT',
                help='The RabbitMQ userid.'),
     cfg.StrOpt('rabbit_password',
                default='guest',
+               deprecated_group='DEFAULT',
                help='The RabbitMQ password.',
                secret=True),
     cfg.StrOpt('rabbit_login_method',
                default='AMQPLAIN',
+               deprecated_group='DEFAULT',
                help='The RabbitMQ login method.'),
     cfg.StrOpt('rabbit_virtual_host',
                default='/',
+               deprecated_group='DEFAULT',
                help='The RabbitMQ virtual host.'),
     cfg.IntOpt('rabbit_retry_interval',
                default=1,
                help='How frequently to retry connecting with RabbitMQ.'),
     cfg.IntOpt('rabbit_retry_backoff',
                default=2,
+               deprecated_group='DEFAULT',
                help='How long to backoff for between retries when connecting '
                     'to RabbitMQ.'),
     cfg.IntOpt('rabbit_max_retries',
                default=0,
+               deprecated_group='DEFAULT',
                help='Maximum number of RabbitMQ connection retries. '
                     'Default is 0 (infinite retry count).'),
     cfg.BoolOpt('rabbit_ha_queues',
                 default=False,
+                deprecated_group='DEFAULT',
                 help='Use HA queues in RabbitMQ (x-ha-policy: all). '
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
@@ -107,6 +123,7 @@ rabbit_opts = [
     # NOTE(sileht): deprecated option since oslo_messaging 1.5.0,
     cfg.BoolOpt('fake_rabbit',
                 default=False,
+                deprecated_group='DEFAULT',
                 help='Deprecated, use rpc_backend=kombu+memory or '
                 'rpc_backend=fake'),
 ]
@@ -447,25 +464,26 @@ class Connection(object):
         self.consumers = []
         self.consumer_num = itertools.count(1)
         self.conf = conf
-        self.max_retries = self.conf.rabbit_max_retries
+        self.driver_conf = self.conf.oslo_messaging_rabbit
+        self.max_retries = self.driver_conf.rabbit_max_retries
         # Try forever?
         if self.max_retries <= 0:
             self.max_retries = None
-        self.interval_start = self.conf.rabbit_retry_interval
-        self.interval_stepping = self.conf.rabbit_retry_backoff
+        self.interval_start = self.driver_conf.rabbit_retry_interval
+        self.interval_stepping = self.driver_conf.rabbit_retry_backoff
         # max retry-interval = 30 seconds
         self.interval_max = 30
 
         self._ssl_params = self._fetch_ssl_params()
-        self._login_method = self.conf.rabbit_login_method
+        self._login_method = self.driver_conf.rabbit_login_method
 
         if url.virtual_host is not None:
             virtual_host = url.virtual_host
         else:
-            virtual_host = self.conf.rabbit_virtual_host
+            virtual_host = self.driver_conf.rabbit_virtual_host
 
         self._url = ''
-        if self.conf.fake_rabbit:
+        if self.driver_conf.fake_rabbit:
             LOG.warn("Deprecated: fake_rabbit option is deprecated, set "
                      "rpc_backend to kombu+memory or use the fake "
                      "driver instead.")
@@ -487,13 +505,13 @@ class Connection(object):
             transport = url.transport.replace('kombu+', '')
             self._url = "%s://%s" % (transport, virtual_host)
         else:
-            for adr in self.conf.rabbit_hosts:
+            for adr in self.driver_conf.rabbit_hosts:
                 hostname, port = netutils.parse_host_port(
-                    adr, default_port=self.conf.rabbit_port)
+                    adr, default_port=self.driver_conf.rabbit_port)
                 self._url += '%samqp://%s:%s@%s:%s/%s' % (
                     ";" if self._url else '',
-                    parse.quote(self.conf.rabbit_userid),
-                    parse.quote(self.conf.rabbit_password),
+                    parse.quote(self.driver_conf.rabbit_userid),
+                    parse.quote(self.driver_conf.rabbit_password),
                     hostname, port,
                     virtual_host)
 
@@ -561,15 +579,15 @@ class Connection(object):
         ssl_params = dict()
 
         # http://docs.python.org/library/ssl.html - ssl.wrap_socket
-        if self.conf.kombu_ssl_version:
+        if self.driver_conf.kombu_ssl_version:
             ssl_params['ssl_version'] = self.validate_ssl_version(
-                self.conf.kombu_ssl_version)
-        if self.conf.kombu_ssl_keyfile:
-            ssl_params['keyfile'] = self.conf.kombu_ssl_keyfile
-        if self.conf.kombu_ssl_certfile:
-            ssl_params['certfile'] = self.conf.kombu_ssl_certfile
-        if self.conf.kombu_ssl_ca_certs:
-            ssl_params['ca_certs'] = self.conf.kombu_ssl_ca_certs
+                self.driver_conf.kombu_ssl_version)
+        if self.driver_conf.kombu_ssl_keyfile:
+            ssl_params['keyfile'] = self.driver_conf.kombu_ssl_keyfile
+        if self.driver_conf.kombu_ssl_certfile:
+            ssl_params['certfile'] = self.driver_conf.kombu_ssl_certfile
+        if self.driver_conf.kombu_ssl_ca_certs:
+            ssl_params['ca_certs'] = self.driver_conf.kombu_ssl_ca_certs
             # We might want to allow variations in the
             # future with this?
             ssl_params['cert_reqs'] = ssl.CERT_REQUIRED
@@ -602,8 +620,9 @@ class Connection(object):
         def on_error(exc, interval):
             error_callback and error_callback(exc)
 
-            interval = (self.conf.kombu_reconnect_delay + interval
-                        if self.conf.kombu_reconnect_delay > 0 else interval)
+            interval = (self.driver_conf.kombu_reconnect_delay + interval
+                        if self.driver_conf.kombu_reconnect_delay > 0
+                        else interval)
 
             info = {'hostname': self.connection.hostname,
                     'port': self.connection.port,
@@ -628,8 +647,8 @@ class Connection(object):
             # use kombu for HA connection, the interval_step
             # should sufficient, because the underlying kombu transport
             # connection object freed.
-            if self.conf.kombu_reconnect_delay > 0:
-                time.sleep(self.conf.kombu_reconnect_delay)
+            if self.driver_conf.kombu_reconnect_delay > 0:
+                time.sleep(self.driver_conf.kombu_reconnect_delay)
 
         def on_reconnection(new_channel):
             """Callback invoked when the kombu reconnects and creates
@@ -706,8 +725,8 @@ class Connection(object):
                       "%(err_str)s"), log_info)
 
         def _declare_consumer():
-            consumer = consumer_cls(self.conf, self.channel, topic, callback,
-                                    six.next(self.consumer_num))
+            consumer = consumer_cls(self.driver_conf, self.channel, topic,
+                                    callback, six.next(self.consumer_num))
             self.consumers.append(consumer)
             return consumer
 
@@ -766,7 +785,8 @@ class Connection(object):
                           "'%(topic)s': %(err_str)s"), log_info)
 
         def _publish():
-            publisher = cls(self.conf, self.channel, topic=topic, **kwargs)
+            publisher = cls(self.driver_conf, self.channel, topic=topic,
+                            **kwargs)
             publisher.send(msg, timeout)
 
         self.ensure(_error_callback, _publish, retry=retry)
@@ -851,10 +871,15 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
     def __init__(self, conf, url,
                  default_exchange=None,
                  allowed_remote_exmods=None):
-        conf.register_opts(rabbit_opts)
-        conf.register_opts(rpc_amqp.amqp_opts)
+        opt_group = cfg.OptGroup(name='oslo_messaging_rabbit',
+                                 title='RabbitMQ driver options')
+        conf.register_group(opt_group)
+        conf.register_opts(rabbit_opts, group=opt_group)
+        conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
 
-        connection_pool = rpc_amqp.ConnectionPool(conf, url, Connection)
+        connection_pool = rpc_amqp.ConnectionPool(
+            conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
+            url, Connection)
 
         super(RabbitDriver, self).__init__(conf, url,
                                            connection_pool,

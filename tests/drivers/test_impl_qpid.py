@@ -187,7 +187,8 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
 
     def setUp(self):
         super(TestQpidInvalidTopologyVersion, self).setUp()
-        self.config(qpid_topology_version=-1)
+        self.config(qpid_topology_version=-1,
+                    group='oslo_messaging_qpid')
 
     def test_invalid_topology_version(self):
         def consumer_callback(msg):
@@ -199,11 +200,11 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
         # 1. qpid driver raises Exception(msg) for invalid topology version
         # 2. flake8 - H202 assertRaises Exception too broad
         exception_msg = ("Invalid value for qpid_topology_version: %d" %
-                         self.conf.qpid_topology_version)
+                         self.conf.oslo_messaging_qpid.qpid_topology_version)
         recvd_exc_msg = ''
 
         try:
-            self.consumer_cls(self.conf,
+            self.consumer_cls(self.conf.oslo_messaging_qpid,
                               self.session_receive,
                               msgid_or_topic,
                               consumer_callback,
@@ -215,7 +216,7 @@ class TestQpidInvalidTopologyVersion(_QpidBaseTestCase):
 
         recvd_exc_msg = ''
         try:
-            self.publisher_cls(self.conf,
+            self.publisher_cls(self.conf.oslo_messaging_qpid,
                                self.session_send,
                                topic=msgid_or_topic,
                                **self.publisher_kwargs)
@@ -258,13 +259,15 @@ class TestQpidDirectConsumerPublisher(_QpidBaseTestCase):
         self.msgid = str(random.randint(1, 100))
 
         # create a DirectConsumer and DirectPublisher class objects
-        self.dir_cons = qpid_driver.DirectConsumer(self.conf,
-                                                   self.session_receive,
-                                                   self.msgid,
-                                                   self.consumer_callback)
-        self.dir_pub = qpid_driver.DirectPublisher(self.conf,
-                                                   self.session_send,
-                                                   self.msgid)
+        self.dir_cons = qpid_driver.DirectConsumer(
+            self.conf.oslo_messaging_qpid,
+            self.session_receive,
+            self.msgid,
+            self.consumer_callback)
+        self.dir_pub = qpid_driver.DirectPublisher(
+            self.conf.oslo_messaging_qpid,
+            self.session_send,
+            self.msgid)
 
         def try_send_msg(no_msgs):
             for i in range(no_msgs):
@@ -418,7 +421,7 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
 
     def test_qpid_topic_and_fanout(self):
         for receiver_id in range(self.no_receivers):
-            consumer = self.consumer_cls(self.conf,
+            consumer = self.consumer_cls(self.conf.oslo_messaging_qpid,
                                          self.session_receive,
                                          self.receive_topic,
                                          self.consumer_callback,
@@ -431,7 +434,7 @@ class TestQpidTopicAndFanout(_QpidBaseTestCase):
             self._receiver_threads.append(thread)
 
         for sender_id in range(self.no_senders):
-            publisher = self.publisher_cls(self.conf,
+            publisher = self.publisher_cls(self.conf.oslo_messaging_qpid,
                                            self.session_send,
                                            topic=self.topic,
                                            **self.publisher_kwargs)
@@ -483,7 +486,8 @@ class TestDriverInterface(_QpidBaseTestCase):
 
     def setUp(self):
         super(TestDriverInterface, self).setUp()
-        self.config(qpid_topology_version=2)
+        self.config(qpid_topology_version=2,
+                    group='oslo_messaging_qpid')
         transport = messaging.get_transport(self.conf)
         self.driver = transport._driver
 
@@ -554,7 +558,8 @@ class TestQpidReconnectOrder(test_utils.BaseTestCase):
         brokers = ['host1', 'host2', 'host3', 'host4', 'host5']
         brokers_count = len(brokers)
 
-        self.config(qpid_hosts=brokers)
+        self.config(qpid_hosts=brokers,
+                    group='oslo_messaging_qpid')
 
         with mock.patch('qpid.messaging.Connection') as conn_mock:
             # starting from the first broker in the list
@@ -777,7 +782,8 @@ class QPidHATestCase(test_utils.BaseTestCase):
 
         self.config(qpid_hosts=self.brokers,
                     qpid_username=None,
-                    qpid_password=None)
+                    qpid_password=None,
+                    group='oslo_messaging_qpid')
 
         hostname_sets = set()
         self.info = {'attempt': 0,

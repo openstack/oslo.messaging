@@ -42,11 +42,13 @@ amqp_opts = [
                 help='Use durable queues in AMQP.'),
     cfg.BoolOpt('amqp_auto_delete',
                 default=False,
+                deprecated_group='DEFAULT',
                 help='Auto-delete queues in AMQP.'),
 
     # FIXME(markmc): this was toplevel in openstack.common.rpc
     cfg.IntOpt('rpc_conn_pool_size',
                default=30,
+               deprecated_group='DEFAULT',
                help='Size of RPC connection pool.'),
 ]
 
@@ -56,11 +58,11 @@ LOG = logging.getLogger(__name__)
 
 class ConnectionPool(pool.Pool):
     """Class that implements a Pool of Connections."""
-    def __init__(self, conf, url, connection_cls):
+    def __init__(self, conf, rpc_conn_pool_size, url, connection_cls):
         self.connection_cls = connection_cls
         self.conf = conf
         self.url = url
-        super(ConnectionPool, self).__init__(self.conf.rpc_conn_pool_size)
+        super(ConnectionPool, self).__init__(rpc_conn_pool_size)
         self.reply_proxy = None
 
     # TODO(comstud): Timeout connections not used in a while
