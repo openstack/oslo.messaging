@@ -373,7 +373,8 @@ class DirectPublisher(Publisher):
 
         options = {'durable': False,
                    'auto_delete': True,
-                   'exclusive': False}
+                   'exclusive': False,
+                   'passive': True}
         options.update(kwargs)
         super(DirectPublisher, self).__init__(channel, topic, topic,
                                               type='direct', **options)
@@ -389,6 +390,7 @@ class TopicPublisher(Publisher):
         options = {'durable': conf.amqp_durable_queues,
                    'auto_delete': conf.amqp_auto_delete,
                    'exclusive': False}
+
         options.update(kwargs)
         super(TopicPublisher, self).__init__(channel,
                                              exchange_name,
@@ -784,7 +786,31 @@ class Connection(object):
 
     def direct_send(self, msg_id, msg):
         """Send a 'direct' message."""
-        self.publisher_send(DirectPublisher, msg_id, msg)
+
+        timer = rpc_common.DecayingTimer(duration=60)
+        timer.start()
+        # NOTE(sileht): retry at least 60sec, after we have a good change
+        # that the caller is really dead too...
+
+        while True:
+            try:
+                self.publisher_send(DirectPublisher, msg_id, msg)
+            except self.connection.channel_errors as exc:
+                # NOTE(noelbk/sileht):
+                # If rabbit dies, the consumer can be disconnected before the
+                # publisher sends, and if the consumer hasn't declared the
+                # queue, the publisher's will send a message to an exchange
+                # that's not bound to a queue, and the message wll be lost.
+                # So we set passive=True to the publisher exchange and catch
+                # the 404 kombu ChannelError and retry until the exchange
+                # appears
+                if exc.code == 404 and timer.check_return() > 0:
+                    LOG.info(_LI("The exchange to reply to %s doesn't "
+                                 "exist yet, retrying...") % msg_id)
+                    time.sleep(1)
+                    continue
+                raise
+            return
 
     def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None):
         """Send a 'topic' message."""
