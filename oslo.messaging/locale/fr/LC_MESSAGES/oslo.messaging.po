@@ -1,5 +1,5 @@
 # French translations for oslo.messaging.
-# Copyright (C) 2014 ORGANIZATION
+# Copyright (C) 2015 ORGANIZATION
 # This file is distributed under the same license as the oslo.messaging
 # project.
 #
@@ -10,9 +10,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2014-12-03 06:10+0000\n"
-"PO-Revision-Date: 2014-12-01 13:11+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"POT-Creation-Date: 2015-02-02 06:12+0000\n"
+"PO-Revision-Date: 2014-12-20 02:07+0000\n"
+"Last-Translator: Maxime COQUEREL <max.coquerel@gmail.com>\n"
 "Language-Team: French "
 "(http://www.transifex.com/projects/p/oslomessaging/language/fr/)\n"
 "Plural-Forms: nplurals=2; plural=(n > 1)\n"
@@ -21,21 +21,21 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 1.3\n"
 
-#: oslo/messaging/_executors/impl_blocking.py:50
+#: oslo_messaging/_executors/impl_blocking.py:50
 msgid "Unexpected exception occurred."
-msgstr ""
+msgstr "Exception inattendue s'est produite."
 
-#: oslo/messaging/notify/_impl_routing.py:80
+#: oslo_messaging/notify/_impl_routing.py:80
 #, python-format
 msgid "Failed to load any notifiers for %s"
 msgstr "Echec de chargement des notifications pour %s"
 
-#: oslo/messaging/notify/_impl_routing.py:117
+#: oslo_messaging/notify/_impl_routing.py:117
 #, python-format
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
 msgstr "Routage '%(event)s' notification du pilote %(driver)s'"
 
-#: oslo/messaging/rpc/dispatcher.py:145
+#: oslo_messaging/rpc/dispatcher.py:150
 #, python-format
 msgid "Exception during message handling: %s"
 msgstr "Exception lors de la manipulation du message: %s"
