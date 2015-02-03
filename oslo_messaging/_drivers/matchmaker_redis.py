@@ -108,7 +108,12 @@ class MatchMakerRedis(mm_common.HeartbeatMatchMakerBase):
             self.register(key, host)
 
     def is_alive(self, topic, host):
-        if self.redis.ttl(host) == -1:
+        # After redis 2.8, if the specialized key doesn't exist,
+        # TTL fuction would return -2. If key exists,
+        # but doesn't have expiration associated,
+        # TTL func would return -1. For more information,
+        # please visit http://redis.io/commands/ttl
+        if self.redis.ttl(host) == -2:
             self.expire(topic, host)
             return False
         return True
