@@ -44,10 +44,15 @@ A simple example of a notification listener with multiple endpoints might be::
     import oslo_messaging
 
     class NotificationEndpoint(object):
+        filter_rule = NotificationFilter(publisher_id='^compute.*')
+
         def warn(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
     class ErrorEndpoint(object):
+        filter_rule = NotificationFilter(event_type='^instance\..*\.start$',
+                                         context={'ctxt_key': 'regexp'})
+
         def error(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
@@ -69,7 +74,8 @@ A simple example of a notification listener with multiple endpoints might be::
 A notifier sends a notification on a topic with a priority, the notification
 listener will receive this notification if the topic of this one have been set
 in one of the targets and if an endpoint implements the method named like the
-priority
+priority and if the notification match the NotificationFilter rule set into
+the filter_rule attribute of the endpoint.
 
 Parameters to endpoint methods are the request context supplied by the client,
 the publisher_id of the notification message, the event_type, the payload and

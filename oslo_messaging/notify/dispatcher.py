@@ -56,7 +56,9 @@ class NotificationDispatcher(object):
         for endpoint, prio in itertools.product(endpoints, PRIORITIES):
             if hasattr(endpoint, prio):
                 method = getattr(endpoint, prio)
-                self._callbacks_by_priority.setdefault(prio, []).append(method)
+                screen = getattr(endpoint, 'filter_rule', None)
+                self._callbacks_by_priority.setdefault(prio, []).append(
+                    (screen, method))
 
         priorities = self._callbacks_by_priority.keys()
         self._targets_priorities = set(itertools.product(self.targets,
@@ -118,7 +120,10 @@ class NotificationDispatcher(object):
         payload = self.serializer.deserialize_entity(ctxt,
                                                      message.get('payload'))
 
-        for callback in self._callbacks_by_priority.get(priority, []):
+        for screen, callback in self._callbacks_by_priority.get(priority, []):
+            if screen and not screen.match(ctxt, publisher_id, event_type,
+                                           metadata, payload):
+                continue
             localcontext.set_local_context(ctxt)
             try:
                 if executor_callback:
