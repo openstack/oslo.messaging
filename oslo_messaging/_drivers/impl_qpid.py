@@ -41,41 +41,52 @@ LOG = logging.getLogger(__name__)
 qpid_opts = [
     cfg.StrOpt('qpid_hostname',
                default='localhost',
+               deprecated_group='DEFAULT',
                help='Qpid broker hostname.'),
     cfg.IntOpt('qpid_port',
                default=5672,
+               deprecated_group='DEFAULT',
                help='Qpid broker port.'),
     cfg.ListOpt('qpid_hosts',
                 default=['$qpid_hostname:$qpid_port'],
+                deprecated_group='DEFAULT',
                 help='Qpid HA cluster host:port pairs.'),
     cfg.StrOpt('qpid_username',
                default='',
+               deprecated_group='DEFAULT',
                help='Username for Qpid connection.'),
     cfg.StrOpt('qpid_password',
                default='',
+               deprecated_group='DEFAULT',
                help='Password for Qpid connection.',
                secret=True),
     cfg.StrOpt('qpid_sasl_mechanisms',
                default='',
+               deprecated_group='DEFAULT',
                help='Space separated list of SASL mechanisms to use for '
                     'auth.'),
     cfg.IntOpt('qpid_heartbeat',
                default=60,
+               deprecated_group='DEFAULT',
                help='Seconds between connection keepalive heartbeats.'),
     cfg.StrOpt('qpid_protocol',
                default='tcp',
+               deprecated_group='DEFAULT',
                help="Transport to use, either 'tcp' or 'ssl'."),
     cfg.BoolOpt('qpid_tcp_nodelay',
                 default=True,
+                deprecated_group='DEFAULT',
                 help='Whether to disable the Nagle algorithm.'),
     cfg.IntOpt('qpid_receiver_capacity',
                default=1,
+               deprecated_group='DEFAULT',
                help='The number of prefetched messages held by receiver.'),
     # NOTE(russellb) If any additional versions are added (beyond 1 and 2),
     # this file could probably use some additional refactoring so that the
     # differences between each version are split into different classes.
     cfg.IntOpt('qpid_topology_version',
                default=1,
+               deprecated_group='DEFAULT',
                help="The qpid topology version to use.  Version 1 is what "
                     "was originally used by impl_qpid.  Version 2 includes "
                     "some backwards-incompatible changes that allow broker "
@@ -459,6 +470,7 @@ class Connection(object):
         self.session = None
         self.consumers = {}
         self.conf = conf
+        self.driver_conf = conf.oslo_messaging_qpid
 
         self._consume_loop_stopped = False
 
@@ -476,7 +488,7 @@ class Connection(object):
                 self.brokers_params.append(params)
         else:
             # Old configuration format
-            for adr in self.conf.qpid_hosts:
+            for adr in self.driver_conf.qpid_hosts:
                 hostname, port = netutils.parse_host_port(
                     adr, default_port=5672)
 
@@ -485,8 +497,8 @@ class Connection(object):
 
                 params = {
                     'host': '%s:%d' % (hostname, port),
-                    'username': self.conf.qpid_username,
-                    'password': self.conf.qpid_password,
+                    'username': self.driver_conf.qpid_username,
+                    'password': self.driver_conf.qpid_password,
                 }
                 self.brokers_params.append(params)
 
@@ -505,12 +517,12 @@ class Connection(object):
         self.connection.username = broker['username']
         self.connection.password = broker['password']
 
-        self.connection.sasl_mechanisms = self.conf.qpid_sasl_mechanisms
+        self.connection.sasl_mechanisms = self.driver_conf.qpid_sasl_mechanisms
         # Reconnection is done by self.reconnect()
         self.connection.reconnect = False
-        self.connection.heartbeat = self.conf.qpid_heartbeat
-        self.connection.transport = self.conf.qpid_protocol
-        self.connection.tcp_nodelay = self.conf.qpid_tcp_nodelay
+        self.connection.heartbeat = self.driver_conf.qpid_heartbeat
+        self.connection.transport = self.driver_conf.qpid_protocol
+        self.connection.tcp_nodelay = self.driver_conf.qpid_tcp_nodelay
         self.connection.open()
 
     def _register_consumer(self, consumer):
@@ -633,7 +645,8 @@ class Connection(object):
                         "%(err_str)s"), log_info)
 
         def _declare_consumer():
-            consumer = consumer_cls(self.conf, self.session, topic, callback)
+            consumer = consumer_cls(self.driver_conf, self.session, topic,
+                                    callback)
             self._register_consumer(consumer)
             return consumer
 
@@ -693,7 +706,8 @@ class Connection(object):
                           "'%(topic)s': %(err_str)s"), log_info)
 
         def _publisher_send():
-            publisher = cls(self.conf, self.session, topic=topic, **kwargs)
+            publisher = cls(self.driver_conf, self.session, topic=topic,
+                            **kwargs)
             publisher.send(msg)
 
         return self.ensure(_connect_error, _publisher_send, retry=retry)
@@ -764,10 +778,15 @@ class QpidDriver(amqpdriver.AMQPDriverBase):
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=None):
-        conf.register_opts(qpid_opts)
-        conf.register_opts(rpc_amqp.amqp_opts)
+        opt_group = cfg.OptGroup(name='oslo_messaging_qpid',
+                                 title='QPID driver options')
+        conf.register_group(opt_group)
+        conf.register_opts(qpid_opts, group=opt_group)
+        conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
 
-        connection_pool = rpc_amqp.ConnectionPool(conf, url, Connection)
+        connection_pool = rpc_amqp.ConnectionPool(
+            conf, conf.oslo_messaging_qpid.rpc_conn_pool_size,
+            url, Connection)
 
         super(QpidDriver, self).__init__(conf, url,
                                          connection_pool,

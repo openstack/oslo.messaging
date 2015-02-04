@@ -41,7 +41,7 @@ class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
         super(TestDeprecatedRabbitDriverLoad, self).setUp(
             conf=cfg.ConfigOpts())
         self.messaging_conf.transport_driver = 'rabbit'
-        self.config(fake_rabbit=True)
+        self.config(fake_rabbit=True, group="oslo_messaging_rabbit")
 
     def test_driver_load(self):
         transport = messaging.get_transport(self.conf)
@@ -686,7 +686,8 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.config(rabbit_hosts=self.brokers,
                     rabbit_retry_interval=0.01,
                     rabbit_retry_backoff=0.01,
-                    kombu_reconnect_delay=0)
+                    kombu_reconnect_delay=0,
+                    group="oslo_messaging_rabbit")
 
         self.kombu_connect = mock.Mock()
         self.useFixture(mockpatch.Patch(

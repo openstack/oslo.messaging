@@ -20,9 +20,9 @@ import sys
 import fixtures
 
 
-def _import_opts(conf, module, opts):
+def _import_opts(conf, module, opts, group=None):
     __import__(module)
-    conf.register_opts(getattr(sys.modules[module], opts))
+    conf.register_opts(getattr(sys.modules[module], opts), group=group)
 
 
 class ConfFixture(fixtures.Fixture):
@@ -45,11 +45,17 @@ class ConfFixture(fixtures.Fixture):
     def __init__(self, conf):
         self.conf = conf
         _import_opts(self.conf,
-                     'oslo_messaging._drivers.impl_rabbit', 'rabbit_opts')
+                     'oslo_messaging._drivers.impl_rabbit', 'rabbit_opts',
+                     'oslo_messaging_rabbit')
         _import_opts(self.conf,
-                     'oslo_messaging._drivers.impl_qpid', 'qpid_opts')
+                     'oslo_messaging._drivers.amqp', 'amqp_opts',
+                     'oslo_messaging_rabbit')
         _import_opts(self.conf,
-                     'oslo_messaging._drivers.amqp', 'amqp_opts')
+                     'oslo_messaging._drivers.impl_qpid', 'qpid_opts',
+                     'oslo_messaging_qpid')
+        _import_opts(self.conf,
+                     'oslo_messaging._drivers.amqp', 'amqp_opts',
+                     'oslo_messaging_qpid')
         _import_opts(self.conf, 'oslo_messaging.rpc.client', '_client_opts')
         _import_opts(self.conf, 'oslo_messaging.transport', '_transport_opts')
         _import_opts(self.conf,

@@ -34,9 +34,6 @@ from oslo_messaging.rpc import client
 from oslo_messaging import transport
 
 _global_opt_lists = [
-    amqp.amqp_opts,
-    impl_qpid.qpid_opts,
-    impl_rabbit.rabbit_opts,
     impl_zmq.zmq_opts,
     matchmaker.matchmaker_opts,
     base._pool_opts,
@@ -50,6 +47,10 @@ _opts = [
     ('matchmaker_redis', matchmaker_redis.matchmaker_redis_opts),
     ('matchmaker_ring', matchmaker_ring.matchmaker_opts),
     ('oslo_messaging_amqp', amqp_opts.amqp1_opts),
+    ('oslo_messaging_rabbit', list(itertools.chain(amqp.amqp_opts,
+                                                   impl_rabbit.rabbit_opts))),
+    ('oslo_messaging_qpid', list(itertools.chain(amqp.amqp_opts,
+                                                 impl_qpid.qpid_opts)))
 ]
 
 
