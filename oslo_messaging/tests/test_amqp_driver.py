@@ -260,7 +260,7 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         notifications = [(oslo_messaging.Target(topic="topic-1"), 'info'),
                          (oslo_messaging.Target(topic="topic-1"), 'error'),
                          (oslo_messaging.Target(topic="topic-2"), 'debug')]
-        nl = driver.listen_for_notifications(notifications)
+        nl = driver.listen_for_notifications(notifications, None)
 
         listener = _ListenerThread(nl, 3)
         targets = ['topic-1.info',
