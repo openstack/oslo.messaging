@@ -32,7 +32,7 @@ from oslo_messaging.tests import utils as test_utils
 # are available in the base repos for all supported platforms.
 pyngus = importutils.try_import("pyngus")
 if pyngus:
-    from oslo.messaging._drivers.protocols.amqp import driver as amqp_driver
+    from oslo_messaging._drivers.protocols.amqp import driver as amqp_driver
 
 
 LOG = logging.getLogger(__name__)
