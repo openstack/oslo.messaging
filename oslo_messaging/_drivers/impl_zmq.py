@@ -302,9 +302,9 @@ class InternalContext(object):
         data.setdefault('args', {})
 
         try:
-            result = proxy.dispatch(
-                ctx, data['version'], data['method'],
-                data.get('namespace'), **data['args'])
+            if not data.get("method"):
+                raise KeyError
+            result = proxy.dispatch(ctx, data)
             return ConsumerBase.normalize_reply(result, ctx.replies)
         except greenlet.GreenletExit:
             # ignore these since they are just from shutdowns
@@ -368,18 +368,13 @@ class ConsumerBase(object):
         # Method starting with - are
         # processed internally. (non-valid method name)
         method = data.get('method')
-        if not method:
-            LOG.error(_("RPC message did not include method."))
-            return
-
         # Internal method
         # uses internal context for safety.
         if method == '-reply':
             self.private_ctx.reply(ctx, proxy, **data['args'])
             return
 
-        proxy.dispatch(ctx, data['version'],
-                       data['method'], data.get('namespace'), **data['args'])
+        proxy.dispatch(ctx, data)
 
 
 class ZmqBaseReactor(ConsumerBase):
@@ -834,16 +829,7 @@ class ZmqListener(base.Listener):
         super(ZmqListener, self).__init__(driver)
         self.incoming_queue = moves.queue.Queue()
 
-    def dispatch(self, ctxt, version, method, namespace, **kwargs):
-        message = {
-            'method': method,
-            'args': kwargs
-        }
-        if version:
-            message['version'] = version
-        if namespace:
-            message['namespace'] = namespace
-
+    def dispatch(self, ctxt, message):
         incoming = ZmqIncomingMessage(self,
                                       ctxt.to_dict(),
                                       message)
