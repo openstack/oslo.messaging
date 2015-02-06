@@ -49,7 +49,7 @@ class _ListenerThread(threading.Thread):
         self.start()
 
     def run(self):
-        LOG.info("Listener started")
+        LOG.debug("Listener started")
         while self.msg_count > 0:
             in_msg = self.listener.poll()
             self.messages.put(in_msg)
@@ -57,7 +57,7 @@ class _ListenerThread(threading.Thread):
             if in_msg.message.get('method') == 'echo':
                 in_msg.reply(reply={'correlation-id':
                                     in_msg.message.get('id')})
-        LOG.info("Listener stopped")
+        LOG.debug("Listener stopped")
 
     def get_messages(self):
         """Returns a list of all received messages."""
@@ -88,7 +88,6 @@ class _AmqpBrokerTestCase(test_utils.BaseTestCase):
 
     @testtools.skipUnless(pyngus, "proton modules not present")
     def setUp(self):
-        LOG.info("Starting Broker Test")
         super(_AmqpBrokerTestCase, self).setUp()
         self._broker = FakeBroker()
         self._broker_addr = "amqp://%s:%d" % (self._broker.host,
@@ -100,7 +99,6 @@ class _AmqpBrokerTestCase(test_utils.BaseTestCase):
     def tearDown(self):
         super(_AmqpBrokerTestCase, self).tearDown()
         self._broker.stop()
-        LOG.info("Broker Test Ended")
 
 
 class TestAmqpSend(_AmqpBrokerTestCase):
@@ -287,7 +285,6 @@ class TestAuthentication(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestAuthentication, self).setUp()
-        LOG.error("Starting Authentication Test")
         # for simplicity, encode the credentials as they would appear 'on the
         # wire' in a SASL frame - username and password prefixed by zero.
         user_credentials = ["\0joe\0secret"]
@@ -298,7 +295,6 @@ class TestAuthentication(test_utils.BaseTestCase):
     def tearDown(self):
         super(TestAuthentication, self).tearDown()
         self._broker.stop()
-        LOG.error("Authentication Test Ended")
 
     def test_authentication_ok(self):
         """Verify that username and password given in TransportHost are
@@ -343,7 +339,6 @@ class TestFailover(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestFailover, self).setUp()
-        LOG.info("Starting Failover Test")
         self._brokers = [FakeBroker(), FakeBroker()]
         hosts = []
         for broker in self._brokers:
@@ -609,7 +604,7 @@ class FakeBroker(threading.Thread):
 
     def start(self):
         """Start the server."""
-        LOG.info("Starting Test Broker on %s:%d", self.host, self.port)
+        LOG.debug("Starting Test Broker on %s:%d", self.host, self.port)
         self._shutdown = False
         self.daemon = True
         self._my_socket.listen(10)
@@ -617,15 +612,15 @@ class FakeBroker(threading.Thread):
 
     def stop(self):
         """Shutdown the server."""
-        LOG.info("Stopping test Broker %s:%d", self.host, self.port)
+        LOG.debug("Stopping test Broker %s:%d", self.host, self.port)
         self._shutdown = True
         os.write(self._wakeup_pipe[1], "!")
         self.join()
-        LOG.info("Test Broker %s:%d stopped", self.host, self.port)
+        LOG.debug("Test Broker %s:%d stopped", self.host, self.port)
 
     def run(self):
         """Process I/O and timer events until the broker is stopped."""
-        LOG.info("Test Broker on %s:%d started", self.host, self.port)
+        LOG.debug("Test Broker on %s:%d started", self.host, self.port)
         while not self._shutdown:
             readers, writers, timers = self.container.need_processing()
 
