@@ -5,5 +5,5 @@
 # amqp1 driver tox tests this way:
 #    tox -e amqp1
 pyngus>=1.0.0,<2.0.0  # Apache-2.0
-python-qpid-proton>=0.7,<0.8  # Apache-2.0
+python-qpid-proton>=0.7,<0.9  # Apache-2.0
 

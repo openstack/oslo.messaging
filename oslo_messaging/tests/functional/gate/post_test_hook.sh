@@ -16,5 +16,14 @@
 
 RPC_BACKEND=$1
 
+case $RPC_BACKEND in
+    amqp1|qpid)
+        # Ensure authentification works before continuing, otherwise tests
+        # will retries forever
+        sudo yum install -y qpid-tools
+        qpid-config --sasl-mechanism=PLAIN -a stackqpid/secretqpid@127.0.0.1
+        ;;
+esac
+
 cd $BASE/new/oslo.messaging
 sudo -H -u stack tox -e py27-func-$RPC_BACKEND
