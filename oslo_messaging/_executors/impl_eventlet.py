@@ -82,6 +82,9 @@ class EventletExecutor(base.PooledExecutorBase):
                       'behavior. In the future, we will raise a '
                       'RuntimeException in this case.')
 
+    def _dispatch(self, incoming):
+        spawn_with(ctxt=self.dispatcher(incoming), pool=self._greenpool)
+
     def start(self):
         if self._thread is not None:
             return
@@ -92,8 +95,7 @@ class EventletExecutor(base.PooledExecutorBase):
                 while self._running:
                     incoming = self.listener.poll()
                     if incoming is not None:
-                        spawn_with(ctxt=self.dispatcher(incoming),
-                                   pool=self._greenpool)
+                        self._dispatch(incoming)
             except greenlet.GreenletExit:
                 return
 

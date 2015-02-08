@@ -17,6 +17,12 @@
 import contextlib
 import threading
 
+# eventlet 0.16 with monkey patching does not work yet on Python 3,
+# so make aioeventlet, eventlet and trollius import optional
+try:
+    import aioeventlet
+except ImportError:
+    aioeventlet = None
 try:
     import eventlet
 except ImportError:
@@ -24,7 +30,16 @@ except ImportError:
 import mock
 import testscenarios
 import testtools
+try:
+    import trollius
+except ImportError:
+    pass
 
+
+try:
+    from oslo_messaging._executors import impl_aioeventlet
+except ImportError:
+    impl_aioeventlet = None
 from oslo_messaging._executors import impl_blocking
 try:
     from oslo_messaging._executors import impl_eventlet
@@ -46,42 +61,110 @@ class TestExecutor(test_utils.BaseTestCase):
         if impl_eventlet is not None:
             impl.append(
                 ('eventlet', dict(executor=impl_eventlet.EventletExecutor)))
+        if impl_aioeventlet is not None:
+            impl.append(
+                ('aioeventlet',
+                 dict(executor=impl_aioeventlet.AsyncioEventletExecutor)))
         cls.scenarios = testscenarios.multiply_scenarios(impl)
 
     @staticmethod
-    def _run_in_thread(executor):
-        def thread():
-            executor.start()
-            executor.wait()
-        thread = threading.Thread(target=thread)
+    def _run_in_thread(target, executor):
+        thread = threading.Thread(target=target, args=(executor,))
         thread.daemon = True
         thread.start()
         thread.join(timeout=30)
 
     def test_executor_dispatch(self):
-        callback = mock.MagicMock(return_value='result')
+        if impl_aioeventlet is not None:
+            aioeventlet_class = impl_aioeventlet.AsyncioEventletExecutor
+        else:
+            aioeventlet_class = None
+        is_aioeventlet = (self.executor == aioeventlet_class)
+
+        if is_aioeventlet:
+            policy = aioeventlet.EventLoopPolicy()
+            trollius.set_event_loop_policy(policy)
+            self.addCleanup(trollius.set_event_loop_policy, None)
+
+            def run_loop(loop):
+                loop.run_forever()
+                loop.close()
+                trollius.set_event_loop(None)
+
+            def run_executor(executor):
+                # create an event loop in the executor thread
+                loop = trollius.new_event_loop()
+                trollius.set_event_loop(loop)
+                eventlet.spawn(run_loop, loop)
+
+                # run the executor
+                executor.start()
+                executor.wait()
+
+                # stop the event loop: run_loop() will close it
+                loop.stop()
+
+            @trollius.coroutine
+            def simple_coroutine(value):
+                yield None
+                raise trollius.Return(value)
+
+            endpoint = mock.MagicMock(return_value=simple_coroutine('result'))
+            event = eventlet.event.Event()
+        else:
+            def run_executor(executor):
+                executor.start()
+                executor.wait()
+
+            endpoint = mock.MagicMock(return_value='result')
 
         class Dispatcher(object):
+            def __init__(self, endpoint):
+                self.endpoint = endpoint
+                self.result = "not set"
+
             @contextlib.contextmanager
-            def __call__(self, incoming):
-                yield lambda: callback(incoming.ctxt, incoming.message)
+            def __call__(self, incoming, executor_callback=None):
+                if executor_callback is not None:
+                    def callback():
+                        result = executor_callback(self.endpoint,
+                                                   incoming.ctxt,
+                                                   incoming.message)
+                        self.result = result
+                        return result
+                    yield callback
+                    event.send()
+                else:
+                    def callback():
+                        result = self.endpoint(incoming.ctxt, incoming.message)
+                        self.result = result
+                        return result
+                    yield callback
 
         listener = mock.Mock(spec=['poll'])
-        executor = self.executor(self.conf, listener, Dispatcher())
+        dispatcher = Dispatcher(endpoint)
+        executor = self.executor(self.conf, listener, dispatcher)
 
         incoming_message = mock.MagicMock(ctxt={},
                                           message={'payload': 'data'})
 
         def fake_poll(timeout=None):
-            if listener.poll.call_count == 1:
-                return incoming_message
-            executor.stop()
+            if is_aioeventlet:
+                if listener.poll.call_count == 1:
+                    return incoming_message
+                event.wait()
+                executor.stop()
+            else:
+                if listener.poll.call_count == 1:
+                    return incoming_message
+                executor.stop()
 
         listener.poll.side_effect = fake_poll
 
-        self._run_in_thread(executor)
+        self._run_in_thread(run_executor, executor)
 
-        callback.assert_called_once_with({}, {'payload': 'data'})
+        endpoint.assert_called_once_with({}, {'payload': 'data'})
+        self.assertEqual(dispatcher.result, 'result')
 
 TestExecutor.generate_scenarios()
 
