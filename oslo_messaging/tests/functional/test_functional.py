@@ -34,6 +34,8 @@ class CallTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(0, group.servers[i].endpoint.ival)
 
     def test_server_in_group(self):
+        if self.url.startswith("amqp:"):
+            self.skipTest("QPID-6307")
         group = self.useFixture(utils.RpcServerGroupFixture(self.url))
 
         client = group.client()
@@ -47,6 +49,8 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         self.assertThat(actual, utils.IsValidDistributionOf(data))
 
     def test_different_exchanges(self):
+        if self.url.startswith("amqp:"):
+            self.skipTest("QPID-6307")
         t = self.useFixture(utils.TransportFixture(self.url))
         # If the different exchanges are not honoured, then the
         # teardown may hang unless we broadcast all control messages
