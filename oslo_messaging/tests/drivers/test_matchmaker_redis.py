@@ -46,6 +46,7 @@ class RedisMatchMakerTest(test_utils.BaseTestCase):
             "network": ["controller1", "node1", "node2", "node3"],
             "cert": ["controller1"],
             "console": ["controller1"],
+            "l3_agent.node1": ["node1"],
             "consoleauth": ["controller1"]}
         self.matcher = matchmaker_redis.MatchMakerRedis()
         self.populate()
@@ -70,6 +71,10 @@ class RedisMatchMakerTest(test_utils.BaseTestCase):
         self.assertEqual(
             sorted(self.matcher.redis.smembers('cert')),
             ['cert.controller1', 'cert.keymaster'])
+        self.matcher.register('l3_agent.node1', 'node1')
+        self.assertEqual(
+            sorted(self.matcher.redis.smembers('l3_agent.node1')),
+            ['l3_agent.node1.node1'])
 
     def test_unregister(self):
         self.matcher.unregister('conductor', 'controller1')
