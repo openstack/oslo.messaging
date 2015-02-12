@@ -62,16 +62,16 @@ class TransportFixture(fixtures.Fixture):
         super(TransportFixture, self).cleanUp()
 
     def wait(self):
-        if self.url.startswith("rabbit") or self.url.startswith("qpid"):
-            time.sleep(0.5)
+        # allow time for the server to connect to the broker
+        time.sleep(0.5)
 
 
 class RpcServerFixture(fixtures.Fixture):
     """Fixture to setup the TestServerEndpoint."""
 
-    def __init__(self, transport, target, endpoint=None, ctrl_target=None):
+    def __init__(self, url, target, endpoint=None, ctrl_target=None):
         super(RpcServerFixture, self).__init__()
-        self.transport = transport
+        self.url = url
         self.target = target
         self.endpoint = endpoint or TestServerEndpoint()
         self.syncq = moves.queue.Queue()
@@ -80,11 +80,14 @@ class RpcServerFixture(fixtures.Fixture):
     def setUp(self):
         super(RpcServerFixture, self).setUp()
         endpoints = [self.endpoint, self]
-        self.server = oslo_messaging.get_rpc_server(self.transport,
+        transport = self.useFixture(TransportFixture(self.url))
+        self.server = oslo_messaging.get_rpc_server(transport.transport,
                                                     self.target,
                                                     endpoints)
-        self._ctrl = oslo_messaging.RPCClient(self.transport, self.ctrl_target)
+        self._ctrl = oslo_messaging.RPCClient(transport.transport,
+                                              self.ctrl_target)
         self._start()
+        transport.wait()
 
     def cleanUp(self):
         self._stop()
@@ -104,13 +107,13 @@ class RpcServerFixture(fixtures.Fixture):
     def ping(self, ctxt):
         pass
 
-    def sync(self, ctxt, item):
-        self.syncq.put(item)
+    def sync(self, ctxt):
+        self.syncq.put('x')
 
 
 class RpcServerGroupFixture(fixtures.Fixture):
     def __init__(self, url, topic=None, names=None, exchange=None,
-                 transport=None, use_fanout_ctrl=False):
+                 use_fanout_ctrl=False):
         self.url = url
         # NOTE(sileht): topic and servier_name must be uniq
         # to be able to run all tests in parallel
@@ -119,15 +122,11 @@ class RpcServerGroupFixture(fixtures.Fixture):
                                for i in range(3)]
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]
-        self.transport = transport
         self.use_fanout_ctrl = use_fanout_ctrl
 
     def setUp(self):
         super(RpcServerGroupFixture, self).setUp()
-        if not self.transport:
-            self.transport = self.useFixture(TransportFixture(self.url))
         self.servers = [self.useFixture(self._server(t)) for t in self.targets]
-        self.transport.wait()
 
     def _target(self, server=None, fanout=False):
         t = oslo_messaging.Target(exchange=self.exchange, topic=self.topic)
@@ -139,8 +138,8 @@ class RpcServerGroupFixture(fixtures.Fixture):
         ctrl = None
         if self.use_fanout_ctrl:
             ctrl = self._target(fanout=True)
-        return RpcServerFixture(self.transport.transport, target,
-                                ctrl_target=ctrl)
+        server = RpcServerFixture(self.url, target, ctrl_target=ctrl)
+        return server
 
     def client(self, server=None, cast=False):
         if server is None:
@@ -152,8 +151,12 @@ class RpcServerGroupFixture(fixtures.Fixture):
                 target = self.targets[server]
             else:
                 raise ValueError("Invalid value for server: %r" % server)
-        return ClientStub(self.transport.transport, target, cast=cast,
-                          timeout=5)
+
+        transport = self.useFixture(TransportFixture(self.url))
+        client = ClientStub(transport.transport, target, cast=cast,
+                            timeout=5)
+        transport.wait()
+        return client
 
     def sync(self, server=None):
         if server is None:
@@ -161,13 +164,9 @@ class RpcServerGroupFixture(fixtures.Fixture):
                 self.client(i).ping()
         else:
             if server == 'all':
-                c = self.client(server='all', cast=True)
-                c.sync(item='x')
                 for s in self.servers:
                     s.syncq.get(timeout=5)
             elif server >= 0 and server < len(self.targets):
-                c = self.client(server=server, cast=True)
-                c.sync(item='x')
                 self.servers[server].syncq.get(timeout=5)
             else:
                 raise ValueError("Invalid value for server: %r" % server)
@@ -276,9 +275,9 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
 
 
 class NotificationFixture(fixtures.Fixture):
-    def __init__(self, transport, topics):
+    def __init__(self, url, topics):
         super(NotificationFixture, self).__init__()
-        self.transport = transport
+        self.url = url
         self.topics = topics
         self.events = moves.queue.Queue()
         self.name = str(id(self))
@@ -288,12 +287,14 @@ class NotificationFixture(fixtures.Fixture):
         targets = [oslo_messaging.Target(topic=t) for t in self.topics]
         # add a special topic for internal notifications
         targets.append(oslo_messaging.Target(topic=self.name))
+        transport = self.useFixture(TransportFixture(self.url))
         self.server = oslo_messaging.get_notification_listener(
-            self.transport,
+            transport.transport,
             targets,
             [self])
         self._ctrl = self.notifier('internal', topic=self.name)
         self._start()
+        transport.wait()
 
     def cleanUp(self):
         self._stop()
@@ -311,10 +312,13 @@ class NotificationFixture(fixtures.Fixture):
         self.thread.join()
 
     def notifier(self, publisher, topic=None):
-        return notifier.Notifier(self.transport,
-                                 publisher,
-                                 driver='messaging',
-                                 topic=topic or self.topics[0])
+        transport = self.useFixture(TransportFixture(self.url))
+        n = notifier.Notifier(transport.transport,
+                              publisher,
+                              driver='messaging',
+                              topic=topic or self.topics[0])
+        transport.wait()
+        return n
 
     def debug(self, ctxt, publisher, event_type, payload, metadata):
         self.events.put(['debug', event_type, payload, publisher])
