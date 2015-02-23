@@ -143,20 +143,23 @@ class RpcServerGroupFixture(fixtures.Fixture):
                                 ctrl_target=ctrl)
 
     def client(self, server=None, cast=False):
-        if server:
+        if server is None:
+            target = self._target()
+        else:
             if server == 'all':
                 target = self._target(fanout=True)
             elif server >= 0 and server < len(self.targets):
                 target = self.targets[server]
             else:
                 raise ValueError("Invalid value for server: %r" % server)
-        else:
-            target = self._target()
         return ClientStub(self.transport.transport, target, cast=cast,
                           timeout=5)
 
     def sync(self, server=None):
-        if server:
+        if server is None:
+            for i in range(len(self.servers)):
+                self.client(i).ping()
+        else:
             if server == 'all':
                 c = self.client(server='all', cast=True)
                 c.sync(item='x')
@@ -168,9 +171,6 @@ class RpcServerGroupFixture(fixtures.Fixture):
                 self.servers[server].syncq.get(timeout=5)
             else:
                 raise ValueError("Invalid value for server: %r" % server)
-        else:
-            for i in range(len(self.servers)):
-                self.client(i).ping()
 
 
 class RpcCall(object):
