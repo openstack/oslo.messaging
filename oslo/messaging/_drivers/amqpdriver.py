@@ -26,6 +26,7 @@ from oslo import messaging
 from oslo.messaging._drivers import amqp as rpc_amqp
 from oslo.messaging._drivers import base
 from oslo.messaging._drivers import common as rpc_common
+from oslo.messaging.openstack.common.gettextutils import _
 
 LOG = logging.getLogger(__name__)
 
@@ -202,6 +203,11 @@ class ReplyWaiter(object):
     def unlisten(self, msg_id):
         self.waiters.remove(msg_id)
 
+    @staticmethod
+    def _raise_timeout_exception(msg_id):
+        raise messaging.MessagingTimeout(
+            _('Timed out waiting for a reply to message ID %s.') % msg_id)
+
     def _process_reply(self, data):
         result = None
         ending = False
@@ -216,7 +222,7 @@ class ReplyWaiter(object):
             result = data['result']
         return result, ending
 
-    def _poll_connection(self, msg_id, timeout):
+    def _poll_connection(self, msg_id, timer):
         while True:
             while self.incoming:
                 message_data = self.incoming.pop(0)
@@ -227,15 +233,15 @@ class ReplyWaiter(object):
 
                 self.waiters.put(incoming_msg_id, message_data)
 
+            timeout = timer.check_return(self._raise_timeout_exception, msg_id)
             try:
                 self.conn.consume(limit=1, timeout=timeout)
             except rpc_common.Timeout:
-                raise messaging.MessagingTimeout('Timed out waiting for a '
-                                                 'reply to message ID %s'
-                                                 % msg_id)
+                self._raise_timeout_exception(msg_id)
 
-    def _poll_queue(self, msg_id, timeout):
-        message = self.waiters.get(msg_id, timeout)
+    def _poll_queue(self, msg_id, timer):
+        timeout = timer.check_return(self._raise_timeout_exception, msg_id)
+        message = self.waiters.get(msg_id, timeout=timeout)
         if message is self.waiters.WAKE_UP:
             return None, None, True  # lock was released
 
@@ -264,6 +270,8 @@ class ReplyWaiter(object):
         # have the first thread take responsibility for passing replies not
         # intended for itself to the appropriate thread.
         #
+        timer = rpc_common.DecayingTimer(duration=timeout)
+        timer.start()
         final_reply = None
         while True:
             if self.conn_lock.acquire(False):
@@ -282,7 +290,7 @@ class ReplyWaiter(object):
 
                     # Now actually poll the connection
                     while True:
-                        reply, ending = self._poll_connection(msg_id, timeout)
+                        reply, ending = self._poll_connection(msg_id, timer)
                         if not ending:
                             final_reply = reply
                         else:
@@ -295,7 +303,7 @@ class ReplyWaiter(object):
                     self.waiters.wake_all(msg_id)
             else:
                 # We're going to wait for the first thread to pass us our reply
-                reply, ending, trylock = self._poll_queue(msg_id, timeout)
+                reply, ending, trylock = self._poll_queue(msg_id, timer)
                 if trylock:
                     # The first thread got its reply, let's try and take over
                     # the responsibility for polling

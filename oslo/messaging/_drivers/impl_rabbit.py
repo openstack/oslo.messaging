@@ -719,14 +719,18 @@ class Connection(object):
     def iterconsume(self, limit=None, timeout=None):
         """Return an iterator that will consume from all queues/consumers."""
 
+        timer = rpc_common.DecayingTimer(duration=timeout)
+        timer.start()
+
+        def _raise_timeout(exc):
+            LOG.debug('Timed out waiting for RPC response: %s', exc)
+            raise rpc_common.Timeout()
+
         def _error_callback(exc):
-            if isinstance(exc, socket.timeout):
-                LOG.debug('Timed out waiting for RPC response: %s', exc)
-                raise rpc_common.Timeout()
-            else:
-                LOG.exception(_('Failed to consume message from queue: %s'),
-                              exc)
-                self.do_consume = True
+            timer.check_return(_raise_timeout, exc)
+            LOG.exception(_('Failed to consume message from queue: %s'),
+                          exc)
+            self.do_consume = True
 
         def _consume():
             if self.do_consume:
@@ -736,7 +740,14 @@ class Connection(object):
                     queue.consume(nowait=True)
                 queues_tail.consume(nowait=False)
                 self.do_consume = False
-            return self.connection.drain_events(timeout=timeout)
+
+            poll_timeout = 1 if timeout is None else min(timeout, 1)
+            while True:
+                try:
+                    return self.connection.drain_events(timeout=poll_timeout)
+                except socket.timeout as exc:
+                    poll_timeout = timer.check_return(_raise_timeout, exc,
+                                                      maximum=1)
 
         for iteration in itertools.count(0):
             if limit and iteration >= limit:

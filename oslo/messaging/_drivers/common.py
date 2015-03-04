@@ -18,6 +18,7 @@
 import copy
 import logging
 import sys
+import time
 import traceback
 
 import six
@@ -347,3 +348,27 @@ def deserialize_msg(msg):
     raw_msg = jsonutils.loads(msg[_MESSAGE_KEY])
 
     return raw_msg
+
+
+class DecayingTimer(object):
+    def __init__(self, duration=None):
+        self._duration = duration
+        self._ends_at = None
+
+    def start(self):
+        if self._duration is not None:
+            self._ends_at = time.time() + max(0, self._duration)
+
+    def check_return(self, timeout_callback, *args, **kwargs):
+        if self._duration is None:
+            return None
+        if self._ends_at is None:
+            raise RuntimeError(_("Can not check/return a timeout from a timer"
+                               " that has not been started."))
+
+        maximum = kwargs.pop('maximum', None)
+        left = self._ends_at - time.time()
+        if left <= 0:
+            timeout_callback(*args, **kwargs)
+
+        return left if maximum is None else min(left, maximum)
