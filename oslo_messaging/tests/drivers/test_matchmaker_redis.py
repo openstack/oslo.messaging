@@ -81,3 +81,9 @@ class RedisMatchMakerTest(test_utils.BaseTestCase):
         self.assertEqual(
             sorted(self.matcher.redis.smembers('conductor')),
             ['conductor.node1', 'conductor.node2', 'conductor.node3'])
+
+    def test_ack_alive(self):
+        self.matcher.ack_alive('ack_alive', 'controller1')
+        self.assertEqual(
+            sorted(self.matcher.redis.smembers('ack_alive')),
+            ['ack_alive.controller1'])
