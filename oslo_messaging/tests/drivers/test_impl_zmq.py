@@ -21,6 +21,11 @@ import mock
 from oslo_utils import importutils
 import testtools
 
+try:
+    import zmq
+except ImportError:
+    zmq = None
+
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
 
@@ -45,7 +50,7 @@ def get_unused_port():
 class ZmqBaseTestCase(test_utils.BaseTestCase):
     """Base test case for all ZMQ tests that make use of the ZMQ Proxy"""
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(ZmqBaseTestCase, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -73,7 +78,7 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
 
 class TestConfZmqDriverLoad(test_utils.BaseTestCase):
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestConfZmqDriverLoad, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -173,7 +178,7 @@ class TestZmqBasics(ZmqBaseTestCase):
 
 class TestZmqSocket(test_utils.BaseTestCase):
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestZmqSocket, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -260,7 +265,7 @@ class TestZmqSocket(test_utils.BaseTestCase):
 
 class TestZmqIncomingMessage(test_utils.BaseTestCase):
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestZmqIncomingMessage, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'

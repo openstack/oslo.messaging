@@ -20,6 +20,11 @@ import fixtures
 import mock
 import testtools
 
+try:
+    import zmq
+except ImportError:
+    zmq = None
+
 from oslo import messaging
 from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
@@ -27,7 +32,7 @@ from oslo_messaging.tests import utils as test_utils
 # eventlet is not yet py3 compatible, so skip if not installed
 eventlet = importutils.try_import('eventlet')
 
-impl_zmq = importutils.try_import('oslo.messaging._drivers.impl_zmq')
+impl_zmq = importutils.try_import('oslo_messaging._drivers.impl_zmq')
 
 LOG = logging.getLogger(__name__)
 
@@ -45,7 +50,7 @@ def get_unused_port():
 class ZmqBaseTestCase(test_utils.BaseTestCase):
     """Base test case for all ZMQ tests that make use of the ZMQ Proxy"""
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(ZmqBaseTestCase, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -73,7 +78,7 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
 
 class TestConfZmqDriverLoad(test_utils.BaseTestCase):
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestConfZmqDriverLoad, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -111,7 +116,7 @@ class TestZmqBasics(ZmqBaseTestCase):
             self.driver.send,
             target, {}, {'tx_id': 1}, wait_for_reply=True)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqIncomingMessage')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqIncomingMessage')
     def test_send_receive_topic(self, mock_msg):
         """Call() with method."""
         mock_msg.return_value = msg = mock.MagicMock()
@@ -129,7 +134,7 @@ class TestZmqBasics(ZmqBaseTestCase):
             wait_for_reply=True)
         self.assertEqual(result, True)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq._call', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq._call', autospec=True)
     def test_send_receive_fanout(self, mock_call):
         target = messaging.Target(topic='testtopic', fanout=True)
         self.driver.listen(target)
@@ -149,7 +154,7 @@ class TestZmqBasics(ZmqBaseTestCase):
             {'tx_id': 1, 'method': 'hello-world'},
             None, False, [])
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq._call', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq._call', autospec=True)
     def test_send_receive_direct(self, mock_call):
         # Also verifies fix for bug http://pad.lv/1301723
         target = messaging.Target(topic='testtopic', server='localhost')
@@ -173,7 +178,7 @@ class TestZmqBasics(ZmqBaseTestCase):
 
 class TestZmqSocket(test_utils.BaseTestCase):
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestZmqSocket, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -181,8 +186,8 @@ class TestZmqSocket(test_utils.BaseTestCase):
         transport = messaging.get_transport(self.conf)
         self.driver = transport._driver
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqSocket.subscribe')
-    @mock.patch('oslo.messaging._drivers.impl_zmq.zmq.Context')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqSocket.subscribe')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.zmq.Context')
     def test_zmqsocket_init_type_pull(self, mock_context, mock_subscribe):
         mock_ctxt = mock.Mock()
         mock_context.return_value = mock_ctxt
@@ -200,8 +205,8 @@ class TestZmqSocket(test_utils.BaseTestCase):
         self.assertTrue(mock_sock.connect.called)
         self.assertFalse(mock_sock.bind.called)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqSocket.subscribe')
-    @mock.patch('oslo.messaging._drivers.impl_zmq.zmq.Context')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqSocket.subscribe')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.zmq.Context')
     def test_zmqsocket_init_type_sub(self, mock_context, mock_subscribe):
         mock_ctxt = mock.Mock()
         mock_context.return_value = mock_ctxt
@@ -219,8 +224,8 @@ class TestZmqSocket(test_utils.BaseTestCase):
         self.assertTrue(mock_sock.connect.called)
         self.assertFalse(mock_sock.bind.called)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqSocket.subscribe')
-    @mock.patch('oslo.messaging._drivers.impl_zmq.zmq.Context')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqSocket.subscribe')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.zmq.Context')
     def test_zmqsocket_init_type_push(self, mock_context, mock_subscribe):
         mock_ctxt = mock.Mock()
         mock_context.return_value = mock_ctxt
@@ -238,8 +243,8 @@ class TestZmqSocket(test_utils.BaseTestCase):
         self.assertTrue(mock_sock.connect.called)
         self.assertFalse(mock_sock.bind.called)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqSocket.subscribe')
-    @mock.patch('oslo.messaging._drivers.impl_zmq.zmq.Context')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqSocket.subscribe')
+    @mock.patch('oslo_messaging._drivers.impl_zmq.zmq.Context')
     def test_zmqsocket_init_type_pub(self, mock_context, mock_subscribe):
         mock_ctxt = mock.Mock()
         mock_context.return_value = mock_ctxt
@@ -260,7 +265,7 @@ class TestZmqSocket(test_utils.BaseTestCase):
 
 class TestZmqIncomingMessage(test_utils.BaseTestCase):
 
-    @testtools.skipIf(impl_zmq is None, "zmq not available")
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestZmqIncomingMessage, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
@@ -281,7 +286,7 @@ class TestZmqIncomingMessage(test_utils.BaseTestCase):
 
 class TestZmqConnection(ZmqBaseTestCase):
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
     def test_zmqconnection_create_consumer(self, mock_reactor):
 
         mock_reactor.register = mock.Mock()
@@ -308,7 +313,7 @@ class TestZmqConnection(ZmqBaseTestCase):
                                                  subscribe='subscriber.foo',
                                                  in_bind=False)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
     def test_zmqconnection_create_consumer_topic_exists(self, mock_reactor):
         mock_reactor.register = mock.Mock()
         conn = impl_zmq.Connection(self.driver)
@@ -325,9 +330,9 @@ class TestZmqConnection(ZmqBaseTestCase):
         conn.create_consumer(topic, context)
         self.assertFalse(conn.reactor.register.called)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq._get_matchmaker',
+    @mock.patch('oslo_messaging._drivers.impl_zmq._get_matchmaker',
                 autospec=True)
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
     def test_zmqconnection_close(self, mock_reactor, mock_getmatchmaker):
         conn = impl_zmq.Connection(self.driver)
         conn.reactor.close = mock.Mock()
@@ -336,16 +341,16 @@ class TestZmqConnection(ZmqBaseTestCase):
         self.assertTrue(mock_getmatchmaker.return_value.stop_heartbeat.called)
         self.assertTrue(conn.reactor.close.called)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
     def test_zmqconnection_wait(self, mock_reactor):
         conn = impl_zmq.Connection(self.driver)
         conn.reactor.wait = mock.Mock()
         conn.wait()
         self.assertTrue(conn.reactor.wait.called)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq._get_matchmaker',
+    @mock.patch('oslo_messaging._drivers.impl_zmq._get_matchmaker',
                 autospec=True)
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqReactor', autospec=True)
     def test_zmqconnection_consume_in_thread(self, mock_reactor,
                                              mock_getmatchmaker):
         mock_getmatchmaker.return_value.start_heartbeat = mock.Mock()
@@ -368,8 +373,9 @@ class TestZmqListener(ZmqBaseTestCase):
         kwargs = {'a': 1, 'b': 2}
         m = mock.Mock()
         ctxt = mock.Mock(autospec=impl_zmq.RpcContext)
-        eventlet.spawn_n(listener.dispatch, ctxt, 0,
-                         m.fake_method, 'name.space', **kwargs)
+        message = {'namespace': 'name.space', 'method': m.fake_method,
+                   'args': kwargs}
+        eventlet.spawn_n(listener.dispatch, ctxt, message)
         resp = listener.poll(timeout=10)
         msg = {'method': m.fake_method, 'namespace': 'name.space',
                'args': kwargs}
@@ -378,8 +384,8 @@ class TestZmqListener(ZmqBaseTestCase):
 
 class TestZmqDriver(ZmqBaseTestCase):
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq._cast', autospec=True)
-    @mock.patch('oslo.messaging._drivers.impl_zmq._multi_send', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq._cast', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq._multi_send', autospec=True)
     def test_zmqdriver_send(self, mock_multi_send, mock_cast):
         context = mock.Mock(autospec=impl_zmq.RpcContext)
         topic = 'testtopic'
@@ -390,8 +396,8 @@ class TestZmqDriver(ZmqBaseTestCase):
                                            allowed_remote_exmods=[],
                                            envelope=False)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq._cast', autospec=True)
-    @mock.patch('oslo.messaging._drivers.impl_zmq._multi_send', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq._cast', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq._multi_send', autospec=True)
     def test_zmqdriver_send_notification(self, mock_multi_send, mock_cast):
         context = mock.Mock(autospec=impl_zmq.RpcContext)
         topic = 'testtopic.foo'
@@ -403,8 +409,8 @@ class TestZmqDriver(ZmqBaseTestCase):
                                            msg, allowed_remote_exmods=[],
                                            envelope=False)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqListener', autospec=True)
-    @mock.patch('oslo.messaging._drivers.impl_zmq.Connection', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqListener', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.Connection', autospec=True)
     def test_zmqdriver_listen(self, mock_connection, mock_listener):
         mock_listener.return_value = listener = mock.Mock()
         mock_connection.return_value = conn = mock.Mock()
@@ -414,8 +420,8 @@ class TestZmqDriver(ZmqBaseTestCase):
         self.driver.listen(messaging.Target(topic=topic))
         conn.create_consumer.assert_called_with(topic, listener, fanout=True)
 
-    @mock.patch('oslo.messaging._drivers.impl_zmq.ZmqListener', autospec=True)
-    @mock.patch('oslo.messaging._drivers.impl_zmq.Connection', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.ZmqListener', autospec=True)
+    @mock.patch('oslo_messaging._drivers.impl_zmq.Connection', autospec=True)
     def test_zmqdriver_listen_for_notification(self, mock_connection,
                                                mock_listener):
         mock_listener.return_value = listener = mock.Mock()
