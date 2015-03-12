@@ -89,6 +89,18 @@ class TestDispatcher(test_utils.BaseTestCase):
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo', version='3.2'),
               success=False, ex=oslo_messaging.UnsupportedVersion)),
+        ('message_in_null_namespace_with_multiple_namespaces',
+         dict(endpoints=[dict(namespace='testns',
+                              legacy_namespaces=[None])],
+              dispatch_to=dict(endpoint=0, method='foo'),
+              ctxt={}, msg=dict(method='foo', namespace=None),
+              success=True, ex=None)),
+        ('message_in_wrong_namespace_with_multiple_namespaces',
+         dict(endpoints=[dict(namespace='testns',
+                              legacy_namespaces=['second', None])],
+              dispatch_to=None,
+              ctxt={}, msg=dict(method='foo', namespace='wrong'),
+              success=False, ex=oslo_messaging.UnsupportedVersion)),
     ]
 
     def test_dispatcher(self):
