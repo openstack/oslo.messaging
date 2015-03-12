@@ -57,16 +57,23 @@ class Target(object):
       servers listening on a topic by setting fanout to ``True``, rather than
       just one of them.
     :type fanout: bool
+    :param legacy_namespaces: A server always accepts messages specified via
+      the 'namespace' parameter, and may also accept messages defined via
+      this parameter. This option should be used to switch namespaces safely
+      during rolling upgrades.
+    :type legacy_namespaces: list of strings
     """
 
     def __init__(self, exchange=None, topic=None, namespace=None,
-                 version=None, server=None, fanout=None):
+                 version=None, server=None, fanout=None,
+                 legacy_namespaces=None):
         self.exchange = exchange
         self.topic = topic
         self.namespace = namespace
         self.version = version
         self.server = server
         self.fanout = fanout
+        self.accepted_namespaces = [namespace] + (legacy_namespaces or [])
 
     def __call__(self, **kwargs):
         for a in ('exchange', 'topic', 'namespace',
