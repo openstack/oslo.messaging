@@ -1,0 +1,7 @@
+[run]
+branch = True
+source = oslo_messaging
+omit = oslo_messaging/tests/*,oslo_messaging/openstack/*
+
+[report]
+ignore-errors = True
