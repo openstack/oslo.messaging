@@ -111,7 +111,7 @@ class RPCDispatcher(object):
 
     @staticmethod
     def _is_namespace(target, namespace):
-        return namespace == target.namespace
+        return namespace in target.accepted_namespaces
 
     @staticmethod
     def _is_compatible(target, version):
