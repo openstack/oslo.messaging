@@ -28,11 +28,11 @@ import testscenarios
 import yaml
 
 from oslo import messaging
+from oslo.messaging.notify import notifier as msg_notifier
 from oslo.messaging import serializer as msg_serializer
 from oslo_messaging.notify import _impl_log
 from oslo_messaging.notify import _impl_messaging
 from oslo_messaging.notify import _impl_test
-from oslo_messaging.notify import notifier as msg_notifier
 from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
