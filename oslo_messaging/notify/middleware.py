@@ -22,6 +22,7 @@ import sys
 import traceback as tb
 
 from oslo_config import cfg
+from oslo_context import context
 from oslo_middleware import base
 import six
 import webob.dec
@@ -29,7 +30,6 @@ import webob.dec
 import oslo_messaging
 from oslo_messaging._i18n import _LE
 from oslo_messaging import notify
-from oslo_messaging.openstack.common import context
 
 LOG = logging.getLogger(__name__)
 
