@@ -122,7 +122,7 @@ def rpc_call(_id, transport, messages, wait_after_msg, timeout):
             time.sleep(wait_after_msg)
 
 
-def notifier(transport, _id, messages, wait_after_msg, timeout):
+def notifier(_id, transport, messages, wait_after_msg, timeout):
     n1 = notify.Notifier(transport, topic="n-t1").prepare(
         publisher_id='publisher-%d' % _id)
     msg = 0
