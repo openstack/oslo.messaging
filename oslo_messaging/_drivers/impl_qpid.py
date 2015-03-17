@@ -668,7 +668,7 @@ class Connection(object):
 
         def _consume():
             # NOTE(sileht):
-            # maximun value choosen according the best practice from kombu:
+            # maximum value chosen according the best practice from kombu:
             # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
             poll_timeout = 1 if timeout is None else min(timeout, 1)
 
