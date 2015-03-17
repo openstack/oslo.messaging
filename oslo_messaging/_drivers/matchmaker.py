@@ -164,7 +164,7 @@ class HeartbeatMatchMakerBase(MatchMakerBase):
         Use start_heartbeat to spawn a heartbeat greenthread,
         which loops this method.
         """
-        for key, host in self.host_topic:
+        for key, host in self.host_topic.keys():
             self.ack_alive(key, host)
 
     def ack_alive(self, key, host):
