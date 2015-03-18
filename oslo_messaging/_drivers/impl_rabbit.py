@@ -884,8 +884,15 @@ class Connection(object):
 
     def reset(self):
         """Reset a connection so it can be used again."""
+        recoverable_errors = (self.connection.recoverable_channel_errors +
+                              self.connection.recoverable_connection_errors)
+
         with self._connection_lock:
-            self._set_current_channel(self.connection.channel())
+            try:
+                self._set_current_channel(self.connection.channel())
+            except recoverable_errors:
+                self._set_current_channel(None)
+                self.ensure_connection()
         self.consumers = []
         self.consumer_num = itertools.count(1)
 
