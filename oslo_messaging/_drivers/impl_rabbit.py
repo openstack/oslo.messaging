@@ -934,7 +934,7 @@ class Connection(object):
                             pass
                     except recoverable_errors as exc:
                         LOG.info(_LI("A recoverable connection/channel error "
-                                     "occurs, try to reconnect: %s"), exc)
+                                     "occurred, trying to reconnect: %s"), exc)
                 except Exception:
                     LOG.exception(_LE("Unexpected error during heartbeart "
                                       "thread processing, retrying..."))
