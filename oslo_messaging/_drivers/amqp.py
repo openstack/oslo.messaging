@@ -134,8 +134,16 @@ class ConnectionContext(rpc_common.Connection):
             if self.pooled:
                 # Reset the connection so it's ready for the next caller
                 # to grab from the pool
-                self.connection.reset()
-                self.connection_pool.put(self.connection)
+                try:
+                    self.connection.reset()
+                except Exception:
+                    LOG.exception("Fail to reset the connection, drop it")
+                    try:
+                        self.connection.close()
+                    except Exception:
+                        pass
+                else:
+                    self.connection_pool.put(self.connection)
             else:
                 try:
                     self.connection.close()
