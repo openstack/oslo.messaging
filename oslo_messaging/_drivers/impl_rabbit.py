@@ -952,8 +952,9 @@ class Connection(object):
                         LOG.info(_LI("A recoverable connection/channel error "
                                      "occurred, trying to reconnect: %s"), exc)
                 except Exception:
-                    LOG.exception(_LE("Unexpected error during heartbeart "
-                                      "thread processing, retrying..."))
+                    LOG.warning(_LW("Unexpected error during heartbeart "
+                                    "thread processing, retrying..."))
+                    LOG.debug('Exception', exc_info=True)
 
             self._heartbeat_exit_event.wait(
                 timeout=self._heartbeat_wait_timeout)
@@ -998,8 +999,8 @@ class Connection(object):
 
         def _error_callback(exc):
             _recoverable_error_callback(exc)
-            LOG.exception(_('Failed to consume message from queue: %s'),
-                          exc)
+            LOG.error(_('Failed to consume message from queue: %s'),
+                      exc)
 
         def _consume():
             if self.do_consume:
@@ -1037,8 +1038,9 @@ class Connection(object):
     @staticmethod
     def _log_publisher_send_error(topic, exc):
         log_info = {'topic': topic, 'err_str': exc}
-        LOG.exception(_("Failed to publish message to topic "
-                        "'%(topic)s': %(err_str)s"), log_info)
+        LOG.error(_("Failed to publish message to topic "
+                    "'%(topic)s': %(err_str)s"), log_info)
+        LOG.debug('Exception', exc_info=exc)
 
     default_marker = object()
 
