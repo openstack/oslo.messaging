@@ -345,7 +345,7 @@ class DecayingTimer(object):
         maximum = kwargs.pop('maximum', None)
 
         if self._duration is None:
-            return None if maximum is None else maximum
+            return maximum
         if self._ends_at is None:
             raise RuntimeError(_("Can not check/return a timeout from a timer"
                                " that has not been started."))
