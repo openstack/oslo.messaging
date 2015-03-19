@@ -61,7 +61,7 @@ class TimerTestCase(test_utils.BaseTestCase):
         remaining = t.check_return()
         self.assertEqual(None, remaining)
 
-    def test_no_duration_but_maximun(self):
+    def test_no_duration_but_maximum(self):
         t = common.DecayingTimer()
         t.start()
         remaining = t.check_return(maximum=2)
