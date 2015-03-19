@@ -623,7 +623,8 @@ class Connection(object):
                     transport,
                     parse.quote(host.username or ''),
                     parse.quote(host.password or ''),
-                    host.hostname or '', str(host.port or 5672),
+                    self._parse_url_hostname(host.hostname) or '',
+                    str(host.port or 5672),
                     virtual_host)
         elif url.transport.startswith('kombu+'):
             # NOTE(sileht): url have a + but no hosts
@@ -638,7 +639,7 @@ class Connection(object):
                     ";" if self._url else '',
                     parse.quote(self.driver_conf.rabbit_userid),
                     parse.quote(self.driver_conf.rabbit_password),
-                    hostname, port,
+                    self._parse_url_hostname(hostname), port,
                     virtual_host)
 
         self._initial_pid = os.getpid()
@@ -725,6 +726,12 @@ class Connection(object):
             return cls._SSL_PROTOCOLS[key]
         except KeyError:
             raise RuntimeError(_("Invalid SSL version : %s") % version)
+
+    def _parse_url_hostname(self, hostname):
+        """Handles hostname returned from urlparse and checks whether it's
+        ipaddress. If it's ipaddress it ensures that it has brackets for IPv6.
+        """
+        return '[%s]' % hostname if ':' in hostname else hostname
 
     def _fetch_ssl_params(self):
         """Handles fetching what ssl params should be used for the connection
