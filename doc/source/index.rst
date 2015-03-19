@@ -22,6 +22,7 @@ Contents
    opts
    conffixture
    AMQP1.0
+   zmq_driver
    FAQ
    contributing
 
