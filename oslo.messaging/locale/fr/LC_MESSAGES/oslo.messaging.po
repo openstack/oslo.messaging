@@ -10,9 +10,9 @@ msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-02-02 06:12+0000\n"
-"PO-Revision-Date: 2014-12-20 02:07+0000\n"
-"Last-Translator: Maxime COQUEREL <max.coquerel@gmail.com>\n"
+"POT-Creation-Date: 2015-03-19 06:07+0000\n"
+"PO-Revision-Date: 2015-03-13 10:28+0000\n"
+"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
 "Language-Team: French "
 "(http://www.transifex.com/projects/p/oslomessaging/language/fr/)\n"
 "Plural-Forms: nplurals=2; plural=(n > 1)\n"
@@ -34,6 +34,40 @@ msgstr "Echec de chargement des notifications pour %s"
 #, python-format
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
 msgstr "Routage '%(event)s' notification du pilote %(driver)s'"
+
+#: oslo_messaging/openstack/common/versionutils.py:99
+#, python-format
+msgid ""
+"%(what)s is deprecated as of %(as_of)s in favor of %(in_favor_of)s and "
+"may be removed in %(remove_in)s."
+msgstr ""
+
+#: oslo_messaging/openstack/common/versionutils.py:103
+#, python-format
+msgid ""
+"%(what)s is deprecated as of %(as_of)s and may be removed in "
+"%(remove_in)s. It will not be superseded."
+msgstr ""
+
+#: oslo_messaging/openstack/common/versionutils.py:107
+#, python-format
+msgid "%(what)s is deprecated as of %(as_of)s in favor of %(in_favor_of)s."
+msgstr ""
+
+#: oslo_messaging/openstack/common/versionutils.py:110
+#, python-format
+msgid "%(what)s is deprecated as of %(as_of)s. It will not be superseded."
+msgstr ""
+
+#: oslo_messaging/openstack/common/versionutils.py:232
+#, python-format
+msgid "Deprecated: %s"
+msgstr ""
+
+#: oslo_messaging/openstack/common/versionutils.py:250
+#, python-format
+msgid "Fatal call to deprecated config: %(msg)s"
+msgstr ""
 
 #: oslo_messaging/rpc/dispatcher.py:150
 #, python-format
