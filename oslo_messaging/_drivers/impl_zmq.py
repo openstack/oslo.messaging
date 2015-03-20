@@ -31,11 +31,12 @@ from oslo_utils import excutils
 from oslo_utils import importutils
 import six
 from six import moves
+from stevedore import driver
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._executors import base as executor_base  # FIXME(markmc)
-from oslo_messaging._i18n import _, _LE
+from oslo_messaging._i18n import _, _LE, _LW
 
 
 zmq = importutils.try_import('eventlet.green.zmq')
@@ -56,8 +57,7 @@ zmq_opts = [
     # The module.Class to use for matchmaking.
     cfg.StrOpt(
         'rpc_zmq_matchmaker',
-        default=('oslo_messaging._drivers.'
-                 'matchmaker.MatchMakerLocalhost'),
+        default='local',
         help='MatchMaker driver.',
     ),
 
@@ -793,14 +793,26 @@ def _multi_send(method, context, topic, msg, timeout=None,
 
 def _get_matchmaker(*args, **kwargs):
     global matchmaker
+    mm_name = CONF.rpc_zmq_matchmaker
+
+    # Back compatibility for old class names
+    mm_mapping = {
+        'oslo_messaging._drivers.matchmaker_redis.MatchMakerRedis': 'redis',
+        'oslo_messaging._drivers.matchmaker_ring.MatchMakerRing': 'ring',
+        'oslo_messaging._drivers.matchmaker.MatchMakerLocalhost': 'local',
+        'oslo.messaging._drivers.matchmaker_redis.MatchMakerRedis': 'redis',
+        'oslo.messaging._drivers.matchmaker_ring.MatchMakerRing': 'ring',
+        'oslo.messaging._drivers.matchmaker.MatchMakerLocalhost': 'local'}
+    if mm_name in mm_mapping:
+        LOG.warn(_LW('rpc_zmq_matchmaker = %(old_val)s is deprecated. '
+                     'It is suggested to change the value to %(new_val)s.'),
+                 {'old_val': mm_name, 'new_val': mm_mapping[mm_name]})
+        mm_name = mm_mapping[mm_name]
+
     if not matchmaker:
-        mm = CONF.rpc_zmq_matchmaker
-        if mm.endswith('matchmaker.MatchMakerRing'):
-            mm.replace('matchmaker', 'matchmaker_ring')
-            LOG.warn(_('rpc_zmq_matchmaker = %(orig)s is deprecated; use'
-                       ' %(new)s instead') % dict(
-                     orig=CONF.rpc_zmq_matchmaker, new=mm))
-        matchmaker = importutils.import_object(mm, *args, **kwargs)
+        mgr = driver.DriverManager('oslo.messaging.zmq.matchmaker',
+                                   mm_name)
+        matchmaker = mgr.driver(*args, **kwargs)
     return matchmaker
 
 
