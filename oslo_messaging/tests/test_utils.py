@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
-
 import mock
 
 from oslo_messaging._drivers import common
@@ -67,16 +65,24 @@ class TimerTestCase(test_utils.BaseTestCase):
         remaining = t.check_return(maximum=2)
         self.assertEqual(2, remaining)
 
-    def test_duration_expired_no_callback(self):
+    @mock.patch('oslo_utils.timeutils.now')
+    def test_duration_expired_no_callback(self, now):
+        now.return_value = 0
         t = common.DecayingTimer(2)
-        t._ends_at = time.time() - 10
-        remaining = t.check_return()
-        self.assertAlmostEqual(-10, remaining, 0)
+        t.start()
 
-    def test_duration_callback(self):
+        now.return_value = 3
+        remaining = t.check_return()
+        self.assertEqual(0, remaining)
+
+    @mock.patch('oslo_utils.timeutils.now')
+    def test_duration_callback(self, now):
+        now.return_value = 0
         t = common.DecayingTimer(2)
-        t._ends_at = time.time() - 10
+        t.start()
+
+        now.return_value = 3
         callback = mock.Mock()
         remaining = t.check_return(callback)
-        self.assertAlmostEqual(-10, remaining, 0)
+        self.assertEqual(0, remaining)
         callback.assert_called_once

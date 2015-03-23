@@ -18,10 +18,10 @@
 import copy
 import logging
 import sys
-import time
 import traceback
 
 from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 import six
 
 import oslo_messaging
@@ -334,24 +334,16 @@ def deserialize_msg(msg):
 
 class DecayingTimer(object):
     def __init__(self, duration=None):
-        self._duration = duration
-        self._ends_at = None
+        self._watch = timeutils.StopWatch(duration=duration)
 
     def start(self):
-        if self._duration is not None:
-            self._ends_at = time.time() + max(0, self._duration)
+        self._watch.start()
 
     def check_return(self, timeout_callback=None, *args, **kwargs):
         maximum = kwargs.pop('maximum', None)
-
-        if self._duration is None:
+        left = self._watch.leftover(return_none=True)
+        if left is None:
             return maximum
-        if self._ends_at is None:
-            raise RuntimeError(_("Can not check/return a timeout from a timer"
-                               " that has not been started."))
-
-        left = self._ends_at - time.time()
         if left <= 0 and timeout_callback is not None:
             timeout_callback(*args, **kwargs)
-
         return left if maximum is None else min(left, maximum)
