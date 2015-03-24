@@ -54,5 +54,5 @@ class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
         self.publisherrorshandler.emit(logrecord)
         self.assertEqual('error.publisher',
                          self.publisherrorshandler._notifier.publisher_id)
-        mock_notify.assert_called_with(None, 'error_notification',
+        mock_notify.assert_called_with({}, 'error_notification',
                                        {'error': 'Message'}, 'ERROR')

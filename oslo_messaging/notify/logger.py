@@ -64,19 +64,21 @@ class LoggingNotificationHandler(logging.Handler):
         if not method:
             return
 
-        method(None,
-               'logrecord',
-               {
-                   'name': record.name,
-                   'levelno': record.levelno,
-                   'levelname': record.levelname,
-                   'exc_info': record.exc_info,
-                   'pathname': record.pathname,
-                   'lineno': record.lineno,
-                   'msg': record.getMessage(),
-                   'funcName': record.funcName,
-                   'thread': record.thread,
-                   'processName': record.processName,
-                   'process': record.process,
-                   'extra': getattr(record, 'extra', None),
-               })
+        method(
+            {},
+            'logrecord',
+            {
+                'name': record.name,
+                'levelno': record.levelno,
+                'levelname': record.levelname,
+                'exc_info': record.exc_info,
+                'pathname': record.pathname,
+                'lineno': record.lineno,
+                'msg': record.getMessage(),
+                'funcName': record.funcName,
+                'thread': record.thread,
+                'processName': record.processName,
+                'process': record.process,
+                'extra': getattr(record, 'extra', None),
+            }
+        )

@@ -77,6 +77,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
         self.logger.emit(record)
 
+        context = oslo_messaging.notify._impl_test.NOTIFICATIONS[0][0]
+        self.assertEqual({}, context)
+
         n = oslo_messaging.notify._impl_test.NOTIFICATIONS[0][1]
         self.assertEqual(getattr(self, 'queue', self.priority.upper()),
                          n['priority'])
