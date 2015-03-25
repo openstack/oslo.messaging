@@ -69,7 +69,8 @@ class AMQPIncomingMessage(base.IncomingMessage):
             # NOTE(Alexei_987) not sending reply, if msg_id is empty
             #    because reply should not be expected by caller side
             return
-        with self.listener.driver._get_connection() as conn:
+        with self.listener.driver._get_connection(
+                rpc_amqp.PURPOSE_SEND) as conn:
             self._send_reply(conn, reply, failure, log_failure=log_failure)
             self._send_reply(conn, ending=True)
 
@@ -268,9 +269,9 @@ class AMQPDriverBase(base.BaseDriver):
     def _get_exchange(self, target):
         return target.exchange or self._default_exchange
 
-    def _get_connection(self, pooled=True):
+    def _get_connection(self, purpose=rpc_amqp.PURPOSE_SEND):
         return rpc_amqp.ConnectionContext(self._connection_pool,
-                                          pooled=pooled)
+                                          purpose=purpose)
 
     def _get_reply_q(self):
         with self._reply_q_lock:
@@ -279,7 +280,7 @@ class AMQPDriverBase(base.BaseDriver):
 
             reply_q = 'reply_' + uuid.uuid4().hex
 
-            conn = self._get_connection(pooled=False)
+            conn = self._get_connection(rpc_amqp.PURPOSE_LISTEN)
 
             self._waiter = ReplyWaiter(reply_q, conn,
                                        self._allowed_remote_exmods)
@@ -320,7 +321,7 @@ class AMQPDriverBase(base.BaseDriver):
             self._waiter.listen(msg_id)
 
         try:
-            with self._get_connection() as conn:
+            with self._get_connection(rpc_amqp.PURPOSE_SEND) as conn:
                 if notify:
                     conn.notify_send(self._get_exchange(target),
                                      target.topic, msg, retry=retry)
@@ -353,7 +354,7 @@ class AMQPDriverBase(base.BaseDriver):
                           envelope=(version == 2.0), notify=True, retry=retry)
 
     def listen(self, target):
-        conn = self._get_connection(pooled=False)
+        conn = self._get_connection(rpc_amqp.PURPOSE_LISTEN)
 
         listener = AMQPListener(self, conn)
 
@@ -369,7 +370,7 @@ class AMQPDriverBase(base.BaseDriver):
         return listener
 
     def listen_for_notifications(self, targets_and_priorities, pool):
-        conn = self._get_connection(pooled=False)
+        conn = self._get_connection(rpc_amqp.PURPOSE_LISTEN)
 
         listener = AMQPListener(self, conn)
         for target, priority in targets_and_priorities:

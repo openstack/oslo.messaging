@@ -27,6 +27,7 @@ import testscenarios
 import testtools
 
 from oslo import messaging
+from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import impl_qpid as qpid_driver
 from oslo_messaging.tests import utils as test_utils
 
@@ -564,7 +565,8 @@ class TestQpidReconnectOrder(test_utils.BaseTestCase):
         with mock.patch('qpid.messaging.Connection') as conn_mock:
             # starting from the first broker in the list
             url = messaging.TransportURL.parse(self.conf, None)
-            connection = qpid_driver.Connection(self.conf, url)
+            connection = qpid_driver.Connection(self.conf, url,
+                                                amqp.PURPOSE_SEND)
 
             # reconnect will advance to the next broker, one broker per
             # attempt, and then wrap to the start of the list once the end is
@@ -806,7 +808,8 @@ class QPidHATestCase(test_utils.BaseTestCase):
 
         # starting from the first broker in the list
         url = messaging.TransportURL.parse(self.conf, None)
-        self.connection = qpid_driver.Connection(self.conf, url)
+        self.connection = qpid_driver.Connection(self.conf, url,
+                                                 amqp.PURPOSE_SEND)
         self.addCleanup(self.connection.close)
 
         self.info.update({'attempt': 0,
