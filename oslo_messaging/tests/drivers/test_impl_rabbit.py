@@ -98,8 +98,8 @@ class TestHeartbeat(test_utils.BaseTestCase):
     def test_test_heartbeat_sent_connection_fail(self):
         self._do_test_heartbeat_sent(
             heartbeat_side_effect=kombu.exceptions.ConnectionError,
-            info='A recoverable connection/channel error occurs, '
-            'try to reconnect: %s')
+            info='A recoverable connection/channel error occurred, '
+            'trying to reconnect: %s')
 
 
 class TestRabbitDriverLoad(test_utils.BaseTestCase):
