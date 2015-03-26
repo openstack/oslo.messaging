@@ -4,14 +4,14 @@
 # project.
 #
 # Translators:
-# Andi Chandler <andi@gowling.com>, 2014
+# Andi Chandler <andi@gowling.com>, 2014-2015
 msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-03-19 06:07+0000\n"
-"PO-Revision-Date: 2015-03-13 10:28+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"POT-Creation-Date: 2015-03-26 06:08+0000\n"
+"PO-Revision-Date: 2015-03-24 01:22+0000\n"
+"Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom) "
 "(http://www.transifex.com/projects/p/oslomessaging/language/en_GB/)\n"
 "Plural-Forms: nplurals=2; plural=(n != 1)\n"
@@ -22,7 +22,7 @@ msgstr ""
 
 #: oslo_messaging/_executors/impl_blocking.py:50
 msgid "Unexpected exception occurred."
-msgstr ""
+msgstr "Unexpected exception occurred."
 
 #: oslo_messaging/notify/_impl_routing.py:80
 #, python-format
@@ -40,6 +40,8 @@ msgid ""
 "%(what)s is deprecated as of %(as_of)s in favor of %(in_favor_of)s and "
 "may be removed in %(remove_in)s."
 msgstr ""
+"%(what)s is deprecated as of %(as_of)s in favor of %(in_favor_of)s and "
+"may be removed in %(remove_in)s."
 
 #: oslo_messaging/openstack/common/versionutils.py:103
 #, python-format
@@ -47,26 +49,28 @@ msgid ""
 "%(what)s is deprecated as of %(as_of)s and may be removed in "
 "%(remove_in)s. It will not be superseded."
 msgstr ""
+"%(what)s is deprecated as of %(as_of)s and may be removed in "
+"%(remove_in)s. It will not be superseded."
 
 #: oslo_messaging/openstack/common/versionutils.py:107
 #, python-format
 msgid "%(what)s is deprecated as of %(as_of)s in favor of %(in_favor_of)s."
-msgstr ""
+msgstr "%(what)s is deprecated as of %(as_of)s in favour of %(in_favor_of)s."
 
 #: oslo_messaging/openstack/common/versionutils.py:110
 #, python-format
 msgid "%(what)s is deprecated as of %(as_of)s. It will not be superseded."
-msgstr ""
+msgstr "%(what)s is deprecated as of %(as_of)s. It will not be superseded."
 
 #: oslo_messaging/openstack/common/versionutils.py:232
 #, python-format
 msgid "Deprecated: %s"
-msgstr ""
+msgstr "Deprecated: %s"
 
 #: oslo_messaging/openstack/common/versionutils.py:250
 #, python-format
 msgid "Fatal call to deprecated config: %(msg)s"
-msgstr ""
+msgstr "Fatal call to deprecated config: %(msg)s"
 
 #: oslo_messaging/rpc/dispatcher.py:150
 #, python-format
