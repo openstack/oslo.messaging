@@ -35,7 +35,8 @@ class LoggingErrorNotificationHandler(logging.Handler):
             # handler sends a notification, and the log_notifier sees the
             # notification and logs it.
             return
-        self._notifier.error(None, 'error_notification',
+        self._notifier.error({},
+                             'error_notification',
                              dict(error=record.msg))
 
 
