@@ -142,7 +142,8 @@ def marshal_request(request, context, envelope):
 
 def unmarshal_request(message):
     data = jsonutils.loads(message.body)
-    return (data.get("request"), data.get("context"))
+    msg = common.deserialize_msg(data.get("request"))
+    return (msg, data.get("context"))
 
 
 class ProtonIncomingMessage(base.IncomingMessage):
