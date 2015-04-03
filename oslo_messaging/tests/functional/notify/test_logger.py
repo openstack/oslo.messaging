@@ -48,9 +48,6 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
                                                          cls._driver)
 
     def test_logging(self):
-        if self.url.startswith("amqp:"):
-            self.skipTest("#1438742")
-
         # NOTE(gtt): Using different topic to make tests run in parallel
         topic = 'test_logging_%s_driver_%s' % (self.priority, self.driver)
 
