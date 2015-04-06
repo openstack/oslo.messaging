@@ -860,7 +860,7 @@ class Connection(object):
             # NOTE(sileht): number of retry exceeded and the connection
             # is still broken
             msg = _('Unable to connect to AMQP server on '
-                    '%(hostname)s:%(port)d after %(retry)d '
+                    '%(hostname)s:%(port)d after %(retry)s '
                     'tries: %(err_str)s') % {
                         'hostname': self.connection.hostname,
                         'port': self.connection.port,
