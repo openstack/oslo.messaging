@@ -49,7 +49,7 @@ amqp1_opts = [
     cfg.StrOpt('ssl_ca_file',
                default='',
                deprecated_group='amqp1',
-               help="CA certificate PEM file for verifing server certificate"),
+               help="CA certificate PEM file to verify server certificate"),
 
     cfg.StrOpt('ssl_cert_file',
                default='',
