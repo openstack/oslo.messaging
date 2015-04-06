@@ -29,7 +29,9 @@ from oslo_messaging import serializer as msg_serializer
 _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',
                     default=[],
-                    help='Driver or drivers to handle sending notifications.'),
+                    help='The Drivers(s) to handle sending notifications. '
+                         'Possible values are messaging, messagingv2, routing,'
+                         'log, test, noop'),
     cfg.ListOpt('notification_topics',
                 default=['notifications', ],
                 deprecated_name='topics',

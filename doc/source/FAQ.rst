@@ -29,3 +29,13 @@ automatically for each of these topics. To change the queue names,
 change the notification topic using the ``notification_topics``
 configuration option. The option accepts a list of values, so it is
 possible to publish to multiple topics.
+
+What are the other choices of notification drivers available?
+=============================================================
+
+- messaging    Send notifications using the 1.0 message format.
+- messagingv2  Send notifications using the 2.0 message format (with a message envelope).
+- routing      Configurable routing notifier (by priority or event_type).
+- log          Publish notifications via Python logging infrastructure.
+- test         Store notifications in memory for test verification.
+- noop         Disable sending notifications entirely.
