@@ -1,6 +1,14 @@
 Oslo Messaging Library
 ======================
 
+.. image:: https://pypip.in/version/oslo.messaging/badge.svg
+    :target: https://pypi.python.org/pypi/oslo.messaging/
+    :alt: Latest Version
+
+.. image:: https://pypip.in/download/oslo.messaging/badge.svg?period=month
+    :target: https://pypi.python.org/pypi/oslo.messaging/
+    :alt: Downloads
+
 The Oslo messaging API supports RPC and notifications over a number of
 different messaging transports.
 
