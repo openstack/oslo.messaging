@@ -28,7 +28,6 @@ import logging
 import uuid
 
 from oslo_config import cfg
-from oslo_utils import strutils
 import six
 
 from oslo_messaging._drivers import common as rpc_common
@@ -204,10 +203,7 @@ def unpack_context(conf, msg):
     context_dict['msg_id'] = msg.pop('_msg_id', None)
     context_dict['reply_q'] = msg.pop('_reply_q', None)
     context_dict['conf'] = conf
-    ctx = RpcContext.from_dict(context_dict)
-    LOG.debug(u'unpacked context: %s',
-              strutils.mask_password(six.text_type(ctx.to_dict())))
-    return ctx
+    return RpcContext.from_dict(context_dict)
 
 
 def pack_context(msg, context):
