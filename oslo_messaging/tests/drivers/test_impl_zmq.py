@@ -27,6 +27,7 @@ except ImportError:
     zmq = None
 
 import oslo_messaging
+from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging.tests import utils as test_utils
 
 # eventlet is not yet py3 compatible, so skip if not installed
@@ -383,6 +384,38 @@ class TestZmqListener(ZmqBaseTestCase):
 
 
 class TestZmqDriver(ZmqBaseTestCase):
+
+    @mock.patch('oslo_messaging._drivers.impl_zmq._cast', autospec=True)
+    @mock.patch('oslo_messaging._drivers.matchmaker.MatchMakerBase.queues',
+                autospec=True)
+    def test_zmqdriver_multi_send_cast_with_no_queues(self,
+                                                      mock_queues,
+                                                      mock_cast):
+        context = mock.Mock(autospec=impl_zmq.RpcContext)
+        topic = 'testtopic'
+        msg = 'jeronimo'
+
+        with mock.patch.object(impl_zmq.LOG, 'warn') as flog:
+            mock_queues.return_value = None
+            impl_zmq._multi_send(mock_cast, context, topic, msg)
+            self.assertEqual(1, flog.call_count)
+            args, kwargs = flog.call_args
+            self.assertIn('No matchmaker results', args[0])
+
+    @mock.patch('oslo_messaging._drivers.impl_zmq._call', autospec=True)
+    @mock.patch('oslo_messaging._drivers.matchmaker.MatchMakerBase.queues',
+                autospec=True)
+    def test_zmqdriver_multi_send_call_with_no_queues(self,
+                                                      mock_queues,
+                                                      mock_call):
+        context = mock.Mock(autospec=impl_zmq.RpcContext)
+        topic = 'testtopic'
+        msg = 'jeronimo'
+
+        mock_queues.return_value = None
+        self.assertRaises(rpc_common.Timeout,
+                          impl_zmq._multi_send,
+                          mock_call, context, topic, msg)
 
     @mock.patch('oslo_messaging._drivers.impl_zmq._cast', autospec=True)
     @mock.patch('oslo_messaging._drivers.impl_zmq._multi_send', autospec=True)
