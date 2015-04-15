@@ -19,7 +19,6 @@ import sys
 import uuid
 
 import fixtures
-import mock
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 from stevedore import dispatch
@@ -34,6 +33,7 @@ from oslo_messaging.notify import _impl_test
 from oslo_messaging.notify import notifier as msg_notifier
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

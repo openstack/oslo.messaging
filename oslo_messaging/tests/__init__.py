@@ -13,6 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+# Import oslotest before importing test submodules to setup six.moves for mock
+import oslotest
+
 try:
     import eventlet
 except ImportError:

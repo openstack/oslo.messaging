@@ -13,11 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 from oslo_messaging._drivers import common
 from oslo_messaging import _utils as utils
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 
 class VersionIsCompatibleTestCase(test_utils.BaseTestCase):

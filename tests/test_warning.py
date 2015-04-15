@@ -14,9 +14,9 @@ import imp
 import os
 import warnings
 
-import mock
 from oslotest import base as test_base
 import six
+from six.moves import mock
 
 
 class DeprecationWarningTest(test_base.BaseTestCase):

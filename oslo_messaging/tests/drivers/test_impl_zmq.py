@@ -17,7 +17,6 @@ import logging
 import socket
 
 import fixtures
-import mock
 from oslo_utils import importutils
 import testtools
 
@@ -29,6 +28,7 @@ except ImportError:
 import oslo_messaging
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 # eventlet is not yet py3 compatible, so skip if not installed
 eventlet = importutils.try_import('eventlet')

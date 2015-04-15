@@ -17,8 +17,9 @@ import logging
 import socket
 
 import fixtures
-import mock
 import testtools
+
+from six.moves import mock
 
 try:
     import zmq

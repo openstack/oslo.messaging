@@ -7,7 +7,6 @@ hacking>=0.10.0,<0.11
 
 discover
 fixtures>=0.3.14
-mock>=1.0
 mox3>=0.7.0
 python-subunit>=0.0.18
 testrepository>=0.0.18
