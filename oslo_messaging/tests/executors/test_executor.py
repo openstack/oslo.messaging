@@ -27,7 +27,6 @@ try:
     import eventlet
 except ImportError:
     eventlet = None
-import mock
 import testscenarios
 import testtools
 try:
@@ -47,6 +46,7 @@ except ImportError:
     impl_eventlet = None
 from oslo_messaging._executors import impl_thread
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

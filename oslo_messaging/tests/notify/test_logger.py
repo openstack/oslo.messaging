@@ -18,7 +18,6 @@ import logging.config
 import os
 import sys
 
-import mock
 from oslo_utils import timeutils
 import testscenarios
 import testtools
@@ -26,6 +25,7 @@ import testtools
 import oslo_messaging
 from oslo_messaging.tests.notify import test_notifier
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 
 load_tests = testscenarios.load_tests_apply_scenarios

@@ -12,12 +12,11 @@
 
 import logging
 
-import mock
-
 import oslo_messaging
 from oslo_messaging.notify import log_handler
 from oslo_messaging.tests.notify import test_notifier
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 
 class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):

@@ -17,7 +17,6 @@ import random
 import threading
 import time
 
-import mock
 try:
     import qpid
 except ImportError:
@@ -30,6 +29,7 @@ from oslo import messaging
 from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import impl_qpid as qpid_driver
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 
 load_tests = testscenarios.load_tests_apply_scenarios

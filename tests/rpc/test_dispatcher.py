@@ -13,12 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
 import testscenarios
 
 from oslo import messaging
 from oslo.messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

@@ -15,12 +15,12 @@
 
 import threading
 
-import mock
 import testscenarios
 
 from oslo.config import cfg
 from oslo import messaging
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

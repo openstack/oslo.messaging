@@ -20,7 +20,6 @@ import uuid
 
 import fixtures
 import kombu
-import mock
 from oslotest import mockpatch
 import testscenarios
 
@@ -32,6 +31,7 @@ from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
 from oslo_messaging.tests import utils as test_utils
+from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
