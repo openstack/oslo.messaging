@@ -927,12 +927,11 @@ class Connection(object):
                                             channel=self.channel,
                                             routing_key=routing_key)
 
-        headers = {}
+        expiration = None
         if timeout:
             # AMQP TTL is in milliseconds when set in the property.
             # Details: http://www.rabbitmq.com/ttl.html#per-message-ttl
-            # NOTE(sileht): this amqp header doesn't exists ... LP#1444854
-            headers['ttl'] = timeout * 1000
+            expiration = int(timeout * 1000)
 
         # NOTE(sileht): no need to wait more, caller expects
         # a answer before timeout is reached
@@ -948,7 +947,7 @@ class Connection(object):
             transport_timeout = heartbeat_timeout
 
         with self._transport_socket_timeout(transport_timeout):
-            producer.publish(msg, headers=headers)
+            producer.publish(msg, expiration=expiration)
 
     PUBLISHER_DECLARED_QUEUES = collections.defaultdict(set)
 

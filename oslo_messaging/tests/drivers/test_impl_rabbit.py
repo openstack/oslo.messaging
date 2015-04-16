@@ -174,6 +174,24 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
 
 
 class TestRabbitPublisher(test_utils.BaseTestCase):
+    @mock.patch('kombu.messaging.Producer.publish')
+    def test_send_with_timeout(self, fake_publish):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
+                          timeout=1)
+        fake_publish.assert_called_with('msg', expiration=1000)
+
+    @mock.patch('kombu.messaging.Producer.publish')
+    def test_send_no_timeout(self, fake_publish):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            conn._publish(mock.Mock(), 'msg', routing_key='routing_key')
+        fake_publish.assert_called_with('msg', expiration=None)
 
     def test_declared_queue_publisher(self):
         transport = oslo_messaging.get_transport(self.conf,
