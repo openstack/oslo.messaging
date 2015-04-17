@@ -123,10 +123,10 @@ rabbit_opts = [
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
     cfg.IntOpt('heartbeat_timeout_threshold',
-               default=60,
+               default=0,
                help="Number of seconds after which the Rabbit broker is "
                "considered down if heartbeat's keep-alive fails "
-               "(0 disable the heartbeat)."),
+               "(0 disable the heartbeat). EXPERIMENTAL"),
     cfg.IntOpt('heartbeat_rate',
                default=2,
                help='How often times during the heartbeat_timeout_threshold '
