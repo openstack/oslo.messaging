@@ -58,6 +58,12 @@ class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
 
 class TestHeartbeat(test_utils.BaseTestCase):
 
+    def setUp(self):
+        super(TestHeartbeat, self).setUp(
+            conf=cfg.ConfigOpts())
+        self.config(heartbeat_timeout_threshold=60,
+                    group='oslo_messaging_rabbit')
+
     @mock.patch('oslo_messaging._drivers.impl_rabbit.LOG')
     @mock.patch('kombu.connection.Connection.heartbeat_check')
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.'
@@ -164,7 +170,7 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
         transport._driver._get_connection()
         connection_klass.assert_called_once_with(
             'memory:///', ssl=self.expected, login_method='AMQPLAIN',
-            heartbeat=60, failover_strategy="shuffle")
+            heartbeat=0, failover_strategy="shuffle")
 
 
 class TestRabbitIterconsume(test_utils.BaseTestCase):
