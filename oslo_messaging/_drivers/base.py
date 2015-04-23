@@ -17,7 +17,14 @@ import abc
 
 import six
 
+from oslo.config import cfg
 from oslo_messaging import exceptions
+
+base_opts = [
+    cfg.IntOpt('rpc_conn_pool_size',
+               default=30,
+               help='Size of RPC connection pool.'),
+]
 
 
 class TransportDriverError(exceptions.MessagingException):

@@ -28,6 +28,7 @@ import six
 
 from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
+from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._i18n import _
 from oslo_messaging import exceptions
@@ -783,6 +784,7 @@ class QpidDriver(amqpdriver.AMQPDriverBase):
         conf.register_group(opt_group)
         conf.register_opts(qpid_opts, group=opt_group)
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
+        conf.register_opts(base.base_opts, group=opt_group)
 
         connection_pool = rpc_amqp.ConnectionPool(
             conf, conf.oslo_messaging_qpid.rpc_conn_pool_size,

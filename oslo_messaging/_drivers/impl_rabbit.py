@@ -34,6 +34,7 @@ from six.moves.urllib import parse
 
 from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
+from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LE
@@ -1161,6 +1162,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_group(opt_group)
         conf.register_opts(rabbit_opts, group=opt_group)
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
+        conf.register_opts(base.base_opts, group=opt_group)
 
         connection_pool = rpc_amqp.ConnectionPool(
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
