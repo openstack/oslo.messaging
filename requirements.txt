@@ -17,7 +17,7 @@ six>=1.9.0
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
 
-eventlet>=0.16.1,!=0.17.0
+eventlet>=0.17.3
 
 # for the routing notifier
 PyYAML>=3.1.0
