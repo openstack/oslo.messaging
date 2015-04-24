@@ -70,23 +70,23 @@ class RedisMatchMakerTest(test_utils.BaseTestCase):
         self.matcher.register('cert', 'keymaster')
         self.assertEqual(
             sorted(self.matcher.redis.smembers('cert')),
-            ['cert.controller1', 'cert.keymaster'])
+            [b'cert.controller1', b'cert.keymaster'])
         self.matcher.register('l3_agent.node1', 'node1')
         self.assertEqual(
             sorted(self.matcher.redis.smembers('l3_agent.node1')),
-            ['l3_agent.node1.node1'])
+            [b'l3_agent.node1.node1'])
 
     def test_unregister(self):
         self.matcher.unregister('conductor', 'controller1')
         self.assertEqual(
             sorted(self.matcher.redis.smembers('conductor')),
-            ['conductor.node1', 'conductor.node2', 'conductor.node3'])
+            [b'conductor.node1', b'conductor.node2', b'conductor.node3'])
 
     def test_ack_alive(self):
         self.matcher.ack_alive('ack_alive', 'controller1')
         self.assertEqual(
             sorted(self.matcher.redis.smembers('ack_alive')),
-            ['ack_alive.controller1'])
+            [b'ack_alive.controller1'])
 
     def test_is_alive(self):
         self.assertEqual(
