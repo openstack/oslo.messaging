@@ -17,6 +17,9 @@ oslotest>=1.5.1  # Apache-2.0
 # for test_matchmaker_redis
 redis>=2.10.0
 
+# for test_impl_zmq
+pyzmq>=14.3.1 # LGPL+BSD
+
 # when we can require tox>= 1.4, this can go into tox.ini:
 #  [testenv:cover]
 #  deps = {[testenv]deps} coverage
