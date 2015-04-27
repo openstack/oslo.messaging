@@ -22,6 +22,7 @@ eventlet>=0.16.1
 PyYAML>=3.1.0
 
 # rabbit driver is the default
+# require kombu>=3.0.7 and amqp>=1.4.0 for heatbeat support
 kombu>=2.5.0
 
 # middleware

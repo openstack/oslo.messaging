@@ -126,7 +126,8 @@ rabbit_opts = [
                default=0,
                help="Number of seconds after which the Rabbit broker is "
                "considered down if heartbeat's keep-alive fails "
-               "(0 disable the heartbeat). EXPERIMENTAL"),
+               "(0 disables the heartbeat, >0 enables it. Enabling heartbeats "
+               "requires kombu>=3.0.7 and amqp>=1.4.0). EXPERIMENTAL"),
     cfg.IntOpt('heartbeat_rate',
                default=2,
                help='How often times during the heartbeat_timeout_threshold '
