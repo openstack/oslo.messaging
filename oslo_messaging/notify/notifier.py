@@ -30,8 +30,8 @@ _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',
                     default=[],
                     help='The Drivers(s) to handle sending notifications. '
-                         'Possible values are messaging, messagingv2, routing,'
-                         'log, test, noop'),
+                         'Possible values are messaging, messagingv2, '
+                         'routing, log, test, noop'),
     cfg.ListOpt('notification_topics',
                 default=['notifications', ],
                 deprecated_name='topics',
