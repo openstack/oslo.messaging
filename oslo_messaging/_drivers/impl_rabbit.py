@@ -251,16 +251,6 @@ class ConsumerBase(object):
 
         self.queue.consume(*args, callback=_callback, **options)
 
-    def cancel(self):
-        """Cancel the consuming from the queue, if it has started."""
-        try:
-            self.queue.cancel(self.tag)
-        except KeyError as e:
-            # NOTE(comstud): Kludge to get around a amqplib bug
-            if six.text_type(e) != "u'%s'" % self.tag:
-                raise
-        self.queue = None
-
 
 class DirectConsumer(ConsumerBase):
     """Queue/consumer class for 'direct'."""
