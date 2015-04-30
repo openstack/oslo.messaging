@@ -225,7 +225,7 @@ class ConsumerBase(object):
     def consume(self, *args, **kwargs):
         """Actually declare the consumer on the amqp channel.  This will
         start the flow of messages from the queue.  Using the
-        Connection.iterconsume() iterator will process the messages,
+        Connection.consume() will process the messages,
         calling the appropriate callback.
 
         If a callback is specified in kwargs, use that.  Otherwise,
@@ -988,11 +988,8 @@ class Connection(object):
             return self.ensure(_declare_consumer,
                                error_callback=_connect_error)
 
-    def iterconsume(self, limit=None, timeout=None):
-        """Return an iterator that will consume from all queues/consumers.
-
-        NOTE(sileht): Must be called within the connection lock
-        """
+    def consume(self, timeout=None):
+        """Consume from all queues/consumers."""
 
         timer = rpc_common.DecayingTimer(duration=timeout)
         timer.start()
@@ -1023,25 +1020,22 @@ class Connection(object):
                             else min(timeout, self._poll_timeout))
             while True:
                 if self._consume_loop_stopped:
-                    self._consume_loop_stopped = False
-                    raise StopIteration
+                    return
 
                 if self._heartbeat_supported_and_enabled():
                     self.connection.heartbeat_check(
                         rate=self.driver_conf.heartbeat_rate)
                 try:
-                    return self.connection.drain_events(timeout=poll_timeout)
+                    self.connection.drain_events(timeout=poll_timeout)
+                    return
                 except socket.timeout as exc:
                     poll_timeout = timer.check_return(
                         _raise_timeout, exc, maximum=self._poll_timeout)
 
-        for iteration in itertools.count(0):
-            if limit and iteration >= limit:
-                raise StopIteration
-            yield self.ensure(
-                _consume,
-                recoverable_error_callback=_recoverable_error_callback,
-                error_callback=_error_callback)
+        with self._connection_lock:
+            self.ensure(_consume,
+                        recoverable_error_callback=_recoverable_error_callback,
+                        error_callback=_error_callback)
 
     @staticmethod
     def _log_publisher_send_error(topic, exc):
@@ -1136,16 +1130,6 @@ class Connection(object):
         """Send a notify message on a topic."""
         self.publisher_send(NotifyPublisher, topic, msg, timeout=None,
                             exchange_name=exchange_name, retry=retry, **kwargs)
-
-    def consume(self, limit=None, timeout=None):
-        """Consume from all queues/consumers."""
-        with self._connection_lock:
-            it = self.iterconsume(limit=limit, timeout=timeout)
-            while True:
-                try:
-                    six.next(it)
-                except StopIteration:
-                    return
 
     def stop_consuming(self):
         self._consume_loop_stopped = True

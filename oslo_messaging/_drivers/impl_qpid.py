@@ -652,8 +652,8 @@ class Connection(object):
 
         return self.ensure(_connect_error, _declare_consumer)
 
-    def iterconsume(self, limit=None, timeout=None):
-        """Return an iterator that will consume from all queues/consumers."""
+    def consume(self, timeout=None):
+        """Consume from all queues/consumers."""
 
         timer = rpc_common.DecayingTimer(duration=timeout)
         timer.start()
@@ -675,7 +675,7 @@ class Connection(object):
             while True:
                 if self._consume_loop_stopped:
                     self._consume_loop_stopped = False
-                    raise StopIteration
+                    return
 
                 try:
                     nxt_receiver = self.session.next_receiver(
@@ -692,10 +692,7 @@ class Connection(object):
                 LOG.exception(_("Error processing message. "
                                 "Skipping it."))
 
-        for iteration in itertools.count(0):
-            if limit and iteration >= limit:
-                raise StopIteration
-            yield self.ensure(_error_callback, _consume)
+        self.ensure(_error_callback, _consume)
 
     def publisher_send(self, cls, topic, msg, retry=None, **kwargs):
         """Send to a publisher based on the publisher class."""
@@ -760,15 +757,6 @@ class Connection(object):
         """Send a notify message on a topic."""
         self.publisher_send(NotifyPublisher, topic=topic, msg=msg,
                             exchange_name=exchange_name, retry=retry)
-
-    def consume(self, limit=None, timeout=None):
-        """Consume from all queues/consumers."""
-        it = self.iterconsume(limit=limit, timeout=timeout)
-        while True:
-            try:
-                six.next(it)
-            except StopIteration:
-                return
 
     def stop_consuming(self):
         self._consume_loop_stopped = True

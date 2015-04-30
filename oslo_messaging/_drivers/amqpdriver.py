@@ -119,7 +119,7 @@ class AMQPListener(base.Listener):
             if self.incoming:
                 return self.incoming.pop(0)
             try:
-                self.conn.consume(limit=1, timeout=timeout)
+                self.conn.consume(timeout=timeout)
             except rpc_common.Timeout:
                 return None
 
@@ -194,7 +194,7 @@ class ReplyWaiter(object):
     def poll(self):
         while not self._thread_exit_event.is_set():
             try:
-                self.conn.consume(limit=1)
+                self.conn.consume()
             except Exception:
                 LOG.exception("Failed to process incoming message, "
                               "retrying...")
