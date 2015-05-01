@@ -21,6 +21,8 @@ eventlet>=0.17.3
 PyYAML>=3.1.0
 
 # rabbit driver is the default
+# we set the amqp version to ensure heartbeat works
+amqp>=1.4.0
 kombu>=3.0.7
 
 # middleware
