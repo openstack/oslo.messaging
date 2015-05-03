@@ -21,7 +21,6 @@ msgstr ""
 "Generated-By: Babel 1.3\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-#: oslo/messaging/notify/middleware.py:42
 #, python-format
 msgid "An exception occurred processing the API call: %s "
 msgstr "Une exception s'est produite lors de l'appel de API: %s"
