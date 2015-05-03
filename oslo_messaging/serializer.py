@@ -12,12 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['Serializer', 'NoOpSerializer']
+__all__ = ['Serializer', 'NoOpSerializer', 'JsonPayloadSerializer']
 
 """Provides the definition of a message serialization handler"""
 
 import abc
 
+from oslo_serialization import jsonutils
 import six
 
 
@@ -74,3 +75,9 @@ class NoOpSerializer(Serializer):
 
     def deserialize_context(self, ctxt):
         return ctxt
+
+
+class JsonPayloadSerializer(NoOpSerializer):
+    @staticmethod
+    def serialize_entity(context, entity):
+        return jsonutils.to_primitive(entity, convert_instances=True)
