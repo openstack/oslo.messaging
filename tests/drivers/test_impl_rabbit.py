@@ -45,6 +45,27 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
         self.assertIsInstance(transport._driver, rabbit_driver.RabbitDriver)
 
 
+class TestRabbitConsume(test_utils.BaseTestCase):
+
+    def setUp(self):
+        super(TestRabbitConsume, self).setUp()
+        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.in_memory = True
+
+    def test_connection_ack_have_disconnected_kombu_connection(self):
+        transport = messaging.get_transport(self.conf)
+        self.addCleanup(transport.cleanup)
+        conn = transport._driver._get_connection().connection
+        channel = conn.channel
+        with mock.patch('kombu.connection.Connection.connected',
+                        new_callable=mock.PropertyMock,
+                        return_value=False):
+            self.assertRaises(driver_common.Timeout,
+                              conn.consume, timeout=0.01)
+            # Ensure a new channel have been setuped
+            self.assertNotEqual(channel, conn.channel)
+
+
 class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     scenarios = [

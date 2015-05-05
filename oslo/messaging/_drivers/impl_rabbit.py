@@ -733,6 +733,13 @@ class Connection(object):
             self.do_consume = True
 
         def _consume():
+            # NOTE(sileht): in case the acknowledgement or requeue of a
+            # message fail, the kombu transport can be disconnected
+            # In this case, we must redeclare our consumers, so raise
+            # a recoverable error to trigger the reconnection code.
+            if not self.connection.connected:
+                raise self.connection.recoverable_connection_errors[0]
+
             if self.do_consume:
                 queues_head = self.consumers[:-1]  # not fanout.
                 queues_tail = self.consumers[-1]  # fanout
