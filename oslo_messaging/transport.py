@@ -27,6 +27,8 @@ __all__ = [
     'set_transport_defaults',
 ]
 
+import logging
+
 from oslo_config import cfg
 import six
 from six.moves.urllib import parse
@@ -34,6 +36,7 @@ from stevedore import driver
 
 from oslo_messaging import exceptions
 
+LOG = logging.getLogger(__name__)
 
 _transport_opts = [
     cfg.StrOpt('transport_url',
@@ -240,7 +243,7 @@ class TransportURL(object):
     :type virtual_host: str
     :param hosts: a list of TransportHost objects
     :type hosts: list
-    :param aliases: A map of transport alias to transport name
+    :param aliases: DEPRECATED: A map of transport alias to transport name
     :type aliases: dict
     """
 
@@ -259,13 +262,28 @@ class TransportURL(object):
         else:
             self.aliases = aliases
 
+        self._deprecation_logged = False
+
     @property
     def transport(self):
         if self._transport is None:
             transport = self.conf.rpc_backend
         else:
             transport = self._transport
-        return self.aliases.get(transport, transport)
+        final_transport = self.aliases.get(transport, transport)
+        if not self._deprecation_logged and final_transport != transport:
+            # NOTE(sileht): The first step is deprecate this one cycle.
+            # To ensure deployer have updated they configuration during Octavia
+            # Then in P we will deprecate aliases kwargs of TransportURL() and
+            # get_transport() for consuming application
+            LOG.warning('legacy "rpc_backend" is deprecated, '
+                        '"%(legacy_transport)s" must be replaced by '
+                        '"%(final_transport)s"' % {
+                            'legacy_transport': transport,
+                            'final_transport': final_transport})
+            self._deprecation_logged = True
+
+        return final_transport
 
     @transport.setter
     def transport(self, value):
