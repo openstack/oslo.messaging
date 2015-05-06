@@ -662,7 +662,7 @@ class Connection(object):
             failover_strategy="shuffle",
             heartbeat=self.driver_conf.heartbeat_timeout_threshold)
 
-        LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)d'),
+        LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)s'),
                  self.connection.info())
 
         # NOTE(sileht): kombu recommend to run heartbeat_check every
@@ -687,7 +687,7 @@ class Connection(object):
         if purpose == rpc_amqp.PURPOSE_SEND:
             self._heartbeat_start()
 
-        LOG.info(_LI('Connected to AMQP server on %(hostname)s:%(port)d'),
+        LOG.info(_LI('Connected to AMQP server on %(hostname)s:%(port)s'),
                  self.connection.info())
 
         # NOTE(sileht):
@@ -798,11 +798,11 @@ class Connection(object):
             info.update(self.connection.info())
 
             if 'Socket closed' in six.text_type(exc):
-                LOG.error(_LE('AMQP server %(hostname)s:%(port)d closed'
+                LOG.error(_LE('AMQP server %(hostname)s:%(port)s closed'
                               ' the connection. Check login credentials:'
                               ' %(err_str)s'), info)
             else:
-                LOG.error(_LE('AMQP server on %(hostname)s:%(port)d is '
+                LOG.error(_LE('AMQP server on %(hostname)s:%(port)s is '
                               'unreachable: %(err_str)s. Trying again in '
                               '%(sleep_time)d seconds.'), info)
 
@@ -829,9 +829,8 @@ class Connection(object):
                 consumer.reconnect(new_channel)
 
             LOG.info(_LI('Reconnected to AMQP server on '
-                         '%(hostname)s:%(port)d'),
-                     {'hostname': self.connection.hostname,
-                      'port': self.connection.port})
+                         '%(hostname)s:%(port)s'),
+                     self.connection.info())
 
         def execute_method(channel):
             self._set_current_channel(channel)
@@ -859,13 +858,11 @@ class Connection(object):
             self._set_current_channel(None)
             # NOTE(sileht): number of retry exceeded and the connection
             # is still broken
+            info = {'err_str': exc, 'retry': retry}
+            info.update(self.connection.info())
             msg = _('Unable to connect to AMQP server on '
-                    '%(hostname)s:%(port)d after %(retry)s '
-                    'tries: %(err_str)s') % {
-                        'hostname': self.connection.hostname,
-                        'port': self.connection.port,
-                        'err_str': exc,
-                        'retry': retry}
+                    '%(hostname)s:%(port)s after %(retry)s '
+                    'tries: %(err_str)s') % info
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
         except Exception as exc:
