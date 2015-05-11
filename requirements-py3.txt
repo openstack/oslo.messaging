@@ -36,7 +36,7 @@ oslo.middleware>=1.2.0                  # Apache-2.0
 # and oslo_messaging.tests.test_opts.OptsTestCase.test_entry_point fails.
 #
 # for the futures based executor
-futures>=2.1.6
+futures>=3.0
 
 # needed by the aioeventlet executor
 aioeventlet>=0.4
