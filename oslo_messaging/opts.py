@@ -21,6 +21,7 @@ import copy
 import itertools
 
 from oslo_messaging._drivers import amqp
+from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_qpid
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers import impl_zmq
@@ -34,6 +35,7 @@ from oslo_messaging.rpc import client
 from oslo_messaging import transport
 
 _global_opt_lists = [
+    drivers_base.base_opts,
     impl_zmq.zmq_opts,
     matchmaker.matchmaker_opts,
     base._pool_opts,

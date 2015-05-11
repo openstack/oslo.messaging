@@ -49,12 +49,6 @@ amqp_opts = [
                 default=False,
                 deprecated_group='DEFAULT',
                 help='Auto-delete queues in AMQP.'),
-
-    # FIXME(markmc): this was toplevel in openstack.common.rpc
-    cfg.IntOpt('rpc_conn_pool_size',
-               default=30,
-               deprecated_group='DEFAULT',
-               help='Size of RPC connection pool.'),
 ]
 
 UNIQUE_ID = '_unique_id'
