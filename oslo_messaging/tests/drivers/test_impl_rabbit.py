@@ -179,12 +179,10 @@ class TestRabbitConsume(test_utils.BaseTestCase):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
-        deadline = time.time() + 3
+        deadline = time.time() + 6
         with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
-            # FIXME(sileht): the deadline should be 6 seconds, not 3
-            # consuming with no consumer have never worked
-            # https://bugs.launchpad.net/oslo.messaging/+bug/1450342
-            # conn.consume(timeout=3)
+            self.assertRaises(driver_common.Timeout,
+                              conn.consume, timeout=3)
 
             # kombu memory transport doesn't really raise error
             # so just simulate a real driver behavior
@@ -192,10 +190,8 @@ class TestRabbitConsume(test_utils.BaseTestCase):
             conn.declare_fanout_consumer("notif.info", lambda msg: True)
             with mock.patch('kombu.connection.Connection.drain_events',
                             side_effect=IOError):
-                try:
-                    conn.consume(timeout=3)
-                except driver_common.Timeout:
-                    pass
+                self.assertRaises(driver_common.Timeout,
+                                  conn.consume, timeout=3)
 
         self.assertEqual(0, int(deadline - time.time()))
 
