@@ -231,6 +231,9 @@ class Consumer(object):
                            consumer_tag=six.text_type(tag),
                            nowait=self.nowait)
 
+    def cancel(self, tag):
+        self.queue.cancel(six.text_type(tag))
+
     def _callback(self, message):
         """Call callback with deserialized message.
 
@@ -689,11 +692,12 @@ class Connection(object):
 
         with self._connection_lock:
             try:
-                self._set_current_channel(self.connection.channel())
+                for tag, consumer in enumerate(self._consumers):
+                    consumer.cancel(tag=tag)
             except recoverable_errors:
                 self._set_current_channel(None)
                 self.ensure_connection()
-        self._consumers = []
+            self._consumers = []
 
     def _heartbeat_supported_and_enabled(self):
         if self.driver_conf.heartbeat_timeout_threshold <= 0:
