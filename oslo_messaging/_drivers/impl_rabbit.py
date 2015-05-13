@@ -949,18 +949,21 @@ class Connection(object):
         with self._transport_socket_timeout(transport_timeout):
             producer.publish(msg, expiration=expiration)
 
+    # List of notification queue declared on the channel to avoid
+    # unnecessary redeclaration. This list is resetted each time
+    # the connection is resetted in Connection._set_current_channel
     PUBLISHER_DECLARED_QUEUES = collections.defaultdict(set)
 
     def _publish_and_creates_default_queue(self, exchange, msg,
                                            routing_key=None, timeout=None):
         """Publisher that declares a default queue
 
-        When the exchange is missing instead of silency creates an exchange
+        When the exchange is missing instead of silently creates an exchange
         not binded to a queue, this publisher creates a default queue
         named with the routing_key
 
         This is mainly used to not miss notification in case of nobody consumes
-        them yet. If the futur consumer bind the default queue it can retrieve
+        them yet. If the future consumer bind the default queue it can retrieve
         missing messages.
 
         _set_current_channel is responsible to cleanup the cache.
