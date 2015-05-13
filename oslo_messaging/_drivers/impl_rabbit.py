@@ -885,6 +885,13 @@ class Connection(object):
                       exc)
 
         def _consume():
+            # NOTE(sileht): in case the acknowledgement or requeue of a
+            # message fail, the kombu transport can be disconnected
+            # In this case, we must redeclare our consumers, so raise
+            # a recoverable error to trigger the reconnection code.
+            if not self.connection.connected:
+                raise self.connection.recoverable_connection_errors[0]
+
             if self._new_consumers:
                 for tag, consumer in enumerate(self._consumers):
                     if consumer in self._new_consumers:

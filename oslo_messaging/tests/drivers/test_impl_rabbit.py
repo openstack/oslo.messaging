@@ -208,6 +208,21 @@ class TestRabbitConsume(test_utils.BaseTestCase):
             conn.reset()
             self.assertEqual(channel, conn.channel)
 
+    def test_connection_ack_have_disconnected_kombu_connection(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        conn = transport._driver._get_connection(amqp.PURPOSE_LISTEN
+                                                 ).connection
+        channel = conn.channel
+        with mock.patch('kombu.connection.Connection.connected',
+                        new_callable=mock.PropertyMock,
+                        return_value=False):
+            self.assertRaises(driver_common.Timeout,
+                              conn.consume, timeout=0.01)
+            # Ensure a new channel have been setuped
+            self.assertNotEqual(channel, conn.channel)
+
 
 class TestRabbitTransportURL(test_utils.BaseTestCase):
 
