@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import contextlib
 import logging
 import os
@@ -295,22 +296,32 @@ class DeclareQueuePublisher(Publisher):
     them yet. If the future consumer binds the default queue it can retrieve
     missing messages.
     """
-    # FIXME(sileht): The side effect of this is that we declare again and
-    # again the same queue, and generate a lot of useless rabbit traffic.
-    # https://bugs.launchpad.net/oslo.messaging/+bug/1437902
+
+    DECLARED_QUEUES = collections.defaultdict(set)
 
     def send(self, conn, msg, timeout=None):
-        queue = kombu.entity.Queue(
-            channel=conn.channel,
-            exchange=self.exchange,
-            durable=self.durable,
-            auto_delete=self.auto_delete,
-            name=self.routing_key,
-            routing_key=self.routing_key,
-            queue_arguments=self.queue_arguments)
-        queue.declare()
+        queue_indentifier = (self.exchange_name,
+                             self.routing_key)
+        # NOTE(sileht): We only do it once per reconnection
+        # the Connection._set_current_channel() is responsible to clear
+        # this cache
+        if queue_indentifier not in self.DECLARED_QUEUES[conn.channel]:
+            queue = kombu.entity.Queue(
+                channel=conn.channel,
+                exchange=self.exchange,
+                durable=self.durable,
+                auto_delete=self.auto_delete,
+                name=self.routing_key,
+                routing_key=self.routing_key,
+                queue_arguments=self.queue_arguments)
+            queue.declare()
+            self.DECLARED_QUEUES[conn.channel].add(queue_indentifier)
         super(DeclareQueuePublisher, self).send(
             conn, msg, timeout)
+
+    @classmethod
+    def reset_cache(cls, channel):
+        cls.DECLARED_QUEUES.pop(channel, None)
 
 
 class RetryOnMissingExchangePublisher(Publisher):
@@ -577,6 +588,9 @@ class Connection(object):
         if self._url.startswith('memory://'):
             # Kludge to speed up tests.
             self.connection.transport.polling_interval = 0.0
+            # Fixup logging
+            self.connection.hostname = "memory_driver"
+            self.connection.port = 1234
             self._poll_timeout = 0.05
 
     # FIXME(markmc): use oslo sslutils when it is available as a library
@@ -715,8 +729,18 @@ class Connection(object):
             self._set_current_channel(channel)
             method()
 
-        recoverable_errors = (self.connection.recoverable_channel_errors +
-                              self.connection.recoverable_connection_errors)
+        # NOTE(sileht): Some dummy driver like the in-memory one doesn't
+        # have notion of recoverable connection, so we must raise the original
+        # exception like kombu does in this case.
+        has_modern_errors = hasattr(
+            self.connection.transport, 'recoverable_connection_errors',
+        )
+        if has_modern_errors:
+            recoverable_errors = (
+                self.connection.recoverable_channel_errors +
+                self.connection.recoverable_connection_errors)
+        else:
+            recoverable_errors = ()
 
         try:
             autoretry_method = self.connection.autoretry(
@@ -756,6 +780,7 @@ class Connection(object):
         NOTE(sileht): Must be called within the connection lock
         """
         if self.channel is not None and new_channel != self.channel:
+            DeclareQueuePublisher.reset_cache(self.channel)
             self.connection.maybe_close_channel(self.channel)
         self.channel = new_channel
 

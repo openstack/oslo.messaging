@@ -173,6 +173,54 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
             heartbeat=0, failover_strategy="shuffle")
 
 
+class RaiseOnNoExchangePublisher(rabbit_driver.Publisher):
+    passive = True
+
+
+class TestRabbitPublisher(test_utils.BaseTestCase):
+
+    def test_declared_queue_publisher(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+
+        p1 = RaiseOnNoExchangePublisher(
+            self.conf.oslo_messaging_rabbit,
+            exchange_name='foobar',
+            routing_key='foobar',
+            type='topic',
+            durable=False,
+            auto_delete=False)
+
+        p2 = rabbit_driver.DeclareQueuePublisher(
+            self.conf.oslo_messaging_rabbit,
+            exchange_name='foobar',
+            routing_key='foobar',
+            type='topic',
+            durable=False,
+            auto_delete=False)
+
+        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            exc = conn.connection.channel_errors[0]
+            # Ensure the exchange does not exists
+            self.assertRaises(exc, conn.publisher_send, p1, {})
+            # Creates it
+            conn.publisher_send(p2, {})
+            # Ensure it creates it
+            conn.publisher_send(p1, {})
+
+            with mock.patch('kombu.messaging.Producer',
+                            side_effect=exc):
+                # Shoud reset the cache and ensures the exchange does
+                # not exitsts
+                self.assertRaises(exc, conn.publisher_send, p1, {})
+            # Recreates it
+            conn.publisher_send(p2, {})
+            # Ensure it have been recreated
+            conn.publisher_send(p1, {})
+
+
 class TestRabbitConsume(test_utils.BaseTestCase):
 
     def test_consume_timeout(self):
