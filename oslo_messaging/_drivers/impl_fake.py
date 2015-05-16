@@ -154,6 +154,12 @@ class FakeExchangeManager(object):
 
 
 class FakeDriver(base.BaseDriver):
+    """Fake driver used for testing.
+
+    This driver passes messages in memory, and should only be used for
+    unit tests.
+
+    """
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):

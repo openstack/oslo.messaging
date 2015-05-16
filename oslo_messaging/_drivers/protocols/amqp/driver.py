@@ -121,6 +121,10 @@ class ProtonListener(base.Listener):
 
 
 class ProtonDriver(base.BaseDriver):
+    """AMQP 1.0 Driver
+
+    See :doc:`AMQP1.0` for details.
+    """
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=[]):

@@ -764,6 +764,9 @@ class Connection(object):
 
 
 class QpidDriver(amqpdriver.AMQPDriverBase):
+    """qpidd Driver
+
+    """
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=None):
