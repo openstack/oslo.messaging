@@ -11,10 +11,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import oslo_messaging
+import time
+import uuid
 
+import concurrent.futures
 from testtools import matchers
 
+import oslo_messaging
 from oslo_messaging.tests.functional import utils
 
 
@@ -102,6 +105,27 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         client.add(increment=2)
         f = lambda: client.subtract(increment=3)
         self.assertThat(f, matchers.raises(ValueError))
+
+    def test_timeout_with_concurrently_queues(self):
+        transport = self.useFixture(utils.TransportFixture(self.url))
+        target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
+                                       server="server_" + str(uuid.uuid4()))
+        server = self.useFixture(
+            utils.RpcServerFixture(self.url, target, executor="threading"))
+        client = utils.ClientStub(transport.transport, target,
+                                  cast=False, timeout=5)
+
+        def short_periodical_tasks():
+            for i in range(10):
+                client.add(increment=1)
+                time.sleep(1)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            future = executor.submit(client.long_running_task, seconds=10)
+            executor.submit(short_periodical_tasks)
+            self.assertRaises(oslo_messaging.MessagingTimeout, future.result)
+
+        self.assertEqual(10, server.endpoint.ival)
 
 
 class CastTestCase(utils.SkipIfNoTransportURL):
