@@ -12,7 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import pkg_resources
+import stevedore
 import testtools
 
 try:
@@ -44,10 +44,10 @@ class OptsTestCase(test_utils.BaseTestCase):
 
     def test_entry_point(self):
         result = None
-        for ep in pkg_resources.iter_entry_points('oslo.config.opts'):
-            if ep.name == "oslo.messaging":
-                list_fn = ep.load()
-                result = list_fn()
+        for ext in stevedore.ExtensionManager('oslo.config.opts',
+                                              invoke_on_load=True):
+            if ext.name == "oslo.messaging":
+                result = ext.obj
                 break
 
         self.assertIsNotNone(result)
