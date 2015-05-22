@@ -778,7 +778,10 @@ class QpidDriver(amqpdriver.AMQPDriverBase):
             conf, conf.oslo_messaging_qpid.rpc_conn_pool_size,
             url, Connection)
 
-        super(QpidDriver, self).__init__(conf, url,
-                                         connection_pool,
-                                         default_exchange,
-                                         allowed_remote_exmods)
+        super(QpidDriver, self).__init__(
+            conf, url,
+            connection_pool,
+            default_exchange,
+            allowed_remote_exmods,
+            conf.oslo_messaging_qpid.send_single_reply,
+        )
