@@ -173,10 +173,6 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
             heartbeat=0, failover_strategy="shuffle")
 
 
-class RaiseOnNoExchangePublisher(rabbit_driver.Publisher):
-    passive = True
-
-
 class TestRabbitPublisher(test_utils.BaseTestCase):
 
     def test_declared_queue_publisher(self):
@@ -184,41 +180,40 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
-        p1 = RaiseOnNoExchangePublisher(
-            self.conf.oslo_messaging_rabbit,
-            exchange_name='foobar',
-            routing_key='foobar',
+        e_passive = kombu.entity.Exchange(
+            name='foobar',
             type='topic',
-            durable=False,
-            auto_delete=False)
+            passive=True)
 
-        p2 = rabbit_driver.DeclareQueuePublisher(
-            self.conf.oslo_messaging_rabbit,
-            exchange_name='foobar',
-            routing_key='foobar',
+        e_active = kombu.entity.Exchange(
+            name='foobar',
             type='topic',
-            durable=False,
-            auto_delete=False)
+            passive=False)
 
         with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             exc = conn.connection.channel_errors[0]
-            # Ensure the exchange does not exists
-            self.assertRaises(exc, conn.publisher_send, p1, {})
-            # Creates it
-            conn.publisher_send(p2, {})
-            # Ensure it creates it
-            conn.publisher_send(p1, {})
 
-            with mock.patch('kombu.messaging.Producer',
-                            side_effect=exc):
+            def try_send(exchange):
+                conn._ensure_publishing(
+                    conn._publish_and_creates_default_queue,
+                    exchange, {}, routing_key='foobar')
+
+            # Ensure the exchange does not exists
+            self.assertRaises(exc, try_send, e_passive)
+            # Create it
+            try_send(e_active)
+            # Ensure it creates it
+            try_send(e_passive)
+
+            with mock.patch('kombu.messaging.Producer', side_effect=exc):
                 # Shoud reset the cache and ensures the exchange does
-                # not exitsts
-                self.assertRaises(exc, conn.publisher_send, p1, {})
-            # Recreates it
-            conn.publisher_send(p2, {})
+                # not exists
+                self.assertRaises(exc, try_send, e_passive)
+            # Recreate it
+            try_send(e_active)
             # Ensure it have been recreated
-            conn.publisher_send(p1, {})
+            try_send(e_passive)
 
 
 class TestRabbitConsume(test_utils.BaseTestCase):
