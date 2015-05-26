@@ -46,6 +46,9 @@ class TestServerEndpoint(object):
         self.sval += text
         return self.sval
 
+    def long_running_task(self, ctxt, seconds):
+        time.sleep(seconds)
+
 
 class TransportFixture(fixtures.Fixture):
     """Fixture defined to setup the oslo_messaging transport."""
@@ -69,11 +72,13 @@ class TransportFixture(fixtures.Fixture):
 class RpcServerFixture(fixtures.Fixture):
     """Fixture to setup the TestServerEndpoint."""
 
-    def __init__(self, url, target, endpoint=None, ctrl_target=None):
+    def __init__(self, url, target, endpoint=None, ctrl_target=None,
+                 executor='blocking'):
         super(RpcServerFixture, self).__init__()
         self.url = url
         self.target = target
         self.endpoint = endpoint or TestServerEndpoint()
+        self.executor = executor
         self.syncq = moves.queue.Queue()
         self.ctrl_target = ctrl_target or self.target
 
@@ -81,9 +86,11 @@ class RpcServerFixture(fixtures.Fixture):
         super(RpcServerFixture, self).setUp()
         endpoints = [self.endpoint, self]
         transport = self.useFixture(TransportFixture(self.url))
-        self.server = oslo_messaging.get_rpc_server(transport.transport,
-                                                    self.target,
-                                                    endpoints)
+        self.server = oslo_messaging.get_rpc_server(
+            transport=transport.transport,
+            target=self.target,
+            endpoints=endpoints,
+            executor=self.executor)
         self._ctrl = oslo_messaging.RPCClient(transport.transport,
                                               self.ctrl_target)
         self._start()
