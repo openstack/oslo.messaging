@@ -200,13 +200,12 @@ class TestRabbitIterconsume(test_utils.BaseTestCase):
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
         channel = mock.Mock()
-        conn = transport._driver._get_connection(amqp.PURPOSE_LISTEN
-                                                 ).connection
-        conn.connection.recoverable_channel_errors = (IOError,)
-        with mock.patch.object(conn.connection, 'channel',
-                               side_effect=[IOError, IOError, channel]):
-            conn.reset()
-            self.assertEqual(channel, conn.channel)
+        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+            conn.connection.connection.recoverable_channel_errors = (IOError,)
+            with mock.patch.object(conn.connection.connection, 'channel',
+                                   side_effect=[IOError, IOError, channel]):
+                conn.connection.reset()
+                self.assertEqual(channel, conn.connection.channel)
 
 
 class TestRabbitTransportURL(test_utils.BaseTestCase):
