@@ -986,18 +986,20 @@ class Connection(object):
 
     def _publish_and_retry_on_missing_exchange(self, exchange, msg,
                                                routing_key=None, timeout=None):
-        """Publisher that retry during 60 seconds if the exchange is missing.
+        """Publisher that retry if the exchange is missing.
         """
 
         if not exchange.passive:
             RuntimeError("_publish_and_retry_on_missing_exchange() must be "
                          "called with an passive exchange.")
 
-        # TODO(sileht):
-        # * use timeout parameter when available
-        # * use rpc_timeout if not instead of hardcoded 60
-        # * use @retrying
-        timer = rpc_common.DecayingTimer(duration=60)
+        # TODO(sileht): use @retrying
+        # NOTE(sileht): no need to wait the application expect a response
+        # before timeout is exshauted
+        duration = (timeout if timeout is None
+                    else self.conf.rpc_response_timeout)
+
+        timer = rpc_common.DecayingTimer(duration=duration)
         timer.start()
 
         while True:
