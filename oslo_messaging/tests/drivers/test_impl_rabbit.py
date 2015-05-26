@@ -261,28 +261,26 @@ class TestRabbitConsume(test_utils.BaseTestCase):
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
         channel = mock.Mock()
-        conn = transport._driver._get_connection(amqp.PURPOSE_LISTEN
-                                                 ).connection
-        conn.connection.recoverable_channel_errors = (IOError,)
-        with mock.patch.object(conn.connection, 'channel',
-                               side_effect=[IOError, IOError, channel]):
-            conn.reset()
-            self.assertEqual(channel, conn.channel)
+        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+            conn.connection.connection.recoverable_channel_errors = (IOError,)
+            with mock.patch.object(conn.connection.connection, 'channel',
+                                   side_effect=[IOError, IOError, channel]):
+                conn.connection.reset()
+                self.assertEqual(channel, conn.connection.channel)
 
     def test_connection_ack_have_disconnected_kombu_connection(self):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
-        conn = transport._driver._get_connection(amqp.PURPOSE_LISTEN
-                                                 ).connection
-        channel = conn.channel
-        with mock.patch('kombu.connection.Connection.connected',
-                        new_callable=mock.PropertyMock,
-                        return_value=False):
-            self.assertRaises(driver_common.Timeout,
-                              conn.consume, timeout=0.01)
-            # Ensure a new channel have been setuped
-            self.assertNotEqual(channel, conn.channel)
+        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+            channel = conn.connection.channel
+            with mock.patch('kombu.connection.Connection.connected',
+                            new_callable=mock.PropertyMock,
+                            return_value=False):
+                self.assertRaises(driver_common.Timeout,
+                                  conn.connection.consume, timeout=0.01)
+                # Ensure a new channel have been setuped
+                self.assertNotEqual(channel, conn.connection.channel)
 
 
 class TestRabbitTransportURL(test_utils.BaseTestCase):
