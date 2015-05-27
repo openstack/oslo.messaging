@@ -461,6 +461,7 @@ class Connection(object):
         # NOTE(sileht): if purpose is PURPOSE_LISTEN
         # the consume code does the heartbeat stuff
         # we don't need a thread
+        self._heartbeat_thread = None
         if purpose == rpc_amqp.PURPOSE_SEND:
             self._heartbeat_start()
 
