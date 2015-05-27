@@ -661,7 +661,8 @@ class Connection(object):
             self._url, ssl=self._fetch_ssl_params(),
             login_method=self._login_method,
             failover_strategy="shuffle",
-            heartbeat=self.driver_conf.heartbeat_timeout_threshold)
+            heartbeat=self.driver_conf.heartbeat_timeout_threshold,
+            transport_options={'confirm_publish': True})
 
         LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)d'),
                  self.connection.info())
