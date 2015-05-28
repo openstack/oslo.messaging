@@ -23,6 +23,7 @@ from oslo_messaging import exceptions
 base_opts = [
     cfg.IntOpt('rpc_conn_pool_size',
                default=30,
+               deprecated_group='DEFAULT',
                help='Size of RPC connection pool.'),
 ]
 
