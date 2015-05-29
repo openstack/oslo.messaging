@@ -33,6 +33,13 @@ sudo chown -R jenkins:stack $BASE/new/oslo.messaging
 
 set +e
 
+if [ -x "$(command -v yum)" ]; then
+    sudo yum install -y libuuid-devel swig pkg-config
+else
+    sudo apt-get update -y
+    sudo apt-get install -y uuid-dev swig pkg-config
+fi
+
 # Install required packages
 case $RPC_BACKEND in
     zeromq)
@@ -44,9 +51,7 @@ case $RPC_BACKEND in
         sudo apt-get install -y qpidd sasl2-bin
         ;;
     amqp1)
-        # qpid-tools is needed to ensure authentification works before 
-        # starting tests, otherwise tests will retries forever
-        sudo yum install -y qpid-cpp-server qpid-proton-c-devel python-qpid-proton cyrus-sasl-lib cyrus-sasl-plain
+	sudo yum install -y qpid-cpp-server qpid-proton-c-devel python-qpid-proton cyrus-sasl-lib cyrus-sasl-plain
         ;;
     rabbit)
         sudo apt-get update -y

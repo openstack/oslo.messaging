@@ -20,19 +20,18 @@ import threading
 import time
 import uuid
 
+import six
 from six import moves
 import testtools
 
 from oslo import messaging
-from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
 
-# TODO(kgiusti) Conditionally run these tests only if the necessary
-# dependencies are installed.  This should be removed once the proton libraries
-# are available in the base repos for all supported platforms.
-pyngus = importutils.try_import("pyngus")
-if pyngus:
+if six.PY2:
+    # NOTE(flaper87): pyngus currently doesn't support py34. It's
+    # on the works, though.
     from oslo_messaging._drivers.protocols.amqp import driver as amqp_driver
+    import pyngus
 
 
 LOG = logging.getLogger(__name__)
@@ -71,7 +70,7 @@ class _ListenerThread(threading.Thread):
         return msgs
 
 
-@testtools.skipUnless(pyngus, "proton modules not present")
+@testtools.skipUnless(six.PY2, "No Py3K support yet")
 class TestProtonDriverLoad(test_utils.BaseTestCase):
 
     def setUp(self):
@@ -86,7 +85,7 @@ class TestProtonDriverLoad(test_utils.BaseTestCase):
 
 class _AmqpBrokerTestCase(test_utils.BaseTestCase):
 
-    @testtools.skipUnless(pyngus, "proton modules not present")
+    @testtools.skipUnless(six.PY2, "No Py3K support yet")
     def setUp(self):
         super(_AmqpBrokerTestCase, self).setUp()
         self._broker = FakeBroker()
@@ -295,7 +294,7 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         driver.cleanup()
 
 
-@testtools.skipUnless(pyngus, "proton modules not present")
+@testtools.skipUnless(six.PY2, "No Py3K support yet")
 class TestAuthentication(test_utils.BaseTestCase):
 
     def setUp(self):
@@ -349,7 +348,7 @@ class TestAuthentication(test_utils.BaseTestCase):
         driver.cleanup()
 
 
-@testtools.skipUnless(pyngus, "proton modules not present")
+@testtools.skipUnless(six.PY2, "No Py3K support yet")
 class TestFailover(test_utils.BaseTestCase):
 
     def setUp(self):
@@ -424,7 +423,7 @@ class TestFailover(test_utils.BaseTestCase):
 class FakeBroker(threading.Thread):
     """A test AMQP message 'broker'."""
 
-    if pyngus:
+    if six.PY2:
         class Connection(pyngus.ConnectionEventHandler):
             """A single AMQP connection."""
 
