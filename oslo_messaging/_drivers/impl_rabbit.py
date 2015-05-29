@@ -1001,7 +1001,7 @@ class Connection(object):
         # TODO(sileht): use @retrying
         # NOTE(sileht): no need to wait the application expect a response
         # before timeout is exshauted
-        duration = (timeout if timeout is None
+        duration = (timeout if timeout is not None
                     else self.conf.rpc_response_timeout)
 
         timer = rpc_common.DecayingTimer(duration=duration)
