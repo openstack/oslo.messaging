@@ -49,6 +49,18 @@ amqp_opts = [
                 default=False,
                 deprecated_group='DEFAULT',
                 help='Auto-delete queues in AMQP.'),
+    cfg.BoolOpt('send_single_reply',
+                default=False,
+                help='Send a single AMQP reply to call message. The current '
+                     'behaviour since oslo-incubator is to send two AMQP '
+                     'replies - first one with the payload, a second one to '
+                     'ensure the other have finish to send the payload. We '
+                     'are going to remove it in the N release, but we must '
+                     'keep backward compatible at the same time. This option '
+                     'provides such compatibility - it defaults to False in '
+                     'Liberty and can be turned on for early adopters with a '
+                     'new installations or for testing. Please note, that '
+                     'this option will be removed in M release.')
 ]
 
 UNIQUE_ID = '_unique_id'

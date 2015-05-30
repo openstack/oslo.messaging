@@ -1094,10 +1094,13 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
             url, Connection)
 
-        super(RabbitDriver, self).__init__(conf, url,
-                                           connection_pool,
-                                           default_exchange,
-                                           allowed_remote_exmods)
+        super(RabbitDriver, self).__init__(
+            conf, url,
+            connection_pool,
+            default_exchange,
+            allowed_remote_exmods,
+            conf.oslo_messaging_rabbit.send_single_reply,
+        )
 
     def require_features(self, requeue=True):
         pass

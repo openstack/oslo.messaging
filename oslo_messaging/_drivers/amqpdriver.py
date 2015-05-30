@@ -71,8 +71,12 @@ class AMQPIncomingMessage(base.IncomingMessage):
             return
         with self.listener.driver._get_connection(
                 rpc_amqp.PURPOSE_SEND) as conn:
-            self._send_reply(conn, reply, failure, log_failure=log_failure)
-            self._send_reply(conn, ending=True)
+            if self.listener.driver.send_single_reply:
+                self._send_reply(conn, reply, failure, log_failure=log_failure,
+                                 ending=True)
+            else:
+                self._send_reply(conn, reply, failure, log_failure=log_failure)
+                self._send_reply(conn, ending=True)
 
     def acknowledge(self):
         self.listener.msg_id_cache.add(self.unique_id)
@@ -257,7 +261,8 @@ class ReplyWaiter(object):
 class AMQPDriverBase(base.BaseDriver):
 
     def __init__(self, conf, url, connection_pool,
-                 default_exchange=None, allowed_remote_exmods=None):
+                 default_exchange=None, allowed_remote_exmods=None,
+                 send_single_reply=False):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 
@@ -269,6 +274,8 @@ class AMQPDriverBase(base.BaseDriver):
         self._reply_q = None
         self._reply_q_conn = None
         self._waiter = None
+
+        self.send_single_reply = send_single_reply
 
     def _get_exchange(self, target):
         return target.exchange or self._default_exchange
