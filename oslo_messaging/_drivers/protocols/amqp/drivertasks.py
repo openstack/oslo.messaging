@@ -13,10 +13,11 @@
 #    under the License.
 
 import logging
+import threading
 import time
 
-import oslo_messaging
 from oslo_messaging._drivers.protocols.amqp import controller
+from oslo_messaging import exceptions
 
 from six import moves
 
@@ -24,35 +25,43 @@ LOG = logging.getLogger(__name__)
 
 
 class SendTask(controller.Task):
-    """A task that sends a message to a target, and optionally allows for the
-    calling thread to wait for a reply.
+    """A task that sends a message to a target, and optionally waits for a
+    reply message.  The caller may block until the remote confirms receipt or
+    the reply message has arrived.
     """
-    def __init__(self, target, request, reply_expected, deadline):
+    def __init__(self, target, request, wait_for_reply, deadline):
         super(SendTask, self).__init__()
         self._target = target
         self._request = request
         self._deadline = deadline
-        if reply_expected:
-            self._reply_queue = moves.queue.Queue()
-        else:
-            self._reply_queue = None
+        self._wait_for_reply = wait_for_reply
+        self._results_queue = moves.queue.Queue()
+
+    def wait(self, timeout):
+        """Wait for the send to complete, and, optionally, a reply message from
+        the remote.  Will raise MessagingTimeout if the send does not complete
+        or no reply is received within timeout seconds. If the request has
+        failed for any other reason, a MessagingException is raised."
+        """
+        try:
+            result = self._results_queue.get(timeout=timeout)
+        except moves.queue.Empty:
+            if self._wait_for_reply:
+                reason = "Timed out waiting for a reply."
+            else:
+                reason = "Timed out waiting for send to complete."
+            raise exceptions.MessagingTimeout(reason)
+        if result["status"] == "OK":
+            return result.get("response", None)
+        raise result["error"]
 
     def execute(self, controller):
         """Runs on eventloop thread - sends request."""
         if not self._deadline or self._deadline > time.time():
-            controller.request(self._target, self._request, self._reply_queue)
+            controller.request(self._target, self._request,
+                               self._results_queue, self._wait_for_reply)
         else:
             LOG.warn("Send request to %s aborted: TTL expired.", self._target)
-
-    def get_reply(self, timeout):
-        """Retrieve the reply."""
-        if not self._reply_queue:
-            return None
-        try:
-            return self._reply_queue.get(timeout=timeout)
-        except moves.queue.Empty:
-            raise oslo_messaging.MessagingTimeout(
-                'Timed out waiting for a reply')
 
 
 class ListenTask(controller.Task):
@@ -78,13 +87,21 @@ class ListenTask(controller.Task):
 
 
 class ReplyTask(controller.Task):
-    """A task that sends 'response' message to address."""
+    """A task that sends 'response' message to 'address'.
+    """
     def __init__(self, address, response, log_failure):
         super(ReplyTask, self).__init__()
         self._address = address
         self._response = response
         self._log_failure = log_failure
+        self._wakeup = threading.Event()
+
+    def wait(self):
+        """Wait for the controller to send the message.
+        """
+        self._wakeup.wait()
 
     def execute(self, controller):
         """Run on the eventloop thread - send the response message."""
         controller.response(self._address, self._response)
+        self._wakeup.set()

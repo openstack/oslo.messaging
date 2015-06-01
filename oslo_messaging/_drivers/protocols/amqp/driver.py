@@ -185,16 +185,16 @@ class ProtonDriver(base.BaseDriver):
         LOG.debug("Send to %s", target)
         task = drivertasks.SendTask(target, request, wait_for_reply, expire)
         self._ctrl.add_task(task)
-        result = None
-        if wait_for_reply:
-            # the following can raise MessagingTimeout if no reply received:
-            reply = task.get_reply(timeout)
+        # wait for the eventloop to process the command. If the command is
+        # an RPC call retrieve the reply message
+        reply = task.wait(timeout)
+        if reply:
             # TODO(kgiusti) how to handle failure to un-marshal?  Must log, and
             # determine best way to communicate this failure back up to the
             # caller
-            result = unmarshal_response(reply, self._allowed_remote_exmods)
+            reply = unmarshal_response(reply, self._allowed_remote_exmods)
         LOG.debug("Send to %s returning", target)
-        return result
+        return reply
 
     @_ensure_connect_called
     def send_notification(self, target, ctxt, message, version,
