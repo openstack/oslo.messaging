@@ -41,6 +41,7 @@ from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
 from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
+from oslo_messaging.rpc import client as rpc_client
 
 
 rabbit_opts = [
@@ -1001,6 +1002,12 @@ class Connection(object):
         if not exchange.passive:
             RuntimeError("_publish_and_retry_on_missing_exchange() must be "
                          "called with an passive exchange.")
+
+        # FIXME(dhellmann): This is a hack to make sure the option
+        # we're about to use is registered. Since we're not going
+        # through a Client object here, it won't be registered by
+        # Client.__init__. We should do this more cleanly.
+        self.conf.register_opts(rpc_client._client_opts)
 
         # TODO(sileht): use @retrying
         # NOTE(sileht): no need to wait the application expect a response
