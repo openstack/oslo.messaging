@@ -41,7 +41,6 @@ from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
 from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
-from oslo_messaging.rpc import client as rpc_client
 
 
 rabbit_opts = [
@@ -71,6 +70,18 @@ rabbit_opts = [
                  deprecated_group='DEFAULT',
                  help='How long to wait before reconnecting in response to an '
                       'AMQP consumer cancel notification.'),
+    cfg.IntOpt('kombu_reconnect_timeout',
+               # NOTE(dhellmann): We want this to be similar to
+               # rpc_response_timeout, but we can't use
+               # "$rpc_response_timeout" as a default because that
+               # option may not have been defined by the time this
+               # option is accessed. Instead, document the intent in
+               # the help text for this option and provide a separate
+               # literal default value.
+               default=60,
+               help='How long to wait before considering a reconnect '
+                    'attempt to have failed. This value should not be '
+                    'longer than rpc_response_timeout.'),
     cfg.StrOpt('rabbit_host',
                default='localhost',
                deprecated_group='DEFAULT',
@@ -1003,17 +1014,13 @@ class Connection(object):
             RuntimeError("_publish_and_retry_on_missing_exchange() must be "
                          "called with an passive exchange.")
 
-        # FIXME(dhellmann): This is a hack to make sure the option
-        # we're about to use is registered. Since we're not going
-        # through a Client object here, it won't be registered by
-        # Client.__init__. We should do this more cleanly.
-        self.conf.register_opts(rpc_client._client_opts)
-
         # TODO(sileht): use @retrying
         # NOTE(sileht): no need to wait the application expect a response
         # before timeout is exshauted
-        duration = (timeout if timeout is not None
-                    else self.conf.rpc_response_timeout)
+        duration = (
+            timeout if timeout is not None
+            else self.conf.oslo_messaging_rabbit.kombu_reconnect_timeout
+        )
 
         timer = rpc_common.DecayingTimer(duration=duration)
         timer.start()
