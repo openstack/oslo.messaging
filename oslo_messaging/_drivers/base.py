@@ -17,7 +17,7 @@ import abc
 
 import six
 
-from oslo.config import cfg
+from oslo_config import cfg
 from oslo_messaging import exceptions
 
 base_opts = [
