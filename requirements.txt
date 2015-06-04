@@ -4,11 +4,11 @@
 
 pbr>=0.6,!=0.7,<1.0
 
-oslo.config>=1.9.0  # Apache-2.0
-oslo.utils>=1.2.0                       # Apache-2.0
-oslo.serialization>=1.2.0               # Apache-2.0
-oslo.i18n>=1.3.0  # Apache-2.0
-stevedore>=1.1.0  # Apache-2.0
+oslo.config>=1.9.3,<1.10.0  # Apache-2.0
+oslo.utils>=1.4.0,<1.5.0                       # Apache-2.0
+oslo.serialization>=1.4.0,<1.5.0               # Apache-2.0
+oslo.i18n>=1.5.0,<1.6.0  # Apache-2.0
+stevedore>=1.3.0,<1.4.0  # Apache-2.0
 
 # for jsonutils
 six>=1.9.0
@@ -16,7 +16,7 @@ six>=1.9.0
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
 
-eventlet>=0.16.1
+eventlet>=0.16.1,!=0.17.0
 
 # for the routing notifier
 PyYAML>=3.1.0
@@ -26,7 +26,7 @@ PyYAML>=3.1.0
 kombu>=2.5.0
 
 # middleware
-oslo.middleware>=0.3.0                  # Apache-2.0
+oslo.middleware>=1.0.0,<1.1.0                  # Apache-2.0
 
 # for the futures based executor
 futures>=2.1.6
