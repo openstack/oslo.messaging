@@ -364,16 +364,24 @@ class TestSendReceive(test_utils.BaseTestCase):
         ('timeout', dict(timeout=0.01)),  # FIXME(markmc): timeout=0 is broken?
     ]
 
+    _reply_ending = [
+        ('old_behavior', dict(send_single_reply=False)),
+        ('new_behavior', dict(send_single_reply=True)),
+    ]
+
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._n_senders,
                                                          cls._context,
                                                          cls._reply,
                                                          cls._failure,
-                                                         cls._timeout)
+                                                         cls._timeout,
+                                                         cls._reply_ending)
 
     def test_send_receive(self):
         self.config(heartbeat_timeout_threshold=0,
+                    group="oslo_messaging_rabbit")
+        self.config(send_single_reply=self.send_single_reply,
                     group="oslo_messaging_rabbit")
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
