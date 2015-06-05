@@ -599,7 +599,7 @@ def _declare_queue(target):
                                    channel=channel,
                                    exchange=exchange,
                                    routing_key=target.topic)
-    if target.server:
+    elif target.server:
         exchange = kombu.entity.Exchange(name='openstack',
                                          type='topic',
                                          durable=False,
@@ -631,10 +631,8 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
          dict(topic='testtopic', server=None, fanout=False)),
         ('server_target',
          dict(topic='testtopic', server='testserver', fanout=False)),
-        # NOTE(markmc): https://github.com/celery/kombu/issues/195
         ('fanout_target',
-         dict(topic='testtopic', server=None, fanout=True,
-              skip_msg='Requires kombu>2.5.12 to fix kombu issue #195')),
+         dict(topic='testtopic', server=None, fanout=True)),
     ]
 
     _msg = [
@@ -672,8 +670,6 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
         return self.uuids[-1]
 
     def test_request_wire_format(self):
-        if hasattr(self, 'skip_msg'):
-            self.skipTest(self.skip_msg)
 
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
@@ -775,10 +771,8 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
          dict(topic='testtopic', server=None, fanout=False)),
         ('server_target',
          dict(topic='testtopic', server='testserver', fanout=False)),
-        # NOTE(markmc): https://github.com/celery/kombu/issues/195
         ('fanout_target',
-         dict(topic='testtopic', server=None, fanout=True,
-              skip_msg='Requires kombu>2.5.12 to fix kombu issue #195')),
+         dict(topic='testtopic', server=None, fanout=True)),
     ]
 
     _msg = [
@@ -806,8 +800,6 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
                                                          cls._target)
 
     def test_reply_wire_format(self):
-        if hasattr(self, 'skip_msg'):
-            self.skipTest(self.skip_msg)
 
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
