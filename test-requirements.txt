@@ -21,6 +21,9 @@ redis>=2.10.0
 # for test_impl_zmq
 pyzmq>=14.3.1 # LGPL+BSD
 
+# for test_impl_kafka
+kafka-python>=0.9.2 # Apache-2.0
+
 # when we can require tox>= 1.4, this can go into tox.ini:
 #  [testenv:cover]
 #  deps = {[testenv]deps} coverage
