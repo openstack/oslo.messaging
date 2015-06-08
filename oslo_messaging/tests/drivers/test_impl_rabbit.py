@@ -926,15 +926,15 @@ class ConnectionLockTestCase(test_utils.BaseTestCase):
         l = rabbit_driver.ConnectionLock()
         t1 = self._thread(l, 1)
         t2 = self._thread(l, 1)
-        self.assertAlmostEqual(1, t1(), places=1)
-        self.assertAlmostEqual(2, t2(), places=1)
+        self.assertAlmostEqual(1, t1(), places=0)
+        self.assertAlmostEqual(2, t2(), places=0)
 
     def test_worker_and_heartbeat(self):
         l = rabbit_driver.ConnectionLock()
         t1 = self._thread(l, 1)
         t2 = self._thread(l, 1, heartbeat=True)
-        self.assertAlmostEqual(1, t1(), places=1)
-        self.assertAlmostEqual(2, t2(), places=1)
+        self.assertAlmostEqual(1, t1(), places=0)
+        self.assertAlmostEqual(2, t2(), places=0)
 
     def test_workers_and_heartbeat(self):
         l = rabbit_driver.ConnectionLock()
@@ -943,15 +943,15 @@ class ConnectionLockTestCase(test_utils.BaseTestCase):
         t3 = self._thread(l, 1)
         t4 = self._thread(l, 1, heartbeat=True)
         t5 = self._thread(l, 1)
-        self.assertAlmostEqual(1, t1(), places=1)
-        self.assertAlmostEqual(2, t4(), places=1)
-        self.assertAlmostEqual(3, t2(), places=1)
-        self.assertAlmostEqual(4, t3(), places=1)
-        self.assertAlmostEqual(5, t5(), places=1)
+        self.assertAlmostEqual(1, t1(), places=0)
+        self.assertAlmostEqual(2, t4(), places=0)
+        self.assertAlmostEqual(3, t2(), places=0)
+        self.assertAlmostEqual(4, t3(), places=0)
+        self.assertAlmostEqual(5, t5(), places=0)
 
     def test_heartbeat(self):
         l = rabbit_driver.ConnectionLock()
         t1 = self._thread(l, 1, heartbeat=True)
         t2 = self._thread(l, 1)
-        self.assertAlmostEqual(1, t1(), places=1)
-        self.assertAlmostEqual(2, t2(), places=1)
+        self.assertAlmostEqual(1, t1(), places=0)
+        self.assertAlmostEqual(2, t2(), places=0)
