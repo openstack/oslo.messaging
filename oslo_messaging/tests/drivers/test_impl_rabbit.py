@@ -169,7 +169,8 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
 
         transport._driver._get_connection()
         connection_klass.assert_called_once_with(
-            'memory:///', ssl=self.expected, login_method='AMQPLAIN',
+            'memory:///', transport_options={'confirm_publish': True},
+            ssl=self.expected, login_method='AMQPLAIN',
             heartbeat=0, failover_strategy="shuffle")
 
 
