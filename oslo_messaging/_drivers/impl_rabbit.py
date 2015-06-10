@@ -477,7 +477,12 @@ class Connection(object):
             login_method=self.login_method,
             failover_strategy="shuffle",
             heartbeat=self.heartbeat_timeout_threshold,
-            transport_options={'confirm_publish': True})
+            transport_options={
+                'confirm_publish': True,
+                'on_blocked': self._on_connection_blocked,
+                'on_unblocked': self._on_connection_unblocked,
+            },
+        )
 
         LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)s'),
                  self.connection.info())
@@ -580,6 +585,14 @@ class Connection(object):
                 ssl_params['cert_reqs'] = ssl.CERT_REQUIRED
             return ssl_params or True
         return False
+
+    @staticmethod
+    def _on_connection_blocked(reason):
+        LOG.error(_LE("The broker has blocked the connection: %s"), reason)
+
+    @staticmethod
+    def _on_connection_unblocked():
+        LOG.info(_LI("The broker has unblocked the connection"))
 
     def ensure_connection(self):
         self.ensure(method=lambda: True)
@@ -829,7 +842,7 @@ class Connection(object):
         def _connect_error(exc):
             log_info = {'topic': consumer.routing_key, 'err_str': exc}
             LOG.error(_("Failed to declare consumer for topic '%(topic)s': "
-                      "%(err_str)s"), log_info)
+                        "%(err_str)s"), log_info)
 
         def _declare_consumer():
             consumer.declare(self)
