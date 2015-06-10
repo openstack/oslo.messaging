@@ -12,41 +12,5 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# This script is executed inside gate_hook function in devstack gate.
 
-RPC_BACKEND=$1
-
-DEVSTACK_LOCAL_CONFIG=""
-
-case $RPC_BACKEND in
-    rabbit)
-        DEVSTACK_LOCAL_CONFIG+=$'RABBIT_HOST=127.0.0.1\n'
-        DEVSTACK_LOCAL_CONFIG+=$'RABBIT_USERID=stackrabbit\n'
-        DEVSTACK_LOCAL_CONFIG+=$'RABBIT_PASSWORD=secretrabbit\n'
-        ;;
-    qpid)
-        export DEVSTACK_GATE_QPID=1
-        DEVSTACK_LOCAL_CONFIG+=$'QPID_HOST=127.0.0.1\n'
-        DEVSTACK_LOCAL_CONFIG+=$'QPID_USERNAME=stackqpid\n'
-        DEVSTACK_LOCAL_CONFIG+=$'QPID_PASSWORD=secretqpid\n'
-        ;;
-    amqp1)
-        export DEVSTACK_GATE_QPID=1
-        DEVSTACK_LOCAL_CONFIG+=$'QPID_HOST=127.0.0.1\n'
-        DEVSTACK_LOCAL_CONFIG+=$'QPID_USERNAME=stackqpid\n'
-        DEVSTACK_LOCAL_CONFIG+=$'QPID_PASSWORD=secretqpid\n'
-        DEVSTACK_LOCAL_CONFIG+=$'RPC_MESSAGING_PROTOCOL=AMQP1\n'
-        ;;
-    zeromq)
-        export DEVSTACK_GATE_ZEROMQ=1
-        DEVSTACK_LOCAL_CONFIG+=$'ZEROMQ_MATCHMAKER=redis\n'
-        DEVSTACK_LOCAL_CONFIG+=$'MATCHMAKER_REDIS_HOST=127.0.0.1\n'
-        ;;
-esac
-
-export DEVSTACK_LOCAL_CONFIG
-export DEVSTACK_GATE_INSTALL_TESTONLY=1
-export DEVSTACK_GATE_NO_SERVICES=1
-export KEEP_LOCALRC=1
-
-$BASE/new/devstack-gate/devstack-vm-gate.sh
+# TODO(sileht): delete once the infra code have been cleanup
