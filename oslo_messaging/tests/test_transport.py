@@ -14,9 +14,9 @@
 #    under the License.
 
 import fixtures
+from mox3 import mox
 from oslo_config import cfg
 import six
-from six.moves import mox
 from stevedore import driver
 import testscenarios
 
