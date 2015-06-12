@@ -1,11 +1,11 @@
 Oslo Messaging Library
 ======================
 
-.. image:: https://pypip.in/version/oslo.messaging/badge.svg
+.. image:: https://img.shields.io/pypi/v/oslo.messaging.svg
     :target: https://pypi.python.org/pypi/oslo.messaging/
     :alt: Latest Version
 
-.. image:: https://pypip.in/download/oslo.messaging/badge.svg?period=month
+.. image:: https://img.shields.io/pypi/dm/oslo.messaging.svg
     :target: https://pypi.python.org/pypi/oslo.messaging/
     :alt: Downloads
 
