@@ -21,6 +21,7 @@ Contents
    exceptions
    opts
    conffixture
+   drivers
    AMQP1.0
    zmq_driver
    FAQ

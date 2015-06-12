@@ -988,6 +988,11 @@ class ZmqClientPoolManager(object):
 
 
 class ZmqDriver(base.BaseDriver):
+    """ZeroMQ Driver
+
+    See :doc:`zmq_driver` for details.
+
+    """
 
     # FIXME(markmc): allow this driver to be used without eventlet
 

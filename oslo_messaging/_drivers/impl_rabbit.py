@@ -1129,6 +1129,15 @@ class Connection(object):
 
 
 class RabbitDriver(amqpdriver.AMQPDriverBase):
+    """RabbitMQ Driver
+
+    The ``rabbit`` driver is the default driver used in OpenStack's
+    integration tests.
+
+    The driver is aliased as ``kombu`` to support upgrading existing
+    installations with older settings.
+
+    """
 
     def __init__(self, conf, url,
                  default_exchange=None,
