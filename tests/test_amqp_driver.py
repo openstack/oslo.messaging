@@ -258,25 +258,40 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         notifications = [(messaging.Target(topic="topic-1"), 'info'),
                          (messaging.Target(topic="topic-1"), 'error'),
                          (messaging.Target(topic="topic-2"), 'debug')]
-        nl = driver.listen_for_notifications(notifications)
+        nl = driver.listen_for_notifications(notifications, None)
 
-        listener = _ListenerThread(nl, 3)
+        # send one for each support version:
+        msg_count = len(notifications) * 2
+        listener = _ListenerThread(nl, msg_count)
         targets = ['topic-1.info',
-                   'topic-1.bad',  # should be dropped
-                   'bad-topic.debug',  # should be dropped
-                   'topic-1.error', 'topic-2.debug']
+                   'topic-1.bad',  # will raise MessagingDeliveryFailure
+                   'bad-topic.debug',  # will raise MessagingDeliveryFailure
+                   'topic-1.error',
+                   'topic-2.debug']
 
-        for t in targets:
-            driver.send_notification(messaging.Target(topic=t),
-                                     "context", {'target': t},
-                                     1.0)
+        excepted_targets = []
+        exception_count = 0
+        for version in (1.0, 2.0):
+            for t in targets:
+                try:
+                    driver.send_notification(messaging.Target(topic=t),
+                                             "context", {'target': t},
+                                             version)
+                except messaging.MessageDeliveryFailure:
+                    exception_count += 1
+                    excepted_targets.append(t)
+
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         topics = [x.message.get('target') for x in listener.get_messages()]
-        self.assertTrue('topic-1.info' in topics)
-        self.assertTrue('topic-1.error' in topics)
-        self.assertTrue('topic-2.debug' in topics)
-        self.assertEqual(self._broker.dropped_count, 2)
+        self.assertEqual(len(topics), msg_count)
+        self.assertEqual(topics.count('topic-1.info'), 2)
+        self.assertEqual(topics.count('topic-1.error'), 2)
+        self.assertEqual(topics.count('topic-2.debug'), 2)
+        self.assertEqual(self._broker.dropped_count, 4)
+        self.assertEqual(exception_count, 4)
+        self.assertEqual(excepted_targets.count('topic-1.bad'), 2)
+        self.assertEqual(excepted_targets.count('bad-topic.debug'), 2)
         driver.cleanup()
 
 

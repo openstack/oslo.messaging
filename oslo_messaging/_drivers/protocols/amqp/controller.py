@@ -36,6 +36,7 @@ from six import moves
 
 from oslo_messaging._drivers.protocols.amqp import eventloop
 from oslo_messaging._drivers.protocols.amqp import opts
+from oslo_messaging import exceptions
 from oslo_messaging import transport
 
 LOG = logging.getLogger(__name__)
@@ -87,6 +88,14 @@ class Replies(pyngus.ReceiverEventHandler):
         request.reply_to = self._receiver.source_address
         LOG.debug("Reply for msg id=%s expected on link %s",
                   request.id, request.reply_to)
+        return request.id
+
+    def cancel_response(self, msg_id):
+        """Abort waiting for a response message.  This can be used if the
+        request fails and no reply is expected.
+        """
+        if msg_id in self._correlation:
+            del self._correlation[msg_id]
 
     # Pyngus ReceiverLink event callbacks:
 
@@ -121,16 +130,20 @@ class Replies(pyngus.ReceiverEventHandler):
         key = message.correlation_id
         if key in self._correlation:
             LOG.debug("Received response for msg id=%s", key)
-            self._correlation[key].put(message)
+            result = {"status": "OK",
+                      "response": message}
+            self._correlation[key].put(result)
             # cleanup (only need one response per request)
             del self._correlation[key]
+            receiver.message_accepted(handle)
         else:
             LOG.warn("Can't find receiver for response msg id=%s, dropping!",
                      key)
-        receiver.message_accepted(handle)
+            receiver.message_modified(handle, True, True, None)
 
     def _update_credit(self):
-        if self.capacity > self._credit:
+        # ensure we have enough credit
+        if self._credit < self.capacity / 2:
             self._receiver.add_capacity(self.capacity - self._credit)
             self._credit = self.capacity
 
@@ -143,6 +156,7 @@ class Server(pyngus.ReceiverEventHandler):
     def __init__(self, addresses, incoming):
         self._incoming = incoming
         self._addresses = addresses
+        self._capacity = 500   # credit per link
 
     def attach(self, connection):
         """Create receiver links over the given connection for all the
@@ -162,7 +176,7 @@ class Server(pyngus.ReceiverEventHandler):
             # approach would monitor for a back-up of inbound messages to be
             # processed by the consuming application and backpressure the
             # sender based on configured thresholds.
-            r.add_capacity(500)
+            r.add_capacity(self._capacity)
             r.open()
             self._receivers.append(r)
 
@@ -183,9 +197,8 @@ class Server(pyngus.ReceiverEventHandler):
         """This is a Pyngus callback, invoked by Pyngus when a new message
         arrives on this receiver link from the peer.
         """
-        # TODO(kgiusti) Sub-optimal to grant one credit each time a message
-        # arrives.  A better approach would grant batches of credit on demand.
-        receiver.add_capacity(1)
+        if receiver.capacity < self._capacity / 2:
+            receiver.add_capacity(self._capacity - receiver.capacity)
         self._incoming.put(message)
         LOG.debug("message received: %s", message)
         receiver.message_accepted(handle)
@@ -304,17 +317,41 @@ class Controller(pyngus.ConnectionEventHandler):
 
     # methods executed by Tasks created by the driver:
 
-    def request(self, target, request, reply_queue=None):
-        """Send a request message to the given target, and arrange for a
-        response to be put on the optional reply_queue if specified
+    def request(self, target, request, result_queue, reply_expected=False):
+        """Send a request message to the given target and arrange for a
+        result to be put on the result_queue. If reply_expected, the result
+        will include the reply message (if successful).
         """
         address = self._resolve(target)
         LOG.debug("Sending request for %s to %s", target, address)
-        if reply_queue is not None:
-            self._replies.prepare_for_response(request, reply_queue)
-        self._send(address, request)
+        if reply_expected:
+            msg_id = self._replies.prepare_for_response(request, result_queue)
+
+        def _callback(link, handle, state, info):
+            if state == pyngus.SenderLink.ACCEPTED:  # message received
+                if not reply_expected:
+                    # can wake up the sender now
+                    result = {"status": "OK"}
+                    result_queue.put(result)
+                else:
+                    # we will wake up the sender when the reply message is
+                    # received.  See Replies.message_received()
+                    pass
+            else:  # send failed/rejected/etc
+                msg = "Message send failed: remote disposition: %s, info: %s"
+                exc = exceptions.MessageDeliveryFailure(msg % (state, info))
+                result = {"status": "ERROR", "error": exc}
+                if reply_expected:
+                    # no response will be received, so cancel the correlation
+                    self._replies.cancel_response(msg_id)
+                result_queue.put(result)
+        self._send(address, request, _callback)
 
     def response(self, address, response):
+        """Send a response message to the client listening on 'address'.
+        To prevent a misbehaving client from blocking a server indefinitely,
+        the message is send asynchronously.
+        """
         LOG.debug("Sending response to %s", address)
         self._send(address, response)
 
@@ -366,11 +403,14 @@ class Controller(pyngus.ConnectionEventHandler):
             self._senders[address] = sender
         return sender
 
-    def _send(self, addr, message):
-        """Send the message out the link addressed by 'addr'."""
+    def _send(self, addr, message, callback=None, handle=None):
+        """Send the message out the link addressed by 'addr'.  If a
+        delivery_callback is given it will be invoked when the send has
+        completed (whether successfully or in error).
+        """
         address = str(addr)
         message.address = address
-        self._sender(address).send(message)
+        self._sender(address).send(message, delivery_callback=callback)
 
     def _server_address(self, target):
         return self._concatenate([self.server_request_prefix,
