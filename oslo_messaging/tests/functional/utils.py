@@ -276,9 +276,16 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         self.url = os.environ.get('TRANSPORT_URL')
         if not self.url:
             self.skipTest("No transport url configured")
+
         zmq_matchmaker = os.environ.get('ZMQ_MATCHMAKER')
         if zmq_matchmaker:
-            self.conf.rpc_zmq_matchmaker = zmq_matchmaker
+            self.config(rpc_zmq_matchmaker=zmq_matchmaker)
+        zmq_ipc_dir = os.environ.get('ZMQ_IPC_DIR')
+        if zmq_ipc_dir:
+            self.config(rpc_zmq_ipc_dir=zmq_ipc_dir)
+        zmq_redis_port = os.environ.get('ZMQ_REDIS_PORT')
+        if zmq_redis_port:
+            self.config(port=zmq_redis_port, group="matchmaker_redis")
 
 
 class NotificationFixture(fixtures.Fixture):
