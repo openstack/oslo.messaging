@@ -21,17 +21,31 @@ __all__ = [
     '_clear_local_context',
 ]
 
+from functools import wraps
 import threading
 import uuid
+import warnings
 
-from oslo_messaging.openstack.common import versionutils
+
+def _deprecated(as_of=None, in_favor_of=None):
+    def __inner(func):
+        @wraps(func)
+        def __wrapper(*args, **kwargs):
+            replaced_by = (' Please use %s instead.'
+                           % in_favor_of) if in_favor_of else ''
+            warnings.warn('%s has been deprecated in %s and will be '
+                          'removed in the next release.%s' %
+                          (func.__name__, as_of, replaced_by))
+            return func(*args, **kwargs)
+        return __wrapper
+    return __inner
+_VERSION = '1.8.0'
 
 _KEY = '_%s_%s' % (__name__.replace('.', '_'), uuid.uuid4().hex)
 _STORE = threading.local()
 
 
-@versionutils.deprecated(as_of=versionutils.deprecated.KILO,
-                         in_favor_of='oslo_context.context.get_current')
+@_deprecated(as_of=_VERSION, in_favor_of='oslo_context.context.get_current')
 def get_local_context(ctxt):
     """Retrieve the RPC endpoint request context for the current thread.
 
@@ -47,7 +61,7 @@ def get_local_context(ctxt):
     return getattr(_STORE, _KEY, None)
 
 
-@versionutils.deprecated(as_of=versionutils.deprecated.KILO)
+@_deprecated(as_of=_VERSION)
 def set_local_context(ctxt):
     _set_local_context(ctxt)
 
@@ -61,7 +75,7 @@ def _set_local_context(ctxt):
     setattr(_STORE, _KEY, ctxt)
 
 
-@versionutils.deprecated(as_of=versionutils.deprecated.KILO)
+@_deprecated(as_of=_VERSION)
 def clear_local_context():
     _clear_local_context()
 
