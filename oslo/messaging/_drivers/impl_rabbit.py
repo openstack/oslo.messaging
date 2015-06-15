@@ -619,9 +619,9 @@ class Connection(object):
                 # a protocol response.  (See paste link in LP888621)
                 # So, we check all exceptions for 'timeout' in them
                 # and try to reconnect in this case.
+                e = ex
                 if 'timeout' not in six.text_type(e):
                     raise
-                e = ex
 
             log_info = {}
             log_info['err_str'] = e
