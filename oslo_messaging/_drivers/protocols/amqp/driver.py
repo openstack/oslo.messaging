@@ -108,7 +108,9 @@ class ReplyTask(controller.Task):
 
 def marshal_response(reply=None, failure=None):
     # TODO(grs): do replies have a context?
-    msg = proton.Message()
+    # NOTE(flaper87): Set inferred to True since rabbitmq-amqp-1.0 doesn't
+    # have support for vbin8.
+    msg = proton.Message(inferred=True)
     if failure:
         failure = common.serialize_remote_exception(failure)
         data = {"failure": failure}
@@ -129,7 +131,9 @@ def unmarshal_response(message, allowed):
 
 
 def marshal_request(request, context, envelope):
-    msg = proton.Message()
+    # NOTE(flaper87): Set inferred to True since rabbitmq-amqp-1.0 doesn't
+    # have support for vbin8.
+    msg = proton.Message(inferred=True)
     if envelope:
         request = common.serialize_msg(request)
     data = {
