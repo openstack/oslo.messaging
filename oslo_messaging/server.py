@@ -27,6 +27,8 @@ from oslo_service import service
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
+from oslo_messaging._i18n import _
+from oslo_messaging import _utils
 from oslo_messaging import exceptions
 
 
@@ -86,6 +88,8 @@ class MessageHandlingServer(service.ServiceBase):
         self.dispatcher = dispatcher
         self.executor = executor
 
+        self._get_thread_id = _utils.fetch_current_thread_functor()
+
         try:
             mgr = driver.DriverManager('oslo.messaging.executors',
                                        self.executor)
@@ -94,6 +98,8 @@ class MessageHandlingServer(service.ServiceBase):
         else:
             self._executor_cls = mgr.driver
             self._executor = None
+            self._running = False
+            self._thread_id = None
 
         super(MessageHandlingServer, self).__init__()
 
@@ -111,6 +117,8 @@ class MessageHandlingServer(service.ServiceBase):
         choose to dispatch messages in a new thread, coroutine or simply the
         current thread.
         """
+        self._check_same_thread_id()
+
         if self._executor is not None:
             return
         try:
@@ -118,9 +126,17 @@ class MessageHandlingServer(service.ServiceBase):
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
 
+        self._running = True
         self._executor = self._executor_cls(self.conf, listener,
                                             self.dispatcher)
         self._executor.start()
+
+    def _check_same_thread_id(self):
+        if self._thread_id is None:
+            self._thread_id = self._get_thread_id()
+        elif self._thread_id != self._get_thread_id():
+            raise RuntimeError(_("start/stop/wait must be called in the "
+                                 "same thread"))
 
     def stop(self):
         """Stop handling incoming messages.
@@ -130,7 +146,10 @@ class MessageHandlingServer(service.ServiceBase):
         some messages, and underlying driver resources associated to this
         server are still in use. See 'wait' for more details.
         """
+        self._check_same_thread_id()
+
         if self._executor is not None:
+            self._running = False
             self._executor.stop()
 
     def wait(self):
@@ -143,12 +162,22 @@ class MessageHandlingServer(service.ServiceBase):
         Once it's finished, the underlying driver resources associated to this
         server are released (like closing useless network connections).
         """
+        self._check_same_thread_id()
+
+        if self._running:
+            raise RuntimeError(_("wait() should be called after stop() as it "
+                                 "waits for existing messages to finish "
+                                 "processing"))
+
         if self._executor is not None:
             self._executor.wait()
             # Close listener connection after processing all messages
             self._executor.listener.cleanup()
 
         self._executor = None
+        # NOTE(sileht): executor/listener have been properly stopped
+        # allow to restart it into another thread
+        self._thread_id = None
 
     def reset(self):
         """Reset service.

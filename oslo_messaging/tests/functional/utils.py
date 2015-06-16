@@ -12,7 +12,6 @@
 #    under the License.
 
 import os
-import threading
 import time
 import uuid
 
@@ -76,7 +75,7 @@ class RpcServerFixture(fixtures.Fixture):
     """Fixture to setup the TestServerEndpoint."""
 
     def __init__(self, url, target, endpoint=None, ctrl_target=None,
-                 executor='blocking'):
+                 executor='eventlet'):
         super(RpcServerFixture, self).__init__()
         self.url = url
         self.target = target
@@ -104,14 +103,12 @@ class RpcServerFixture(fixtures.Fixture):
         super(RpcServerFixture, self).cleanUp()
 
     def _start(self):
-        self.thread = threading.Thread(target=self.server.start)
-        self.thread.daemon = True
+        self.thread = test_utils.ServerThreadHelper(self.server)
         self.thread.start()
 
     def _stop(self):
-        self.server.stop()
+        self.thread.stop()
         self._ctrl.cast({}, 'ping')
-        self.server.wait()
         self.thread.join()
 
     def ping(self, ctxt):
@@ -308,7 +305,7 @@ class NotificationFixture(fixtures.Fixture):
         self.server = oslo_messaging.get_notification_listener(
             transport.transport,
             targets,
-            [self])
+            [self], 'eventlet')
         self._ctrl = self.notifier('internal', topic=self.name)
         self._start()
         transport.wait()
@@ -318,14 +315,12 @@ class NotificationFixture(fixtures.Fixture):
         super(NotificationFixture, self).cleanUp()
 
     def _start(self):
-        self.thread = threading.Thread(target=self.server.start)
-        self.thread.daemon = True
+        self.thread = test_utils.ServerThreadHelper(self.server)
         self.thread.start()
 
     def _stop(self):
-        self.server.stop()
+        self.thread.stop()
         self._ctrl.sample({}, 'shutdown', 'shutdown')
-        self.server.wait()
         self.thread.join()
 
     def notifier(self, publisher, topic=None):
