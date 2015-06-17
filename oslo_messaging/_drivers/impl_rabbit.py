@@ -1081,8 +1081,17 @@ class Connection(object):
                                  "retrying...") % {
                                      'exchange': exchange.name,
                                      'routing_key': routing_key})
-                    time.sleep(1)
+                    time.sleep(0.25)
                     continue
+                elif exc.code == 404:
+                    msg = _("The exchange %(exchange)s to send to "
+                            "%(routing_key)s still doesn't exist after "
+                            "%(duration)s sec abandonning...") % {
+                                'duration': duration,
+                                'exchange': exchange.name,
+                                'routing_key': routing_key}
+                    LOG.info(msg)
+                    raise rpc_amqp.AMQPDestinationNotFound(msg)
                 raise
 
     def direct_send(self, msg_id, msg):
