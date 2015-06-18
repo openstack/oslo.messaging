@@ -17,8 +17,8 @@ import threading
 
 import testscenarios
 
-from oslo.config import cfg
 from oslo import messaging
+from oslo_config import cfg
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 

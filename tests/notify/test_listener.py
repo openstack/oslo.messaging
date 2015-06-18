@@ -18,9 +18,9 @@ import time
 
 import testscenarios
 
-from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging.notify import dispatcher
+from oslo_config import cfg
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 

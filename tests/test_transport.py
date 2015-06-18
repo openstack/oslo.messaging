@@ -19,9 +19,9 @@ import six
 from stevedore import driver
 import testscenarios
 
-from oslo.config import cfg
 from oslo import messaging
 from oslo.messaging import transport
+from oslo_config import cfg
 from oslo_messaging.tests import utils as test_utils
 from oslo_messaging import transport as private_transport
 
