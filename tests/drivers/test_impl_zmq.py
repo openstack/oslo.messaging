@@ -27,8 +27,8 @@ except ImportError:
     zmq = None
 
 from oslo import messaging
-from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
+from oslo_utils import importutils
 
 # eventlet is not yet py3 compatible, so skip if not installed
 eventlet = importutils.try_import('eventlet')

@@ -14,8 +14,8 @@
 
 import testtools
 
-from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
+from oslo_utils import importutils
 
 redis = importutils.try_import('redis')
 matchmaker_redis = (

@@ -19,9 +19,9 @@ import six
 import testscenarios
 
 from oslo import messaging
-from oslo.serialization import jsonutils
 from oslo_messaging._drivers import common as exceptions
 from oslo_messaging.tests import utils as test_utils
+from oslo_serialization import jsonutils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

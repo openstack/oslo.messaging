@@ -14,8 +14,8 @@
 
 import testtools
 
-from oslo.utils import importutils
 from oslo_messaging.tests import utils as test_utils
+from oslo_utils import importutils
 
 # NOTE(jamespage) matchmaker tied directly to eventlet
 # which is not yet py3 compatible - skip if import fails
