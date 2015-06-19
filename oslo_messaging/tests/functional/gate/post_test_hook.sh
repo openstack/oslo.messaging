@@ -16,14 +16,54 @@
 
 RPC_BACKEND=$1
 
+function generate_testr_results {
+    if [ -f .testrepository/0 ]; then
+        sudo .tox/py27-func-${RPC_BACKEND}/bin/testr last --subunit > $WORKSPACE/testrepository.subunit
+        sudo mv $WORKSPACE/testrepository.subunit $BASE/logs/testrepository.subunit
+        sudo .tox/py27-func-${RPC_BACKEND}/bin/python /usr/local/jenkins/slave_scripts/subunit2html.py $BASE/logs/testrepository.subunit $BASE/logs/testr_results.html
+        sudo gzip -9 $BASE/logs/testrepository.subunit
+        sudo gzip -9 $BASE/logs/testr_results.html
+        sudo chown jenkins:jenkins $BASE/logs/testrepository.subunit.gz $BASE/logs/testr_results.html.gz
+        sudo chmod a+r $BASE/logs/testrepository.subunit.gz $BASE/logs/testr_results.html.gz
+    fi
+}
+
+# Allow jenkins to retrieve reports
+sudo chown -R jenkins:stack $BASE/new/oslo.messaging
+
+set +e
+
+# Install required packages
 case $RPC_BACKEND in
-    amqp1|qpid)
-        # Ensure authentification works before continuing, otherwise tests
-        # will retries forever
-        sudo yum install -y qpid-tools
-        qpid-config --sasl-mechanism=PLAIN -a stackqpid/secretqpid@127.0.0.1
+    zeromq)
+        sudo apt-get update -y
+        sudo apt-get install -y redis-server python-redis
+        ;;
+    qpid)
+        sudo apt-get update -y
+        sudo apt-get install -y qpidd sasl2-bin
+        ;;
+    amqp1)
+        # qpid-tools is needed to ensure authentification works before 
+        # starting tests, otherwise tests will retries forever
+        sudo yum install -y qpid-cpp-server qpid-proton-c-devel python-qpid-proton cyrus-sasl-lib cyrus-sasl-plain
+        ;;
+    rabbit)
+        sudo apt-get update -y
+        sudo apt-get install -y rabbitmq-server
         ;;
 esac
 
+# Got to the oslo.messaging dir
 cd $BASE/new/oslo.messaging
-sudo -H -u stack tox -e py27-func-$RPC_BACKEND
+
+# Run tests
+echo "Running oslo.messaging functional test suite"
+# Preserve env for OS_ credentials
+sudo -E -H -u jenkins tox -e py27-func-$RPC_BACKEND
+EXIT_CODE=$?
+set -e
+
+# Collect and parse result
+generate_testr_results
+exit $EXIT_CODE
