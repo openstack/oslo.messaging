@@ -19,6 +19,7 @@ import logging
 import os
 import random
 import time
+import warnings
 
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -766,10 +767,17 @@ class Connection(object):
 class QpidDriver(amqpdriver.AMQPDriverBase):
     """qpidd Driver
 
+    .. deprecated:: 1.16 (Liberty)
     """
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=None):
+
+        warnings.warn(_('The Qpid driver has been deprecated. '
+                        'The driver is planned to be removed during the `M` '
+                        'development cycle.'),
+                      DeprecationWarning, stacklevel=2)
+
         opt_group = cfg.OptGroup(name='oslo_messaging_qpid',
                                  title='QPID driver options')
         conf.register_group(opt_group)
