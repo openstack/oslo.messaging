@@ -122,21 +122,21 @@ class TestCastToTarget(test_utils.BaseTestCase):
               prepare=dict(namespace='testnamespace'),
               expect=dict(namespace='testnamespace'))),
         ('ctor_version',
-         dict(ctor=dict(version='testversion'),
+         dict(ctor=dict(version='1.1'),
               prepare={},
-              expect=dict(version='testversion'))),
+              expect=dict(version='1.1'))),
         ('prepare_version',
          dict(ctor={},
-              prepare=dict(version='testversion'),
-              expect=dict(version='testversion'))),
+              prepare=dict(version='1.1'),
+              expect=dict(version='1.1'))),
         ('prepare_version_none',
-         dict(ctor=dict(version='testversion'),
+         dict(ctor=dict(version='1.1'),
               prepare=dict(version=None),
               expect={})),
         ('both_version',
          dict(ctor=dict(version='ctorversion'),
-              prepare=dict(version='testversion'),
-              expect=dict(version='testversion'))),
+              prepare=dict(version='1.1'),
+              expect=dict(version='1.1'))),
         ('ctor_server',
          dict(ctor=dict(server='testserver'),
               prepare={},
@@ -517,3 +517,12 @@ class TestCanSendVersion(test_utils.BaseTestCase):
             can_send = client.can_send_version()
 
         self.assertEqual(self.can_send, can_send)
+
+    def test_invalid_version_type(self):
+        target = oslo_messaging.Target(topic='sometopic')
+        transport = _FakeTransport(self.conf)
+        client = oslo_messaging.RPCClient(transport, target)
+        self.assertRaises(exceptions.MessagingException,
+                          client.prepare, version='5')
+        self.assertRaises(exceptions.MessagingException,
+                          client.prepare, version='5.a')
