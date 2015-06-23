@@ -47,7 +47,4 @@ mkfifo ${DATADIR}/out
 $QPIDD --log-enable info+ --log-to-file ${DATADIR}/out --config ${DATADIR}/qpidd.conf &
 wait_for_line "Broker .*running" "error" ${DATADIR}/out
 
-# Earlier failure if qpid-config is avialable
-[ -x "$(which qpid-config)" ] && qpid-config -b stackqpid/secretqpid@localhost:65123 &>/dev/null
-
 $*
