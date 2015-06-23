@@ -14,10 +14,10 @@ cat > ${DATADIR}/qpidd.conf <<EOF
 port=65123
 acl-file=${DATADIR}/qpidd.acl
 sasl-config=${DATADIR}/sasl2
-log-to-file=${DATADIR}/log
 ${LIBACL}
 mgmt-enable=yes
 auth=yes
+log-to-stderr=no
 
 # Used by AMQP1.0 only
 queue-patterns=exclusive
@@ -42,13 +42,12 @@ EOF
 echo secretqpid | saslpasswd2 -c -p -f ${DATADIR}/qpidd.sasldb -u QPID stackqpid
 
 QPIDD=$(which qpidd 2>/dev/null)
-[ ! -x $QPIDD ] && /usr/sbin/qpidd
 
 mkfifo ${DATADIR}/out
-$QPIDD --config ${DATADIR}/qpidd.conf &> ${DATADIR}/out &
+$QPIDD --log-enable info+ --log-to-file ${DATADIR}/out --config ${DATADIR}/qpidd.conf &
 wait_for_line "Broker .*running" "error" ${DATADIR}/out
 
 # Earlier failure if qpid-config is avialable
-[ -x "$(which qpid-config)" ] && qpid-config -b stackqpid/secretqpid@localhost:65123
+[ -x "$(which qpid-config)" ] && qpid-config -b stackqpid/secretqpid@localhost:65123 &>/dev/null
 
 $*
