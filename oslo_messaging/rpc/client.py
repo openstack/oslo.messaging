@@ -63,8 +63,10 @@ class RPCVersionCapError(exceptions.MessagingException):
     def __init__(self, version, version_cap):
         self.version = version
         self.version_cap = version_cap
-        msg = ("Requested message version, %(version)s is too high. It needs "
-               "to be lower than the specified version cap %(version_cap)s." %
+        msg = ("Requested message version, %(version)s is incompatible.  It "
+               "needs to be equal in major version and less than or equal "
+               "in minor version as the specified version cap "
+               "%(version_cap)s." %
                dict(version=self.version, version_cap=self.version_cap))
         super(RPCVersionCapError, self).__init__(msg)
 
