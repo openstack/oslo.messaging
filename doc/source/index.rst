@@ -2,7 +2,7 @@ oslo.messaging
 ==============
 
 The Oslo messaging API supports RPC and notifications over a number of
-different messsaging transports.
+different messaging transports.
 
 Contents
 ========
