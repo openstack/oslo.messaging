@@ -23,6 +23,7 @@ __all__ = [
     'ServerListenError',
 ]
 
+from oslo_service import service
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
@@ -53,7 +54,7 @@ class ServerListenError(MessagingServerError):
         self.ex = ex
 
 
-class MessageHandlingServer(object):
+class MessageHandlingServer(service.ServiceBase):
     """Server for handling messages.
 
     Connect a transport to a dispatcher that knows how to process the
@@ -148,3 +149,11 @@ class MessageHandlingServer(object):
             self._executor.listener.cleanup()
 
         self._executor = None
+
+    def reset(self):
+        """Reset service.
+
+        Called in case service running in daemon mode receives SIGHUP.
+        """
+        # TODO(sergey.vilgelm): implement this method
+        pass
