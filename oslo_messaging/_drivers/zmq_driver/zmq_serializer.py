@@ -23,7 +23,26 @@ from oslo_messaging._i18n import _LE, _LW
 
 LOG = logging.getLogger(__name__)
 
-MESSAGE_CALL_TOPIC_POSITION = 2
+MESSAGE_CALL_TYPE_POSITION = 2
+MESSAGE_CALL_TOPIC_POSITION = 3
+
+CALL_TYPE = 'call'
+CAST_TYPE = 'cast'
+FANOUT_TYPE = 'fanout'
+NOTIFY_TYPE = 'notify'
+
+MESSAGE_TYPES = (CALL_TYPE, CAST_TYPE, FANOUT_TYPE, NOTIFY_TYPE)
+
+
+def get_msg_type(message):
+    type = message[MESSAGE_CALL_TYPE_POSITION]
+    if six.PY3:
+        type = type.decode('utf-8')
+    if type not in MESSAGE_TYPES:
+        errmsg = _LE("Unknown message type: %s") % str(type)
+        LOG.error(errmsg)
+        rpc_common.RPCException(errmsg)
+    return type
 
 
 def _get_topic_from_msg(message, position):
@@ -46,7 +65,7 @@ def _get_topic_from_msg(message, position):
     except Exception as e:
         errmsg = _LE("Failed topic string parsing, %s") % str(e)
         LOG.error(errmsg)
-        rpc_common.RPCException(errmsg)
+        raise rpc_common.RPCException(errmsg)
     return topic_items[0], topic_items[1]
 
 

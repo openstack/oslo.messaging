@@ -29,6 +29,10 @@ def get_ipc_address_cast(conf, topic):
     return "ipc://%s/fanout/%s" % (conf.rpc_zmq_ipc_dir, str(topic))
 
 
+def get_ipc_address_fanout(conf):
+    return "ipc://%s/fanout_general" % conf.rpc_zmq_ipc_dir
+
+
 class Topic(object):
 
     def __init__(self, conf, topic, server=None, fanout=False):
@@ -58,4 +62,4 @@ class Topic(object):
         return self._topic if self._topic else ""
 
     def __str__(self, *args, **kwargs):
-        return "%s.%s" % (self.topic, self.server)
+        return u"%s.%s" % (self.topic, self.server)

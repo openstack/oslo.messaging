@@ -17,7 +17,7 @@ import os
 
 from oslo_utils import excutils
 
-from oslo_messaging._drivers.zmq_driver.broker.zmq_call_proxy import CallProxy
+from oslo_messaging._drivers.zmq_driver.broker import zmq_universal_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LE, _LI
 
@@ -44,7 +44,8 @@ class ZmqBroker(object):
         super(ZmqBroker, self).__init__()
         self.conf = conf
         self.context = zmq.Context()
-        self.proxies = [CallProxy(conf, self.context)]
+        proxy = zmq_universal_proxy.UniversalProxy(conf, self.context)
+        self.proxies = [proxy]
         self._create_ipc_dirs()
 
     def _create_ipc_dirs(self):

@@ -20,6 +20,7 @@ import uuid
 import six
 
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_serializer
 from oslo_messaging._drivers.zmq_driver import zmq_topic
 from oslo_messaging._i18n import _LE
 
@@ -32,7 +33,9 @@ zmq = zmq_async.import_zmq()
 class Request(object):
 
     def __init__(self, conf, target, context, message,
-                 socket, timeout=None, retry=None):
+                 socket, msg_type, timeout=None, retry=None):
+
+        assert msg_type in zmq_serializer.MESSAGE_TYPES, "Unknown msg type!"
 
         if message['method'] is None:
             errmsg = _LE("No method specified for RPC call")
@@ -40,6 +43,7 @@ class Request(object):
             raise KeyError(errmsg)
 
         self.msg_id = uuid.uuid4().hex
+        self.msg_type = msg_type
         self.target = target
         self.context = context
         self.message = message
@@ -62,6 +66,7 @@ class Request(object):
         return False
 
     def send_request(self):
+        self.socket.send_string(self.msg_type, zmq.SNDMORE)
         self.socket.send_string(str(self.topic), zmq.SNDMORE)
         self.socket.send_string(self.msg_id, zmq.SNDMORE)
         self.socket.send_json(self.context, zmq.SNDMORE)

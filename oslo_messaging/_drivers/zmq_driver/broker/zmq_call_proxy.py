@@ -31,7 +31,7 @@ class CallProxy(base_proxy.BaseProxy):
     def __init__(self, conf, context):
         super(CallProxy, self).__init__(conf, context)
         self.tcp_frontend = FrontendTcpRouter(self.conf, context)
-        self.backend_matcher = CallBackendMatcher(self.conf, context)
+        self.backend_matcher = DealerBackend(self.conf, context)
         LOG.info(_LI("Starting call proxy thread"))
 
     def run(self):
@@ -44,12 +44,12 @@ class CallProxy(base_proxy.BaseProxy):
             self.tcp_frontend.redirect_outgoing_reply(reply)
 
 
-class CallBackendMatcher(base_proxy.BaseBackendMatcher):
+class DealerBackend(base_proxy.DirectBackendMatcher):
 
     def __init__(self, conf, context):
-        super(CallBackendMatcher, self).__init__(conf,
-                                                 zmq_async.get_poller(),
-                                                 context)
+        super(DealerBackend, self).__init__(conf,
+                                            zmq_async.get_poller(),
+                                            context)
         self.backend = self.context.socket(zmq.DEALER)
         self.poller.register(self.backend)
 
@@ -80,19 +80,9 @@ class FrontendTcpRouter(base_proxy.BaseTcpFrontend):
     def __init__(self, conf, context):
         super(FrontendTcpRouter, self).__init__(conf,
                                                 zmq_async.get_poller(),
-                                                context)
-
-        try:
-            self.frontend = self.context.socket(zmq.ROUTER)
-            bind_address = zmq_topic.get_tcp_bind_address(conf.rpc_zmq_port)
-            LOG.info(_LI("Binding to TCP ROUTER %s") % bind_address)
-            self.frontend.bind(bind_address)
-            self.poller.register(self.frontend)
-        except zmq.ZMQError:
-            errmsg = _LE("Could not create ZeroMQ receiver daemon. "
-                         "Socket may already be in use.")
-            LOG.error(errmsg)
-            raise RPCException(errmsg)
+                                                context,
+                                                socket_type=zmq.ROUTER,
+                                                port_number=conf.rpc_zmq_port)
 
     @staticmethod
     def _reduce_empty(reply):

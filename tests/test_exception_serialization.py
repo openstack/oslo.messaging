@@ -19,6 +19,7 @@ import six
 import testscenarios
 
 from oslo import messaging
+
 from oslo_messaging._drivers import common as exceptions
 from oslo_messaging.tests import utils as test_utils
 from oslo_serialization import jsonutils

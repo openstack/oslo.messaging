@@ -16,6 +16,7 @@ import logging
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_call_responder
+from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_fanout_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
 LOG = logging.getLogger(__name__)
@@ -29,14 +30,17 @@ class ZmqServer(base.Listener):
         LOG.info("[Server] __init__")
         self.conf = conf
         self.context = zmq.Context()
-        poller = zmq_async.get_reply_poller()
-        self.call_responder = zmq_call_responder.CallResponder(self, conf,
-                                                               poller,
-                                                               self.context)
+        self.poller = zmq_async.get_reply_poller()
+        self.call_resp = zmq_call_responder.CallResponder(self, conf,
+                                                          self.poller,
+                                                          self.context)
+        self.fanout_resp = zmq_fanout_consumer.FanoutConsumer(self, conf,
+                                                              self.poller,
+                                                              self.context)
 
     def poll(self, timeout=None):
-        incoming = self.call_responder.poll(timeout)
-        return incoming
+        incoming = self.poller.poll(timeout)
+        return incoming[0]
 
     def stop(self):
         LOG.info("[Server] Stop")
@@ -46,4 +50,7 @@ class ZmqServer(base.Listener):
 
     def listen(self, target):
         LOG.info("[Server] Listen to Target %s" % target)
-        self.call_responder.listen(target)
+        if target.fanout:
+            self.fanout_resp.listen(target)
+        else:
+            self.call_resp.listen(target)

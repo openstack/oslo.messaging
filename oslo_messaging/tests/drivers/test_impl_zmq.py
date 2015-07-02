@@ -165,20 +165,21 @@ class TestZmqBasics(ZmqBaseTestCase):
         method = self.listener.message.message[u'method']
         self.assertEqual(u'hello-world', method)
 
-    @testtools.skip("Not implemented feature")
     def test_send_fanout(self):
         target = oslo_messaging.Target(topic='testtopic', fanout=True)
-        self.driver.listen(target)
+        self.listener.listen(target)
 
         result = self.driver.send(
             target, {},
             {'method': 'hello-world', 'tx_id': 1},
             wait_for_reply=False)
 
+        self.listener._received.wait()
+
         self.assertIsNone(result)
         self.assertEqual(True, self.listener._received.isSet())
-        msg_pattern = "{'method': 'hello-world', 'tx_id': 1}"
-        self.assertEqual(msg_pattern, self.listener.message)
+        method = self.listener.message.message[u'method']
+        self.assertEqual(u'hello-world', method)
 
     def test_send_receive_direct(self):
         """Call() without topic."""

@@ -56,13 +56,19 @@ class ZmqIncomingRequest(base.IncomingMessage):
 
 class CallResponder(zmq_base_consumer.ConsumerBase):
 
-    def __init__(self, listener, conf, poller, context):
-        super(CallResponder, self).__init__(listener, conf, poller, context)
-
-    def poll(self, timeout=None):
+    def _receive_message(self, socket):
         try:
-            incoming, socket = self.poller.poll(timeout)
-            reply_id, context, message = incoming
+            reply_id = socket.recv()
+            empty = socket.recv()
+            assert empty == b'', 'Bad format: empty separator expected'
+            msg_type = socket.recv_string()
+            assert msg_type is not None, 'Bad format: msg type expected'
+            topic = socket.recv_string()
+            assert topic is not None, 'Bad format: topic string expected'
+            msg_id = socket.recv_string()
+            assert msg_id is not None, 'Bad format: message ID expected'
+            context = socket.recv_json()
+            message = socket.recv_json()
             LOG.debug("[Server] REP Received message %s" % str(message))
             incoming = ZmqIncomingRequest(self.listener,
                                           context,
@@ -70,27 +76,13 @@ class CallResponder(zmq_base_consumer.ConsumerBase):
                                           reply_id,
                                           self.poller)
             return incoming
-
         except zmq.ZMQError as e:
             LOG.error(_LE("Receiving message failed ... {}"), e)
 
     def listen(self, target):
-
-        def _receive_message(socket):
-            reply_id = socket.recv()
-            empty = socket.recv()
-            assert empty == b'', 'Bad format: empty separator expected'
-            topic = socket.recv_string()
-            assert topic is not None, 'Bad format: topic string expected'
-            msg_id = socket.recv_string()
-            assert msg_id is not None, 'Bad format: message ID expected'
-            context = socket.recv_json()
-            message = socket.recv_json()
-            return (reply_id, context, message)
-
         topic = topic_utils.Topic.from_target(self.conf, target)
         ipc_rep_address = topic_utils.get_ipc_address_call(self.conf, topic)
         rep_socket = self.context.socket(zmq.REP)
         rep_socket.bind(ipc_rep_address)
         self.sockets_per_topic[str(topic)] = rep_socket
-        self.poller.register(rep_socket, _receive_message)
+        self.poller.register(rep_socket, self._receive_message)

@@ -16,6 +16,7 @@ import logging
 
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_serializer
 from oslo_messaging._drivers.zmq_driver import zmq_topic
 from oslo_messaging._i18n import _LE, _LI
 
@@ -33,7 +34,9 @@ class CallRequest(Request):
             socket = self.zmq_context.socket(zmq.REQ)
 
             super(CallRequest, self).__init__(conf, target, context,
-                                              message, socket, timeout, retry)
+                                              message, socket,
+                                              zmq_serializer.CALL_TYPE,
+                                              timeout, retry)
 
             self.connect_address = zmq_topic.get_tcp_address_call(conf,
                                                                   self.topic)

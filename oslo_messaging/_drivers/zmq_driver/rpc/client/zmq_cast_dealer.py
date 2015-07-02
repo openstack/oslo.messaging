@@ -17,6 +17,7 @@ import logging
 from oslo_messaging._drivers.zmq_driver.rpc.client import zmq_cast_publisher
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_serializer
 from oslo_messaging._drivers.zmq_driver import zmq_topic
 from oslo_messaging._i18n import _LE, _LI
 
@@ -30,8 +31,11 @@ class CastRequest(Request):
     def __init__(self, conf, target, context,
                  message, socket, address, timeout=None, retry=None):
         self.connect_address = address
+        fanout_type = zmq_serializer.FANOUT_TYPE
+        cast_type = zmq_serializer.CAST_TYPE
+        msg_type = fanout_type if target.fanout else cast_type
         super(CastRequest, self).__init__(conf, target, context, message,
-                                          socket, timeout, retry)
+                                          socket, msg_type, timeout, retry)
 
     def __call__(self, *args, **kwargs):
         self.send_request()
