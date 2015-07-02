@@ -1047,8 +1047,8 @@ class Connection(object):
         """
 
         if not exchange.passive:
-            RuntimeError("_publish_and_retry_on_missing_exchange() must be "
-                         "called with an passive exchange.")
+            raise RuntimeError("_publish_and_retry_on_missing_exchange() must "
+                               "be called with an passive exchange.")
 
         # TODO(sileht): use @retrying
         # NOTE(sileht): no need to wait the application expect a response
