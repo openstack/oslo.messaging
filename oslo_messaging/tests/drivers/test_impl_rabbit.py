@@ -307,7 +307,6 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
               )),
         ('rabbit_ipv6',
          dict(url='rabbit://u:p@[fd00:beef:dead:55::133]:10/vhost',
-              skip_py26='python 2.6 has broken urlparse for ipv6',
               expected=['amqp://u:p@[fd00:beef:dead:55::133]:10/vhost'])),
         ('rabbit_ipv4',
          dict(url='rabbit://user:password@10.20.30.40:10/vhost',
@@ -323,9 +322,6 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
     def test_transport_url(self, fake_reset, fake_ensure):
-        if hasattr(self, 'skip_py26') and sys.version_info < (2, 7):
-            self.skipTest(self.skip_py26)
-
         transport = oslo_messaging.get_transport(self.conf, self.url)
         self.addCleanup(transport.cleanup)
         driver = transport._driver
