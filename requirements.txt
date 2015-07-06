@@ -19,6 +19,9 @@ six>=1.9.0
 # import eventlet
 
 eventlet>=0.17.4
+greenlet>=0.3.2
+
+WebOb>=1.2.3
 
 # for the routing notifier
 PyYAML>=3.1.0
