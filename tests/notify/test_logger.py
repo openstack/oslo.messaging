@@ -20,7 +20,6 @@ import sys
 
 from oslo_utils import timeutils
 import testscenarios
-import testtools
 
 from oslo import messaging
 import oslo_messaging
@@ -101,8 +100,6 @@ class TestLogNotifier(test_utils.BaseTestCase):
              'extra': None},
             n['payload'])
 
-    @testtools.skipUnless(hasattr(logging.config, 'dictConfig'),
-                          "Need logging.config.dictConfig (Python >= 2.7)")
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logging_conf(self, mock_utcnow):
         with mock.patch('oslo_messaging.transport.get_transport',
