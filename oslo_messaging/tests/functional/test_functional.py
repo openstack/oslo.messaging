@@ -15,6 +15,7 @@ import time
 import uuid
 
 import concurrent.futures
+from oslo_config import cfg
 from testtools import matchers
 
 import oslo_messaging
@@ -22,6 +23,13 @@ from oslo_messaging.tests.functional import utils
 
 
 class CallTestCase(utils.SkipIfNoTransportURL):
+
+    def setUp(self):
+        super(CallTestCase, self).setUp(conf=cfg.ConfigOpts())
+
+        self.config(heartbeat_timeout_threshold=0,
+                    group='oslo_messaging_rabbit')
+
     def test_specific_server(self):
         group = self.useFixture(utils.RpcServerGroupFixture(self.url))
         client = group.client(1)
