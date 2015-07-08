@@ -18,10 +18,10 @@ import eventlet
 eventlet.monkey_patch()
 
 import contextlib
-import logging
 import sys
 
 from oslo_config import cfg
+from oslo_log import log
 
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._executors import base  # FIXME(markmc)
@@ -33,7 +33,7 @@ CONF.register_opts(base._pool_opts)
 
 def main():
     CONF(sys.argv[1:], project='oslo')
-    logging.basicConfig(level=logging.DEBUG)
+    log.setup(CONF, 'oslo.messaging')
 
     with contextlib.closing(impl_zmq.ZmqProxy(CONF)) as reactor:
         reactor.consume_in_thread()
