@@ -39,7 +39,7 @@ class ZmqServer(base.Listener):
                                                               self.context)
 
     def poll(self, timeout=None):
-        incoming = self.poller.poll(timeout)
+        incoming = self.poller.poll(timeout or self.conf.rpc_poll_timeout)
         return incoming[0]
 
     def stop(self):

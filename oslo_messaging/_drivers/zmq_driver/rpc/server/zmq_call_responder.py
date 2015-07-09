@@ -16,6 +16,7 @@
 import logging
 
 from oslo_messaging._drivers import base
+from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_base_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_topic as topic_utils
@@ -37,6 +38,9 @@ class ZmqIncomingRequest(base.IncomingMessage):
         self.poller = poller
 
     def reply(self, reply=None, failure=None, log_failure=True):
+        if failure is not None:
+            failure = rpc_common.serialize_remote_exception(failure,
+                                                            log_failure)
         message_reply = {u'reply': reply,
                          u'failure': failure,
                          u'log_failure': log_failure}

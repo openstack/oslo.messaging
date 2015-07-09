@@ -19,12 +19,9 @@ import eventlet
 import six
 
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_poller
 
 LOG = logging.getLogger(__name__)
-
-zmq = zmq_async.import_zmq()
 
 
 class GreenPoller(zmq_poller.ZmqPoller):

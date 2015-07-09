@@ -125,8 +125,13 @@ class RpcServerGroupFixture(fixtures.Fixture):
         # NOTE(sileht): topic and servier_name must be uniq
         # to be able to run all tests in parallel
         self.topic = topic or str(uuid.uuid4())
-        self.names = names or ["server_%i_%s" % (i, uuid.uuid4())
-                               for i in range(3)]
+        if self.url.startswith('zmq'):
+            # NOTE(viktors): We need to pass correct hots name to the to
+            # get_tcp_.*() methods. Should we use nameserver here?
+            self.names = names or [cfg.CONF.rpc_zmq_host for i in range(3)]
+        else:
+            self.names = names or ["server_%i_%s" % (i, uuid.uuid4())
+                                   for i in range(3)]
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]
         self.use_fanout_ctrl = use_fanout_ctrl

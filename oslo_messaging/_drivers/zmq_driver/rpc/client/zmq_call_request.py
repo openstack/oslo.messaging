@@ -14,6 +14,7 @@
 
 import logging
 
+from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
@@ -28,7 +29,8 @@ zmq = zmq_async.import_zmq()
 class CallRequest(Request):
 
     def __init__(self, conf, target, context, message, timeout=None,
-                 retry=None):
+                 retry=None, allowed_remote_exmods=None):
+        self.allowed_remote_exmods = allowed_remote_exmods or []
         try:
             self.zmq_context = zmq.Context()
             socket = self.zmq_context.socket(zmq.REQ)
@@ -44,9 +46,14 @@ class CallRequest(Request):
             self.socket.connect(self.connect_address)
         except zmq.ZMQError as e:
             LOG.error(_LE("Error connecting to socket: %s") % str(e))
+            raise
 
     def receive_reply(self):
         # NOTE(ozamiatin): Check for retry here (no retries now)
         self.socket.setsockopt(zmq.RCVTIMEO, self.timeout)
         reply = self.socket.recv_json()
-        return reply[u'reply']
+        if reply['failure']:
+            raise rpc_common.deserialize_remote_exception(
+                reply['failure'], self.allowed_remote_exmods)
+        else:
+            return reply['reply']

@@ -104,6 +104,7 @@ class BaseTcpFrontend(object):
 
     def receive_incoming(self):
         message, socket = self.poller.poll(1)
+        LOG.info(_LI("Message %s received."), message)
         return message
 
 

@@ -24,6 +24,7 @@ import sys
 from oslo_config import cfg
 
 from oslo_messaging._drivers import impl_zmq
+from oslo_messaging._drivers.zmq_driver.broker import zmq_broker
 from oslo_messaging._executors import base  # FIXME(markmc)
 
 CONF = cfg.CONF
@@ -35,6 +36,9 @@ def main():
     CONF(sys.argv[1:], project='oslo')
     logging.basicConfig(level=logging.DEBUG)
 
-    with contextlib.closing(impl_zmq.ZmqProxy(CONF)) as reactor:
-        reactor.consume_in_thread()
+    with contextlib.closing(zmq_broker.ZmqBroker(CONF)) as reactor:
+        reactor.start()
         reactor.wait()
+
+if __name__ == "__main__":
+    main()

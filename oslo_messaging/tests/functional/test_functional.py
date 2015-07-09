@@ -103,8 +103,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         group = self.useFixture(utils.RpcServerGroupFixture(self.url))
         client = group.client(1)
         client.add(increment=2)
-        f = lambda: client.subtract(increment=3)
-        self.assertThat(f, matchers.raises(ValueError))
+        self.assertRaises(ValueError, client.subtract, increment=3)
 
     def test_timeout_with_concurrently_queues(self):
         transport = self.useFixture(utils.TransportFixture(self.url))

@@ -71,6 +71,11 @@ zmq_opts = [
                default=30,
                help='Seconds to wait before a cast expires (TTL). '
                     'Only supported by impl_zmq.'),
+
+    cfg.IntOpt('rpc_poll_timeout',
+               default=1,
+               help='The default number of seconds that poll should wait. '
+                    'Poll raises timeout exception when timeout expired.'),
 ]
 
 
@@ -95,7 +100,8 @@ class ZmqDriver(base.BaseDriver):
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
         if self.client is None:
-            self.client = zmq_client.ZmqClient(self.conf, self.matchmaker)
+            self.client = zmq_client.ZmqClient(self.conf, self.matchmaker,
+                                               self._allowed_remote_exmods)
         if wait_for_reply:
             return self.client.call(target, ctxt, message, timeout, retry)
         else:
