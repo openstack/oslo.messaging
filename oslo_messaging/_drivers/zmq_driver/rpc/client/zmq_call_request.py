@@ -14,6 +14,7 @@
 
 import logging
 
+import oslo_messaging
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
@@ -31,10 +32,10 @@ class CallRequest(Request):
     def __init__(self, conf, target, context, message, timeout=None,
                  retry=None, allowed_remote_exmods=None):
         self.allowed_remote_exmods = allowed_remote_exmods or []
+
         try:
             self.zmq_context = zmq.Context()
             socket = self.zmq_context.socket(zmq.REQ)
-
             super(CallRequest, self).__init__(conf, target, context,
                                               message, socket,
                                               zmq_serializer.CALL_TYPE,
@@ -50,8 +51,15 @@ class CallRequest(Request):
 
     def receive_reply(self):
         # NOTE(ozamiatin): Check for retry here (no retries now)
-        self.socket.setsockopt(zmq.RCVTIMEO, self.timeout)
-        reply = self.socket.recv_json()
+        poller = zmq_async.get_reply_poller()
+        poller.register(self.socket,
+                        recv_method=lambda socket: socket.recv_json())
+
+        reply, socket = poller.poll(timeout=self.timeout)
+        if reply is None:
+            raise oslo_messaging.MessagingTimeout(
+                "Timeout %s seconds was reached" % self.timeout)
+
         if reply['failure']:
             raise rpc_common.deserialize_remote_exception(
                 reply['failure'], self.allowed_remote_exmods)

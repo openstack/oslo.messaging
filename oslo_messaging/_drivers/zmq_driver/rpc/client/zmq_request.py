@@ -47,15 +47,11 @@ class Request(object):
         self.target = target
         self.context = context
         self.message = message
-        self.timeout = self._to_milliseconds(conf, timeout)
+        self.timeout = timeout or conf.rpc_response_timeout
         self.retry = retry
         self.reply = None
         self.socket = socket
         self.topic = zmq_topic.Topic.from_target(conf, target)
-
-    @staticmethod
-    def _to_milliseconds(conf, timeout):
-        return timeout * 1000 if timeout else conf.rpc_response_timeout * 1000
 
     @property
     def is_replied(self):
