@@ -84,4 +84,16 @@ class TimerTestCase(test_utils.BaseTestCase):
         callback = mock.Mock()
         remaining = t.check_return(callback)
         self.assertEqual(0, remaining)
-        callback.assert_called_once
+        callback.assert_called_once_with()
+
+    @mock.patch('oslo_utils.timeutils.now')
+    def test_duration_callback_with_args(self, now):
+        now.return_value = 0
+        t = common.DecayingTimer(2)
+        t.start()
+
+        now.return_value = 3
+        callback = mock.Mock()
+        remaining = t.check_return(callback, 1, a='b')
+        self.assertEqual(0, remaining)
+        callback.assert_called_once_with(1, a='b')
