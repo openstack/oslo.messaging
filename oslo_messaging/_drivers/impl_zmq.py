@@ -17,6 +17,7 @@ import pprint
 import socket
 
 from oslo_config import cfg
+from stevedore import driver
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
@@ -39,7 +40,7 @@ zmq_opts = [
     # The module.Class to use for matchmaking.
     cfg.StrOpt(
         'rpc_zmq_matchmaker',
-        default='local',
+        default='dummy',
         help='MatchMaker driver.',
     ),
 
@@ -97,7 +98,11 @@ class ZmqDriver(base.BaseDriver):
         self.conf = conf
         self.server = None
         self.client = None
-        self.matchmaker = None
+        self.matchmaker = driver.DriverManager(
+            'oslo.messaging.zmq.matchmaker',
+            self.conf.rpc_zmq_matchmaker,
+        ).driver(self.conf)
+
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)
 

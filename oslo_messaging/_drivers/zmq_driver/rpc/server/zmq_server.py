@@ -31,6 +31,7 @@ class ZmqServer(base.Listener):
         self.conf = conf
         self.context = zmq.Context()
         self.poller = zmq_async.get_reply_poller()
+        self.matchmaker = matchmaker
         self.call_resp = zmq_call_responder.CallResponder(self, conf,
                                                           self.poller,
                                                           self.context)
@@ -50,6 +51,9 @@ class ZmqServer(base.Listener):
 
     def listen(self, target):
         LOG.info("[Server] Listen to Target %s" % target)
+
+        self.matchmaker.register(topic=target.topic,
+                                 hostname=self.conf.rpc_zmq_host)
         if target.fanout:
             self.fanout_resp.listen(target)
         else:

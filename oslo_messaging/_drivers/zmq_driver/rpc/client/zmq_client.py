@@ -21,6 +21,7 @@ class ZmqClient(object):
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
         self.conf = conf
+        self.matchmaker = matchmaker
         self.allowed_remote_exmods = allowed_remote_exmods or []
         self.cast_publisher = zmq_cast_dealer.DealerCastPublisher(conf,
                                                                   matchmaker)
@@ -28,7 +29,7 @@ class ZmqClient(object):
     def call(self, target, context, message, timeout=None, retry=None):
         request = zmq_call_request.CallRequest(
             self.conf, target, context, message, timeout, retry,
-            self.allowed_remote_exmods)
+            self.allowed_remote_exmods, self.matchmaker)
         return request()
 
     def cast(self, target, context, message, timeout=None, retry=None):

@@ -82,7 +82,7 @@ class CallResponder(zmq_base_consumer.ConsumerBase):
                                           self.poller)
             return incoming
         except zmq.ZMQError as e:
-            LOG.error(_LE("Receiving message failed ... {}"), e)
+            LOG.error(_LE("Receiving message failed ... %s") % str(e))
 
     def listen(self, target):
         topic = topic_utils.Topic.from_target(self.conf, target)

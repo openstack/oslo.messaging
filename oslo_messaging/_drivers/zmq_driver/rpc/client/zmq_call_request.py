@@ -30,8 +30,9 @@ zmq = zmq_async.import_zmq()
 class CallRequest(Request):
 
     def __init__(self, conf, target, context, message, timeout=None,
-                 retry=None, allowed_remote_exmods=None):
+                 retry=None, allowed_remote_exmods=None, matchmaker=None):
         self.allowed_remote_exmods = allowed_remote_exmods or []
+        self.matchmaker = matchmaker
 
         try:
             self.zmq_context = zmq.Context()
@@ -41,8 +42,9 @@ class CallRequest(Request):
                                               zmq_serializer.CALL_TYPE,
                                               timeout, retry)
 
+            self.host = self.matchmaker.get_single_host(self.topic.topic)
             self.connect_address = zmq_topic.get_tcp_address_call(conf,
-                                                                  self.topic)
+                                                                  self.host)
             LOG.info(_LI("Connecting REQ to %s") % self.connect_address)
             self.socket.connect(self.connect_address)
         except zmq.ZMQError as e:

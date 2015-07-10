@@ -21,8 +21,8 @@ def get_tcp_bind_address(port):
     return "tcp://*:%s" % port
 
 
-def get_tcp_address_call(conf, topic):
-    return "tcp://%s:%s" % (topic.server, conf.rpc_zmq_port)
+def get_tcp_address_call(conf, host):
+    return "tcp://%s:%s" % (host, conf.rpc_zmq_port)
 
 
 def get_ipc_address_cast(conf, topic):

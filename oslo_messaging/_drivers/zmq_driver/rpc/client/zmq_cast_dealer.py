@@ -58,7 +58,8 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
     def cast(self, target, context,
              message, timeout=None, retry=None):
         topic = zmq_topic.Topic.from_target(self.conf, target)
-        connect_address = zmq_topic.get_tcp_address_call(self.conf, topic)
+        host = self.matchmaker.get_single_host(topic.topic)
+        connect_address = zmq_topic.get_tcp_address_call(self.conf, host)
         dealer_socket = self._create_socket(connect_address)
         request = CastRequest(self.conf, target, context, message,
                               dealer_socket, connect_address, timeout, retry)
@@ -71,6 +72,7 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
             dealer_socket = self.zmq_context.socket(zmq.DEALER)
             LOG.info(_LI("Connecting DEALER to %s") % address)
             dealer_socket.connect(address)
+            return dealer_socket
         except zmq.ZMQError:
             LOG.error(_LE("Failed connecting DEALER to %s") % address)
-        return dealer_socket
+            raise
