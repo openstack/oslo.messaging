@@ -48,26 +48,39 @@ def get_msg_type(message):
 def _get_topic_from_msg(message, position):
     pathsep = set((os.path.sep or '', os.path.altsep or '', '/', '\\'))
     badchars = re.compile(r'[%s]' % re.escape(''.join(pathsep)))
+
+    if len(message) < position + 1:
+        errmsg = _LE("Message did not contain a topic")
+        LOG.error("%s: %s" % (errmsg, message))
+        raise rpc_common.RPCException("%s: %s" % (errmsg, message))
+
     topic = message[position]
-    topic_items = None
 
     if six.PY3:
         topic = topic.decode('utf-8')
 
-    try:
-        # The topic is received over the network,
-        # don't trust this input.
-        if badchars.search(topic) is not None:
-            emsg = _LW("Topic contained dangerous characters")
-            LOG.warn(emsg)
-            raise rpc_common.RPCException(emsg)
-        topic_items = topic.split('.', 1)
-    except Exception as e:
-        errmsg = _LE("Failed topic string parsing, %s") % str(e)
-        LOG.error(errmsg)
-        raise rpc_common.RPCException(errmsg)
+    # The topic is received over the network, don't trust this input.
+    if badchars.search(topic) is not None:
+        errmsg = _LW("Topic contained dangerous characters")
+        LOG.warn("%s: %s" % (errmsg, topic))
+        raise rpc_common.RPCException("%s: %s" % (errmsg, topic))
+
+    topic_items = topic.split('.', 1)
+
+    if len(topic_items) != 2:
+        errmsg = _LE("Topic was not formatted correctly")
+        LOG.error("%s: %s" % (errmsg, topic))
+        raise rpc_common.RPCException("%s: %s" % (errmsg, topic))
+
     return topic_items[0], topic_items[1]
 
 
 def get_topic_from_call_message(message):
+    """Extract topic and server from message.
+
+    :param message: A message
+    :type message: list
+
+    :returns: (topic: str, server: str)
+    """
     return _get_topic_from_msg(message, MESSAGE_CALL_TOPIC_POSITION)

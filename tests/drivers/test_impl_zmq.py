@@ -198,7 +198,8 @@ class TestPoller(test_utils.BaseTestCase):
         super(TestPoller, self).setUp()
         self.poller = zmq_async.get_poller()
         self.ctx = zmq.Context()
-        self.ADDR_REQ = "ipc://request1"
+        self.internal_ipc_dir = self.useFixture(fixtures.TempDir()).path
+        self.ADDR_REQ = "ipc://%s/request1" % self.internal_ipc_dir
 
     def test_poll_blocking(self):
 

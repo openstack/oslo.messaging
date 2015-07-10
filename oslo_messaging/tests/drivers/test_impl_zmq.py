@@ -13,6 +13,8 @@
 #    under the License.
 
 import logging
+import os
+import re
 import socket
 import threading
 
@@ -20,9 +22,11 @@ import fixtures
 import testtools
 
 import oslo_messaging
+from oslo_messaging._drivers.common import RPCException
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver.broker.zmq_broker import ZmqBroker
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_serializer
 from oslo_messaging._i18n import _
 from oslo_messaging.tests import utils as test_utils
 
@@ -199,7 +203,8 @@ class TestPoller(test_utils.BaseTestCase):
         super(TestPoller, self).setUp()
         self.poller = zmq_async.get_poller()
         self.ctx = zmq.Context()
-        self.ADDR_REQ = "ipc://request1"
+        self.internal_ipc_dir = self.useFixture(fixtures.TempDir()).path
+        self.ADDR_REQ = "ipc://%s/request1" % self.internal_ipc_dir
 
     def test_poll_blocking(self):
 
@@ -243,3 +248,52 @@ class TestPoller(test_utils.BaseTestCase):
         incoming, socket = reply_poller.poll(1)
         self.assertIsNone(incoming)
         self.assertIsNone(socket)
+
+
+class TestZmqSerializer(test_utils.BaseTestCase):
+
+    def test_message_without_topic_raises_RPCException(self):
+        # The topic is the 4th element of the message.
+        msg_without_topic = ['only', 'three', 'parts']
+
+        expected = "Message did not contain a topic: %s" % msg_without_topic
+        with self.assertRaisesRegexp(RPCException, re.escape(expected)):
+            zmq_serializer.get_topic_from_call_message(msg_without_topic)
+
+    def test_invalid_topic_format_raises_RPCException(self):
+        invalid_topic = "no dots to split on, so not index-able".encode('utf8')
+        bad_message = ['', '', '', invalid_topic]
+
+        expected_msg = "Topic was not formatted correctly: %s"
+        expected_msg = expected_msg % invalid_topic.decode('utf8')
+        with self.assertRaisesRegexp(RPCException, expected_msg):
+            zmq_serializer.get_topic_from_call_message(bad_message)
+
+    def test_py3_decodes_bytes_correctly(self):
+        message = ['', '', '', b'topic.ipaddress']
+
+        actual, _ = zmq_serializer.get_topic_from_call_message(message)
+
+        self.assertEqual('topic', actual)
+
+    def test_bad_characters_in_topic_raise_RPCException(self):
+        # handle unexpected os path separators:
+        unexpected_evil = '<'
+        os.path.sep = unexpected_evil
+
+        unexpected_alt_evil = '>'
+        os.path.altsep = unexpected_alt_evil
+
+        evil_chars = [unexpected_evil, unexpected_alt_evil, '\\', '/']
+
+        for evil_char in evil_chars:
+            evil_topic = '%s%s%s' % ('trust.me', evil_char, 'please')
+            evil_topic = evil_topic.encode('utf8')
+            evil_message = ['', '', '', evil_topic]
+
+            expected_msg = "Topic contained dangerous characters: %s"
+            expected_msg = expected_msg % evil_topic.decode('utf8')
+            expected_msg = re.escape(expected_msg)
+
+            with self.assertRaisesRegexp(RPCException, expected_msg):
+                zmq_serializer.get_topic_from_call_message(evil_message)
