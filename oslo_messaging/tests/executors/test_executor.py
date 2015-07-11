@@ -14,7 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import threading
 
 # eventlet 0.16 with monkey patching does not work yet on Python 3,
@@ -28,7 +27,6 @@ try:
 except ImportError:
     eventlet = None
 import testscenarios
-import testtools
 try:
     import trollius
 except ImportError:
@@ -45,6 +43,7 @@ try:
 except ImportError:
     impl_eventlet = None
 from oslo_messaging._executors import impl_thread
+from oslo_messaging import _utils as utils
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -106,7 +105,6 @@ class TestExecutor(test_utils.BaseTestCase):
 
             @trollius.coroutine
             def simple_coroutine(value):
-                yield None
                 raise trollius.Return(value)
 
             endpoint = mock.MagicMock(return_value=simple_coroutine('result'))
@@ -123,30 +121,29 @@ class TestExecutor(test_utils.BaseTestCase):
                 self.endpoint = endpoint
                 self.result = "not set"
 
-            @contextlib.contextmanager
-            def __call__(self, incoming, executor_callback=None):
-                if executor_callback is not None:
-                    def callback():
-                        result = executor_callback(self.endpoint,
-                                                   incoming.ctxt,
-                                                   incoming.message)
-                        self.result = result
-                        return result
-                    yield callback
-                    event.send()
+            def callback(self, incoming, executor_callback):
+                if executor_callback is None:
+                    result = self.endpoint(incoming.ctxt,
+                                           incoming.message)
                 else:
-                    def callback():
-                        result = self.endpoint(incoming.ctxt, incoming.message)
-                        self.result = result
-                        return result
-                    yield callback
+                    result = executor_callback(self.endpoint,
+                                               incoming.ctxt,
+                                               incoming.message)
+                if is_aioeventlet:
+                    event.send()
+                self.result = result
+                return result
 
-        listener = mock.Mock(spec=['poll'])
+            def __call__(self, incoming, executor_callback=None):
+                return utils.DispatcherExecutorContext(incoming,
+                                                       self.callback,
+                                                       executor_callback)
+
+        listener = mock.Mock(spec=['poll', 'stop'])
         dispatcher = Dispatcher(endpoint)
         executor = self.executor(self.conf, listener, dispatcher)
 
-        incoming_message = mock.MagicMock(ctxt={},
-                                          message={'payload': 'data'})
+        incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
 
         def fake_poll(timeout=None):
             if is_aioeventlet:
@@ -167,60 +164,3 @@ class TestExecutor(test_utils.BaseTestCase):
         self.assertEqual(dispatcher.result, 'result')
 
 TestExecutor.generate_scenarios()
-
-
-class ExceptedException(Exception):
-    pass
-
-
-class EventletContextManagerSpawnTest(test_utils.BaseTestCase):
-    @testtools.skipIf(impl_eventlet is None, "Eventlet not available")
-    def setUp(self):
-        super(EventletContextManagerSpawnTest, self).setUp()
-        self.before = mock.Mock()
-        self.callback = mock.Mock()
-        self.after = mock.Mock()
-        self.exception_call = mock.Mock()
-
-        @contextlib.contextmanager
-        def context_mgr():
-            self.before()
-            try:
-                yield lambda: self.callback()
-            except ExceptedException:
-                self.exception_call()
-            self.after()
-
-        self.mgr = context_mgr()
-
-    def test_normal_run(self):
-        thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
-        thread.wait()
-        self.assertEqual(1, self.before.call_count)
-        self.assertEqual(1, self.callback.call_count)
-        self.assertEqual(1, self.after.call_count)
-        self.assertEqual(0, self.exception_call.call_count)
-
-    def test_excepted_exception(self):
-        self.callback.side_effect = ExceptedException
-        thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
-        try:
-            thread.wait()
-        except ExceptedException:
-            pass
-        self.assertEqual(1, self.before.call_count)
-        self.assertEqual(1, self.callback.call_count)
-        self.assertEqual(1, self.after.call_count)
-        self.assertEqual(1, self.exception_call.call_count)
-
-    def test_unexcepted_exception(self):
-        self.callback.side_effect = Exception
-        thread = impl_eventlet.spawn_with(self.mgr, pool=eventlet)
-        try:
-            thread.wait()
-        except Exception:
-            pass
-        self.assertEqual(1, self.before.call_count)
-        self.assertEqual(1, self.callback.call_count)
-        self.assertEqual(0, self.after.call_count)
-        self.assertEqual(0, self.exception_call.call_count)

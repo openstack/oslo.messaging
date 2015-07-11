@@ -24,7 +24,6 @@ __all__ = [
     'ExpectedException',
 ]
 
-import contextlib
 import logging
 import sys
 
@@ -130,10 +129,11 @@ class RPCDispatcher(object):
             result = func(ctxt, **new_args)
         return self.serializer.serialize_entity(ctxt, result)
 
-    @contextlib.contextmanager
     def __call__(self, incoming, executor_callback=None):
         incoming.acknowledge()
-        yield lambda: self._dispatch_and_reply(incoming, executor_callback)
+        return utils.DispatcherExecutorContext(
+            incoming, self._dispatch_and_reply,
+            executor_callback=executor_callback)
 
     def _dispatch_and_reply(self, incoming, executor_callback):
         try:

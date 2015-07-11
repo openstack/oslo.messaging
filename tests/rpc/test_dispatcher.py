@@ -120,8 +120,9 @@ class TestDispatcher(test_utils.BaseTestCase):
         incoming = mock.Mock(ctxt=self.ctxt, message=self.msg)
         incoming.reply.side_effect = check_reply
 
-        with dispatcher(incoming) as callback:
-            callback()
+        callback = dispatcher(incoming)
+        callback.run()
+        callback.done()
 
         for n, endpoint in enumerate(endpoints):
             for method_name in ['foo', 'bar']:

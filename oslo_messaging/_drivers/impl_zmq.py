@@ -35,7 +35,7 @@ from stevedore import driver
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._executors import base as executor_base  # FIXME(markmc)
+from oslo_messaging._executors import impl_pooledexecutor  # FIXME(markmc)
 from oslo_messaging._i18n import _, _LE, _LW
 from oslo_messaging._drivers import pool
 
@@ -1001,7 +1001,7 @@ class ZmqDriver(base.BaseDriver):
         if not zmq:
             raise ImportError("Failed to import eventlet.green.zmq")
         conf.register_opts(zmq_opts)
-        conf.register_opts(executor_base._pool_opts)
+        conf.register_opts(impl_pooledexecutor._pool_opts)
         conf.register_opts(base.base_opts)
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,

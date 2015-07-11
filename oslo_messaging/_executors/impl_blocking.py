@@ -13,15 +13,28 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
+import futurist
 
-from oslo_messaging._executors import base
-from oslo_messaging._i18n import _
-
-LOG = logging.getLogger(__name__)
+from oslo_messaging._executors import impl_pooledexecutor
 
 
-class BlockingExecutor(base.ExecutorBase):
+class FakeBlockingThread(object):
+    def __init__(self, target):
+        self._target = target
+
+    def start(self):
+        self._target()
+
+    @staticmethod
+    def join():
+        pass
+
+    @staticmethod
+    def stop():
+        pass
+
+
+class BlockingExecutor(impl_pooledexecutor.PooledExecutor):
 
     """A message executor which blocks the current thread.
 
@@ -34,24 +47,5 @@ class BlockingExecutor(base.ExecutorBase):
     for simple demo programs.
     """
 
-    def __init__(self, conf, listener, dispatcher):
-        super(BlockingExecutor, self).__init__(conf, listener, dispatcher)
-        self._running = False
-
-    def start(self):
-        self._running = True
-        while self._running:
-            try:
-                incoming = self.listener.poll()
-                if incoming is not None:
-                    with self.dispatcher(incoming) as callback:
-                        callback()
-            except Exception:
-                LOG.exception(_("Unexpected exception occurred."))
-
-    def stop(self):
-        self._running = False
-        self.listener.stop()
-
-    def wait(self):
-        pass
+    _executor_cls = lambda __, ___: futurist.SynchronousExecutor()
+    _thread_cls = FakeBlockingThread

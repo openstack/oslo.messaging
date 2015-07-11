@@ -70,6 +70,4 @@ class AsyncioEventletExecutor(impl_eventlet.EventletExecutor):
             result = aioeventlet.yield_future(result, loop=self._loop)
         return result
 
-    def _dispatch(self, incoming):
-        ctx = self.dispatcher(incoming, self._coroutine_wrapper)
-        impl_eventlet.spawn_with(ctxt=ctx, pool=self._greenpool)
+    _executor_callback = _coroutine_wrapper

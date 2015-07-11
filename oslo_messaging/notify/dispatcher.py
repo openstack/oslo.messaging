@@ -14,11 +14,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import itertools
 import logging
 import sys
 
+from oslo_messaging import _utils as utils
 from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
 
@@ -68,14 +68,15 @@ class NotificationDispatcher(object):
         return transport._listen_for_notifications(self._targets_priorities,
                                                    pool=self.pool)
 
-    @contextlib.contextmanager
     def __call__(self, incoming, executor_callback=None):
-        result_wrapper = []
+        return utils.DispatcherExecutorContext(
+            incoming, self._dispatch_and_handle_error,
+            executor_callback=executor_callback,
+            post=self._post_dispatch)
 
-        yield lambda: result_wrapper.append(
-            self._dispatch_and_handle_error(incoming, executor_callback))
-
-        if result_wrapper[0] == NotificationResult.HANDLED:
+    @staticmethod
+    def _post_dispatch(incoming, result):
+        if result == NotificationResult.HANDLED:
             incoming.acknowledge()
         else:
             incoming.requeue()
