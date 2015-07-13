@@ -18,8 +18,8 @@ import collections
 import threading
 
 from concurrent import futures
-from oslo.config import cfg
-from oslo.utils import excutils
+from oslo_config import cfg
+from oslo_utils import excutils
 
 from oslo_messaging._executors import base
 

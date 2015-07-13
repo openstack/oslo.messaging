@@ -25,10 +25,10 @@ import logging
 import sys
 import time
 
-from oslo.config import cfg
-from oslo import messaging
-from oslo.messaging import notify
-from oslo.messaging import rpc
+from oslo_config import cfg
+import oslo_messaging as messaging
+from oslo_messaging import notify  # noqa
+from oslo_messaging import rpc  # noqa
 
 LOG = logging.getLogger()
 
