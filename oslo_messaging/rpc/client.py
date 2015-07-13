@@ -166,6 +166,14 @@ class _CallContext(object):
                  version=_marker, server=_marker, fanout=_marker,
                  timeout=_marker, version_cap=_marker, retry=_marker):
         """Prepare a method invocation context. See RPCClient.prepare()."""
+        if version is not None and version is not cls._marker:
+            # quick sanity check to make sure parsable version numbers are used
+            try:
+                utils.version_is_compatible(version, version)
+            except (IndexError, ValueError):
+                raise exceptions.MessagingException(
+                    "Version must contain a major and minor integer. Got %s"
+                    % version)
         kwargs = dict(
             exchange=exchange,
             topic=topic,
