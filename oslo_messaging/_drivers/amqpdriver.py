@@ -19,6 +19,7 @@ import logging
 import threading
 import uuid
 
+import cachetools
 from six import moves
 
 import oslo_messaging
@@ -27,13 +28,15 @@ from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LI
+from oslo_messaging._i18n import _LW
 
 LOG = logging.getLogger(__name__)
 
 
 class AMQPIncomingMessage(base.IncomingMessage):
 
-    def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q):
+    def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q,
+                 obsolete_reply_queues):
         super(AMQPIncomingMessage, self).__init__(listener, ctxt,
                                                   dict(message))
 
@@ -42,9 +45,15 @@ class AMQPIncomingMessage(base.IncomingMessage):
         self.reply_q = reply_q
         self.acknowledge_callback = message.acknowledge
         self.requeue_callback = message.requeue
+        self._obsolete_reply_queues = obsolete_reply_queues
 
     def _send_reply(self, conn, reply=None, failure=None,
                     ending=False, log_failure=True):
+        if (self.reply_q and
+            not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
+                                                          self.msg_id)):
+            return
+
         if failure:
             failure = rpc_common.serialize_remote_exception(failure,
                                                             log_failure)
@@ -60,8 +69,15 @@ class AMQPIncomingMessage(base.IncomingMessage):
         # Otherwise use the msg_id for backward compatibility.
         if self.reply_q:
             msg['_msg_id'] = self.msg_id
-            conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
+            try:
+                conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
+            except rpc_amqp.AMQPDestinationNotFound:
+                self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
         else:
+            # TODO(sileht): look at which version of oslo-incubator rpc
+            # send need this, but I guess this is older than icehouse
+            # if this is icehouse, we can drop this at M
+            # if this is havana, we can drop this now.
             conn.direct_send(self.msg_id, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None, log_failure=True):
@@ -69,6 +85,13 @@ class AMQPIncomingMessage(base.IncomingMessage):
             # NOTE(Alexei_987) not sending reply, if msg_id is empty
             #    because reply should not be expected by caller side
             return
+
+        # NOTE(sileht): return without hold the a connection if possible
+        if (self.reply_q and
+            not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
+                                                          self.msg_id)):
+            return
+
         with self.listener.driver._get_connection(
                 rpc_amqp.PURPOSE_SEND) as conn:
             if self.listener.driver.send_single_reply:
@@ -92,6 +115,51 @@ class AMQPIncomingMessage(base.IncomingMessage):
         self.requeue_callback()
 
 
+class ObsoleteReplyQueuesCache(object):
+    """Cache of reply queue id that doesn't exists anymore.
+
+    NOTE(sileht): In case of a broker restart/failover
+    a reply queue can be unreachable for short period
+    the IncomingMessage.send_reply will block for 60 seconds
+    in this case or until rabbit recovers.
+
+    But in case of the reply queue is unreachable because the
+    rpc client is really gone, we can have a ton of reply to send
+    waiting 60 seconds.
+    This leads to a starvation of connection of the pool
+    The rpc server take to much time to send reply, other rpc client will
+    raise TimeoutError because their don't receive their replies in time.
+
+    This object cache stores already known gone client to not wait 60 seconds
+    and hold a connection of the pool.
+    Keeping 200 last gone rpc client for 1 minute is enough
+    and doesn't hold to much memory.
+    """
+
+    SIZE = 200
+    TTL = 60
+
+    def __init__(self):
+        self._lock = threading.RLock()
+        self._cache = cachetools.TTLCache(self.SIZE, self.TTL)
+
+    def reply_q_valid(self, reply_q, msg_id):
+        if reply_q in self._cache:
+            self._no_reply_log(reply_q, msg_id)
+            return False
+        return True
+
+    def add(self, reply_q, msg_id):
+        with self._lock:
+            self._cache.update({reply_q: msg_id})
+        self._no_reply_log(reply_q, msg_id)
+
+    def _no_reply_log(self, reply_q, msg_id):
+        LOG.warn(_LW("%(reply_queue)s doesn't exists, drop reply to "
+                     "%(msg_id)s"), {'reply_queue': reply_q,
+                                     'msg_id': msg_id})
+
+
 class AMQPListener(base.Listener):
 
     def __init__(self, driver, conn):
@@ -100,6 +168,7 @@ class AMQPListener(base.Listener):
         self.msg_id_cache = rpc_amqp._MsgIdCache()
         self.incoming = []
         self._stopped = threading.Event()
+        self._obsolete_reply_queues = ObsoleteReplyQueuesCache()
 
     def __call__(self, message):
         ctxt = rpc_amqp.unpack_context(self.conf, message)
@@ -116,7 +185,8 @@ class AMQPListener(base.Listener):
                                                  message,
                                                  unique_id,
                                                  ctxt.msg_id,
-                                                 ctxt.reply_q))
+                                                 ctxt.reply_q,
+                                                 self._obsolete_reply_queues))
 
     def poll(self, timeout=None):
         while not self._stopped.is_set():
