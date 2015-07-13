@@ -14,7 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from concurrent import futures
+import futurist
 
 from oslo_messaging._executors import impl_pooledexecutor
 
@@ -26,4 +26,5 @@ class ThreadExecutor(impl_pooledexecutor.PooledExecutor):
     on reception of an incoming message places the message to be processed in
     a thread pool to be executed at a later time.
     """
-    _executor_cls = futures.ThreadPoolExecutor
+
+    _executor_cls = futurist.ThreadPoolExecutor

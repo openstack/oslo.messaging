@@ -15,6 +15,7 @@
 #    under the License.
 
 import collections
+import functools
 import threading
 
 from concurrent import futures
@@ -31,24 +32,29 @@ _pool_opts = [
 
 
 class PooledExecutor(base.ExecutorBase):
-    """A message executor which integrates with threads.
+    """A message executor which integrates with some async executor.
 
-    A message process that polls for messages from a dispatching thread and
-    on reception of an incoming message places the message to be processed in
-    a thread pool to be executed at a later time.
+    This will create a message thread that polls for messages from a
+    dispatching thread and on reception of an incoming message places the
+    message to be processed into a async executor to be executed at a later
+    time.
     """
 
-    # NOTE(harlowja): if eventlet is being used and the thread module is monkey
-    # patched this should/is supposed to work the same as the eventlet based
-    # executor.
-
-    # NOTE(harlowja): Make it somewhat easy to change this via
-    # inheritance (since there does exist other executor types that could be
-    # used/tried here).
-    _executor_cls = futures.ThreadPoolExecutor
+    # These may be overridden by subclasses (and implemented using whatever
+    # objects make most sense for the provided async execution model).
     _event_cls = threading.Event
     _lock_cls = threading.Lock
+
+    # Pooling and dispatching (executor submission) will happen from a
+    # thread created from this class/function.
     _thread_cls = threading.Thread
+
+    # This one **must** be overridden by a subclass.
+    _executor_cls = None
+
+    # Blocking function that should wait for all provided futures to finish.
+    _wait_for_all = functools.partial(futures.wait,
+                                      return_when=futures.ALL_COMPLETED)
 
     def __init__(self, conf, listener, dispatcher):
         super(PooledExecutor, self).__init__(conf, listener, dispatcher)
@@ -108,5 +114,5 @@ class PooledExecutor(base.ExecutorBase):
                 incomplete_fs = list(self._incomplete)
                 self._incomplete.clear()
             if incomplete_fs:
-                futures.wait(incomplete_fs, return_when=futures.ALL_COMPLETED)
+                self._wait_for_all(incomplete_fs)
             self._executor = None
