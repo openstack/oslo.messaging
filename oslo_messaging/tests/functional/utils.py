@@ -61,7 +61,10 @@ class TransportFixture(fixtures.Fixture):
         self.transport = oslo_messaging.get_transport(cfg.CONF, url=self.url)
 
     def cleanUp(self):
-        self.transport.cleanup()
+        try:
+            self.transport.cleanup()
+        except fixtures.TimeoutException:
+            pass
         super(TransportFixture, self).cleanUp()
 
     def wait(self):
@@ -271,8 +274,8 @@ class IsValidDistributionOf(object):
 
 
 class SkipIfNoTransportURL(test_utils.BaseTestCase):
-    def setUp(self):
-        super(SkipIfNoTransportURL, self).setUp()
+    def setUp(self, conf=cfg.CONF):
+        super(SkipIfNoTransportURL, self).setUp(conf=conf)
         self.url = os.environ.get('TRANSPORT_URL')
         if not self.url:
             self.skipTest("No transport url configured")
