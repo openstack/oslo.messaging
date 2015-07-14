@@ -24,8 +24,6 @@ from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
 
-zmq = zmq_async.import_zmq()
-
 
 class ZmqBroker(object):
     """Local messaging IPC broker (nodes are still peers).
@@ -42,6 +40,7 @@ class ZmqBroker(object):
 
     def __init__(self, conf):
         super(ZmqBroker, self).__init__()
+        zmq = zmq_async.import_zmq(native_zmq=conf.rpc_zmq_native)
         self.conf = conf
         self.context = zmq.Context()
         proxy = zmq_universal_proxy.UniversalProxy(conf, self.context)

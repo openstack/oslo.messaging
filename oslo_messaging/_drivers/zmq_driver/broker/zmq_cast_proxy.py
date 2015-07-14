@@ -42,8 +42,8 @@ class CastProxy(base_proxy.BaseProxy):
 class FrontendTcpPull(base_proxy.BaseTcpFrontend):
 
     def __init__(self, conf, context):
-        super(FrontendTcpPull, self).__init__(conf, zmq_async.get_poller(),
-                                              context)
+        poller = zmq_async.get_poller(native_zmq=conf.rpc_zmq_native)
+        super(FrontendTcpPull, self).__init__(conf, poller, context)
         self.frontend = self.context.socket(zmq.PULL)
         address = zmq_topic.get_tcp_bind_address(conf.rpc_zmq_fanout_port)
         LOG.info(_LI("Binding to TCP PULL %s") % address)
@@ -58,9 +58,8 @@ class FrontendTcpPull(base_proxy.BaseTcpFrontend):
 class CastPushBackendMatcher(base_proxy.BaseBackendMatcher):
 
     def __init__(self, conf, context):
-        super(CastPushBackendMatcher, self).__init__(conf,
-                                                     zmq_async.get_poller(),
-                                                     context)
+        poller = zmq_async.get_poller(native_zmq=conf.rpc_zmq_native)
+        super(CastPushBackendMatcher, self).__init__(conf, poller, context)
         self.backend = self.context.socket(zmq.PUSH)
 
     def _get_topic(self, message):

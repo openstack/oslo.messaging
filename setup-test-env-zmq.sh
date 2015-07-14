@@ -24,7 +24,4 @@ redis-server --port $ZMQ_REDIS_PORT &
 
 oslo-messaging-zmq-receiver --config-file ${DATADIR}/zmq.conf > ${DATADIR}/receiver.log 2>&1 &
 
-# FIXME(sileht): This does the same kind of setup that devstack does
-# But this doesn't work yet, a zeromq maintener should take a look on that
-
 $*

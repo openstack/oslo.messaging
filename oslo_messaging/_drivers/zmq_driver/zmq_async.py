@@ -23,8 +23,12 @@ LOG = logging.getLogger(__name__)
 green_zmq = importutils.try_import('eventlet.green.zmq')
 
 
-def import_zmq():
-    imported_zmq = green_zmq or importutils.try_import('zmq')
+def import_zmq(native_zmq=False):
+    if native_zmq:
+        imported_zmq = importutils.try_import('zmq')
+    else:
+        imported_zmq = green_zmq or importutils.try_import('zmq')
+
     if imported_zmq is None:
         errmsg = _LE("ZeroMQ not found!")
         LOG.error(errmsg)
@@ -32,28 +36,28 @@ def import_zmq():
     return imported_zmq
 
 
-def get_poller():
-    if green_zmq:
+def get_poller(native_zmq=False):
+    if native_zmq or green_zmq is None:
+        from oslo_messaging._drivers.zmq_driver.poller import threading_poller
+        return threading_poller.ThreadingPoller()
+    else:
         from oslo_messaging._drivers.zmq_driver.poller import green_poller
         return green_poller.GreenPoller()
-    else:
+
+
+def get_reply_poller(native_zmq=False):
+    if native_zmq or green_zmq is None:
         from oslo_messaging._drivers.zmq_driver.poller import threading_poller
         return threading_poller.ThreadingPoller()
-
-
-def get_reply_poller():
-    if green_zmq:
+    else:
         from oslo_messaging._drivers.zmq_driver.poller import green_poller
         return green_poller.HoldReplyPoller()
-    else:
+
+
+def get_executor(method, native_zmq=False):
+    if native_zmq or green_zmq is None:
         from oslo_messaging._drivers.zmq_driver.poller import threading_poller
-        return threading_poller.ThreadingPoller()
-
-
-def get_executor(method):
-    if green_zmq is not None:
+        return threading_poller.ThreadingExecutor(method)
+    else:
         from oslo_messaging._drivers.zmq_driver.poller import green_poller
         return green_poller.GreenExecutor(method)
-    else:
-        from oslo_messaging._drivers.zmq_driver.poller import threading_poller
-        return threading_poller.ThreadingExecutor()

@@ -41,7 +41,8 @@ class BaseProxy(object):
         super(BaseProxy, self).__init__()
         self.conf = conf
         self.context = context
-        self.executor = zmq_async.get_executor(self.run)
+        self.executor = zmq_async.get_executor(
+            self.run, native_zmq=conf.rpc_zmq_native)
 
     @abc.abstractmethod
     def run(self):
@@ -132,9 +133,8 @@ class DirectBackendMatcher(BaseBackendMatcher):
     def _match_backend(self, message):
         topic = self._get_topic(message)
         ipc_address = self._get_ipc_address(topic)
-        if ipc_address not in self.backends:
-            self._create_backend(ipc_address)
-        return self.backend, topic
+        backend = self._create_backend(ipc_address)
+        return backend, topic
 
     @abc.abstractmethod
     def _get_topic(self, message):

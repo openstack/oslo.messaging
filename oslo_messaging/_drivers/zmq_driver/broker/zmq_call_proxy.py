@@ -46,12 +46,11 @@ class CallProxy(base_proxy.BaseProxy):
 
 class DealerBackend(base_proxy.DirectBackendMatcher):
 
-    def __init__(self, conf, context):
-        super(DealerBackend, self).__init__(conf,
-                                            zmq_async.get_poller(),
-                                            context)
-        self.backend = self.context.socket(zmq.DEALER)
-        self.poller.register(self.backend)
+    def __init__(self, conf, context, poller=None):
+        if poller is None:
+            poller = zmq_async.get_poller(
+                native_zmq=conf.rpc_zmq_native)
+        super(DealerBackend, self).__init__(conf, poller, context)
 
     def receive_outgoing_reply(self):
         reply_message = self.poller.poll(1)
@@ -71,16 +70,22 @@ class DealerBackend(base_proxy.DirectBackendMatcher):
         backend.send_multipart(message)
 
     def _create_backend(self, ipc_address):
-        self.backend.connect(ipc_address)
-        self.backends[str(ipc_address)] = True
+        if ipc_address in self.backends:
+            return self.backends[ipc_address]
+        backend = self.context.socket(zmq.DEALER)
+        backend.connect(ipc_address)
+        self.poller.register(backend)
+        self.backends[ipc_address] = backend
+        return backend
 
 
 class FrontendTcpRouter(base_proxy.BaseTcpFrontend):
 
-    def __init__(self, conf, context):
-        super(FrontendTcpRouter, self).__init__(conf,
-                                                zmq_async.get_poller(),
-                                                context,
+    def __init__(self, conf, context, poller=None):
+        if poller is None:
+            poller = zmq_async.get_poller(
+                native_zmq=conf.rpc_zmq_native)
+        super(FrontendTcpRouter, self).__init__(conf, poller, context,
                                                 socket_type=zmq.ROUTER,
                                                 port_number=conf.rpc_zmq_port)
 

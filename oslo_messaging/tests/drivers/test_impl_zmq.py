@@ -150,7 +150,7 @@ class TestZmqBasics(ZmqBaseTestCase):
             target, {},
             {'method': 'hello-world', 'tx_id': 1},
             wait_for_reply=True)
-        self.assertIsNotNone(result)
+        self.assertTrue(result)
 
     def test_send_noreply(self):
         """Cast() with topic."""

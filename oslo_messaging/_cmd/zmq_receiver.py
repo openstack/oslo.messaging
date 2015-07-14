@@ -14,9 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import eventlet
-eventlet.monkey_patch()
-
 import contextlib
 import logging
 import sys
@@ -30,6 +27,9 @@ from oslo_messaging._executors import base  # FIXME(markmc)
 CONF = cfg.CONF
 CONF.register_opts(impl_zmq.zmq_opts)
 CONF.register_opts(base._pool_opts)
+# TODO(ozamiatin): Move this option assignment to an external config file
+# Use efficient zmq poller in real-world deployment
+CONF.rpc_zmq_native = True
 
 
 def main():

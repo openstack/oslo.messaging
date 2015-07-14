@@ -60,8 +60,9 @@ class CallRequest(Request):
             raise oslo_messaging.MessagingTimeout(
                 "Timeout %s seconds was reached" % self.timeout)
 
-        if reply['failure']:
+        if reply[zmq_serializer.FIELD_FAILURE]:
             raise rpc_common.deserialize_remote_exception(
-                reply['failure'], self.allowed_remote_exmods)
+                reply[zmq_serializer.FIELD_FAILURE],
+                self.allowed_remote_exmods)
         else:
-            return reply['reply']
+            return reply[zmq_serializer.FIELD_REPLY]

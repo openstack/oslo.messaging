@@ -45,8 +45,12 @@ zmq_opts = [
 
     cfg.BoolOpt('rpc_zmq_all_req_rep',
                 default=True,
-                deprecated_group='DEFAULT',
                 help='Use REQ/REP pattern for all methods CALL/CAST/FANOUT.'),
+
+    cfg.BoolOpt('rpc_zmq_native',
+                default=False,
+                help='Switches ZeroMQ eventlet/threading way of usage.'
+                     'Affects pollers, executors etc.'),
 
     # The following port is unassigned by IANA as of 2012-05-21
     cfg.IntOpt('rpc_zmq_port', default=9501,

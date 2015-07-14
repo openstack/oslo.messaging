@@ -75,8 +75,7 @@ class Listener(object):
 
     def cleanup(self):
         """Cleanup listener.
-        Close connection used by listener if any. For some listeners like
-        zmq there is no connection so no need to close connection.
+        Close connection (socket) used by listener if any.
         As this is listener specific method, overwrite it in to derived class
         if cleanup of listener required.
         """

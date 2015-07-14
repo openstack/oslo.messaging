@@ -15,36 +15,60 @@
 import logging
 import threading
 
+from oslo_utils import eventletutils
 import zmq
 
 from oslo_messaging._drivers.zmq_driver import zmq_poller
 
 LOG = logging.getLogger(__name__)
 
+_threading = threading
+
+if eventletutils.EVENTLET_AVAILABLE:
+    import eventlet
+    _threading = eventlet.patcher.original('threading')
+
 
 class ThreadingPoller(zmq_poller.ZmqPoller):
 
     def __init__(self):
         self.poller = zmq.Poller()
+        self.recv_methods = {}
 
-    def register(self, socket):
-        self.poller.register(socket, zmq.POLLOUT)
+    def register(self, socket, recv_method=None):
+        if recv_method is not None:
+            self.recv_methods[socket] = recv_method
+        self.poller.register(socket, zmq.POLLIN)
 
     def poll(self, timeout=None):
-        socks = dict(self.poller.poll(timeout))
-        for socket in socks:
-            incoming = socket.recv()
-            return incoming
+        timeout = timeout * 1000  # zmq poller waits milliseconds
+        sockets = dict(self.poller.poll(timeout=timeout))
+        if not sockets:
+            return None, None
+        for socket in sockets:
+            if socket in self.recv_methods:
+                return self.recv_methods[socket](socket)
+            else:
+                return socket.recv_multipart(), socket
 
 
 class ThreadingExecutor(zmq_poller.Executor):
 
     def __init__(self, method):
-        thread = threading.Thread(target=method)
-        super(ThreadingExecutor, self).__init__(thread)
+        self._method = method
+        super(ThreadingExecutor, self).__init__(
+            _threading.Thread(target=self._loop))
+        self._stop = _threading.Event()
+
+    def _loop(self):
+        while not self._stop.is_set():
+            self._method()
 
     def execute(self):
         self.thread.start()
+
+    def stop(self):
+        self._stop.set()
 
     def wait(self):
         self.thread.join()

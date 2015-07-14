@@ -26,6 +26,10 @@ LOG = logging.getLogger(__name__)
 MESSAGE_CALL_TYPE_POSITION = 2
 MESSAGE_CALL_TOPIC_POSITION = 3
 
+FIELD_FAILURE = 'failure'
+FIELD_REPLY = 'reply'
+FIELD_LOG_FAILURE = 'log_failure'
+
 CALL_TYPE = 'call'
 CAST_TYPE = 'cast'
 FANOUT_TYPE = 'fanout'

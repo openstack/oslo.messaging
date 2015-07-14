@@ -24,9 +24,8 @@ zmq = zmq_async.import_zmq()
 class PublisherBackend(base_proxy.BaseBackendMatcher):
 
     def __init__(self, conf, context):
-        super(PublisherBackend, self).__init__(conf,
-                                               zmq_async.get_poller(),
-                                               context)
+        poller = zmq_async.get_poller(native_zmq=conf.rpc_zmq_native)
+        super(PublisherBackend, self).__init__(conf, poller, context)
         self.backend = self.context.socket(zmq.PUB)
         self.backend.bind(zmq_topic.get_ipc_address_fanout(conf))
 
