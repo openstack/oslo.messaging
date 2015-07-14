@@ -19,7 +19,7 @@ from eventlet.green import threading as greenthreading
 import futurist
 
 from oslo_messaging._executors import impl_pooledexecutor
-from oslo_messaging import localcontext
+from oslo_utils import eventletutils
 
 LOG = logging.getLogger(__name__)
 
@@ -37,13 +37,9 @@ class EventletExecutor(impl_pooledexecutor.PooledExecutor):
 
     def __init__(self, conf, listener, dispatcher):
         super(EventletExecutor, self).__init__(conf, listener, dispatcher)
-        if not isinstance(localcontext._STORE, greenthreading.local):
-            LOG.debug('eventlet executor in use but the threading module '
-                      'has not been monkeypatched or has been '
-                      'monkeypatched after the oslo.messaging library '
-                      'have been loaded. This will results in unpredictable '
-                      'behavior. In the future, we will raise a '
-                      'RuntimeException in this case.')
+        eventletutils.warn_eventlet_not_patched(
+            expected_patched_modules=['thread'],
+            what="the 'oslo.messaging eventlet executor'")
 
     _executor_cls = futurist.GreenThreadPoolExecutor
     _lock_cls = greenthreading.Lock
