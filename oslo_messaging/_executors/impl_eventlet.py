@@ -25,7 +25,6 @@ LOG = logging.getLogger(__name__)
 
 
 class EventletExecutor(impl_pooledexecutor.PooledExecutor):
-
     """A message executor which integrates with eventlet.
 
     This is an executor which polls for incoming messages from a greenthread

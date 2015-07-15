@@ -35,7 +35,6 @@ class FakeBlockingThread(object):
 
 
 class BlockingExecutor(impl_pooledexecutor.PooledExecutor):
-
     """A message executor which blocks the current thread.
 
     The blocking executor's start() method functions as a request processing
