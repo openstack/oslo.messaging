@@ -65,6 +65,31 @@ class PooledExecutor(base.ExecutorBase):
         self._incomplete = collections.deque()
         self._mutator = self._lock_cls()
 
+    def _do_submit(self, callback):
+        def _on_done(fut):
+            with self._mutator:
+                try:
+                    self._incomplete.remove(fut)
+                except ValueError:
+                    pass
+            callback.done()
+        try:
+            fut = self._executor.submit(callback.run)
+        except RuntimeError:
+            # This is triggered when the executor has been shutdown...
+            #
+            # TODO(harlowja): should we put whatever we pulled off back
+            # since when this is thrown it means the executor has been
+            # shutdown already??
+            callback.done()
+            return False
+        else:
+            with self._mutator:
+                self._incomplete.append(fut)
+            # Run the other post processing of the callback when done...
+            fut.add_done_callback(_on_done)
+            return True
+
     @excutils.forever_retry_uncaught_exceptions
     def _runner(self):
         while not self._tombstone.is_set():
@@ -72,21 +97,9 @@ class PooledExecutor(base.ExecutorBase):
             if incoming is None:
                 continue
             callback = self.dispatcher(incoming, self._executor_callback)
-            try:
-                fut = self._executor.submit(callback.run)
-            except RuntimeError:
-                # This is triggered when the executor has been shutdown...
-                #
-                # TODO(harlowja): should we put whatever we pulled off back
-                # since when this is thrown it means the executor has been
-                # shutdown already??
-                callback.done()
-                return
-            else:
-                with self._mutator:
-                    self._incomplete.append(fut)
-                # Run the other post processing of the callback when done...
-                fut.add_done_callback(lambda f: callback.done())
+            was_submitted = self._do_submit(callback)
+            if not was_submitted:
+                break
 
     def start(self):
         if self._executor is None:

@@ -31,17 +31,30 @@ class RestartableServerThread(object):
     def __init__(self, server):
         self.server = server
         self.thread = None
+        self._started = threading.Event()
+        self._tombstone = threading.Event()
 
     def start(self):
+        self._tombstone.clear()
         if self.thread is None:
-            self.thread = threading.Thread(target=self.server.start)
+            self._started.clear()
+            self.thread = threading.Thread(target=self._target)
             self.thread.daemon = True
             self.thread.start()
+            self._started.wait()
+
+    def _target(self):
+        self.server.start()
+        self._started.set()
+        self._tombstone.wait()
 
     def stop(self):
         if self.thread is not None:
             # Check start() does nothing with a running listener
             self.server.start()
+
+        self._tombstone.set()
+        if self.thread is not None:
             self.server.stop()
             self.server.wait()
             self.thread.join(timeout=15)
@@ -101,7 +114,7 @@ class ListenerSetupMixin(object):
             tracker_name, self.ThreadTracker())
         listener = oslo_messaging.get_notification_listener(
             transport, targets=targets, endpoints=[tracker] + endpoints,
-            allow_requeue=True, pool=pool)
+            allow_requeue=True, pool=pool, executor='eventlet')
 
         thread = RestartableServerThread(listener)
         tracker.start(thread)
