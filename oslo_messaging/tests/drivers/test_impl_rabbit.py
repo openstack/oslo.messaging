@@ -474,7 +474,9 @@ class TestSendReceive(test_utils.BaseTestCase):
             # NOTE(sileht) all reply fail, first take
             # kombu_reconnect_timeout seconds to fail
             # next immediatly fail
-            self.assertAlmostEqual(0.5, time.time() - start, 1)
+            dt = time.time() - start
+            timeout = self.conf.oslo_messaging_rabbit.kombu_reconnect_timeout
+            self.assertTrue(timeout <= dt < (timeout + 0.100), dt)
 
         self.assertEqual(len(senders), len(replies))
         for i, reply in enumerate(replies):
