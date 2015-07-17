@@ -47,7 +47,7 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
             return None, None
         for socket in sockets:
             if socket in self.recv_methods:
-                return self.recv_methods[socket](socket)
+                return self.recv_methods[socket](socket), socket
             else:
                 return socket.recv_multipart(), socket
 

@@ -16,7 +16,7 @@
 import oslo_messaging._drivers.zmq_driver.broker.zmq_base_proxy as base_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
-from oslo_messaging._drivers.zmq_driver import zmq_topic
+from oslo_messaging._drivers.zmq_driver import zmq_target
 
 zmq = zmq_async.import_zmq()
 
@@ -27,8 +27,9 @@ class PublisherBackend(base_proxy.BaseBackendMatcher):
         poller = zmq_async.get_poller(native_zmq=conf.rpc_zmq_native)
         super(PublisherBackend, self).__init__(conf, poller, context)
         self.backend = self.context.socket(zmq.PUB)
-        self.backend.bind(zmq_topic.get_ipc_address_fanout(conf))
+        self.backend.bind(zmq_target.get_ipc_address_fanout(conf))
 
     def redirect_to_backend(self, message):
-        topic_pos = zmq_serializer.MESSAGE_CALL_TOPIC_POSITION
-        self.backend.send_multipart(message[topic_pos:])
+        target_pos = zmq_serializer.MESSAGE_CALL_TARGET_POSITION + 1
+        msg = message[target_pos:]
+        self.backend.send_multipart(msg)

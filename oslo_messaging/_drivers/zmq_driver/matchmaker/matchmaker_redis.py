@@ -17,6 +17,7 @@ from oslo_config import cfg
 import redis
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import base
+from oslo_messaging._drivers.zmq_driver import zmq_target
 
 
 LOG = logging.getLogger(__name__)
@@ -47,9 +48,11 @@ class RedisMatchMaker(base.MatchMakerBase):
             password=self.conf.matchmaker_redis.password,
         )
 
-    def register(self, topic, hostname):
-        if hostname not in self.get_hosts(topic):
-            self._redis.lpush(topic, hostname)
+    def register(self, target, hostname):
+        key = zmq_target.target_to_str(target)
+        if hostname not in self.get_hosts(target):
+            self._redis.lpush(key, hostname)
 
-    def get_hosts(self, topic):
-        return self._redis.lrange(topic, 0, -1)[::-1]
+    def get_hosts(self, target):
+        key = zmq_target.target_to_str(target)
+        return self._redis.lrange(key, 0, -1)[::-1]

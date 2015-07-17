@@ -19,7 +19,7 @@ import six
 
 from oslo_messaging._drivers.common import RPCException
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_topic
+from oslo_messaging._drivers.zmq_driver import zmq_target
 from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
@@ -86,6 +86,8 @@ class BaseTcpFrontend(object):
         :type socket_type: int
         :param port_number: Current messaging pipeline port.
         :type port_number: int
+        :param receive_meth: Receive method for poller.
+        :type receive_meth: method
         """
 
         self.conf = conf
@@ -93,7 +95,7 @@ class BaseTcpFrontend(object):
         self.context = context
         try:
             self.frontend = self.context.socket(socket_type)
-            bind_address = zmq_topic.get_tcp_bind_address(port_number)
+            bind_address = zmq_target.get_tcp_bind_address(port_number)
             LOG.info(_LI("Binding to TCP %s") % bind_address)
             self.frontend.bind(bind_address)
             self.poller.register(self.frontend, receive_meth)
@@ -127,25 +129,25 @@ class BaseBackendMatcher(object):
 class DirectBackendMatcher(BaseBackendMatcher):
 
     def redirect_to_backend(self, message):
-        backend, topic = self._match_backend(message)
-        self._send_message(backend, message, topic)
+        backend, target = self._match_backend(message)
+        self._send_message(backend, message, target)
 
     def _match_backend(self, message):
-        topic = self._get_topic(message)
-        ipc_address = self._get_ipc_address(topic)
+        target = self._get_target(message)
+        ipc_address = self._get_ipc_address(target)
         backend = self._create_backend(ipc_address)
-        return backend, topic
+        return backend, target
 
     @abc.abstractmethod
-    def _get_topic(self, message):
+    def _get_target(self, message):
         """Extract topic from message"""
 
     @abc.abstractmethod
-    def _get_ipc_address(self, topic):
+    def _get_ipc_address(self, target):
         """Get ipc backend address from topic"""
 
     @abc.abstractmethod
-    def _send_message(self, backend, message, topic):
+    def _send_message(self, backend, message, target):
         """Backend specific sending logic"""
 
     @abc.abstractmethod

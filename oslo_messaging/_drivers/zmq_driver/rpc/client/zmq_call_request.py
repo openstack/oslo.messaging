@@ -19,7 +19,7 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
-from oslo_messaging._drivers.zmq_driver import zmq_topic
+from oslo_messaging._drivers.zmq_driver import zmq_target
 from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
@@ -42,9 +42,9 @@ class CallRequest(Request):
                                               zmq_serializer.CALL_TYPE,
                                               timeout, retry)
 
-            self.host = self.matchmaker.get_single_host(self.topic.topic)
-            self.connect_address = zmq_topic.get_tcp_address_call(conf,
-                                                                  self.host)
+            self.host = self.matchmaker.get_single_host(self.target)
+            self.connect_address = zmq_target.get_tcp_address_call(conf,
+                                                                   self.host)
             LOG.info(_LI("Connecting REQ to %s") % self.connect_address)
             self.socket.connect(self.connect_address)
         except zmq.ZMQError as e:

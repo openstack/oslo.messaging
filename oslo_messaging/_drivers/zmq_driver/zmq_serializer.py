@@ -23,7 +23,8 @@ from oslo_messaging._i18n import _LE, _LW
 
 LOG = logging.getLogger(__name__)
 
-MESSAGE_CALL_TYPE_POSITION = 2
+MESSAGE_CALL_TYPE_POSITION = 1
+MESSAGE_CALL_TARGET_POSITION = 2
 MESSAGE_CALL_TOPIC_POSITION = 3
 
 FIELD_FAILURE = 'failure'
@@ -40,8 +41,6 @@ MESSAGE_TYPES = (CALL_TYPE, CAST_TYPE, FANOUT_TYPE, NOTIFY_TYPE)
 
 def get_msg_type(message):
     type = message[MESSAGE_CALL_TYPE_POSITION]
-    if six.PY3:
-        type = type.decode('utf-8')
     if type not in MESSAGE_TYPES:
         errmsg = _LE("Unknown message type: %s") % str(type)
         LOG.error(errmsg)
@@ -88,3 +87,14 @@ def get_topic_from_call_message(message):
     :returns: (topic: str, server: str)
     """
     return _get_topic_from_msg(message, MESSAGE_CALL_TOPIC_POSITION)
+
+
+def get_target_from_call_message(message):
+    """Extract target from message.
+
+    :param message: A message
+    :type message: list
+
+    :returns: target: Target
+    """
+    return message[MESSAGE_CALL_TARGET_POSITION]

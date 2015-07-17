@@ -20,7 +20,7 @@ class ConsumerBase(object):
         self.conf = conf
         self.poller = zmq_poller
         self.context = context
-        self.sockets_per_topic = {}
+        self.sockets_per_target = {}
 
     def poll(self, timeout=None):
         pass

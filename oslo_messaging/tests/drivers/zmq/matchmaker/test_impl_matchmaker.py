@@ -15,6 +15,7 @@
 from stevedore import driver
 import testscenarios
 
+import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
 
 
@@ -39,37 +40,41 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         if self.rpc_zmq_matchmaker == "redis":
             self.addCleanup(self.test_matcher._redis.flushdb)
 
-        self.topic = "test_topic"
+        self.target = oslo_messaging.Target(topic="test_topic")
         self.host1 = b"test_host1"
         self.host2 = b"test_host2"
 
     def test_register(self):
-        self.test_matcher.register(self.topic, self.host1)
+        self.test_matcher.register(self.target, self.host1)
 
-        self.assertEqual(self.test_matcher.get_hosts(self.topic), [self.host1])
-        self.assertEqual(self.test_matcher.get_single_host(self.topic),
+        self.assertEqual(self.test_matcher.get_hosts(self.target),
+                         [self.host1])
+        self.assertEqual(self.test_matcher.get_single_host(self.target),
                          self.host1)
 
     def test_register_two_hosts(self):
-        self.test_matcher.register(self.topic, self.host1)
-        self.test_matcher.register(self.topic, self.host2)
+        self.test_matcher.register(self.target, self.host1)
+        self.test_matcher.register(self.target, self.host2)
 
-        self.assertEqual(self.test_matcher.get_hosts(self.topic),
+        self.assertEqual(self.test_matcher.get_hosts(self.target),
                          [self.host1, self.host2])
-        self.assertIn(self.test_matcher.get_single_host(self.topic),
+        self.assertIn(self.test_matcher.get_single_host(self.target),
                       [self.host1, self.host2])
 
     def test_register_two_same_hosts(self):
-        self.test_matcher.register(self.topic, self.host1)
-        self.test_matcher.register(self.topic, self.host1)
+        self.test_matcher.register(self.target, self.host1)
+        self.test_matcher.register(self.target, self.host1)
 
-        self.assertEqual(self.test_matcher.get_hosts(self.topic), [self.host1])
-        self.assertEqual(self.test_matcher.get_single_host(self.topic),
+        self.assertEqual(self.test_matcher.get_hosts(self.target),
+                         [self.host1])
+        self.assertEqual(self.test_matcher.get_single_host(self.target),
                          self.host1)
 
     def test_get_hosts_wrong_topic(self):
-        self.assertEqual(self.test_matcher.get_hosts("no_such_topic"), [])
+        target = oslo_messaging.Target(topic="no_such_topic")
+        self.assertEqual(self.test_matcher.get_hosts(target), [])
 
     def test_get_single_host_wrong_topic(self):
-        self.assertEqual(self.test_matcher.get_single_host("no_such_topic"),
+        target = oslo_messaging.Target(topic="no_such_topic")
+        self.assertEqual(self.test_matcher.get_single_host(target),
                          "localhost")

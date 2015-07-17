@@ -52,7 +52,7 @@ class ZmqServer(base.Listener):
     def listen(self, target):
         LOG.info("[Server] Listen to Target %s" % target)
 
-        self.matchmaker.register(topic=target.topic,
+        self.matchmaker.register(target=target,
                                  hostname=self.conf.rpc_zmq_host)
         if target.fanout:
             self.fanout_resp.listen(target)

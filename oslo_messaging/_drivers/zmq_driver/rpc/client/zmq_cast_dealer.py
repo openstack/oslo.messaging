@@ -18,7 +18,7 @@ from oslo_messaging._drivers.zmq_driver.rpc.client import zmq_cast_publisher
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
-from oslo_messaging._drivers.zmq_driver import zmq_topic
+from oslo_messaging._drivers.zmq_driver import zmq_target
 from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
@@ -57,9 +57,8 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
 
     def cast(self, target, context,
              message, timeout=None, retry=None):
-        topic = zmq_topic.Topic.from_target(self.conf, target)
-        host = self.matchmaker.get_single_host(topic.topic)
-        connect_address = zmq_topic.get_tcp_address_call(self.conf, host)
+        host = self.matchmaker.get_single_host(target)
+        connect_address = zmq_target.get_tcp_address_call(self.conf, host)
         dealer_socket = self._create_socket(connect_address)
         request = CastRequest(self.conf, target, context, message,
                               dealer_socket, connect_address, timeout, retry)

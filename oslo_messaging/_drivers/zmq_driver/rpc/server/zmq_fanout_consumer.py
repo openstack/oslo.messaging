@@ -20,7 +20,7 @@ import six
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_base_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_topic as topic_utils
+from oslo_messaging._drivers.zmq_driver import zmq_target as topic_utils
 from oslo_messaging._i18n import _LE
 
 
@@ -63,7 +63,7 @@ class FanoutConsumer(zmq_base_consumer.ConsumerBase):
             LOG.error(_LE("Receiving message failed ... {}"), e)
 
     def listen(self, target):
-        topic = topic_utils.Topic.from_target(self.conf, target)
+        topic = topic_utils.target_to_str(target)
         ipc_address = topic_utils.get_ipc_address_fanout(self.conf)
         sub_socket = self.context.socket(zmq.SUB)
         sub_socket.connect(ipc_address)

@@ -20,7 +20,7 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_base_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
-from oslo_messaging._drivers.zmq_driver import zmq_topic as topic_utils
+from oslo_messaging._drivers.zmq_driver import zmq_target
 from oslo_messaging._i18n import _LE
 
 
@@ -64,12 +64,8 @@ class CallResponder(zmq_base_consumer.ConsumerBase):
     def _receive_message(self, socket):
         try:
             reply_id = socket.recv()
-            empty = socket.recv()
-            assert empty == b'', 'Bad format: empty separator expected'
             msg_type = socket.recv_string()
             assert msg_type is not None, 'Bad format: msg type expected'
-            topic = socket.recv_string()
-            assert topic is not None, 'Bad format: topic string expected'
             msg_id = socket.recv_string()
             assert msg_id is not None, 'Bad format: message ID expected'
             context = socket.recv_json()
@@ -82,12 +78,12 @@ class CallResponder(zmq_base_consumer.ConsumerBase):
                                           self.poller)
             return incoming
         except zmq.ZMQError as e:
-            LOG.error(_LE("Receiving message failed ... %s") % str(e))
+            LOG.error(_LE("Receiving message failed: %s") % str(e))
 
     def listen(self, target):
-        topic = topic_utils.Topic.from_target(self.conf, target)
-        ipc_rep_address = topic_utils.get_ipc_address_call(self.conf, topic)
+        ipc_rep_address = zmq_target.get_ipc_address_call(self.conf, target)
         rep_socket = self.context.socket(zmq.REP)
         rep_socket.bind(ipc_rep_address)
-        self.sockets_per_topic[str(topic)] = rep_socket
+        str_target = zmq_target.target_to_str(target)
+        self.sockets_per_target[str_target] = rep_socket
         self.poller.register(rep_socket, self._receive_message)

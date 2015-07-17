@@ -21,7 +21,6 @@ import six
 
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
-from oslo_messaging._drivers.zmq_driver import zmq_topic
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -51,7 +50,6 @@ class Request(object):
         self.retry = retry
         self.reply = None
         self.socket = socket
-        self.topic = zmq_topic.Topic.from_target(conf, target)
 
     @property
     def is_replied(self):
@@ -63,7 +61,7 @@ class Request(object):
 
     def send_request(self):
         self.socket.send_string(self.msg_type, zmq.SNDMORE)
-        self.socket.send_string(str(self.topic), zmq.SNDMORE)
+        self.socket.send_json(self.target.__dict__, zmq.SNDMORE)
         self.socket.send_string(self.msg_id, zmq.SNDMORE)
         self.socket.send_json(self.context, zmq.SNDMORE)
         self.socket.send_json(self.message)
