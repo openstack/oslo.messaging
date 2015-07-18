@@ -153,7 +153,8 @@ class ConnectionContext(rpc_common.Connection):
                         self.connection.close()
                     except Exception:
                         pass
-                else:
+                    self.connection = self.connection_pool.create()
+                finally:
                     self.connection_pool.put(self.connection)
             else:
                 try:
