@@ -76,3 +76,23 @@ def list_opts():
     :returns: a list of (group_name, opts) tuples
     """
     return [(g, copy.deepcopy(o)) for g, o in _opts]
+
+
+def set_defaults(conf, executor_thread_pool_size=None):
+    """Set defaults for configuration variables.
+
+    Overrides default options values.
+
+    :param conf: Config instance specified to set default options in it. Using
+     of instances instead of a global config object prevents conflicts between
+     options declaration.
+    :type conf: oslo.config.cfg.ConfigOpts instance.
+
+    :keyword executor_thread_pool_size: Size of executor thread pool.
+    :type executor_thread_pool_size: int
+    :default executor_thread_pool_size: None
+
+    """
+    if executor_thread_pool_size is not None:
+        conf.set_default('executor_thread_pool_size',
+                         executor_thread_pool_size)

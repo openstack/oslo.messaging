@@ -465,7 +465,8 @@ class ZmqBaseReactor(ConsumerBase):
         self.sockets = []
         self.subscribe = {}
 
-        self.pool = eventlet.greenpool.GreenPool(conf.rpc_thread_pool_size)
+        self.pool = eventlet.greenpool.GreenPool(
+            conf.executor_thread_pool_size)
 
     def register(self, proxy, in_addr, zmq_type_in,
                  in_bind=True, subscribe=None):

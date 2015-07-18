@@ -25,9 +25,10 @@ from oslo_utils import excutils
 from oslo_messaging._executors import base
 
 _pool_opts = [
-    cfg.IntOpt('rpc_thread_pool_size',
+    cfg.IntOpt('executor_thread_pool_size',
                default=64,
-               help='Size of RPC thread pool.'),
+               deprecated_name="rpc_thread_pool_size",
+               help='Size of executor thread pool.'),
 ]
 
 
@@ -103,7 +104,8 @@ class PooledExecutor(base.ExecutorBase):
 
     def start(self):
         if self._executor is None:
-            self._executor = self._executor_cls(self.conf.rpc_thread_pool_size)
+            self._executor = self._executor_cls(
+                self.conf.executor_thread_pool_size)
         self._tombstone.clear()
         if self._poller is None or not self._poller.is_alive():
             self._poller = self._thread_cls(target=self._runner)
