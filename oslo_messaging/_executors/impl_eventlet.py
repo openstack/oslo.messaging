@@ -28,10 +28,11 @@ class EventletExecutor(impl_pooledexecutor.PooledExecutor):
     """A message executor which integrates with eventlet.
 
     This is an executor which polls for incoming messages from a greenthread
-    and dispatches each message in its own greenthread.
+    and dispatches each message in its own greenthread powered async
+    executor.
 
     The stop() method kills the message polling greenthread and the wait()
-    method waits for all message dispatch greenthreads to complete.
+    method waits for all executor maintained greenthreads to complete.
     """
 
     def __init__(self, conf, listener, dispatcher):
