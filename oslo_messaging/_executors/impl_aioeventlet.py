@@ -30,7 +30,7 @@ class AsyncioEventletExecutor(impl_eventlet.EventletExecutor):
     To use the executor, an aioeventlet event loop must the running in the
     thread executing the executor (usually the main thread). Example of code to
     setup and run an aioeventlet event loop for the executor (in the main
-    thread):
+    thread)::
 
         import aioeventlet
         import trollius
@@ -48,6 +48,7 @@ class AsyncioEventletExecutor(impl_eventlet.EventletExecutor):
         # run the event loop in a new greenthread,
         # close it when it is done
         eventlet.spawn(run_loop, loop)
+
     """
 
     def __init__(self, conf, listener, dispatcher):

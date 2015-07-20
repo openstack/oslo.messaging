@@ -1,6 +1,6 @@
---------
-Notifier
---------
+==========
+ Notifier
+==========
 
 .. currentmodule:: oslo_messaging
 
@@ -12,3 +12,9 @@ Notifier
 
 .. autoclass:: LoggingErrorNotificationHandler
    :members:
+
+Available Notifier Drivers
+==========================
+
+.. list-plugins:: oslo.messaging.notify.drivers
+   :detailed:
