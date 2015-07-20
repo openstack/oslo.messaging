@@ -49,8 +49,8 @@ class RedisMatchMaker(base.MatchMakerBase):
         )
 
     def register(self, target, hostname):
-        key = zmq_target.target_to_str(target)
         if hostname not in self.get_hosts(target):
+            key = zmq_target.target_to_str(target)
             self._redis.lpush(key, hostname)
 
     def get_hosts(self, target):

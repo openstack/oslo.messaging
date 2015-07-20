@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 
 from oslo_messaging._drivers.zmq_driver.rpc.client import zmq_call_request
 from oslo_messaging._drivers.zmq_driver.rpc.client import zmq_cast_dealer
@@ -27,10 +28,14 @@ class ZmqClient(object):
                                                                   matchmaker)
 
     def call(self, target, context, message, timeout=None, retry=None):
-        request = zmq_call_request.CallRequest(
-            self.conf, target, context, message, timeout, retry,
-            self.allowed_remote_exmods, self.matchmaker)
-        return request()
+        with contextlib.closing(zmq_call_request.CallRequest(
+                self.conf, target, context, message, timeout, retry,
+                self.allowed_remote_exmods,
+                self.matchmaker)) as request:
+            return request()
 
     def cast(self, target, context, message, timeout=None, retry=None):
         self.cast_publisher.cast(target, context, message, timeout, retry)
+
+    def cleanup(self):
+        self.cast_publisher.cleanup()

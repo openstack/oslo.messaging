@@ -42,7 +42,13 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
 
     def poll(self, timeout=None):
         timeout = timeout * 1000  # zmq poller waits milliseconds
-        sockets = dict(self.poller.poll(timeout=timeout))
+        sockets = None
+
+        try:
+            sockets = dict(self.poller.poll(timeout=timeout))
+        except zmq.ZMQError as e:
+            LOG.debug("Polling terminated with error: %s" % e)
+
         if not sockets:
             return None, None
         for socket in sockets:
@@ -50,6 +56,12 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
                 return self.recv_methods[socket](socket), socket
             else:
                 return socket.recv_multipart(), socket
+
+    def resume_polling(self, socket):
+        pass  # Nothing to do for threading poller
+
+    def close(self):
+        pass  # Nothing to do for threading poller
 
 
 class ThreadingExecutor(zmq_poller.Executor):

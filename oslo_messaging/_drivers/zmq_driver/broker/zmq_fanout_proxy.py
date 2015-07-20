@@ -33,3 +33,6 @@ class PublisherBackend(base_proxy.BaseBackendMatcher):
         target_pos = zmq_serializer.MESSAGE_CALL_TARGET_POSITION + 1
         msg = message[target_pos:]
         self.backend.send_multipart(msg)
+
+    def close(self):
+        self.backend.close()

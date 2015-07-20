@@ -47,7 +47,9 @@ class ZmqServer(base.Listener):
         LOG.info("[Server] Stop")
 
     def cleanup(self):
-        pass
+        self.poller.close()
+        self.call_resp.cleanup()
+        self.fanout_resp.cleanup()
 
     def listen(self, target):
         LOG.info("[Server] Listen to Target %s" % target)

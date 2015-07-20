@@ -22,11 +22,15 @@ class ZmqPoller(object):
 
     @abc.abstractmethod
     def register(self, socket, recv_method=None):
-        'Register socket to poll'
+        """Register socket to poll"""
 
     @abc.abstractmethod
     def poll(self, timeout=None):
-        'Poll for messages'
+        """Poll for messages"""
+
+    @abc.abstractmethod
+    def close(self):
+        """Terminate polling"""
 
 
 @six.add_metaclass(abc.ABCMeta)

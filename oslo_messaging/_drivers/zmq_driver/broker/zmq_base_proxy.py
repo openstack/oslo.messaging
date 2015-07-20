@@ -110,6 +110,9 @@ class BaseTcpFrontend(object):
         LOG.info(_LI("Message %s received."), message)
         return message
 
+    def close(self):
+        self.frontend.close()
+
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseBackendMatcher(object):
@@ -123,6 +126,11 @@ class BaseBackendMatcher(object):
     @abc.abstractmethod
     def redirect_to_backend(self, message):
         """Redirect message"""
+
+    def close(self):
+        if self.backends:
+            for backend in self.backends.values():
+                backend.close()
 
 
 @six.add_metaclass(abc.ABCMeta)

@@ -96,21 +96,20 @@ class ZmqDriver(base.BaseDriver):
         conf.register_opts(zmq_opts)
         conf.register_opts(executor_base._pool_opts)
         self.conf = conf
-        self.server = None
-        self.client = None
+
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
             self.conf.rpc_zmq_matchmaker,
         ).driver(self.conf)
 
+        self.server = zmq_server.ZmqServer(self.conf, self.matchmaker)
+        self.client = zmq_client.ZmqClient(self.conf, self.matchmaker,
+                                           allowed_remote_exmods)
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
-        if self.client is None:
-            self.client = zmq_client.ZmqClient(self.conf, self.matchmaker,
-                                               self._allowed_remote_exmods)
         if wait_for_reply:
             return self.client.call(target, ctxt, message, timeout, retry)
         else:
@@ -121,8 +120,6 @@ class ZmqDriver(base.BaseDriver):
         return None
 
     def listen(self, target):
-        if self.server is None:
-            self.server = zmq_server.ZmqServer(self.conf, self.matchmaker)
         self.server.listen(target)
         return self.server
 
@@ -130,4 +127,5 @@ class ZmqDriver(base.BaseDriver):
         return None
 
     def cleanup(self):
-        pass
+        self.client.cleanup()
+        self.server.cleanup()

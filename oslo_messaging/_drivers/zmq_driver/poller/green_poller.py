@@ -29,12 +29,12 @@ class GreenPoller(zmq_poller.ZmqPoller):
     def __init__(self):
         self.incoming_queue = six.moves.queue.Queue()
         self.green_pool = eventlet.GreenPool()
-        self.sockets = []
+        self.threads = []
 
     def register(self, socket, recv_method=None):
-        self.sockets.append(socket)
-        return self.green_pool.spawn(self._socket_receive, socket,
-                                     recv_method)
+        self.threads.append(
+            self.green_pool.spawn(self._socket_receive, socket,
+                                  recv_method))
 
     def _socket_receive(self, socket, recv_method=None):
         while True:
@@ -57,6 +57,10 @@ class GreenPoller(zmq_poller.ZmqPoller):
         except rpc_common.Timeout:
             return None, None
         return incoming[0], incoming[1]
+
+    def close(self):
+        for thread in self.threads:
+            thread.kill()
 
 
 class HoldReplyPoller(GreenPoller):

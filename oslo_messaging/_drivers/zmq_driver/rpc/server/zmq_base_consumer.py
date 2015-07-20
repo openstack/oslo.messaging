@@ -12,7 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
 
+import six
+
+
+@six.add_metaclass(abc.ABCMeta)
 class ConsumerBase(object):
 
     def __init__(self, listener, conf, zmq_poller, context):
@@ -22,14 +27,11 @@ class ConsumerBase(object):
         self.context = context
         self.sockets_per_target = {}
 
-    def poll(self, timeout=None):
-        pass
-
-    def stop(self):
-        pass
-
     def cleanup(self):
-        pass
+        if self.sockets_per_target:
+            for socket in self.sockets_per_target.values():
+                socket.close()
 
+    @abc.abstractmethod
     def listen(self, target):
-        pass
+        """Listen for target"""

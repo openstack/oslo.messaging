@@ -50,6 +50,12 @@ class UniversalProxy(base_proxy.BaseProxy):
         else:
             self.tcp_frontend.redirect_outgoing_reply(message)
 
+    def stop(self):
+        self.poller.close()
+        super(UniversalProxy, self).stop()
+        self.tcp_frontend.close()
+        self.backend_matcher.close()
+
 
 class BackendMatcher(base_proxy.BaseBackendMatcher):
 

@@ -71,7 +71,13 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
             dealer_socket = self.zmq_context.socket(zmq.DEALER)
             LOG.info(_LI("Connecting DEALER to %s") % address)
             dealer_socket.connect(address)
+            self.outbound_sockets[address] = dealer_socket
             return dealer_socket
         except zmq.ZMQError:
             LOG.error(_LE("Failed connecting DEALER to %s") % address)
             raise
+
+    def cleanup(self):
+        if self.outbound_sockets:
+            for socket in self.outbound_sockets.values():
+                socket.close()

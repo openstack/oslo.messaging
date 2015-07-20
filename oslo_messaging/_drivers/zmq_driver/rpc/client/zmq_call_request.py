@@ -33,6 +33,7 @@ class CallRequest(Request):
                  retry=None, allowed_remote_exmods=None, matchmaker=None):
         self.allowed_remote_exmods = allowed_remote_exmods or []
         self.matchmaker = matchmaker
+        self.reply_poller = zmq_async.get_reply_poller()
 
         try:
             self.zmq_context = zmq.Context()
@@ -51,13 +52,16 @@ class CallRequest(Request):
             LOG.error(_LE("Error connecting to socket: %s") % str(e))
             raise
 
+    def close(self):
+        self.reply_poller.close()
+        self.socket.close()
+
     def receive_reply(self):
         # NOTE(ozamiatin): Check for retry here (no retries now)
-        poller = zmq_async.get_reply_poller()
-        poller.register(self.socket,
-                        recv_method=lambda socket: socket.recv_json())
+        self.reply_poller.register(
+            self.socket, recv_method=lambda socket: socket.recv_json())
 
-        reply, socket = poller.poll(timeout=self.timeout)
+        reply, socket = self.reply_poller.poll(timeout=self.timeout)
         if reply is None:
             raise oslo_messaging.MessagingTimeout(
                 "Timeout %s seconds was reached" % self.timeout)
