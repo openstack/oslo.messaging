@@ -575,15 +575,16 @@ class Controller(pyngus.ConnectionEventHandler):
             self._socket_connection.connection.close()
 
     def sasl_done(self, connection, pn_sasl, outcome):
-        """This is a Pyngus callback invoked by Pyngus when the SASL handshake
-        has completed.  The outcome of the handshake will be OK on success or
-        AUTH on failure.
+        """This is a Pyngus callback invoked when the SASL handshake
+        has completed.  The outcome of the handshake is passed in the outcome
+        argument.
         """
-        if outcome == proton.SASL.AUTH:
-            LOG.error("Unable to connect to %s:%s, authentication failure.",
-                      self.hosts.current.hostname, self.hosts.current.port)
-            # requires user intervention, treat it like a connection failure:
-            self._handle_connection_loss()
+        if outcome == proton.SASL.OK:
+            return
+        LOG.error("AUTHENTICATION FAILURE: Cannot connect to %s:%s as user %s",
+                  self.hosts.current.hostname, self.hosts.current.port,
+                  self.hosts.current.username)
+        # connection failure will be handled later
 
     def _complete_shutdown(self):
         """The AMQP Connection has closed, and the driver shutdown is complete.
@@ -607,19 +608,18 @@ class Controller(pyngus.ConnectionEventHandler):
             if not self._reconnecting:
                 self._reconnecting = True
                 self._replies = None
-                if self._delay == 0:
-                    self._delay = 1
-                    self._do_reconnect()
-                else:
-                    d = self._delay
-                    LOG.info("delaying reconnect attempt for %d seconds", d)
-                    self.processor.schedule(lambda: self._do_reconnect(), d)
-                    self._delay = min(d * 2, 60)
+                d = self._delay
+                LOG.info("delaying reconnect attempt for %d seconds", d)
+                self.processor.schedule(lambda: self._do_reconnect(), d)
+                self._delay = 1 if self._delay == 0 else min(d * 2, 60)
 
     def _do_reconnect(self):
         """Invoked on connection/socket failure, failover and re-connect to the
         messaging service.
         """
+        # note well: since this method destroys the connection, it cannot be
+        # invoked directly from a pyngus callback.  Use processor.schedule() to
+        # run this method on the main loop instead.
         if not self._closing:
             self._reconnecting = False
             self._senders = {}
