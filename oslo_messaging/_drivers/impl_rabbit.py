@@ -452,8 +452,8 @@ class Connection(object):
                     adr, default_port=self.rabbit_port)
                 self._url += '%samqp://%s:%s@%s:%s/%s' % (
                     ";" if self._url else '',
-                    parse.quote(self.rabbit_userid),
-                    parse.quote(self.rabbit_password),
+                    parse.quote(self.rabbit_userid, ''),
+                    parse.quote(self.rabbit_password, ''),
                     self._parse_url_hostname(hostname), port,
                     virtual_host)
 
