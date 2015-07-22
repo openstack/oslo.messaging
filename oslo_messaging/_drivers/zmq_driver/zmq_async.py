@@ -14,20 +14,25 @@
 
 import logging
 
+from oslo_messaging._drivers.zmq_driver.poller import green_poller
+from oslo_messaging._drivers.zmq_driver.poller import threading_poller
+from oslo_messaging._i18n import _, _LE
 from oslo_utils import importutils
-
-from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
-green_zmq = importutils.try_import('eventlet.green.zmq')
+# Map zmq_concurrency config option names to the actual module name.
+ZMQ_MODULES = {
+    'native': 'zmq',
+    'eventlet': 'eventlet.green.zmq',
+}
 
 
-def import_zmq(native_zmq=False):
-    if native_zmq:
-        imported_zmq = importutils.try_import('zmq')
-    else:
-        imported_zmq = green_zmq or importutils.try_import('zmq')
+def import_zmq(zmq_concurrency='eventlet'):
+    _raise_error_if_invalid_config_value(zmq_concurrency)
+
+    imported_zmq = importutils.try_import(ZMQ_MODULES[zmq_concurrency],
+                                          default='zmq')
 
     if imported_zmq is None:
         errmsg = _LE("ZeroMQ not found!")
@@ -36,28 +41,35 @@ def import_zmq(native_zmq=False):
     return imported_zmq
 
 
-def get_poller(native_zmq=False):
-    if native_zmq or green_zmq is None:
-        from oslo_messaging._drivers.zmq_driver.poller import threading_poller
-        return threading_poller.ThreadingPoller()
-    else:
-        from oslo_messaging._drivers.zmq_driver.poller import green_poller
+def get_poller(zmq_concurrency='eventlet'):
+    _raise_error_if_invalid_config_value(zmq_concurrency)
+
+    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
         return green_poller.GreenPoller()
+    return threading_poller.ThreadingPoller()
 
 
-def get_reply_poller(native_zmq=False):
-    if native_zmq or green_zmq is None:
-        from oslo_messaging._drivers.zmq_driver.poller import threading_poller
-        return threading_poller.ThreadingPoller()
-    else:
-        from oslo_messaging._drivers.zmq_driver.poller import green_poller
+def get_reply_poller(zmq_concurrency='eventlet'):
+    _raise_error_if_invalid_config_value(zmq_concurrency)
+
+    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
         return green_poller.HoldReplyPoller()
+    return threading_poller.ThreadingPoller()
 
 
-def get_executor(method, native_zmq=False):
-    if native_zmq or green_zmq is None:
-        from oslo_messaging._drivers.zmq_driver.poller import threading_poller
-        return threading_poller.ThreadingExecutor(method)
-    else:
-        from oslo_messaging._drivers.zmq_driver.poller import green_poller
+def get_executor(method, zmq_concurrency='eventlet'):
+    _raise_error_if_invalid_config_value(zmq_concurrency)
+
+    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
         return green_poller.GreenExecutor(method)
+    return threading_poller.ThreadingExecutor(method)
+
+
+def _is_eventlet_zmq_available():
+    return importutils.try_import('eventlet.green.zmq')
+
+
+def _raise_error_if_invalid_config_value(zmq_concurrency):
+    if zmq_concurrency not in ZMQ_MODULES:
+        errmsg = _('Invalid zmq_concurrency value: %s')
+        raise ValueError(errmsg % zmq_concurrency)
