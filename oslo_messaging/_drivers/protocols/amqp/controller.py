@@ -578,7 +578,7 @@ class Controller(pyngus.ConnectionEventHandler):
         """
         LOG.debug("Connection active (%s:%i), subscribing...",
                   self.hosts.current.hostname, self.hosts.current.port)
-        for s in self._servers.itervalues():
+        for s in self._servers.values():
             s.attach(self._socket_connection.connection)
         self._replies = Replies(self._socket_connection.connection,
                                 lambda: self._reply_link_ready())
@@ -641,10 +641,12 @@ class Controller(pyngus.ConnectionEventHandler):
             if not self._reconnecting:
                 self._reconnecting = True
                 self._replies = None
-                d = self._delay
-                LOG.info("delaying reconnect attempt for %d seconds", d)
-                self.processor.schedule(lambda: self._do_reconnect(), d)
-                self._delay = 1 if self._delay == 0 else min(d * 2, 60)
+                LOG.info("delaying reconnect attempt for %d seconds",
+                         self._delay)
+                self.processor.schedule(lambda: self._do_reconnect(),
+                                        self._delay)
+                self._delay = (1 if self._delay == 0
+                               else min(self._delay * 2, 60))
 
     def _do_reconnect(self):
         """Invoked on connection/socket failure, failover and re-connect to the

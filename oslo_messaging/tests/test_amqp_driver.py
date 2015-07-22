@@ -383,6 +383,8 @@ class TestCyrusAuthentication(test_utils.BaseTestCase):
         # test_authentication_bad_mechs test below
         mechs = "DIGEST-MD5 SCRAM-SHA-1 CRAM-MD5 PLAIN"
         t = Template("""sasldb_path: ${db}
+pwcheck_method: auxprop
+auxprop_plugin: sasldb
 mech_list: ${mechs}
 """)
         with open(conf, 'w') as f:
@@ -806,7 +808,7 @@ class FakeBroker(threading.Thread):
         """Shutdown the server."""
         LOG.debug("Stopping test Broker %s:%d", self.host, self.port)
         self._shutdown = True
-        os.write(self._wakeup_pipe[1], "!")
+        os.write(self._wakeup_pipe[1], b'!')
         self.join()
         LOG.debug("Test Broker %s:%d stopped", self.host, self.port)
 

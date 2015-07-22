@@ -209,7 +209,7 @@ class Requests(object):
         """
         if request:
             self._requests.put(request)
-        os.write(self._wakeup_pipe[1], "!")
+        os.write(self._wakeup_pipe[1], b'!')
 
     def fileno(self):
         """Allows this request queue to be used by select()."""
