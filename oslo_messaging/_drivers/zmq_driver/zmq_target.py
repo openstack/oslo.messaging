@@ -13,14 +13,6 @@
 #    under the License.
 
 
-def get_tcp_bind_address(port):
-    return "tcp://*:%s" % port
-
-
-def get_tcp_address_call(conf, host):
-    return "tcp://%s:%s" % (host, conf.rpc_zmq_port)
-
-
 def combine_address(host, port):
     return "%s:%s" % (host, port)
 

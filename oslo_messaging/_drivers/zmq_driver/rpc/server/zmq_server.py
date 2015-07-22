@@ -74,8 +74,6 @@ class ZmqServer(base.Listener):
             assert empty == b'', 'Bad format: empty delimiter expected'
             msg_type = socket.recv_string()
             assert msg_type is not None, 'Bad format: msg type expected'
-            target_dict = socket.recv_json()
-            assert target_dict is not None, 'Bad format: target expected'
             context = socket.recv_json()
             message = socket.recv_json()
             LOG.debug("Received CALL message %s" % str(message))

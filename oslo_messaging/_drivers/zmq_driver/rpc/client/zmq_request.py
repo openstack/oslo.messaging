@@ -13,9 +13,7 @@
 #    under the License.
 
 import abc
-from abc import abstractmethod
 import logging
-import uuid
 
 import six
 
@@ -42,7 +40,6 @@ class Request(object):
             LOG.error(errmsg)
             raise KeyError(errmsg)
 
-        self.msg_id = uuid.uuid4().hex
         self.target = target
         self.context = context
         self.message = message
@@ -55,17 +52,8 @@ class Request(object):
     def msg_type(self):
         """ZMQ message type"""
 
-    @property
-    def is_replied(self):
-        return self.reply is not None
-
-    @property
-    def is_timed_out(self):
-        return False
-
     def send_request(self):
         self.socket.send_string(self.msg_type, zmq.SNDMORE)
-        self.socket.send_json(self.target.__dict__, zmq.SNDMORE)
         self.socket.send_json(self.context, zmq.SNDMORE)
         self.socket.send_json(self.message)
 
@@ -73,6 +61,6 @@ class Request(object):
         self.send_request()
         return self.receive_reply()
 
-    @abstractmethod
+    @abc.abstractmethod
     def receive_reply(self):
         "Receive reply from server side"
