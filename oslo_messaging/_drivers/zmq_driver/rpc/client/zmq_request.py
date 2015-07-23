@@ -32,9 +32,10 @@ zmq = zmq_async.import_zmq()
 class Request(object):
 
     def __init__(self, conf, target, context, message,
-                 socket, msg_type, timeout=None, retry=None):
+                 socket, timeout=None, retry=None):
 
-        assert msg_type in zmq_serializer.MESSAGE_TYPES, "Unknown msg type!"
+        if self.msg_type not in zmq_serializer.MESSAGE_TYPES:
+            raise RuntimeError("Unknown msg type!")
 
         if message['method'] is None:
             errmsg = _LE("No method specified for RPC call")
@@ -42,7 +43,6 @@ class Request(object):
             raise KeyError(errmsg)
 
         self.msg_id = uuid.uuid4().hex
-        self.msg_type = msg_type
         self.target = target
         self.context = context
         self.message = message
@@ -50,6 +50,10 @@ class Request(object):
         self.retry = retry
         self.reply = None
         self.socket = socket
+
+    @abc.abstractproperty
+    def msg_type(self):
+        """ZMQ message type"""
 
     @property
     def is_replied(self):

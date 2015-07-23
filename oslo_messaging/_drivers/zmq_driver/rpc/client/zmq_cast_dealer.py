@@ -29,14 +29,7 @@ zmq = zmq_async.import_zmq()
 
 class CastRequest(Request):
 
-    def __init__(self, conf, target, context,
-                 message, socket, address, timeout=None, retry=None):
-        self.connect_address = address
-        fanout_type = zmq_serializer.FANOUT_TYPE
-        cast_type = zmq_serializer.CAST_TYPE
-        msg_type = fanout_type if target.fanout else cast_type
-        super(CastRequest, self).__init__(conf, target, context, message,
-                                          socket, msg_type, timeout, retry)
+    msg_type = zmq_serializer.CAST_TYPE
 
     def __call__(self, *args, **kwargs):
         self.send_request()
@@ -50,6 +43,19 @@ class CastRequest(Request):
         pass
 
 
+class FanoutRequest(CastRequest):
+
+    msg_type = zmq_serializer.FANOUT_TYPE
+
+    def __init__(self, *args, **kwargs):
+        self.hosts_count = kwargs.pop("hosts_count")
+        super(FanoutRequest, self).__init__(*args, **kwargs)
+
+    def send_request(self):
+        for _ in range(self.hosts_count):
+            super(FanoutRequest, self).send_request()
+
+
 class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
 
     def __init__(self, conf, matchmaker):
@@ -58,22 +64,30 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
 
     def cast(self, target, context,
              message, timeout=None, retry=None):
-        host = self.matchmaker.get_single_host(target)
-        connect_address = zmq_target.get_tcp_direct_address(host)
-        dealer_socket = self._create_socket(connect_address)
-        request = CastRequest(self.conf, target, context, message,
-                              dealer_socket, connect_address, timeout, retry)
+        if str(target) in self.outbound_sockets:
+            dealer_socket, hosts = self.outbound_sockets[str(target)]
+        else:
+            dealer_socket = self.zmq_context.socket(zmq.DEALER)
+            hosts = self.matchmaker.get_hosts(target)
+            for host in hosts:
+                self._connect_to_host(dealer_socket, host)
+            self.outbound_sockets[str(target)] = (dealer_socket, hosts)
+
+        if target.fanout:
+            request = FanoutRequest(self.conf, target, context, message,
+                                    dealer_socket, timeout, retry,
+                                    hosts_count=len(hosts))
+        else:
+            request = CastRequest(self.conf, target, context, message,
+                                  dealer_socket, timeout, retry)
+
         request.send_request()
 
-    def _create_socket(self, address):
-        if address in self.outbound_sockets:
-            return self.outbound_sockets[address]
+    def _connect_to_host(self, socket, host):
+        address = zmq_target.get_tcp_direct_address(host)
         try:
-            dealer_socket = self.zmq_context.socket(zmq.DEALER)
             LOG.info(_LI("Connecting DEALER to %s") % address)
-            dealer_socket.connect(address)
-            self.outbound_sockets[address] = dealer_socket
-            return dealer_socket
+            socket.connect(address)
         except zmq.ZMQError as e:
             errmsg = _LE("Failed connecting DEALER to %(address)s: %(e)s")\
                 % (address, e)
@@ -81,7 +95,6 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
             raise rpc_common.RPCException(errmsg)
 
     def cleanup(self):
-        if self.outbound_sockets:
-            for socket in self.outbound_sockets.values():
-                socket.setsockopt(zmq.LINGER, 0)
-                socket.close()
+        for socket, hosts in self.outbound_sockets.values():
+            socket.setsockopt(zmq.LINGER, 0)
+            socket.close()

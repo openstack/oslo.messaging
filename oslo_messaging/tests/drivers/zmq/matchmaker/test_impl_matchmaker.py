@@ -56,8 +56,8 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         self.test_matcher.register(self.target, self.host1)
         self.test_matcher.register(self.target, self.host2)
 
-        self.assertEqual(self.test_matcher.get_hosts(self.target),
-                         [self.host1, self.host2])
+        self.assertItemsEqual(self.test_matcher.get_hosts(self.target),
+                              [self.host1, self.host2])
         self.assertIn(self.test_matcher.get_single_host(self.target),
                       [self.host1, self.host2])
 
@@ -76,5 +76,5 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
 
     def test_get_single_host_wrong_topic(self):
         target = oslo_messaging.Target(topic="no_such_topic")
-        self.assertEqual(self.test_matcher.get_single_host(target),
-                         "localhost:9501")
+        self.assertRaises(oslo_messaging.InvalidTarget,
+                          self.test_matcher.get_single_host, target)

@@ -36,8 +36,7 @@ class ZmqServer(base.Listener):
             self.socket = self.context.socket(zmq.ROUTER)
             self.address = zmq_target.get_tcp_random_address(conf)
             self.port = self.socket.bind_to_random_port(self.address)
-            LOG.info("Run server on tcp://%s:%d" %
-                     (self.address, self.port))
+            LOG.info("Run server on %s:%d" % (self.address, self.port))
         except zmq.ZMQError as e:
             errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
                 % (self.port, e)

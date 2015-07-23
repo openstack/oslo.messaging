@@ -29,6 +29,8 @@ zmq = zmq_async.import_zmq()
 
 class CallRequest(Request):
 
+    msg_type = zmq_serializer.CALL_TYPE
+
     def __init__(self, conf, target, context, message, timeout=None,
                  retry=None, allowed_remote_exmods=None, matchmaker=None):
         self.allowed_remote_exmods = allowed_remote_exmods or []
@@ -40,7 +42,6 @@ class CallRequest(Request):
             socket = self.zmq_context.socket(zmq.REQ)
             super(CallRequest, self).__init__(conf, target, context,
                                               message, socket,
-                                              zmq_serializer.CALL_TYPE,
                                               timeout, retry)
             self.host = self.matchmaker.get_single_host(self.target)
             self.connect_address = zmq_target.get_tcp_direct_address(

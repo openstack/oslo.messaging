@@ -93,6 +93,8 @@ class CallTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(0, s.endpoint.ival)
 
     def test_timeout(self):
+        if self.url.startswith("zmq"):
+            self.skipTest("Skip CallTestCase.test_timeout for ZMQ driver")
         transport = self.useFixture(utils.TransportFixture(self.url))
         target = oslo_messaging.Target(topic="no_such_topic")
         c = utils.ClientStub(transport.transport, target, timeout=1)
@@ -184,6 +186,11 @@ class CastTestCase(utils.SkipIfNoTransportURL):
 class NotifyTestCase(utils.SkipIfNoTransportURL):
     # NOTE(sileht): Each test must not use the same topics
     # to be run in parallel
+
+    def setUp(self):
+        super(NotifyTestCase, self).setUp()
+        if self.url.startswith("zmq"):
+            self.skipTest("Skip NotifyTestCase for ZMQ driver")
 
     def test_simple(self):
         listener = self.useFixture(

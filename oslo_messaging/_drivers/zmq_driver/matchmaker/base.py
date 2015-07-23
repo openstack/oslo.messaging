@@ -14,10 +14,11 @@
 import abc
 import collections
 import logging
+import random
 
 import six
 
-from oslo_messaging._drivers.zmq_driver import zmq_target
+import oslo_messaging
 from oslo_messaging._i18n import _LI, _LW
 
 
@@ -34,26 +35,44 @@ class MatchMakerBase(object):
 
     @abc.abstractmethod
     def register(self, target, hostname):
-        """Register target on nameserver"""
+        """Register target on nameserver.
+
+       :param target: the target for host
+       :type target: Target
+       :param hostname: host for the topic in "host:port" format
+       :type hostname: String
+       """
 
     @abc.abstractmethod
     def get_hosts(self, target):
-        """Get hosts from nameserver by target"""
+        """Get all hosts from nameserver by target.
+
+       :param target: the default target for invocations
+       :type target: Target
+       :returns: a list of "hostname:port" hosts
+       """
 
     def get_single_host(self, target):
-        """Get a single host by target"""
+        """Get a single host by target.
+
+       :param target: the target for messages
+       :type target: Target
+       :returns: a "hostname:port" host
+       """
+
         hosts = self.get_hosts(target)
-        if len(hosts) == 0:
-            LOG.warning(_LW("No hosts were found for target %s. Using "
-                            "localhost") % target)
-            return "localhost:" + str(self.conf.rpc_zmq_port)
-        elif len(hosts) == 1:
+        if not hosts:
+            err_msg = "No hosts were found for target %s." % target
+            LOG.error(err_msg)
+            raise oslo_messaging.InvalidTarget(err_msg, target)
+
+        if len(hosts) == 1:
             LOG.info(_LI("A single host found for target %s.") % target)
             return hosts[0]
         else:
             LOG.warning(_LW("Multiple hosts were found for target %s. Using "
-                            "the first one.") % target)
-            return hosts[0]
+                            "the random one.") % target)
+            return random.choice(hosts)
 
 
 class DummyMatchMaker(MatchMakerBase):
@@ -64,10 +83,10 @@ class DummyMatchMaker(MatchMakerBase):
         self._cache = collections.defaultdict(list)
 
     def register(self, target, hostname):
-        key = zmq_target.target_to_str(target)
+        key = str(target)
         if hostname not in self._cache[key]:
             self._cache[key].append(hostname)
 
     def get_hosts(self, target):
-        key = zmq_target.target_to_str(target)
+        key = str(target)
         return self._cache[key]
