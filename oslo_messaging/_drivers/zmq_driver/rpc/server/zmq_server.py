@@ -15,9 +15,12 @@
 import logging
 
 from oslo_messaging._drivers import base
-from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_call_responder
-from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_fanout_consumer
+from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_serializer
+from oslo_messaging._drivers.zmq_driver import zmq_target
+from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -27,36 +30,64 @@ zmq = zmq_async.import_zmq()
 class ZmqServer(base.Listener):
 
     def __init__(self, conf, matchmaker=None):
-        LOG.info("[Server] __init__")
         self.conf = conf
-        self.context = zmq.Context()
-        self.poller = zmq_async.get_reply_poller()
+        try:
+            self.context = zmq.Context()
+            self.socket = self.context.socket(zmq.ROUTER)
+            self.address = zmq_target.get_tcp_random_address(conf)
+            self.port = self.socket.bind_to_random_port(self.address)
+            LOG.info("Run server on tcp://%s:%d" %
+                     (self.address, self.port))
+        except zmq.ZMQError as e:
+            errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
+                % (self.port, e)
+            LOG.error(errmsg)
+            raise rpc_common.RPCException(errmsg)
+
+        self.poller = zmq_async.get_poller()
+        self.poller.register(self.socket, self._receive_message)
         self.matchmaker = matchmaker
-        self.call_resp = zmq_call_responder.CallResponder(self, conf,
-                                                          self.poller,
-                                                          self.context)
-        self.fanout_resp = zmq_fanout_consumer.FanoutConsumer(self, conf,
-                                                              self.poller,
-                                                              self.context)
 
     def poll(self, timeout=None):
         incoming = self.poller.poll(timeout or self.conf.rpc_poll_timeout)
         return incoming[0]
 
     def stop(self):
-        LOG.info("[Server] Stop")
+        LOG.info("Stop server tcp://%s:%d" % (self.address, self.port))
 
     def cleanup(self):
         self.poller.close()
-        self.call_resp.cleanup()
-        self.fanout_resp.cleanup()
+        if not self.socket.closed:
+            self.socket.setsockopt(zmq.LINGER, 0)
+            self.socket.close()
 
     def listen(self, target):
-        LOG.info("[Server] Listen to Target %s" % target)
-
+        LOG.info("Listen to Target %s on tcp://%s:%d" %
+                 (target, self.address, self.port))
+        host = zmq_target.combine_address(self.conf.rpc_zmq_host, self.port)
         self.matchmaker.register(target=target,
-                                 hostname=self.conf.rpc_zmq_host)
-        if target.fanout:
-            self.fanout_resp.listen(target)
-        else:
-            self.call_resp.listen(target)
+                                 hostname=host)
+
+    def _receive_message(self, socket):
+        try:
+            reply_id = socket.recv()
+            empty = socket.recv()
+            assert empty == b'', 'Bad format: empty delimiter expected'
+            msg_type = socket.recv_string()
+            assert msg_type is not None, 'Bad format: msg type expected'
+            target_dict = socket.recv_json()
+            assert target_dict is not None, 'Bad format: target expected'
+            context = socket.recv_json()
+            message = socket.recv_json()
+            LOG.debug("Received CALL message %s" % str(message))
+
+            direct_type = (zmq_serializer.CALL_TYPE, zmq_serializer.CAST_TYPE)
+            if msg_type in direct_type:
+                return zmq_incoming_message.ZmqIncomingRequest(
+                    self, context, message, socket, reply_id, self.poller)
+            elif msg_type == zmq_serializer.FANOUT_TYPE:
+                return zmq_incoming_message.ZmqFanoutMessage(
+                    self, context, message, socket, self.poller)
+
+        except zmq.ZMQError as e:
+            LOG.error(_LE("Receiving message failed: %s") % str(e))

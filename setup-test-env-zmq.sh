@@ -22,6 +22,4 @@ EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
 
-oslo-messaging-zmq-receiver --config-file ${DATADIR}/zmq.conf > ${DATADIR}/receiver.log 2>&1 &
-
 $*

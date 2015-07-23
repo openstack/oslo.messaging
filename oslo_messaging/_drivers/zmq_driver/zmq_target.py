@@ -15,11 +15,6 @@
 from oslo_messaging import target
 
 
-def get_ipc_address_call(conf, target):
-    target_addr = target_to_str(target)
-    return "ipc://%s/%s" % (conf.rpc_zmq_ipc_dir, target_addr)
-
-
 def get_tcp_bind_address(port):
     return "tcp://*:%s" % port
 
@@ -28,19 +23,27 @@ def get_tcp_address_call(conf, host):
     return "tcp://%s:%s" % (host, conf.rpc_zmq_port)
 
 
-def get_ipc_address_cast(conf, target):
-    target_addr = target_to_str(target)
-    return "ipc://%s/fanout/%s" % (conf.rpc_zmq_ipc_dir, target_addr)
+def combine_address(host, port):
+    return "%s:%s" % (host, port)
 
 
-def get_ipc_address_fanout(conf):
-    return "ipc://%s/fanout_general" % conf.rpc_zmq_ipc_dir
+def get_tcp_direct_address(host):
+    return "tcp://%s" % (host)
+
+
+def get_tcp_random_address(conf):
+    return "tcp://*"
 
 
 def target_to_str(target):
-    if target.server is None:
-        return target.topic
-    return "%s.%s" % (target.server, target.topic)
+    items = []
+    if target.topic:
+        items.append(target.topic)
+    if target.exchange:
+        items.append(target.exchange)
+    if target.server:
+        items.append(target.server)
+    return '.'.join(items)
 
 
 def target_from_dict(target_dict):

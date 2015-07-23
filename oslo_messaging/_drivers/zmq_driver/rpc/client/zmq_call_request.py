@@ -42,25 +42,26 @@ class CallRequest(Request):
                                               message, socket,
                                               zmq_serializer.CALL_TYPE,
                                               timeout, retry)
-
             self.host = self.matchmaker.get_single_host(self.target)
-            self.connect_address = zmq_target.get_tcp_address_call(conf,
-                                                                   self.host)
+            self.connect_address = zmq_target.get_tcp_direct_address(
+                self.host)
             LOG.info(_LI("Connecting REQ to %s") % self.connect_address)
             self.socket.connect(self.connect_address)
+            self.reply_poller.register(
+                self.socket, recv_method=lambda socket: socket.recv_json())
+
         except zmq.ZMQError as e:
-            LOG.error(_LE("Error connecting to socket: %s") % str(e))
-            raise
+            errmsg = _LE("Error connecting to socket: %s") % str(e)
+            LOG.error(errmsg)
+            raise rpc_common.RPCException(errmsg)
 
     def close(self):
         self.reply_poller.close()
+        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.close()
 
     def receive_reply(self):
         # NOTE(ozamiatin): Check for retry here (no retries now)
-        self.reply_poller.register(
-            self.socket, recv_method=lambda socket: socket.recv_json())
-
         reply, socket = self.reply_poller.poll(timeout=self.timeout)
         if reply is None:
             raise oslo_messaging.MessagingTimeout(

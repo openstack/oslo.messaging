@@ -32,6 +32,9 @@ class ZmqPoller(object):
     def close(self):
         """Terminate polling"""
 
+    def resume_polling(self, socket):
+        """Resume with polling"""
+
 
 @six.add_metaclass(abc.ABCMeta)
 class Executor(object):

@@ -14,6 +14,7 @@
 
 import logging
 
+from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.rpc.client import zmq_cast_publisher
 from oslo_messaging._drivers.zmq_driver.rpc.client.zmq_request import Request
 from oslo_messaging._drivers.zmq_driver import zmq_async
@@ -58,7 +59,7 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
     def cast(self, target, context,
              message, timeout=None, retry=None):
         host = self.matchmaker.get_single_host(target)
-        connect_address = zmq_target.get_tcp_address_call(self.conf, host)
+        connect_address = zmq_target.get_tcp_direct_address(host)
         dealer_socket = self._create_socket(connect_address)
         request = CastRequest(self.conf, target, context, message,
                               dealer_socket, connect_address, timeout, retry)
@@ -73,11 +74,14 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
             dealer_socket.connect(address)
             self.outbound_sockets[address] = dealer_socket
             return dealer_socket
-        except zmq.ZMQError:
-            LOG.error(_LE("Failed connecting DEALER to %s") % address)
-            raise
+        except zmq.ZMQError as e:
+            errmsg = _LE("Failed connecting DEALER to %(address)s: %(e)s")\
+                % (address, e)
+            LOG.error(errmsg)
+            raise rpc_common.RPCException(errmsg)
 
     def cleanup(self):
         if self.outbound_sockets:
             for socket in self.outbound_sockets.values():
+                socket.setsockopt(zmq.LINGER, 0)
                 socket.close()

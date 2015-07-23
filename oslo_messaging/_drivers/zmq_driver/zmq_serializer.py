@@ -44,7 +44,7 @@ def get_msg_type(message):
     if type not in MESSAGE_TYPES:
         errmsg = _LE("Unknown message type: %s") % str(type)
         LOG.error(errmsg)
-        rpc_common.RPCException(errmsg)
+        raise rpc_common.RPCException(errmsg)
     return type
 
 

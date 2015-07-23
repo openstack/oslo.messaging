@@ -13,7 +13,6 @@
 #    under the License.
 
 import logging
-import socket
 import threading
 
 import fixtures
@@ -21,7 +20,6 @@ import testtools
 
 import oslo_messaging
 from oslo_messaging._drivers import impl_zmq
-from oslo_messaging._drivers.zmq_driver.broker.zmq_broker import ZmqBroker
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _
 from oslo_messaging.tests import utils as test_utils
@@ -61,40 +59,26 @@ class TestRPCServerListener(object):
         self.executor.stop()
 
 
-def get_unused_port():
-    """Returns an unused port on localhost."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('localhost', 0))
-    port = s.getsockname()[1]
-    s.close()
-    return port
-
-
 class ZmqBaseTestCase(test_utils.BaseTestCase):
-    """Base test case for all ZMQ tests that make use of the ZMQ Proxy"""
+    """Base test case for all ZMQ tests """
 
     @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(ZmqBaseTestCase, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
-        # Get driver
-        transport = oslo_messaging.get_transport(self.conf)
-        self.driver = transport._driver
 
         # Set config values
         self.internal_ipc_dir = self.useFixture(fixtures.TempDir()).path
         kwargs = {'rpc_zmq_bind_address': '127.0.0.1',
                   'rpc_zmq_host': '127.0.0.1',
                   'rpc_response_timeout': 5,
-                  'rpc_zmq_port': get_unused_port(),
-                  'rpc_zmq_ipc_dir': self.internal_ipc_dir}
+                  'rpc_zmq_ipc_dir': self.internal_ipc_dir,
+                  'rpc_zmq_matchmaker': 'dummy'}
         self.config(**kwargs)
 
-        # Start RPC
-        LOG.info("Running internal zmq receiver.")
-        self.broker = ZmqBroker(self.conf)
-        self.broker.start()
+        # Get driver
+        transport = oslo_messaging.get_transport(self.conf)
+        self.driver = transport._driver
 
         self.listener = TestRPCServerListener(self.driver)
 
@@ -118,8 +102,6 @@ class stopRpc(object):
         self.attrs = attrs
 
     def __call__(self):
-        if self.attrs['broker']:
-            self.attrs['broker'].close()
         if self.attrs['driver']:
             self.attrs['driver'].cleanup()
         if self.attrs['listener']:
@@ -146,12 +128,12 @@ class TestZmqBasics(ZmqBaseTestCase):
             target, {},
             {'method': 'hello-world', 'tx_id': 1},
             wait_for_reply=True)
-        self.assertIsNotNone(result)
+        self.assertTrue(result)
 
     def test_send_noreply(self):
         """Cast() with topic."""
 
-        target = oslo_messaging.Target(topic='testtopic', server="127.0.0.1")
+        target = oslo_messaging.Target(topic='testtopic', server="my@server")
         self.listener.listen(target)
         result = self.driver.send(
             target, {},
@@ -165,20 +147,21 @@ class TestZmqBasics(ZmqBaseTestCase):
         method = self.listener.message.message[u'method']
         self.assertEqual(u'hello-world', method)
 
-    @testtools.skip("Not implemented feature")
     def test_send_fanout(self):
         target = oslo_messaging.Target(topic='testtopic', fanout=True)
-        self.driver.listen(target)
+        self.listener.listen(target)
 
         result = self.driver.send(
             target, {},
             {'method': 'hello-world', 'tx_id': 1},
             wait_for_reply=False)
 
+        self.listener._received.wait()
+
         self.assertIsNone(result)
         self.assertEqual(True, self.listener._received.isSet())
-        msg_pattern = "{'method': 'hello-world', 'tx_id': 1}"
-        self.assertEqual(msg_pattern, self.listener.message)
+        method = self.listener.message.message[u'method']
+        self.assertEqual(u'hello-world', method)
 
     def test_send_receive_direct(self):
         """Call() without topic."""

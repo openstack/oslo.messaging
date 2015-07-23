@@ -46,7 +46,7 @@ class MatchMakerBase(object):
         if len(hosts) == 0:
             LOG.warning(_LW("No hosts were found for target %s. Using "
                             "localhost") % target)
-            return "localhost"
+            return "localhost:" + str(self.conf.rpc_zmq_port)
         elif len(hosts) == 1:
             LOG.info(_LI("A single host found for target %s.") % target)
             return hosts[0]

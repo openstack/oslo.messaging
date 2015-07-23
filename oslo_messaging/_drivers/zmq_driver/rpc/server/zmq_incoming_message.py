@@ -17,11 +17,8 @@ import logging
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_base_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_serializer
-from oslo_messaging._drivers.zmq_driver import zmq_target
-from oslo_messaging._i18n import _LE
 
 
 LOG = logging.getLogger(__name__)
@@ -59,31 +56,17 @@ class ZmqIncomingRequest(base.IncomingMessage):
         pass
 
 
-class CallResponder(zmq_base_consumer.ConsumerBase):
+class ZmqFanoutMessage(base.IncomingMessage):
 
-    def _receive_message(self, socket):
-        try:
-            reply_id = socket.recv()
-            msg_type = socket.recv_string()
-            assert msg_type is not None, 'Bad format: msg type expected'
-            msg_id = socket.recv_string()
-            assert msg_id is not None, 'Bad format: message ID expected'
-            context = socket.recv_json()
-            message = socket.recv_json()
-            LOG.debug("[Server] REP Received message %s" % str(message))
-            incoming = ZmqIncomingRequest(self.listener,
-                                          context,
-                                          message, socket,
-                                          reply_id,
-                                          self.poller)
-            return incoming
-        except zmq.ZMQError as e:
-            LOG.error(_LE("Receiving message failed: %s") % str(e))
+    def __init__(self, listener, context, message, socket, poller):
+        super(ZmqFanoutMessage, self).__init__(listener, context, message)
+        poller.resume_polling(socket)
 
-    def listen(self, target):
-        ipc_rep_address = zmq_target.get_ipc_address_call(self.conf, target)
-        rep_socket = self.context.socket(zmq.REP)
-        rep_socket.bind(ipc_rep_address)
-        str_target = zmq_target.target_to_str(target)
-        self.sockets_per_target[str_target] = rep_socket
-        self.poller.register(rep_socket, self._receive_message)
+    def reply(self, reply=None, failure=None, log_failure=True):
+        """Reply is not needed for fanout(cast) messages"""
+
+    def acknowledge(self):
+        pass
+
+    def requeue(self):
+        pass

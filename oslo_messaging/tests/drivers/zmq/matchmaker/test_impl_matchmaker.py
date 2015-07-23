@@ -77,4 +77,4 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
     def test_get_single_host_wrong_topic(self):
         target = oslo_messaging.Target(topic="no_such_topic")
         self.assertEqual(self.test_matcher.get_single_host(target),
-                         "localhost")
+                         "localhost:9501")

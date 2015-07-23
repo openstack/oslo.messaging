@@ -62,7 +62,6 @@ class Request(object):
     def send_request(self):
         self.socket.send_string(self.msg_type, zmq.SNDMORE)
         self.socket.send_json(self.target.__dict__, zmq.SNDMORE)
-        self.socket.send_string(self.msg_id, zmq.SNDMORE)
         self.socket.send_json(self.context, zmq.SNDMORE)
         self.socket.send_json(self.message)
 
