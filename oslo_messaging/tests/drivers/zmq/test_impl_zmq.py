@@ -29,11 +29,10 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class TestRPCServerListener(object):
+class TestServerListener(object):
 
     def __init__(self, driver):
         self.driver = driver
-        self.target = None
         self.listener = None
         self.executor = zmq_async.get_executor(self._run)
         self._stop = threading.Event()
@@ -41,8 +40,12 @@ class TestRPCServerListener(object):
         self.message = None
 
     def listen(self, target):
-        self.target = target
-        self.listener = self.driver.listen(self.target)
+        self.listener = self.driver.listen(target)
+        self.executor.execute()
+
+    def listen_notifications(self, targets_and_priorities):
+        self.listener = self.driver.listen_for_notifications(
+            targets_and_priorities, {})
         self.executor.execute()
 
     def _run(self):
@@ -80,7 +83,7 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
         transport = oslo_messaging.get_transport(self.conf)
         self.driver = transport._driver
 
-        self.listener = TestRPCServerListener(self.driver)
+        self.listener = TestServerListener(self.driver)
 
         self.addCleanup(stopRpc(self.__dict__))
 
@@ -173,6 +176,20 @@ class TestZmqBasics(ZmqBaseTestCase):
         result = self.driver.send(target, context, message,
                                   wait_for_reply=True)
         self.assertTrue(result)
+
+    def test_send_receive_notification(self):
+        """Notify() test"""
+
+        target = oslo_messaging.Target(topic='t1',
+                                       server='notification@server')
+        self.listener.listen_notifications([(target, 'info')])
+
+        message = {'method': 'hello-world', 'tx_id': 1}
+        context = {}
+        target.topic = target.topic + '.info'
+        self.driver.send_notification(target, context, message, '3.0')
+        self.listener._received.wait()
+        self.assertTrue(self.listener._received.isSet())
 
 
 class TestPoller(test_utils.BaseTestCase):

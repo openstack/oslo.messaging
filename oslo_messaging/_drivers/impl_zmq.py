@@ -21,8 +21,8 @@ from stevedore import driver
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers.zmq_driver.rpc.client import zmq_client
-from oslo_messaging._drivers.zmq_driver.rpc.server import zmq_server
+from oslo_messaging._drivers.zmq_driver.client import zmq_client
+from oslo_messaging._drivers.zmq_driver.server import zmq_server
 from oslo_messaging._executors import base as executor_base
 
 
@@ -108,21 +108,28 @@ class ZmqDriver(base.BaseDriver):
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
+        timeout = timeout or self.conf.rpc_response_timeout
         if wait_for_reply:
-            return self.client.call(target, ctxt, message, timeout, retry)
+            return self.client.send_call(target, ctxt, message, timeout, retry)
+        elif target.fanout:
+            self.client.send_fanout(target, ctxt, message, timeout, retry)
         else:
-            self.client.cast(target, ctxt, message, timeout, retry)
-        return None
+            self.client.send_cast(target, ctxt, message, timeout, retry)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
-        return None
+        if target.fanout:
+            self.client.send_notify_fanout(target, ctxt, message, version,
+                                           retry)
+        else:
+            self.client.send_notify(target, ctxt, message, version, retry)
 
     def listen(self, target):
         self.server.listen(target)
         return self.server
 
     def listen_for_notifications(self, targets_and_priorities, pool):
-        return None
+        self.server.listen_notification(targets_and_priorities)
+        return self.server
 
     def cleanup(self):
         self.client.cleanup()

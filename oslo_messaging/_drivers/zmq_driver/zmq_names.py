@@ -12,20 +12,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
 
-import six
+FIELD_FAILURE = 'failure'
+FIELD_REPLY = 'reply'
+FIELD_LOG_FAILURE = 'log_failure'
 
+CALL_TYPE = 'call'
+CAST_TYPE = 'cast'
+CAST_FANOUT_TYPE = 'cast-f'
+NOTIFY_TYPE = 'notify'
+NOTIFY_FANOUT_TYPE = 'notify-f'
 
-@six.add_metaclass(abc.ABCMeta)
-class CastPublisherBase(object):
+MESSAGE_TYPES = (CALL_TYPE,
+                 CAST_TYPE,
+                 CAST_FANOUT_TYPE,
+                 NOTIFY_TYPE,
+                 NOTIFY_FANOUT_TYPE)
 
-    def __init__(self, conf):
-        self.conf = conf
-        self.outbound_sockets = {}
-        super(CastPublisherBase, self).__init__()
-
-    @abc.abstractmethod
-    def cast(self, target, context,
-             message, timeout=None, retry=None):
-        "Send CAST to target"
+MULTISEND_TYPES = (CAST_FANOUT_TYPE, NOTIFY_FANOUT_TYPE)
+DIRECT_TYPES = (CALL_TYPE, CAST_TYPE, NOTIFY_TYPE)
+CAST_TYPES = (CAST_TYPE, CAST_FANOUT_TYPE)
+NOTIFY_TYPES = (NOTIFY_TYPE, NOTIFY_FANOUT_TYPE)

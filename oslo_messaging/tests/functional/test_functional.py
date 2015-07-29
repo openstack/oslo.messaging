@@ -187,11 +187,6 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     # NOTE(sileht): Each test must not use the same topics
     # to be run in parallel
 
-    def setUp(self):
-        super(NotifyTestCase, self).setUp()
-        if self.url.startswith("zmq"):
-            self.skipTest("Skip NotifyTestCase for ZMQ driver")
-
     def test_simple(self):
         listener = self.useFixture(
             utils.NotificationFixture(self.url, ['test_simple']))

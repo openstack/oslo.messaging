@@ -18,7 +18,7 @@ import logging
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_serializer
+from oslo_messaging._drivers.zmq_driver import zmq_names
 
 
 LOG = logging.getLogger(__name__)
@@ -39,9 +39,9 @@ class ZmqIncomingRequest(base.IncomingMessage):
         if failure is not None:
             failure = rpc_common.serialize_remote_exception(failure,
                                                             log_failure)
-        message_reply = {zmq_serializer.FIELD_REPLY: reply,
-                         zmq_serializer.FIELD_FAILURE: failure,
-                         zmq_serializer.FIELD_LOG_FAILURE: log_failure}
+        message_reply = {zmq_names.FIELD_REPLY: reply,
+                         zmq_names.FIELD_FAILURE: failure,
+                         zmq_names.FIELD_LOG_FAILURE: log_failure}
         LOG.debug("Replying %s REP", (str(message_reply)))
         self.received = True
         self.reply_socket.send(self.reply_id, zmq.SNDMORE)
@@ -56,14 +56,31 @@ class ZmqIncomingRequest(base.IncomingMessage):
         pass
 
 
-class ZmqFanoutMessage(base.IncomingMessage):
+class ZmqCastMessage(base.IncomingMessage):
 
     def __init__(self, listener, context, message, socket, poller):
-        super(ZmqFanoutMessage, self).__init__(listener, context, message)
+        super(ZmqCastMessage, self).__init__(listener, context, message)
         poller.resume_polling(socket)
 
     def reply(self, reply=None, failure=None, log_failure=True):
         """Reply is not needed for fanout(cast) messages"""
+
+    def acknowledge(self):
+        pass
+
+    def requeue(self):
+        pass
+
+
+class ZmqNotificationMessage(base.IncomingMessage):
+
+    def __init__(self, listener, context, message, socket, poller):
+        super(ZmqNotificationMessage, self).__init__(listener, context,
+                                                     message)
+        poller.resume_polling(socket)
+
+    def reply(self, reply=None, failure=None, log_failure=True):
+        """Reply is not needed for notification messages"""
 
     def acknowledge(self):
         pass
