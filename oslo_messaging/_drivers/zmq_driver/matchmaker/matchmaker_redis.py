@@ -40,6 +40,7 @@ class RedisMatchMaker(base.MatchMakerBase):
 
     def __init__(self, conf, *args, **kwargs):
         super(RedisMatchMaker, self).__init__(conf, *args, **kwargs)
+        self.conf.register_opts(matchmaker_redis_opts, "matchmaker_redis")
 
         self._redis = redis.StrictRedis(
             host=self.conf.matchmaker_redis.host,
