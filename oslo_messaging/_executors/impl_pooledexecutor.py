@@ -15,10 +15,9 @@
 #    under the License.
 
 import collections
-import functools
 import threading
 
-from concurrent import futures
+from futurist import waiters
 from oslo_config import cfg
 from oslo_utils import excutils
 
@@ -54,8 +53,7 @@ class PooledExecutor(base.ExecutorBase):
     _executor_cls = None
 
     # Blocking function that should wait for all provided futures to finish.
-    _wait_for_all = functools.partial(futures.wait,
-                                      return_when=futures.ALL_COMPLETED)
+    _wait_for_all = staticmethod(waiters.wait_for_all)
 
     def __init__(self, conf, listener, dispatcher):
         super(PooledExecutor, self).__init__(conf, listener, dispatcher)

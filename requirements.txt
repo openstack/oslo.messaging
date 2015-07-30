@@ -37,18 +37,6 @@ kombu>=3.0.7
 # middleware
 oslo.middleware>=2.4.0 # Apache-2.0
 
-# FIXME: concurrent.futures is part of the Python stdlib since Python 3.2,
-# but the requirements is still needed because of a bug in tox:
-# https://bitbucket.org/hpk42/tox/issue/236/tox-must-create-the-source-distribution
-#
-# Tox builds a source distribution with "python setup.py sdist" which uses
-# requirements.txt even if tox wants to build the py34 virtual environment.
-# As a consequence, oslo.messaging.egg_info/requires.txt contains futures
-# and oslo_messaging.tests.test_opts.OptsTestCase.test_entry_point fails.
-#
-# for the futures based executor
-futures>=3.0;python_version=='2.7' or python_version=='2.6'
-
 # needed by the aioeventlet executor
 aioeventlet>=0.4
 trollius>=1.0
