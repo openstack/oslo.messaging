@@ -44,10 +44,10 @@ class ZmqServer(base.Listener):
             raise rpc_common.RPCException(errmsg)
 
         self.poller = zmq_async.get_poller()
-        self.poller.register(self.socket, self._receive_message)
         self.matchmaker = matchmaker
 
     def poll(self, timeout=None):
+        self.poller.register(self.socket, self._receive_message)
         incoming = self.poller.poll(timeout or self.conf.rpc_poll_timeout)
         return incoming[0]
 

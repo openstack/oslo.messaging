@@ -67,7 +67,7 @@ class DealerCastPublisher(zmq_cast_publisher.CastPublisherBase):
         if str(target) in self.outbound_sockets:
             dealer_socket, hosts = self.outbound_sockets[str(target)]
         else:
-            dealer_socket = self.zmq_context.socket(zmq.DEALER)
+            dealer_socket = zmq.Context().socket(zmq.DEALER)
             hosts = self.matchmaker.get_hosts(target)
             for host in hosts:
                 self._connect_to_host(dealer_socket, host)

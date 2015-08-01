@@ -13,16 +13,8 @@
 #    under the License.
 
 import abc
-import logging
 
 import six
-
-from oslo_messaging._drivers.zmq_driver import zmq_async
-
-
-LOG = logging.getLogger(__name__)
-
-zmq = zmq_async.import_zmq()
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -30,7 +22,6 @@ class CastPublisherBase(object):
 
     def __init__(self, conf):
         self.conf = conf
-        self.zmq_context = zmq.Context()
         self.outbound_sockets = {}
         super(CastPublisherBase, self).__init__()
 
