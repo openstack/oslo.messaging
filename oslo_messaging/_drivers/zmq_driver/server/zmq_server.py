@@ -40,6 +40,7 @@ class ZmqServer(base.Listener):
         self.notify_consumer = self.rpc_consumer
         self.consumers = [self.rpc_consumer]
 
+    @base.batch_poll_helper
     def poll(self, timeout=None):
         message, socket = self.poller.poll(
             timeout or self.conf.rpc_poll_timeout)

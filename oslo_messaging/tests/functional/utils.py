@@ -293,13 +293,14 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
 
 
 class NotificationFixture(fixtures.Fixture):
-    def __init__(self, conf, url, topics):
+    def __init__(self, conf, url, topics, batch=None):
         super(NotificationFixture, self).__init__()
         self.conf = conf
         self.url = url
         self.topics = topics
         self.events = moves.queue.Queue()
         self.name = str(id(self))
+        self.batch = batch
 
     def setUp(self):
         super(NotificationFixture, self).setUp()
@@ -307,10 +308,7 @@ class NotificationFixture(fixtures.Fixture):
         # add a special topic for internal notifications
         targets.append(oslo_messaging.Target(topic=self.name))
         transport = self.useFixture(TransportFixture(self.conf, self.url))
-        self.server = oslo_messaging.get_notification_listener(
-            transport.transport,
-            targets,
-            [self], 'eventlet')
+        self.server = self._get_server(transport, targets)
         self._ctrl = self.notifier('internal', topic=self.name)
         self._start()
         transport.wait()
@@ -318,6 +316,12 @@ class NotificationFixture(fixtures.Fixture):
     def cleanUp(self):
         self._stop()
         super(NotificationFixture, self).cleanUp()
+
+    def _get_server(self, transport, targets):
+        return oslo_messaging.get_notification_listener(
+            transport.transport,
+            targets,
+            [self], 'eventlet')
 
     def _start(self):
         self.thread = test_utils.ServerThreadHelper(self.server)
@@ -366,3 +370,39 @@ class NotificationFixture(fixtures.Fixture):
         except moves.queue.Empty:
             pass
         return results
+
+
+class BatchNotificationFixture(NotificationFixture):
+    def __init__(self, conf, url, topics, batch_size=5, batch_timeout=2):
+        super(BatchNotificationFixture, self).__init__(conf, url, topics)
+        self.batch_size = batch_size
+        self.batch_timeout = batch_timeout
+
+    def _get_server(self, transport, targets):
+        return oslo_messaging.get_batch_notification_listener(
+            transport.transport,
+            targets,
+            [self], 'eventlet',
+            batch_timeout=self.batch_timeout,
+            batch_size=self.batch_size)
+
+    def debug(self, messages):
+        self.events.put(['debug', messages])
+
+    def audit(self, messages):
+        self.events.put(['audit', messages])
+
+    def info(self, messages):
+        self.events.put(['info', messages])
+
+    def warn(self, messages):
+        self.events.put(['warn', messages])
+
+    def error(self, messages):
+        self.events.put(['error', messages])
+
+    def critical(self, messages):
+        self.events.put(['critical', messages])
+
+    def sample(self, messages):
+        pass  # Just used for internal shutdown control

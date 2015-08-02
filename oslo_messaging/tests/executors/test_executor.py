@@ -132,10 +132,13 @@ class TestExecutor(test_utils.BaseTestCase):
             endpoint = mock.MagicMock(return_value='result')
             event = None
 
-        class Dispatcher(object):
+        class Dispatcher(dispatcher_base.DispatcherBase):
             def __init__(self, endpoint):
                 self.endpoint = endpoint
                 self.result = "not set"
+
+            def _listen(self, transport):
+                pass
 
             def callback(self, incoming, executor_callback):
                 if executor_callback is None:
@@ -152,7 +155,7 @@ class TestExecutor(test_utils.BaseTestCase):
 
             def __call__(self, incoming, executor_callback=None):
                 return dispatcher_base.DispatcherExecutorContext(
-                    incoming, self.callback, executor_callback)
+                    incoming[0], self.callback, executor_callback)
 
         return Dispatcher(endpoint), endpoint, event, run_executor
 
@@ -162,7 +165,7 @@ class TestExecutor(test_utils.BaseTestCase):
         executor = self.executor(self.conf, listener, dispatcher)
         incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
 
-        def fake_poll(timeout=None):
+        def fake_poll(timeout=None, prefetch_size=1):
             time.sleep(0.1)
             if listener.poll.call_count == 10:
                 if event is not None:
@@ -190,9 +193,9 @@ class TestExecutor(test_utils.BaseTestCase):
         executor = self.executor(self.conf, listener, dispatcher)
         incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
 
-        def fake_poll(timeout=None):
+        def fake_poll(timeout=None, prefetch_size=1):
             if listener.poll.call_count == 1:
-                return incoming_message
+                return [incoming_message]
             if event is not None:
                 event.wait()
             executor.stop()

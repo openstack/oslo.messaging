@@ -232,6 +232,7 @@ class AMQPListener(base.Listener):
                                                  ctxt.reply_q,
                                                  self._obsolete_reply_queues))
 
+    @base.batch_poll_helper
     def poll(self, timeout=None):
         while not self._stopped.is_set():
             if self.incoming:

@@ -60,7 +60,7 @@ class _ListenerThread(threading.Thread):
     def run(self):
         LOG.debug("Listener started")
         while self.msg_count > 0:
-            in_msg = self.listener.poll()
+            in_msg = self.listener.poll()[0]
             self.messages.put(in_msg)
             self.msg_count -= 1
             if in_msg.message.get('method') == 'echo':

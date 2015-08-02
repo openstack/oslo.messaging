@@ -15,9 +15,12 @@
 
 import abc
 
-import six
-
 from oslo_config import cfg
+from oslo_utils import timeutils
+import six
+from six.moves import range as compat_range
+
+
 from oslo_messaging import exceptions
 
 base_opts = [
@@ -26,6 +29,27 @@ base_opts = [
                deprecated_group='DEFAULT',
                help='Size of RPC connection pool.'),
 ]
+
+
+def batch_poll_helper(func):
+    """Decorator to poll messages in batch
+
+    This decorator helps driver that polls message one by one,
+    to returns a list of message.
+    """
+    def wrapper(in_self, timeout=None, prefetch_size=1):
+        incomings = []
+        watch = timeutils.StopWatch(duration=timeout)
+        with watch:
+            for __ in compat_range(prefetch_size):
+                msg = func(in_self, timeout=watch.leftover(return_none=True))
+                if msg is not None:
+                    incomings.append(msg)
+                else:
+                    # timeout reached or listener stopped
+                    break
+        return incomings
+    return wrapper
 
 
 class TransportDriverError(exceptions.MessagingException):
@@ -61,8 +85,9 @@ class Listener(object):
         self.driver = driver
 
     @abc.abstractmethod
-    def poll(self, timeout=None):
-        """Blocking until a message is pending and return IncomingMessage.
+    def poll(self, timeout=None, prefetch_size=1):
+        """Blocking until 'prefetch_size' message is pending and return
+        [IncomingMessage].
         Return None after timeout seconds if timeout is set and no message is
         ending or if the listener have been stopped.
         """

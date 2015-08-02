@@ -54,6 +54,7 @@ class FakeListener(base.Listener):
             exchange = self._exchange_manager.get_exchange(target.exchange)
             exchange.ensure_queue(target, pool)
 
+    @base.batch_poll_helper
     def poll(self, timeout=None):
         if timeout is not None:
             deadline = time.time() + timeout

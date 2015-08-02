@@ -52,7 +52,8 @@ class TestServerListener(object):
     def _run(self):
         try:
             message = self.listener.poll()
-            if message is not None:
+            if message:
+                message = message[0]
                 message.acknowledge()
                 self._received.set()
                 self.message = message

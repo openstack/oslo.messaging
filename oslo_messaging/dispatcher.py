@@ -79,6 +79,12 @@ class DispatcherExecutorContext(object):
 class DispatcherBase(object):
     "Base class for dispatcher"
 
+    batch_size = 1
+    "Number of messages to wait before calling endpoints callacks"
+
+    batch_timeout = None
+    "Number of seconds to wait before calling endpoints callacks"
+
     @abc.abstractmethod
     def _listen(self, transport):
         """Initiate the driver Listener
@@ -98,7 +104,7 @@ class DispatcherBase(object):
     def __call__(self, incoming, executor_callback=None):
         """Called by the executor to get the DispatcherExecutorContext
 
-        :param incoming: message or list of messages
+        :param incoming: list of messages
         :type incoming: oslo_messging._drivers.base.IncomingMessage
         :returns: DispatcherExecutorContext
         :rtype: DispatcherExecutorContext

@@ -226,7 +226,7 @@ class TestKafkaListener(test_utils.BaseTestCase):
         listener.stop()
         fake_response = listener.poll()
         self.assertEqual(1, len(listener.conn.consume.mock_calls))
-        self.assertEqual(fake_response, None)
+        self.assertEqual([], fake_response)
 
 
 class TestWithRealKafkaBroker(test_utils.BaseTestCase):
@@ -251,7 +251,7 @@ class TestWithRealKafkaBroker(test_utils.BaseTestCase):
         self.driver.send_notification(
             target, fake_context, fake_message, None)
 
-        received_message = listener.poll()
+        received_message = listener.poll()[0]
         self.assertEqual(fake_context, received_message.ctxt)
         self.assertEqual(fake_message, received_message.message)
 
@@ -268,7 +268,7 @@ class TestWithRealKafkaBroker(test_utils.BaseTestCase):
         self.driver.send_notification(
             target, fake_context, fake_message, None)
 
-        received_message = listener.poll()
+        received_message = listener.poll()[0]
         self.assertEqual(fake_context, received_message.ctxt)
         self.assertEqual(fake_message, received_message.message)
 
