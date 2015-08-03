@@ -14,6 +14,7 @@
 #    under the License.
 
 import logging
+import threading
 
 LOG = logging.getLogger(__name__)
 
@@ -94,3 +95,22 @@ class DispatcherExecutorContext(object):
         # else
         if self._post is not None:
             self._post(self._incoming, self._result)
+
+
+def fetch_current_thread_functor():
+    # Until https://github.com/eventlet/eventlet/issues/172 is resolved
+    # or addressed we have to use complicated workaround to get a object
+    # that will not be recycled; the usage of threading.current_thread()
+    # doesn't appear to currently be monkey patched and therefore isn't
+    # reliable to use (and breaks badly when used as all threads share
+    # the same current_thread() object)...
+    try:
+        import eventlet
+        from eventlet import patcher
+        green_threaded = patcher.is_monkey_patched('thread')
+    except ImportError:
+        green_threaded = False
+    if green_threaded:
+        return lambda: eventlet.getcurrent()
+    else:
+        return lambda: threading.current_thread()

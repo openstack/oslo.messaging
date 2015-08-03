@@ -19,6 +19,8 @@
 
 """Common utilities used in testing"""
 
+import threading
+
 from oslo_config import cfg
 from oslotest import base
 from oslotest import moxstubout
@@ -56,3 +58,24 @@ class BaseTestCase(base.BaseTestCase):
         group = kw.pop('group', None)
         for k, v in six.iteritems(kw):
             self.conf.set_override(k, v, group)
+
+
+class ServerThreadHelper(threading.Thread):
+    def __init__(self, server):
+        super(ServerThreadHelper, self).__init__()
+        self.daemon = True
+        self._server = server
+        self._stop_event = threading.Event()
+        self._wait_event = threading.Event()
+
+    def run(self):
+        self._server.start()
+        self._stop_event.wait()
+        # Check start() does nothing with a running listener
+        self._server.start()
+        self._server.stop()
+        self._server.wait()
+        self._wait_event.set()
+
+    def stop(self):
+        self._stop_event.set()

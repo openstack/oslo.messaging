@@ -130,6 +130,37 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIsNone(server._executor)
         self.assertEqual(1, listener.cleanup.call_count)
 
+    def test_server_invalid_wait_running_server(self):
+        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        target = oslo_messaging.Target(topic='foo', server='bar')
+        endpoints = [object()]
+        serializer = object()
+
+        server = oslo_messaging.get_rpc_server(transport, target, endpoints,
+                                               serializer=serializer,
+                                               executor='eventlet')
+        self.addCleanup(server.wait)
+        self.addCleanup(server.stop)
+        server.start()
+        self.assertRaises(RuntimeError, server.wait)
+
+    def test_server_invalid_stop_from_other_thread(self):
+        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        target = oslo_messaging.Target(topic='foo', server='bar')
+        endpoints = [object()]
+        serializer = object()
+
+        server = oslo_messaging.get_rpc_server(transport, target, endpoints,
+                                               serializer=serializer,
+                                               executor='eventlet')
+
+        t = test_utils.ServerThreadHelper(server)
+        t.start()
+        self.addCleanup(t.join)
+        self.addCleanup(t.stop)
+        self.assertRaises(RuntimeError, server.stop)
+        self.assertRaises(RuntimeError, server.wait)
+
     def test_no_target_server(self):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
 
