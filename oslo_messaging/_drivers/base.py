@@ -112,7 +112,7 @@ class BaseDriver(object):
         """Construct a Listener for the given target."""
 
     @abc.abstractmethod
-    def listen_for_notifications(self, targets_and_priorities):
+    def listen_for_notifications(self, targets_and_priorities, pool):
         """Construct a notification Listener for the given list of
         tuple of (target, priority).
         """
