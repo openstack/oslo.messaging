@@ -67,12 +67,15 @@ class MatchMakerBase(object):
             raise oslo_messaging.InvalidTarget(err_msg, target)
 
         if len(hosts) == 1:
-            LOG.info(_LI("A single host found for target %s.") % target)
-            return hosts[0]
+            host = hosts[0]
+            LOG.info(_LI("A single host %(host)s found for target %(target)s.")
+                     % {"host": host, "target": target})
         else:
-            LOG.warning(_LW("Multiple hosts were found for target %s. Using "
-                            "the random one.") % target)
-            return random.choice(hosts)
+            host = random.choice(hosts)
+            LOG.warning(_LW("Multiple hosts %(hosts)s were found for target "
+                            " %(target)s. Using the random one - %(host)s.")
+                        % {"hosts": hosts, "target": target, "host": host})
+        return host
 
 
 class DummyMatchMaker(MatchMakerBase):

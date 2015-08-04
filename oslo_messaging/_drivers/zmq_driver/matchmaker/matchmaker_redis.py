@@ -50,7 +50,9 @@ class RedisMatchMaker(base.MatchMakerBase):
 
     def _target_to_key(self, target):
         attributes = ['topic', 'exchange', 'server']
-        return ':'.join((getattr(target, attr) or "*") for attr in attributes)
+        prefix = "ZMQ-target"
+        key = ":".join((getattr(target, attr) or "*") for attr in attributes)
+        return "%s-%s" % (prefix, key)
 
     def _get_keys_by_pattern(self, pattern):
         return self._redis.keys(pattern)
