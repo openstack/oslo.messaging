@@ -20,36 +20,87 @@ import six
 @six.add_metaclass(abc.ABCMeta)
 class ZmqPoller(object):
 
+    """Base poller interface
+
+    Needed to poll on zmq sockets in green and native async manner.
+    Native poller implementation wraps zmq.Poller helper class.
+    Wrapping is needed to provide unified poller interface
+    in zmq-driver (for both native and zmq pollers). It makes some
+    difference with poller-helper from zmq library which doesn't actually
+    receive message.
+
+    The poller object should be obtained over:
+
+        poller = zmq_async.get_poller()
+
+    Then we have to register sockets for polling. We are able
+    to provide specific receiving method. By default poller calls
+    socket.recv_multipart.
+
+        def receive_message(socket):
+            id = socket.recv_string()
+            ctxt = socket.recv_json()
+            msg = socket.recv_json()
+            return (id, ctxt, msg)
+
+        poller.register(socket, recv_method=receive_message)
+
+    Further to receive a message we should call:
+
+        message, socket = poller.poll()
+
+    The 'message' here contains (id, ctxt, msg) tuple.
+    """
+
     @abc.abstractmethod
     def register(self, socket, recv_method=None):
-        """Register socket to poll"""
+        """Register socket to poll
+
+        :param socket: Socket to subscribe for polling
+        :type socket: zmq.Socket
+        :param recv_method: Optional specific receiver procedure
+                            Should return received message object
+        :type recv_method: callable
+        """
 
     @abc.abstractmethod
     def poll(self, timeout=None):
-        """Poll for messages"""
+        """Poll for messages
+
+        :param timeout: Optional polling timeout
+                        None or -1 means poll forever
+                        any positive value means timeout in seconds
+        :type timeout: int
+        :returns: (message, socket) tuple
+        """
 
     @abc.abstractmethod
     def close(self):
         """Terminate polling"""
 
     def resume_polling(self, socket):
-        """Resume with polling"""
+        """Resume with polling
+
+        Some implementations of poller may provide hold polling before reply
+        This method is intended to excplicitly resume polling aftewards.
+        """
 
 
 @six.add_metaclass(abc.ABCMeta)
 class Executor(object):
+    """Base executor interface for threading/green async executors"""
 
     def __init__(self, thread):
         self.thread = thread
 
     @abc.abstractmethod
     def execute(self):
-        'Run execution'
+        """Run execution"""
 
     @abc.abstractmethod
     def stop(self):
-        'Stop execution'
+        """Stop execution"""
 
     @abc.abstractmethod
     def wait(self):
-        'Wait until pass'
+        """Wait until pass"""

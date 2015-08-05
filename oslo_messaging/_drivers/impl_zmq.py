@@ -83,14 +83,35 @@ zmq_opts = [
 
 
 class ZmqDriver(base.BaseDriver):
-    """ZeroMQ Driver
+
+    """ZeroMQ Driver implementation.
+
+    Provides implementation of RPC and Notifier APIs by means
+    of ZeroMQ library.
 
     See :doc:`zmq_driver` for details.
-
     """
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
+        """Construct ZeroMQ driver.
+
+        Intialize driver options.
+
+        Construct matchmaker - pluggable interface to targets management
+        Name Service
+
+        Construct client and server controllers
+
+        :param conf: oslo messaging configuration object
+        :type conf: oslo_config.CONF
+        :param url: transport URL
+        :type url: TransportUrl
+        :param default_exchange: Not used in zmq implementation
+        :type default_exchange: None
+        :param allowed_remote_exmods: remote exception passing options
+        :type allowed_remote_exmods: list
+        """
         conf.register_opts(zmq_opts)
         conf.register_opts(executor_base._pool_opts)
         self.conf = conf
@@ -108,6 +129,24 @@ class ZmqDriver(base.BaseDriver):
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
+        """Send RPC message to server
+
+        :param target: Message destination target
+        :type target: oslo_messaging.Target
+        :param ctxt: Message context
+        :type ctxt: dict
+        :param message: Message payload to pass
+        :type message: dict
+        :param wait_for_reply: Waiting for reply flag
+        :type wait_for_reply: bool
+        :param timeout: Reply waiting timeout in seconds
+        :type timeout: int
+        :param retry: an optional default connection retries configuration
+                      None or -1 means to retry forever
+                      0 means no retry
+                      N means N retries
+        :type retry: int
+        """
         timeout = timeout or self.conf.rpc_response_timeout
         if wait_for_reply:
             return self.client.send_call(target, ctxt, message, timeout, retry)
@@ -117,6 +156,22 @@ class ZmqDriver(base.BaseDriver):
             self.client.send_cast(target, ctxt, message, timeout, retry)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
+        """Send notification to server
+
+        :param target: Message destination target
+        :type target: oslo_messaging.Target
+        :param ctxt: Message context
+        :type ctxt: dict
+        :param message: Message payload to pass
+        :type message: dict
+        :param version: Messaging API version
+        :type version: str
+        :param retry: an optional default connection retries configuration
+                      None or -1 means to retry forever
+                      0 means no retry
+                      N means N retries
+        :type retry: int
+        """
         if target.fanout:
             self.client.send_notify_fanout(target, ctxt, message, version,
                                            retry)
@@ -124,13 +179,27 @@ class ZmqDriver(base.BaseDriver):
             self.client.send_notify(target, ctxt, message, version, retry)
 
     def listen(self, target):
+        """Listen to a specified target on a server side
+
+        :param target: Message destination target
+        :type target: oslo_messaging.Target
+        """
         self.server.listen(target)
         return self.server
 
     def listen_for_notifications(self, targets_and_priorities, pool):
+        """Listen to a specified list of targets on a server side
+
+        :param targets_and_priorities: List of pairs (target, priority)
+        :type targets_and_priorities: list
+        :param pool: Not used for zmq implementation
+        :type pool: object
+        """
         self.server.listen_notification(targets_and_priorities)
         return self.server
 
     def cleanup(self):
+        """Cleanup all driver's connections finally
+        """
         self.client.cleanup()
         self.server.cleanup()

@@ -29,7 +29,30 @@ zmq = zmq_async.import_zmq()
 @six.add_metaclass(abc.ABCMeta)
 class Request(object):
 
+    """Zmq request abstract class
+
+    Represents socket (publisher) independent data object to publish.
+    Request object should contain all needed information for a publisher
+    to publish it, for instance: message payload, target, timeout
+    and retries etc.
+    """
+
     def __init__(self, target, context=None, message=None, retry=None):
+
+        """Construct request object
+
+        :param target: Message destination target
+        :type target: oslo_messaging.Target
+        :param context: Message context
+        :type context: dict
+        :param message: Message payload to pass
+        :type message: dict
+        :param retry: an optional default connection retries configuration
+                      None or -1 means to retry forever
+                      0 means no retry
+                      N means N retries
+        :type retry: int
+        """
 
         if self.msg_type not in zmq_names.MESSAGE_TYPES:
             raise RuntimeError("Unknown message type!")
