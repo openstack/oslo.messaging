@@ -5,14 +5,15 @@
 #
 # Translators:
 # Jonathan Dupart <jonathan+transifex@dupart.org>, 2014
+# Lucas Mascaro <mascaro.lucas@yahoo.fr>, 2015
 # Maxime COQUEREL <max.coquerel@gmail.com>, 2014-2015
 msgid ""
 msgstr ""
 "Project-Id-Version:  oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-08-04 06:29+0000\n"
-"PO-Revision-Date: 2015-08-03 21:07+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"POT-Creation-Date: 2015-08-05 06:17+0000\n"
+"PO-Revision-Date: 2015-08-04 17:50+0000\n"
+"Last-Translator: Lucas Mascaro <mascaro.lucas@yahoo.fr>\n"
 "Language-Team: French (http://www.transifex.com/openstack/oslomessaging/"
 "language/fr/)\n"
 "Plural-Forms: nplurals=2; plural=(n > 1)\n"
@@ -32,3 +33,13 @@ msgstr "Echec de chargement des notifications pour %s"
 #, python-format
 msgid "Routing '%(event)s' notification to '%(driver)s' driver"
 msgstr "Routage '%(event)s' notification du pilote %(driver)s'"
+
+msgid "start/stop/wait must be called in the same thread"
+msgstr "start/stop/wait doivent être appelés dans le même thread"
+
+msgid ""
+"wait() should be called after stop() as it waits for existing messages to "
+"finish processing"
+msgstr ""
+"wait() devrai être appelé après stop() vu qu'il attend que les messages "
+"existants aient fini d'être traités"
