@@ -13,13 +13,18 @@
 #    under the License.
 
 import abc
+import logging
 
 import six
 
 from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._i18n import _LE
+from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_socket
+from oslo_messaging._i18n import _LE, _LI
 
+LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
@@ -93,6 +98,42 @@ class PublisherBase(object):
 
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""
-        for socket, hosts in self.outbound_sockets.values():
+        for socket in self.outbound_sockets.values():
             socket.setsockopt(zmq.LINGER, 0)
             socket.close()
+
+
+class PublisherMultisend(PublisherBase):
+
+    def __init__(self, conf, matchmaker, socket_type):
+        self.socket_type = socket_type
+        super(PublisherMultisend, self).__init__(conf, matchmaker)
+
+    def _check_hosts_connections(self, target):
+        hosts = self.matchmaker.get_hosts(target)
+
+        if str(target) in self.outbound_sockets:
+            socket = self.outbound_sockets[str(target)]
+        else:
+            socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
+            self.outbound_sockets[str(target)] = socket
+
+        for host in hosts:
+            self._connect_to_host(socket, host, target)
+
+        return socket, hosts
+
+    def _connect_to_host(self, socket, host, target):
+        address = zmq_address.get_tcp_direct_address(host)
+        stype = zmq_names.socket_type_str(self.socket_type)
+        try:
+            LOG.info(_LI("Connecting %(stype)s to %(address)s for %(target)s")
+                     % {"stype": stype,
+                        "address": address,
+                        "target": target})
+            socket.connect(address)
+        except zmq.ZMQError as e:
+            errmsg = _LE("Failed connecting %(stype) to %(address)s: %(e)s")\
+                % (stype, address, e)
+            LOG.error(errmsg)
+            raise rpc_common.RPCException(errmsg)

@@ -52,7 +52,7 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
             LOG.info(_LI("Connecting REQ to %s") % connect_address)
 
             socket.connect(connect_address)
-            self.outbound_sockets[str(target)] = (socket, [host])
+            self.outbound_sockets[str(target)] = socket
             return socket
 
         except zmq.ZMQError as e:

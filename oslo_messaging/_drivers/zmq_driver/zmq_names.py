@@ -12,6 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_messaging._drivers.zmq_driver import zmq_async
+
+zmq = zmq_async.import_zmq()
+
+
+ZMQ_SOCKET_STR = {zmq.DEALER: "DEALER",
+                  zmq.ROUTER: "ROUTER",
+                  zmq.REQ: "REQ",
+                  zmq.REP: "REP",
+                  zmq.PUB: "PUB",
+                  zmq.SUB: "SUB"}
 
 FIELD_FAILURE = 'failure'
 FIELD_REPLY = 'reply'
@@ -33,3 +44,7 @@ MULTISEND_TYPES = (CAST_FANOUT_TYPE, NOTIFY_FANOUT_TYPE)
 DIRECT_TYPES = (CALL_TYPE, CAST_TYPE, NOTIFY_TYPE)
 CAST_TYPES = (CAST_TYPE, CAST_FANOUT_TYPE)
 NOTIFY_TYPES = (NOTIFY_TYPE, NOTIFY_FANOUT_TYPE)
+
+
+def socket_type_str(socket_type):
+    return ZMQ_SOCKET_STR[socket_type]

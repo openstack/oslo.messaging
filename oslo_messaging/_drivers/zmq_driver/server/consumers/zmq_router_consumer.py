@@ -30,6 +30,7 @@ class RouterConsumer(object):
 
     def __init__(self, conf, poller, server):
 
+        self.conf = conf
         self.poller = poller
         self.server = server
 
@@ -38,6 +39,7 @@ class RouterConsumer(object):
             self.socket = self.context.socket(zmq.ROUTER)
             self.address = zmq_address.get_tcp_random_address(conf)
             self.port = self.socket.bind_to_random_port(self.address)
+            self.poller.register(self.socket, self._receive_message)
             LOG.info(_LI("Run ROUTER consumer on %(addr)s:%(port)d"),
                      {"addr": self.address,
                       "port": self.port})
@@ -49,7 +51,7 @@ class RouterConsumer(object):
 
     def listen(self, target):
         LOG.info(_LI("Listen to target %s") % str(target))
-        self.poller.register(self.socket, self._receive_message)
+        #  Do nothing here because we have single socket
 
     def cleanup(self):
         if not self.socket.closed:
@@ -66,7 +68,9 @@ class RouterConsumer(object):
             assert msg_type is not None, 'Bad format: msg type expected'
             context = socket.recv_json()
             message = socket.recv_json()
-            LOG.debug("Received %s message %s" % (msg_type, str(message)))
+            LOG.info(_LI("Received %(msg_type)s message %(msg)s")
+                     % {"msg_type": msg_type,
+                        "msg": str(message)})
 
             if msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(

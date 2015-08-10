@@ -15,6 +15,7 @@
 import logging
 import pprint
 import socket
+import threading
 
 from oslo_config import cfg
 from stevedore import driver
@@ -82,6 +83,36 @@ zmq_opts = [
 ]
 
 
+class LazyDriverItem(object):
+
+    def __init__(self, item_cls, *args, **kwargs):
+        self._lock = threading.Lock()
+        self.item = None
+        self.item_class = item_cls
+        self.args = args
+        self.kwargs = kwargs
+
+    def get(self):
+        #  NOTE(ozamiatin): Lazy initialization.
+        #  All init stuff moved closer to usage point - lazy init.
+        #  Better design approach is to initialize in the driver's
+        # __init__, but 'fork' extensively used by services
+        #  breaks all things.
+
+        if self.item is not None:
+            return self.item
+
+        self._lock.acquire()
+        if self.item is None:
+            self.item = self.item_class(*self.args, **self.kwargs)
+        self._lock.release()
+        return self.item
+
+    def cleanup(self):
+        if self.item:
+            self.item.cleanup()
+
+
 class ZmqDriver(base.BaseDriver):
 
     """ZeroMQ Driver implementation.
@@ -115,15 +146,27 @@ class ZmqDriver(base.BaseDriver):
         conf.register_opts(zmq_opts)
         conf.register_opts(executor_base._pool_opts)
         self.conf = conf
+        self.allowed_remote_exmods = allowed_remote_exmods
 
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
             self.conf.rpc_zmq_matchmaker,
         ).driver(self.conf)
 
-        self.server = zmq_server.ZmqServer(self.conf, self.matchmaker)
-        self.client = zmq_client.ZmqClient(self.conf, self.matchmaker,
-                                           allowed_remote_exmods)
+        self.server = LazyDriverItem(
+            zmq_server.ZmqServer, self, self.conf, self.matchmaker)
+
+        self.notify_server = LazyDriverItem(
+            zmq_server.ZmqServer, self, self.conf, self.matchmaker)
+
+        self.client = LazyDriverItem(
+            zmq_client.ZmqClient, self.conf, self.matchmaker,
+            self.allowed_remote_exmods)
+
+        self.notifier = LazyDriverItem(
+            zmq_client.ZmqClient, self.conf, self.matchmaker,
+            self.allowed_remote_exmods)
+
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)
 
@@ -147,13 +190,14 @@ class ZmqDriver(base.BaseDriver):
                       N means N retries
         :type retry: int
         """
+        client = self.client.get()
         timeout = timeout or self.conf.rpc_response_timeout
         if wait_for_reply:
-            return self.client.send_call(target, ctxt, message, timeout, retry)
+            return client.send_call(target, ctxt, message, timeout, retry)
         elif target.fanout:
-            self.client.send_fanout(target, ctxt, message, timeout, retry)
+            client.send_fanout(target, ctxt, message, timeout, retry)
         else:
-            self.client.send_cast(target, ctxt, message, timeout, retry)
+            client.send_cast(target, ctxt, message, timeout, retry)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
         """Send notification to server
@@ -172,11 +216,11 @@ class ZmqDriver(base.BaseDriver):
                       N means N retries
         :type retry: int
         """
+        client = self.notifier.get()
         if target.fanout:
-            self.client.send_notify_fanout(target, ctxt, message, version,
-                                           retry)
+            client.send_notify_fanout(target, ctxt, message, version, retry)
         else:
-            self.client.send_notify(target, ctxt, message, version, retry)
+            client.send_notify(target, ctxt, message, version, retry)
 
     def listen(self, target):
         """Listen to a specified target on a server side
@@ -184,8 +228,9 @@ class ZmqDriver(base.BaseDriver):
         :param target: Message destination target
         :type target: oslo_messaging.Target
         """
-        self.server.listen(target)
-        return self.server
+        server = self.server.get()
+        server.listen(target)
+        return server
 
     def listen_for_notifications(self, targets_and_priorities, pool):
         """Listen to a specified list of targets on a server side
@@ -195,11 +240,14 @@ class ZmqDriver(base.BaseDriver):
         :param pool: Not used for zmq implementation
         :type pool: object
         """
-        self.server.listen_notification(targets_and_priorities)
-        return self.server
+        server = self.notify_server.get()
+        server.listen_notification(targets_and_priorities)
+        return server
 
     def cleanup(self):
         """Cleanup all driver's connections finally
         """
         self.client.cleanup()
         self.server.cleanup()
+        self.notify_server.cleanup()
+        self.notifier.cleanup()

@@ -14,20 +14,21 @@
 
 import logging
 
-from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
-from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LI, _LW
 
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
-class DealerPublisher(zmq_publisher_base.PublisherBase):
+class DealerPublisher(zmq_publisher_base.PublisherMultisend):
+
+    def __init__(self, conf, matchmaker):
+        super(DealerPublisher, self).__init__(conf, matchmaker, zmq.DEALER)
 
     def send_request(self, request):
 
@@ -37,12 +38,21 @@ class DealerPublisher(zmq_publisher_base.PublisherBase):
         dealer_socket, hosts = self._check_hosts_connections(request.target)
 
         if request.msg_type in zmq_names.MULTISEND_TYPES:
-            for _ in range(len(hosts)):
+            for _ in range(dealer_socket.connections_count()):
                 self._send_request(dealer_socket, request)
         else:
             self._send_request(dealer_socket, request)
 
     def _send_request(self, socket, request):
+
+        if not socket.connections:
+            # NOTE(ozamiatin): Here we can provide
+            # a queue for keeping messages to send them later
+            # when some listener appears. However such approach
+            # being more reliable will consume additional memory.
+            LOG.warning(_LW("Request %s was dropped because no connection")
+                        % request.msg_type)
+            return
 
         socket.send(b'', zmq.SNDMORE)
         super(DealerPublisher, self)._send_request(socket, request)
@@ -50,28 +60,3 @@ class DealerPublisher(zmq_publisher_base.PublisherBase):
         LOG.info(_LI("Sending message %(message)s to a target %(target)s")
                  % {"message": request.message,
                     "target": request.target})
-
-    def _check_hosts_connections(self, target):
-        if str(target) in self.outbound_sockets:
-            dealer_socket, hosts = self.outbound_sockets[str(target)]
-        else:
-            dealer_socket = zmq.Context().socket(zmq.DEALER)
-            hosts = self.matchmaker.get_hosts(target)
-            for host in hosts:
-                self._connect_to_host(dealer_socket, host, target)
-            self.outbound_sockets[str(target)] = (dealer_socket, hosts)
-        return dealer_socket, hosts
-
-    @staticmethod
-    def _connect_to_host(socket, host, target):
-        address = zmq_address.get_tcp_direct_address(host)
-        try:
-            LOG.info(_LI("Connecting DEALER to %(address)s for %(target)s")
-                     % {"address": address,
-                        "target": target})
-            socket.connect(address)
-        except zmq.ZMQError as e:
-            errmsg = _LE("Failed connecting DEALER to %(address)s: %(e)s")\
-                % (address, e)
-            LOG.error(errmsg)
-            raise rpc_common.RPCException(errmsg)
