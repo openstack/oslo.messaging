@@ -1,21 +1,21 @@
 # The order of packages is significant, because pip processes them in the order
 # of appearance. Changing the order has an impact on the overall integration
 # process, which may cause wedges in the gate later.
-oslo.config>=1.4.0,<=1.6.0 # Apache-2.0
-oslo.utils>=1.4.0,<1.5.0 # Apache-2.0
-stevedore>=1.0.0,<=1.3.0 # Apache-2.0
+oslo.config<=1.6.0,>=1.4.0 # Apache-2.0
+oslo.utils<1.5.0,>=1.4.0 # Apache-2.0
+stevedore<=1.3.0,>=1.0.0 # Apache-2.0
 
 # for jsonutils
-six>=1.7.0,<=1.9.0
+six<=1.9.0,>=1.7.0
 
 # used by openstack/common/gettextutils.py
-Babel>=1.3,<=1.3
+Babel<=1.3,>=1.3
 
 # for the routing notifier
-PyYAML>=3.1.0,<=3.10
+PyYAML<=3.10,>=3.1.0
 
 # rabbit driver is the default
-kombu>=2.5.0,<=3.0.7
+kombu<=3.0.15,>=2.5.0
 
 # middleware
-WebOb>=1.2.3,<=1.3.1
+WebOb<=1.3.1,>=1.2.3
