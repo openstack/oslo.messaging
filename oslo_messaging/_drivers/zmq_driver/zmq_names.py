@@ -19,6 +19,8 @@ zmq = zmq_async.import_zmq()
 
 ZMQ_SOCKET_STR = {zmq.DEALER: "DEALER",
                   zmq.ROUTER: "ROUTER",
+                  zmq.PUSH: "PUSH",
+                  zmq.PULL: "PULL",
                   zmq.REQ: "REQ",
                   zmq.REP: "REP",
                   zmq.PUB: "PUB",
@@ -27,6 +29,7 @@ ZMQ_SOCKET_STR = {zmq.DEALER: "DEALER",
 FIELD_FAILURE = 'failure'
 FIELD_REPLY = 'reply'
 FIELD_LOG_FAILURE = 'log_failure'
+FIELD_ID = 'id'
 
 CALL_TYPE = 'call'
 CAST_TYPE = 'cast'

@@ -42,48 +42,14 @@ class ZmqIncomingRequest(base.IncomingMessage):
         message_reply = {zmq_names.FIELD_REPLY: reply,
                          zmq_names.FIELD_FAILURE: failure,
                          zmq_names.FIELD_LOG_FAILURE: log_failure}
-        LOG.debug("Replying %s REP", (str(message_reply)))
+
+        LOG.info("Replying %s REP", (str(message_reply)))
+
         self.received = True
         self.reply_socket.send(self.reply_id, zmq.SNDMORE)
         self.reply_socket.send(b'', zmq.SNDMORE)
         self.reply_socket.send_json(message_reply)
         self.poller.resume_polling(self.reply_socket)
 
-    def acknowledge(self):
-        pass
-
     def requeue(self):
-        pass
-
-
-class ZmqCastMessage(base.IncomingMessage):
-
-    def __init__(self, listener, context, message, socket, poller):
-        super(ZmqCastMessage, self).__init__(listener, context, message)
-        poller.resume_polling(socket)
-
-    def reply(self, reply=None, failure=None, log_failure=True):
-        """Reply is not needed for fanout(cast) messages"""
-
-    def acknowledge(self):
-        pass
-
-    def requeue(self):
-        pass
-
-
-class ZmqNotificationMessage(base.IncomingMessage):
-
-    def __init__(self, listener, context, message, socket, poller):
-        super(ZmqNotificationMessage, self).__init__(listener, context,
-                                                     message)
-        poller.resume_polling(socket)
-
-    def reply(self, reply=None, failure=None, log_failure=True):
-        """Reply is not needed for notification messages"""
-
-    def acknowledge(self):
-        pass
-
-    def requeue(self):
-        pass
+        """Requeue is not supported"""

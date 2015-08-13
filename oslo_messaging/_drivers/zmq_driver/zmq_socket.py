@@ -14,6 +14,7 @@
 
 import logging
 
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -31,7 +32,7 @@ class ZmqSocket(object):
         self.connections = set()
 
     def type_name(self):
-        return zmq_names(self.socket_type)
+        return zmq_names.socket_type_str(self.socket_type)
 
     def connections_count(self):
         return len(self.connections)
@@ -53,5 +54,23 @@ class ZmqSocket(object):
     def send_json(self, *args, **kwargs):
         self.handle.send_json(*args, **kwargs)
 
+    def recv(self, *args, **kwargs):
+        return self.handle.recv(*args, **kwargs)
+
+    def recv_string(self, *args, **kwargs):
+        return self.handle.recv_string(*args, **kwargs)
+
+    def recv_json(self, *args, **kwargs):
+        return self.handle.recv_json(*args, **kwargs)
+
     def close(self, *args, **kwargs):
         self.handle.close(*args, **kwargs)
+
+
+class ZmqRandomPortSocket(ZmqSocket):
+
+    def __init__(self, conf, context, socket_type):
+        super(ZmqRandomPortSocket, self).__init__(context, socket_type)
+        self.conf = conf
+        self.bind_address = zmq_address.get_tcp_random_address(self.conf)
+        self.port = self.handle.bind_to_random_port(self.bind_address)

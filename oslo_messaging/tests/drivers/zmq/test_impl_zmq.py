@@ -52,6 +52,7 @@ class TestServerListener(object):
         try:
             message = self.listener.poll()
             if message is not None:
+                message.acknowledge()
                 self._received.set()
                 self.message = message
                 message.reply(reply=True)
@@ -188,7 +189,7 @@ class TestZmqBasics(ZmqBaseTestCase):
         context = {}
         target.topic = target.topic + '.info'
         self.driver.send_notification(target, context, message, '3.0')
-        self.listener._received.wait()
+        self.listener._received.wait(5)
         self.assertTrue(self.listener._received.isSet())
 
 

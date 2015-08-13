@@ -14,7 +14,6 @@
 
 import contextlib
 
-
 from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_dealer_publisher
 from oslo_messaging._drivers.zmq_driver.client.publishers\

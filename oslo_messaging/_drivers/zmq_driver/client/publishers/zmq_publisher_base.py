@@ -110,8 +110,9 @@ class PublisherMultisend(PublisherBase):
         super(PublisherMultisend, self).__init__(conf, matchmaker)
 
     def _check_hosts_connections(self, target):
+        #  TODO(ozamiatin): Place for significant optimization
+        #  Matchmaker cache should be implemented
         hosts = self.matchmaker.get_hosts(target)
-
         if str(target) in self.outbound_sockets:
             socket = self.outbound_sockets[str(target)]
         else:
