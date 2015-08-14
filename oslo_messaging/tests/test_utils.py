@@ -79,4 +79,4 @@ class TimerTestCase(test_utils.BaseTestCase):
         callback = mock.Mock()
         remaining = t.check_return(callback)
         self.assertAlmostEqual(-10, remaining, 0)
-        callback.assert_called_once
+        callback.assert_called_once_with()
