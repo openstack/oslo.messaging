@@ -54,8 +54,8 @@ class PullConsumer(zmq_consumer_base.SingleSocketConsumer):
         try:
             msg_type = socket.recv_string()
             assert msg_type is not None, 'Bad format: msg type expected'
-            context = socket.recv_json()
-            message = socket.recv_json()
+            context = socket.recv_pyobj()
+            message = socket.recv_pyobj()
             LOG.info(_LI("Received %(msg_type)s message %(msg)s")
                      % {"msg_type": msg_type,
                         "msg": str(message)})

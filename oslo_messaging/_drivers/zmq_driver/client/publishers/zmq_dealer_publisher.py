@@ -63,8 +63,8 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
         socket.send(b'', zmq.SNDMORE)
         socket.send_string(request.msg_type, zmq.SNDMORE)
         socket.send_string(message_id, zmq.SNDMORE)
-        socket.send_json(request.context, zmq.SNDMORE)
-        socket.send_json(request.message)
+        socket.send_pyobj(request.context, zmq.SNDMORE)
+        socket.send_pyobj(request.message)
 
         LOG.info(_LI("Sending message %(message)s to a target %(target)s")
                  % {"message": request.message,
@@ -85,7 +85,7 @@ class AcknowledgementReceiver(object):
     def _receive_acknowledgement(self, socket):
         empty = socket.recv()
         assert empty == b"", "Empty delimiter expected"
-        ack_message = socket.recv_json()
+        ack_message = socket.recv_pyobj()
         return ack_message
 
     def track_socket(self, socket):

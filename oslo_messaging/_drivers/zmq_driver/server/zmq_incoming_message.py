@@ -48,7 +48,7 @@ class ZmqIncomingRequest(base.IncomingMessage):
         self.received = True
         self.reply_socket.send(self.reply_id, zmq.SNDMORE)
         self.reply_socket.send(b'', zmq.SNDMORE)
-        self.reply_socket.send_json(message_reply)
+        self.reply_socket.send_pyobj(message_reply)
         self.poller.resume_polling(self.reply_socket)
 
     def requeue(self):

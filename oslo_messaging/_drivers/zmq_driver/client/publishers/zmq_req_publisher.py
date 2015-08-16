@@ -64,7 +64,7 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
     def _receive_reply(socket, request):
 
         def _receive_method(socket):
-            return socket.recv_json()
+            return socket.recv_pyobj()
 
         # NOTE(ozamiatin): Check for retry here (no retries now)
         with contextlib.closing(zmq_async.get_reply_poller()) as poller:

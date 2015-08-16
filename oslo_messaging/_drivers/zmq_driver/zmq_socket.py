@@ -54,6 +54,9 @@ class ZmqSocket(object):
     def send_json(self, *args, **kwargs):
         self.handle.send_json(*args, **kwargs)
 
+    def send_pyobj(self, *args, **kwargs):
+        self.handle.send_pyobj(*args, **kwargs)
+
     def recv(self, *args, **kwargs):
         return self.handle.recv(*args, **kwargs)
 
@@ -62,6 +65,9 @@ class ZmqSocket(object):
 
     def recv_json(self, *args, **kwargs):
         return self.handle.recv_json(*args, **kwargs)
+
+    def recv_pyobj(self, *args, **kwargs):
+        return self.handle.recv_pyobj(*args, **kwargs)
 
     def close(self, *args, **kwargs):
         self.handle.close(*args, **kwargs)

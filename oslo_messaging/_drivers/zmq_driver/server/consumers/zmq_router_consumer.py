@@ -46,7 +46,7 @@ class RouterIncomingMessage(base.IncomingMessage):
         ack_message = {zmq_names.FIELD_ID: self.msg_id}
         self.socket.send(self.reply_id, zmq.SNDMORE)
         self.socket.send(b'', zmq.SNDMORE)
-        self.socket.send_json(ack_message)
+        self.socket.send_pyobj(ack_message)
 
     def requeue(self):
         """Requeue is not supported"""
@@ -73,8 +73,8 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
             if msg_type != zmq_names.CALL_TYPE:
                 msg_id = socket.recv_string()
 
-            context = socket.recv_json()
-            message = socket.recv_json()
+            context = socket.recv_pyobj()
+            message = socket.recv_pyobj()
             LOG.info(_LI("Received %(msg_type)s message %(msg)s")
                      % {"msg_type": msg_type,
                         "msg": str(message)})

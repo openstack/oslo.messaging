@@ -93,8 +93,8 @@ class PublisherBase(object):
         :type request: zmq_request.Request
         """
         socket.send_string(request.msg_type, zmq.SNDMORE)
-        socket.send_json(request.context, zmq.SNDMORE)
-        socket.send_json(request.message)
+        socket.send_pyobj(request.context, zmq.SNDMORE)
+        socket.send_pyobj(request.message)
 
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""
