@@ -23,13 +23,18 @@ __all__ = [
     'ServerListenError',
 ]
 
+import logging
+
 from oslo_service import service
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
 from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LW
 from oslo_messaging import _utils
 from oslo_messaging import exceptions
+
+LOG = logging.getLogger(__name__)
 
 
 class MessagingServerError(exceptions.MessagingException):
@@ -135,8 +140,11 @@ class MessageHandlingServer(service.ServiceBase):
         if self._thread_id is None:
             self._thread_id = self._get_thread_id()
         elif self._thread_id != self._get_thread_id():
-            raise RuntimeError(_("start/stop/wait must be called in the "
-                                 "same thread"))
+            # NOTE(dims): Need to change this to raise RuntimeError after
+            # verifying/fixing other openstack projects (like Neutron)
+            # work ok with this change
+            LOG.warn(_LW("start/stop/wait must be called in the "
+                         "same thread"))
 
     def stop(self):
         """Stop handling incoming messages.
@@ -165,9 +173,12 @@ class MessageHandlingServer(service.ServiceBase):
         self._check_same_thread_id()
 
         if self._running:
-            raise RuntimeError(_("wait() should be called after stop() as it "
-                                 "waits for existing messages to finish "
-                                 "processing"))
+            # NOTE(dims): Need to change this to raise RuntimeError after
+            # verifying/fixing other openstack projects (like Neutron)
+            # work ok with this change
+            LOG.warn(_("wait() should be called after stop() as it "
+                       "waits for existing messages to finish "
+                       "processing"))
 
         if self._executor is not None:
             self._executor.wait()

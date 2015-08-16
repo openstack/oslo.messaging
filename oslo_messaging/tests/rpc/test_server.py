@@ -18,6 +18,7 @@ import threading
 from oslo_config import cfg
 import testscenarios
 
+import mock
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
@@ -130,7 +131,9 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIsNone(server._executor)
         self.assertEqual(1, listener.cleanup.call_count)
 
-    def test_server_invalid_wait_running_server(self):
+    @mock.patch('oslo_messaging._executors.impl_pooledexecutor.'
+                'PooledExecutor.wait')
+    def test_server_invalid_wait_running_server(self, mock_wait):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
@@ -142,9 +145,15 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.addCleanup(server.wait)
         self.addCleanup(server.stop)
         server.start()
-        self.assertRaises(RuntimeError, server.wait)
+        with mock.patch('logging.Logger.warn') as warn:
+            server.wait()
+            warn.assert_called_with('wait() should be called after '
+                                    'stop() as it waits for existing '
+                                    'messages to finish processing')
 
-    def test_server_invalid_stop_from_other_thread(self):
+    @mock.patch('oslo_messaging._executors.impl_pooledexecutor.'
+                'PooledExecutor.wait')
+    def test_server_invalid_stop_from_other_thread(self, mock_wait):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
@@ -158,8 +167,14 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         t.start()
         self.addCleanup(t.join)
         self.addCleanup(t.stop)
-        self.assertRaises(RuntimeError, server.stop)
-        self.assertRaises(RuntimeError, server.wait)
+        with mock.patch('logging.Logger.warn') as warn:
+            server.stop()
+            warn.assert_called_with('start/stop/wait must be called '
+                                    'in the same thread')
+        with mock.patch('logging.Logger.warn') as warn:
+            server.wait()
+            warn.assert_called_with('start/stop/wait must be called '
+                                    'in the same thread')
 
     def test_no_target_server(self):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
