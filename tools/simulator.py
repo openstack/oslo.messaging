@@ -10,8 +10,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+# Usage example:
+#  python tools/simulator.py \
+#     --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-server
+#  python tools/simulator.py
+#     --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-client \
+#     --exit-wait 15000 -p 64 -m 64
+
 import eventlet
 eventlet.monkey_patch()
+
+import os
 
 import argparse
 import datetime
@@ -241,6 +250,8 @@ def main():
     cfg.CONF.heartbeat_interval = 5
     cfg.CONF.notification_topics = "notif"
     cfg.CONF.notification_driver = "messaging"
+    cfg.CONF.prog = os.path.basename(__file__)
+    cfg.CONF.project = 'oslo.messaging'
 
     transport = messaging.get_transport(cfg.CONF, url=args.url)
     target = messaging.Target(topic='profiler_topic', server='profiler_server')
