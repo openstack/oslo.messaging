@@ -60,7 +60,7 @@ amqp_opts = [
                      'provides such compatibility - it defaults to False in '
                      'Liberty and can be turned on for early adopters with a '
                      'new installations or for testing. Please note, that '
-                     'this option will be removed in M release.')
+                     'this option will be removed in the Mitaka release.')
 ]
 
 UNIQUE_ID = '_unique_id'

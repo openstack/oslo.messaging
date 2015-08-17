@@ -774,8 +774,8 @@ class QpidDriver(amqpdriver.AMQPDriverBase):
                  default_exchange=None, allowed_remote_exmods=None):
 
         warnings.warn(_('The Qpid driver has been deprecated. '
-                        'The driver is planned to be removed during the `M` '
-                        'development cycle.'),
+                        'The driver is planned to be removed during the '
+                        '`Mitaka` development cycle.'),
                       DeprecationWarning, stacklevel=2)
 
         opt_group = cfg.OptGroup(name='oslo_messaging_qpid',
