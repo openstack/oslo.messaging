@@ -102,8 +102,8 @@ class AMQPIncomingMessage(base.IncomingMessage):
                 self._send_reply(conn, ending=True)
 
     def acknowledge(self):
-        self.listener.msg_id_cache.add(self.unique_id)
         self.acknowledge_callback()
+        self.listener.msg_id_cache.add(self.unique_id)
 
     def requeue(self):
         # NOTE(sileht): In case of the connection is lost between receiving the
