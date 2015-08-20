@@ -29,7 +29,6 @@ from oslo_service import service
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
-from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LW
 from oslo_messaging import _utils
 from oslo_messaging import exceptions
@@ -176,9 +175,9 @@ class MessageHandlingServer(service.ServiceBase):
             # NOTE(dims): Need to change this to raise RuntimeError after
             # verifying/fixing other openstack projects (like Neutron)
             # work ok with this change
-            LOG.warn(_("wait() should be called after stop() as it "
-                       "waits for existing messages to finish "
-                       "processing"))
+            LOG.warn(_LW("wait() should be called after stop() as it "
+                         "waits for existing messages to finish "
+                         "processing"))
 
         if self._executor is not None:
             self._executor.wait()
