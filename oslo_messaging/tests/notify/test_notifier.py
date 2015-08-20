@@ -20,6 +20,7 @@ import uuid
 
 import fixtures
 from oslo_serialization import jsonutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 from stevedore import dispatch
 from stevedore import extension
@@ -316,6 +317,22 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
         msg = {'event_type': 'foo'}
         driver.notify(None, msg, "sample", None)
+
+    def test_mask_passwords(self):
+        # Ensure that passwords are masked with notifications
+        driver = _impl_log.LogDriver(None, None, None)
+        logger = mock.MagicMock()
+        logger.info = mock.MagicMock()
+        message = {'password': 'passw0rd', 'event_type': 'foo'}
+        json_str = jsonutils.dumps(message)
+        mask_str = strutils.mask_password(json_str)
+
+
+        with mock.patch.object(logging, 'getLogger') as gl:
+            gl.return_value = logger
+            driver.notify(None, message, 'info', 0)
+
+        logger.info.assert_called_once_with(mask_str)
 
 
 class TestRoutingNotifier(test_utils.BaseTestCase):
