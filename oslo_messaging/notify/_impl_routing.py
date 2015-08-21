@@ -21,7 +21,7 @@ import six
 from stevedore import dispatch
 import yaml
 
-from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LI, _LW
 from oslo_messaging.notify import notifier
 
 
@@ -77,7 +77,7 @@ class RoutingDriver(notifier._Driver):
             invoke_on_load=True,
             invoke_args=None)
         if not list(self.plugin_manager):
-            LOG.warning(_("Failed to load any notifiers for %s"),
+            LOG.warning(_LW("Failed to load any notifiers for %s"),
                         self.NOTIFIER_PLUGIN_NAMESPACE)
 
     def _get_drivers_for_message(self, group, event_type, priority):
@@ -114,7 +114,8 @@ class RoutingDriver(notifier._Driver):
         """Emit the notification.
         """
         # accepted_drivers is passed in as a result of the map() function
-        LOG.info(_("Routing '%(event)s' notification to '%(driver)s' driver"),
+        LOG.info(_LI("Routing '%(event)s' notification to '%(driver)s' "
+                     "driver"),
                  {'event': message.get('event_type'), 'driver': ext.name})
         ext.obj.notify(context, message, priority, retry)
 

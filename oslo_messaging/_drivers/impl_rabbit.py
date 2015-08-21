@@ -260,8 +260,8 @@ class Consumer(object):
         try:
             self.callback(RabbitMessage(message))
         except Exception:
-            LOG.exception(_("Failed to process message"
-                            " ... skipping it."))
+            LOG.exception(_LE("Failed to process message"
+                              " ... skipping it."))
             message.ack()
 
 
@@ -605,7 +605,7 @@ class Connection(object):
             retry = None
 
         def on_error(exc, interval):
-            LOG.debug(_("Received recoverable error from kombu:"),
+            LOG.debug("Received recoverable error from kombu:",
                       exc_info=True)
 
             recoverable_error_callback and recoverable_error_callback(exc)
@@ -681,7 +681,7 @@ class Connection(object):
             self._set_current_channel(channel)
             return ret
         except recoverable_errors as exc:
-            LOG.debug(_("Received recoverable error from kombu:"),
+            LOG.debug("Received recoverable error from kombu:",
                       exc_info=True)
             error_callback and error_callback(exc)
             self._set_current_channel(None)
@@ -823,8 +823,8 @@ class Connection(object):
 
         def _connect_error(exc):
             log_info = {'topic': consumer.routing_key, 'err_str': exc}
-            LOG.error(_("Failed to declare consumer for topic '%(topic)s': "
-                        "%(err_str)s"), log_info)
+            LOG.error(_LE("Failed to declare consumer for topic '%(topic)s': "
+                          "%(err_str)s"), log_info)
 
         def _declare_consumer():
             consumer.declare(self)
@@ -852,7 +852,7 @@ class Connection(object):
 
         def _error_callback(exc):
             _recoverable_error_callback(exc)
-            LOG.error(_('Failed to consume message from queue: %s'),
+            LOG.error(_LE('Failed to consume message from queue: %s'),
                       exc)
 
         def _consume():
@@ -948,8 +948,8 @@ class Connection(object):
 
         def _error_callback(exc):
             log_info = {'topic': exchange.name, 'err_str': exc}
-            LOG.error(_("Failed to publish message to topic "
-                        "'%(topic)s': %(err_str)s"), log_info)
+            LOG.error(_LE("Failed to publish message to topic "
+                          "'%(topic)s': %(err_str)s"), log_info)
             LOG.debug('Exception', exc_info=exc)
 
         method = functools.partial(method, exchange, msg, routing_key, timeout)

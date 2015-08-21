@@ -23,6 +23,7 @@ import eventlet
 from oslo_config import cfg
 
 from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LI
 
 matchmaker_opts = [
     cfg.IntOpt('matchmaker_heartbeat_freq',
@@ -211,7 +212,7 @@ class HeartbeatMatchMakerBase(MatchMakerBase):
         self.hosts.discard(host)
         self.backend_unregister(key, '.'.join((key, host)))
 
-        LOG.info(_("Matchmaker unregistered: %(key)s, %(host)s"),
+        LOG.info(_LI("Matchmaker unregistered: %(key)s, %(host)s"),
                  {'key': key, 'host': host})
 
     def start_heartbeat(self):

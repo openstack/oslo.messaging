@@ -36,7 +36,7 @@ from stevedore import driver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._executors import impl_pooledexecutor  # FIXME(markmc)
-from oslo_messaging._i18n import _, _LE, _LW
+from oslo_messaging._i18n import _, _LE, _LI, _LW
 from oslo_messaging._drivers import pool
 
 
@@ -102,7 +102,7 @@ def _serialize(data):
         return jsonutils.dumps(data, ensure_ascii=True)
     except TypeError:
         with excutils.save_and_reraise_exception():
-            LOG.error(_("JSON serialization failed."))
+            LOG.error(_LE("JSON serialization failed."))
 
 
 def _deserialize(data):
@@ -388,7 +388,7 @@ class InternalContext(object):
                     rpc_common.serialize_remote_exception(e._exc_info,
                                                           log_failure=False)}
         except Exception:
-            LOG.error(_("Exception during message handling"))
+            LOG.error(_LE("Exception during message handling"))
             return {'exc':
                     rpc_common.serialize_remote_exception(sys.exc_info())}
 
@@ -471,7 +471,7 @@ class ZmqBaseReactor(ConsumerBase):
     def register(self, proxy, in_addr, zmq_type_in,
                  in_bind=True, subscribe=None):
 
-        LOG.info(_("Registering reactor"))
+        LOG.info(_LI("Registering reactor"))
 
         if zmq_type_in not in (zmq.PULL, zmq.SUB):
             raise RPCException("Bad input socktype")
@@ -483,11 +483,11 @@ class ZmqBaseReactor(ConsumerBase):
         self.proxies[inq] = proxy
         self.sockets.append(inq)
 
-        LOG.info(_("In reactor registered"))
+        LOG.info(_LI("In reactor registered"))
 
     def consume_in_thread(self):
         def _consume(sock):
-            LOG.info(_("Consuming socket"))
+            LOG.info(_LI("Consuming socket"))
             while not sock.closed:
                 self.consume(sock)
 
@@ -539,7 +539,7 @@ class ZmqProxy(ZmqBaseReactor):
 
         if topic not in self.topic_proxy:
             def publisher(waiter):
-                LOG.info(_("Creating proxy for topic: %s"), topic)
+                LOG.info(_LI("Creating proxy for topic: %s"), topic)
 
                 try:
                     # The topic is received over the network,
@@ -577,14 +577,14 @@ class ZmqProxy(ZmqBaseReactor):
             try:
                 wait_sock_creation.wait()
             except RPCException:
-                LOG.error(_("Topic socket file creation failed."))
+                LOG.error(_LE("Topic socket file creation failed."))
                 return
 
         try:
             self.topic_proxy[topic].put_nowait(data)
         except eventlet.queue.Full:
-            LOG.error(_("Local per-topic backlog buffer full for topic "
-                        "%s. Dropping message."), topic)
+            LOG.error(_LE("Local per-topic backlog buffer full for topic "
+                          "%s. Dropping message."), topic)
 
     def consume_in_thread(self):
         """Runs the ZmqProxy service."""
@@ -599,8 +599,8 @@ class ZmqProxy(ZmqBaseReactor):
         except os.error:
             if not os.path.isdir(ipc_dir):
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Required IPC directory does not exist at"
-                                " %s"), ipc_dir)
+                    LOG.error(_LE("Required IPC directory does not exist at"
+                                  " %s"), ipc_dir)
         try:
             self.register(consumption_proxy,
                           consume_in,
@@ -608,11 +608,11 @@ class ZmqProxy(ZmqBaseReactor):
         except zmq.ZMQError:
             if os.access(ipc_dir, os.X_OK):
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_("Permission denied to IPC directory at"
-                                " %s"), ipc_dir)
+                    LOG.error(_LE("Permission denied to IPC directory at"
+                                  " %s"), ipc_dir)
             with excutils.save_and_reraise_exception():
-                LOG.error(_("Could not create ZeroMQ receiver daemon. "
-                            "Socket may already be in use."))
+                LOG.error(_LE("Could not create ZeroMQ receiver daemon. "
+                              "Socket may already be in use."))
 
         super(ZmqProxy, self).consume_in_thread()
 
@@ -664,7 +664,7 @@ class ZmqReactor(ZmqBaseReactor):
             # Unmarshal only after verifying the message.
             ctx = RpcContext.unmarshal(data[3])
         else:
-            LOG.error(_("ZMQ Envelope version unsupported or unknown."))
+            LOG.error(_LE("ZMQ Envelope version unsupported or unknown."))
             return
 
         self.pool.spawn_n(self.process, proxy, ctx, request)
@@ -692,7 +692,7 @@ class Connection(rpc_common.Connection):
             topic = '.'.join((topic.split('.', 1)[0], CONF.rpc_zmq_host))
 
         if topic in self.topics:
-            LOG.info(_("Skipping topic registration. Already registered."))
+            LOG.info(_LI("Skipping topic registration. Already registered."))
             return
 
         # Receive messages from (local) proxy

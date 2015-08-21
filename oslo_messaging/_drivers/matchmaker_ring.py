@@ -23,7 +23,7 @@ import logging
 from oslo_config import cfg
 
 from oslo_messaging._drivers import matchmaker as mm
-from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LW
 
 matchmaker_opts = [
     # Matchmaker ring file
@@ -71,8 +71,8 @@ class RoundRobinRingExchange(RingExchange):
     def run(self, key):
         if not self._ring_has(key):
             LOG.warn(
-                _("No key defining hosts for topic '%s', "
-                  "see ringfile"), key
+                _LW("No key defining hosts for topic '%s', "
+                    "see ringfile"), key
             )
             return []
         host = next(self.ring0[key])
@@ -89,8 +89,8 @@ class FanoutRingExchange(RingExchange):
         nkey = key.split('fanout~')[1:][0]
         if not self._ring_has(nkey):
             LOG.warn(
-                _("No key defining hosts for topic '%s', "
-                  "see ringfile"), nkey
+                _LW("No key defining hosts for topic '%s', "
+                    "see ringfile"), nkey
             )
             return []
         return map(lambda x: (key + '.' + x, x), self.ring[nkey])

@@ -32,6 +32,8 @@ from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LE
+from oslo_messaging._i18n import _LI
 from oslo_messaging import exceptions
 
 qpid_codec = importutils.try_import("qpid.codec010")
@@ -219,7 +221,7 @@ class ConsumerBase(object):
             self._unpack_json_msg(message)
             self.callback(QpidMessage(self.session, message))
         except Exception:
-            LOG.exception(_("Failed to process message... skipping it."))
+            LOG.exception(_LE("Failed to process message... skipping it."))
             self.session.acknowledge(message)
 
     def get_receiver(self):
@@ -574,13 +576,13 @@ class Connection(object):
                     LOG.error(msg)
                     raise exceptions.MessageDeliveryFailure(msg)
                 else:
-                    msg = _("Unable to connect to AMQP server on %(broker)s: "
-                            "%(e)s. Sleeping %(delay)s seconds") % msg_dict
-                    LOG.error(msg)
+                    msg = _LE("Unable to connect to AMQP server on "
+                              "%(broker)s: %(e)s. Sleeping %(delay)s seconds")
+                    LOG.error(msg, msg_dict)
                     time.sleep(delay)
                     delay = min(delay + 1, 5)
             else:
-                LOG.info(_('Connected to AMQP server on %s'), broker['host'])
+                LOG.info(_LI('Connected to AMQP server on %s'), broker['host'])
                 break
 
         self.session = self.connection.session()
@@ -643,8 +645,8 @@ class Connection(object):
         """
         def _connect_error(exc):
             log_info = {'topic': topic, 'err_str': exc}
-            LOG.error(_("Failed to declare consumer for topic '%(topic)s': "
-                        "%(err_str)s"), log_info)
+            LOG.error(_LE("Failed to declare consumer for topic '%(topic)s': "
+                          "%(err_str)s"), log_info)
 
         def _declare_consumer():
             consumer = consumer_cls(self.driver_conf, self.session, topic,
@@ -666,7 +668,7 @@ class Connection(object):
 
         def _error_callback(exc):
             timer.check_return(_raise_timeout, exc)
-            LOG.exception(_('Failed to consume message from queue: %s'), exc)
+            LOG.exception(_LE('Failed to consume message from queue: %s'), exc)
 
         def _consume():
             # NOTE(sileht):
@@ -691,8 +693,8 @@ class Connection(object):
             try:
                 self._lookup_consumer(nxt_receiver).consume()
             except Exception:
-                LOG.exception(_("Error processing message. "
-                                "Skipping it."))
+                LOG.exception(_LE("Error processing message. "
+                                  "Skipping it."))
 
         self.ensure(_error_callback, _consume)
 
@@ -701,7 +703,7 @@ class Connection(object):
 
         def _connect_error(exc):
             log_info = {'topic': topic, 'err_str': exc}
-            LOG.exception(_("Failed to publish message to topic "
+            LOG.exception(_LE("Failed to publish message to topic "
                           "'%(topic)s': %(err_str)s"), log_info)
 
         def _publisher_send():
