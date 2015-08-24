@@ -18,6 +18,7 @@
 import logging
 
 from oslo_serialization import jsonutils
+from oslo_utils import strutils
 
 from oslo_messaging.notify import notifier
 
@@ -38,4 +39,4 @@ class LogDriver(notifier._Driver):
                                               message['event_type']))
         method = getattr(logger, priority.lower(), None)
         if method:
-            method(jsonutils.dumps(message))
+            method(strutils.mask_password(jsonutils.dumps(message)))
