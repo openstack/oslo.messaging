@@ -7,9 +7,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging 2.2.1.dev10\n"
+"Project-Id-Version: oslo.messaging 2.4.1.dev1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-08-18 06:33+0000\n"
+"POT-Creation-Date: 2015-08-26 06:32+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,25 +17,4 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.0\n"
-
-#: oslo_messaging/server.py:179
-msgid ""
-"wait() should be called after stop() as it waits for existing messages to"
-" finish processing"
-msgstr ""
-
-#: oslo_messaging/notify/_impl_routing.py:80
-#, python-format
-msgid "Failed to load any notifiers for %s"
-msgstr ""
-
-#: oslo_messaging/notify/_impl_routing.py:117
-#, python-format
-msgid "Routing '%(event)s' notification to '%(driver)s' driver"
-msgstr ""
-
-#: oslo_messaging/rpc/dispatcher.py:150
-#, python-format
-msgid "Exception during message handling: %s"
-msgstr ""
 

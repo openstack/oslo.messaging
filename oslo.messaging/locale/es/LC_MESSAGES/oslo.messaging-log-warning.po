@@ -1,0 +1,26 @@
+# Translations template for oslo.messaging.
+# Copyright (C) 2015 ORGANIZATION
+# This file is distributed under the same license as the oslo.messaging
+# project.
+#
+# Translators:
+# Adriana Chisco Landazábal <achisco94@gmail.com>, 2015
+# Lucía Pradillos <dreamers_88@hotmail.com>, 2015
+msgid ""
+msgstr ""
+"Project-Id-Version: oslo.messaging\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2015-08-26 06:33+0000\n"
+"PO-Revision-Date: 2015-08-26 03:46+0000\n"
+"Last-Translator: Lucía Pradillos <dreamers_88@hotmail.com>\n"
+"Language-Team: Spanish (http://www.transifex.com/openstack/oslomessaging/"
+"language/es/)\n"
+"Language: es\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.0\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "start/stop/wait must be called in the same thread"
+msgstr "empezar/parar/esperar debe ser llamado en el mismo hilo"
