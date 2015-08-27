@@ -22,9 +22,5 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 #, python-format
-msgid "An exception occurred processing the API call: %s "
-msgstr "An exception occurred processing the API call: %s "
-
-#, python-format
-msgid "Exception during message handling: %s"
-msgstr "Exception during message handling: %s"
+msgid "Routing '%(event)s' notification to '%(driver)s' driver"
+msgstr "Routing '%(event)s' notification to '%(driver)s' driver"
