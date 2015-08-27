@@ -12,6 +12,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'oslosphinx',
     'stevedore.sphinxext',
+    'oslo_config.sphinxext',
 ]
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
