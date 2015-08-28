@@ -20,6 +20,7 @@ import threading
 from futurist import waiters
 from oslo_config import cfg
 from oslo_utils import excutils
+from oslo_utils import timeutils
 
 from oslo_messaging._executors import base
 
@@ -116,16 +117,32 @@ class PooledExecutor(base.ExecutorBase):
         self._tombstone.set()
         self.listener.stop()
 
-    def wait(self):
-        # TODO(harlowja): this method really needs a timeout.
-        if self._poller is not None:
-            self._tombstone.wait()
-            self._poller.join()
-            self._poller = None
-        if self._executor is not None:
-            with self._mutator:
-                incomplete_fs = list(self._incomplete)
-                self._incomplete.clear()
-            if incomplete_fs:
-                self._wait_for_all(incomplete_fs)
-            self._executor = None
+    def wait(self, timeout=None):
+        with timeutils.StopWatch(duration=timeout) as w:
+            poller = self._poller
+            if poller is not None:
+                self._tombstone.wait(w.leftover(return_none=True))
+                if not self._tombstone.is_set():
+                    return False
+                poller.join(w.leftover(return_none=True))
+                if poller.is_alive():
+                    return False
+                self._poller = None
+            executor = self._executor
+            if executor is not None:
+                with self._mutator:
+                    incomplete_fs = list(self._incomplete)
+                if incomplete_fs:
+                    (done, not_done) = self._wait_for_all(
+                        incomplete_fs,
+                        timeout=w.leftover(return_none=True))
+                    with self._mutator:
+                        for fut in done:
+                            try:
+                                self._incomplete.remove(fut)
+                            except ValueError:
+                                pass
+                    if not_done:
+                        return False
+                self._executor = None
+            return True
