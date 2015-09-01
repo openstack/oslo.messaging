@@ -444,7 +444,7 @@ class Controller(pyngus.ConnectionEventHandler):
             conn_props["x-ssl-ca-file"] = self.ssl_ca_file
         if self.ssl_cert_file:
             # assume this connection is for a server.  If client authentication
-            # support is developed, we'll need an explict flag (server or
+            # support is developed, we'll need an explicit flag (server or
             # client)
             conn_props["x-ssl-server"] = True
             conn_props["x-ssl-identity"] = (self.ssl_cert_file,

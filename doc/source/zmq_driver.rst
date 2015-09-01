@@ -181,7 +181,7 @@ The way that deploy the receiver process is to run it under a new user 'oslo'
 and give all openstack daemons access via group membership of 'oslo' - this
 supports using /var/run/openstack as a shared IPC directory for all openstack
 processes, allowing different services to be hosted on the same server, served
-by a single oslo-messaging-zmq-reciever process.
+by a single oslo-messaging-zmq-receiver process.
 
 The IPC runtime directory, 'rpc_zmq_ipc_dir', can be set in [DEFAULT] section.
 
