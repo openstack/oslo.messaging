@@ -54,9 +54,7 @@ class _SocketConnection(object):
         # Currently it is the Controller object.
         self._handler = handler
         self._container = container
-        c = container.create_connection(name, handler, self._properties)
-        c.user_context = self
-        self.connection = c
+        self.connection = None
 
     def _get_name_and_pid(self):
         # helps identify the process that is using the connection
@@ -72,37 +70,31 @@ class _SocketConnection(object):
         while True:
             try:
                 rc = pyngus.read_socket_input(self.connection, self.socket)
-                if rc > 0:
-                    self.connection.process(time.time())
+                self.connection.process(time.time())
                 return rc
-            except socket.error as e:
-                if e.errno == errno.EAGAIN or e.errno == errno.EINTR:
-                    continue
-                elif e.errno == errno.EWOULDBLOCK:
-                    return 0
-                else:
-                    self._handler.socket_error(str(e))
-                    return pyngus.Connection.EOS
+            except (socket.timeout, socket.error) as e:
+                # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
+                self.connection.close_input()
+                self.connection.close()
+                self._handler.socket_error(str(e))
+                return pyngus.Connection.EOS
 
     def write(self):
         """Called when socket is write-ready."""
         while True:
             try:
                 rc = pyngus.write_socket_output(self.connection, self.socket)
-                if rc > 0:
-                    self.connection.process(time.time())
+                self.connection.process(time.time())
                 return rc
-            except socket.error as e:
-                if e.errno == errno.EAGAIN or e.errno == errno.EINTR:
-                    continue
-                elif e.errno == errno.EWOULDBLOCK:
-                    return 0
-                else:
-                    self._handler.socket_error(str(e))
-                    return pyngus.Connection.EOS
+            except (socket.timeout, socket.error) as e:
+                # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
+                self.connection.close_output()
+                self.connection.close()
+                self._handler.socket_error(str(e))
+                return pyngus.Connection.EOS
 
     def connect(self, host):
-        """Connect to host:port and start the AMQP protocol."""
+        """Connect to host and start the AMQP protocol."""
         addr = socket.getaddrinfo(host.hostname, host.port,
                                   socket.AF_INET, socket.SOCK_STREAM)
         if not addr:
@@ -124,31 +116,46 @@ class _SocketConnection(object):
                 return
         self.socket = my_socket
 
-        # determine the proper SASL mechanism: PLAIN if a username/password is
-        # present, else ANONYMOUS
-        pn_sasl = self.connection.pn_sasl
-        if host.username:
-            password = host.password if host.password else ""
-            pn_sasl.plain(host.username, password)
-        else:
-            pn_sasl.mechanisms("ANONYMOUS")
-            # TODO(kgiusti): server if accepting inbound connections
-            pn_sasl.client()
+        props = self._properties.copy()
+        if pyngus.VERSION >= (2, 0, 0):
+            # configure client authentication
+            #
+            props['x-server'] = False
+            if host.username:
+                props['x-username'] = host.username
+                props['x-password'] = host.password or ""
+
+        c = self._container.create_connection(self.name, self._handler, props)
+        c.user_context = self
+        self.connection = c
+
+        if pyngus.VERSION < (2, 0, 0):
+            # older versions of pyngus requires manual SASL configuration:
+            # determine the proper SASL mechanism: PLAIN if a username/password
+            # is present, else ANONYMOUS
+            pn_sasl = self.connection.pn_sasl
+            if host.username:
+                password = host.password if host.password else ""
+                pn_sasl.plain(host.username, password)
+            else:
+                pn_sasl.mechanisms("ANONYMOUS")
+                # TODO(kgiusti): server if accepting inbound connections
+                pn_sasl.client()
+
         self.connection.open()
 
     def reset(self, name=None):
         """Clean up the current state, expect 'connect()' to be recalled
         later.
         """
+        # note well: since destroy() is called on the connection, do not invoke
+        # this method from a pyngus callback!
         if self.connection:
             self.connection.destroy()
+            self.connection = None
         self.close()
         if name:
             self.name = name
-        c = self._container.create_connection(self.name, self._handler,
-                                              self._properties)
-        c.user_context = self
-        self.connection = c
 
     def close(self):
         if self.socket:
@@ -325,7 +332,6 @@ class Thread(threading.Thread):
             for r in readable:
                 r.read()
 
-            self._schedule.process()  # run any deferred requests
             for t in timers:
                 if t.deadline > time.time():
                     break
@@ -333,6 +339,8 @@ class Thread(threading.Thread):
 
             for w in writable:
                 w.write()
+
+            self._schedule.process()  # run any deferred requests
 
         LOG.info("eventloop thread exiting, container=%s",
                  self._container.name)

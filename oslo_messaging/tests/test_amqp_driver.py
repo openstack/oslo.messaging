@@ -15,13 +15,17 @@
 import logging
 import os
 import select
+import shutil
 import socket
+import subprocess
+import tempfile
 import threading
 import time
 import uuid
 
 from oslo_utils import importutils
 from six import moves
+from string import Template
 import testtools
 
 import oslo_messaging
@@ -295,9 +299,10 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         driver.cleanup()
 
 
-@testtools.skipUnless(pyngus, "proton modules not present")
+@testtools.skipUnless(pyngus and pyngus.VERSION < (2, 0, 0),
+                      "pyngus module not present")
 class TestAuthentication(test_utils.BaseTestCase):
-
+    """Test user authentication using the old pyngus API"""
     def setUp(self):
         super(TestAuthentication, self).setUp()
         # for simplicity, encode the credentials as they would appear 'on the
@@ -310,6 +315,89 @@ class TestAuthentication(test_utils.BaseTestCase):
     def tearDown(self):
         super(TestAuthentication, self).tearDown()
         self._broker.stop()
+
+    def test_authentication_ok(self):
+        """Verify that username and password given in TransportHost are
+        accepted by the broker.
+        """
+
+        addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
+                                            self._broker.port)
+        url = oslo_messaging.TransportURL.parse(self.conf, addr)
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(driver.listen(target), 1)
+        rc = driver.send(target, {"context": True},
+                         {"method": "echo"}, wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_authentication_failure(self):
+        """Verify that a bad password given in TransportHost is
+        rejected by the broker.
+        """
+
+        addr = "amqp://joe:badpass@%s:%d" % (self._broker.host,
+                                             self._broker.port)
+        url = oslo_messaging.TransportURL.parse(self.conf, addr)
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+        target = oslo_messaging.Target(topic="test-topic")
+        _ListenerThread(driver.listen(target), 1)
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send,
+                          target, {"context": True},
+                          {"method": "echo"},
+                          wait_for_reply=True,
+                          timeout=2.0)
+        driver.cleanup()
+
+
+@testtools.skipUnless(pyngus and pyngus.VERSION >= (2, 0, 0),
+                      "pyngus module not present")
+class TestCyrusAuthentication(test_utils.BaseTestCase):
+    """Test the driver's Cyrus SASL integration"""
+
+    def setUp(self):
+        """Create a simple SASL configuration. This assumes saslpasswd2 is in
+        the OS path, otherwise the test will be skipped.
+        """
+        super(TestCyrusAuthentication, self).setUp()
+        # Create a SASL configuration and user database,
+        # add a user 'joe' with password 'secret':
+        self._conf_dir = tempfile.mkdtemp()
+        db = os.path.join(self._conf_dir, 'openstack.sasldb')
+        _t = "echo secret | saslpasswd2 -c -p -f ${db} joe"
+        cmd = Template(_t).substitute(db=db)
+        try:
+            subprocess.call(args=cmd, shell=True)
+        except Exception:
+            shutil.rmtree(self._conf_dir, ignore_errors=True)
+            self._conf_dir = None
+            raise self.SkipTest("Cyrus tool saslpasswd2 not installed")
+
+        # configure the SASL broker:
+        conf = os.path.join(self._conf_dir, 'openstack.conf')
+        mechs = "DIGEST-MD5 SCRAM-SHA-1 CRAM-MD5 PLAIN"
+        t = Template("""sasldb_path: ${db}
+mech_list: ${mechs}
+""")
+        with open(conf, 'w') as f:
+            f.write(t.substitute(db=db, mechs=mechs))
+
+        self._broker = FakeBroker(sasl_mechanisms=mechs,
+                                  user_credentials=["\0joe\0secret"],
+                                  sasl_config_dir=self._conf_dir,
+                                  sasl_config_name="openstack")
+        self._broker.start()
+
+    def tearDown(self):
+        super(TestCyrusAuthentication, self).tearDown()
+        if self._broker:
+            self._broker.stop()
+        if self._conf_dir:
+            shutil.rmtree(self._conf_dir, ignore_errors=True)
 
     def test_authentication_ok(self):
         """Verify that username and password given in TransportHost are
@@ -429,19 +517,33 @@ class FakeBroker(threading.Thread):
             """A single AMQP connection."""
 
             def __init__(self, server, socket_, name,
-                         sasl_mechanisms, user_credentials):
+                         sasl_mechanisms, user_credentials,
+                         sasl_config_dir, sasl_config_name):
                 """Create a Connection using socket_."""
                 self.socket = socket_
                 self.name = name
                 self.server = server
-                self.connection = server.container.create_connection(name,
-                                                                     self)
-                self.connection.user_context = self
                 self.sasl_mechanisms = sasl_mechanisms
                 self.user_credentials = user_credentials
-                if sasl_mechanisms:
-                    self.connection.pn_sasl.mechanisms(sasl_mechanisms)
-                    self.connection.pn_sasl.server()
+                properties = {'x-server': True}
+                if self.sasl_mechanisms:
+                    properties['x-sasl-mechs'] = self.sasl_mechanisms
+                    if "ANONYMOUS" not in self.sasl_mechanisms:
+                        properties['x-require-auth'] = True
+                if sasl_config_dir:
+                    properties['x-sasl-config-dir'] = sasl_config_dir
+                if sasl_config_name:
+                    properties['x-sasl-config-name'] = sasl_config_name
+
+                self.connection = server.container.create_connection(
+                    name, self, properties)
+                self.connection.user_context = self
+                if pyngus.VERSION < (2, 0, 0):
+                    # older versions of pyngus don't recognize the sasl
+                    # connection properties, so configure them manually:
+                    if sasl_mechanisms:
+                        self.connection.pn_sasl.mechanisms(sasl_mechanisms)
+                        self.connection.pn_sasl.server()
                 self.connection.open()
                 self.sender_links = set()
                 self.closed = False
@@ -506,7 +608,8 @@ class FakeBroker(threading.Thread):
                                         link_handle, addr)
 
             def sasl_step(self, connection, pn_sasl):
-                if self.sasl_mechanisms == 'PLAIN':
+                # only called if not using Cyrus SASL
+                if 'PLAIN' in self.sasl_mechanisms:
                     credentials = pn_sasl.recv()
                     if not credentials:
                         return  # wait until some arrives
@@ -592,7 +695,9 @@ class FakeBroker(threading.Thread):
                  address_separator=".",
                  sock_addr="", sock_port=0,
                  sasl_mechanisms="ANONYMOUS",
-                 user_credentials=None):
+                 user_credentials=None,
+                 sasl_config_dir=None,
+                 sasl_config_name=None):
         """Create a fake broker listening on sock_addr:sock_port."""
         if not pyngus:
             raise AssertionError("pyngus module not present")
@@ -602,6 +707,8 @@ class FakeBroker(threading.Thread):
         self._group_prefix = group_prefix + address_separator
         self._address_separator = address_separator
         self._sasl_mechanisms = sasl_mechanisms
+        self._sasl_config_dir = sasl_config_dir
+        self._sasl_config_name = sasl_config_name
         self._user_credentials = user_credentials
         self._wakeup_pipe = os.pipe()
         self._my_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -664,7 +771,9 @@ class FakeBroker(threading.Thread):
                     name = str(client_address)
                     conn = FakeBroker.Connection(self, client_socket, name,
                                                  self._sasl_mechanisms,
-                                                 self._user_credentials)
+                                                 self._user_credentials,
+                                                 self._sasl_config_dir,
+                                                 self._sasl_config_name)
                     self._connections[conn.name] = conn
                 elif r is self._wakeup_pipe[0]:
                     os.read(self._wakeup_pipe[0], 512)
