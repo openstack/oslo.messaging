@@ -44,6 +44,16 @@ class MatchMakerBase(object):
        """
 
     @abc.abstractmethod
+    def unregister(self, target, hostname):
+        """Unregister target from nameserver.
+
+       :param target: the target for host
+       :type target: Target
+       :param hostname: host for the topic in "host:port" format
+       :type hostname: String
+       """
+
+    @abc.abstractmethod
     def get_hosts(self, target):
         """Get all hosts from nameserver by target.
 
@@ -89,6 +99,11 @@ class DummyMatchMaker(MatchMakerBase):
         key = str(target)
         if hostname not in self._cache[key]:
             self._cache[key].append(hostname)
+
+    def unregister(self, target, hostname):
+        key = str(target)
+        if hostname in self._cache[key]:
+            self._cache[key].remove(hostname)
 
     def get_hosts(self, target):
         key = str(target)

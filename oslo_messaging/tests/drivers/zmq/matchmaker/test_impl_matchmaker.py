@@ -61,6 +61,17 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         self.assertIn(self.test_matcher.get_single_host(self.target),
                       [self.host1, self.host2])
 
+    def test_register_unsibscribe(self):
+        self.test_matcher.register(self.target, self.host1)
+        self.test_matcher.register(self.target, self.host2)
+
+        self.test_matcher.unregister(self.target, self.host2)
+
+        self.assertItemsEqual(self.test_matcher.get_hosts(self.target),
+                              [self.host1])
+        self.assertNotIn(self.test_matcher.get_single_host(self.target),
+                         [self.host2])
+
     def test_register_two_same_hosts(self):
         self.test_matcher.register(self.target, self.host1)
         self.test_matcher.register(self.target, self.host1)
