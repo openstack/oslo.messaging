@@ -5,13 +5,14 @@
 #
 # Translators:
 # Adriana Chisco Landazábal <achisco94@gmail.com>, 2015
+# Miriam Godinez <miriamgc@hotmail.com>, 2015
 msgid ""
 msgstr ""
 "Project-Id-Version: oslo.messaging\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-08-04 06:29+0000\n"
-"PO-Revision-Date: 2015-06-22 20:34+0000\n"
-"Last-Translator: Adriana Chisco Landazábal <achisco94@gmail.com>\n"
+"POT-Creation-Date: 2015-09-08 06:18+0000\n"
+"PO-Revision-Date: 2015-09-07 22:46+0000\n"
+"Last-Translator: Miriam Godinez <miriamgc@hotmail.com>\n"
 "Language-Team: Spanish (http://www.transifex.com/openstack/oslomessaging/"
 "language/es/)\n"
 "Language: es\n"
@@ -24,3 +25,7 @@ msgstr ""
 #, python-format
 msgid "An exception occurred processing the API call: %s "
 msgstr "Se ha producido una excepción al prcesar la llamada API: %s"
+
+#, python-format
+msgid "Exception during message handling: %s"
+msgstr "Excepción durante el manejo del mensaje: %s"
