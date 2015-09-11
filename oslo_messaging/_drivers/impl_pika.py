@@ -283,7 +283,8 @@ class PikaOutgoingMessage(object):
 
 
 class PikaListener(object):
-    def __init__(self, pika_engine, no_ack=True, prefetch_count=1):
+    def __init__(self, pika_engine, no_ack=True, prefetch_count=1,
+                 lazy_connect=True):
         self._pika_engine = pika_engine
 
         self._connection = None
@@ -298,6 +299,9 @@ class PikaListener(object):
         self._message_queue = collections.deque()
 
         self.start()
+
+        if not lazy_connect:
+            self._reconnect()
 
     def _reconnect(self):
         self._connection = self._pika_engine.create_connection()
@@ -368,9 +372,11 @@ class PikaListener(object):
 
 
 class RpcServicePikaListener(PikaListener):
-    def __init__(self, pika_engine, target, no_ack=True, prefetch_count=1):
+    def __init__(self, pika_engine, target, no_ack=True, prefetch_count=1,
+                 lazy_connect=False):
         super(RpcServicePikaListener, self).__init__(
-            pika_engine, no_ack=no_ack, prefetch_count=prefetch_count)
+            pika_engine, no_ack=no_ack, prefetch_count=prefetch_count,
+            lazy_connect=lazy_connect)
         self._target = target
 
     def _on_reconnected(self):
@@ -410,13 +416,12 @@ class RpcServicePikaListener(PikaListener):
 
 class RpcReplyPikaListener(PikaListener):
     def __init__(self, pika_engine, exchange, queue, no_ack=True,
-                 prefetch_count=1):
+                 prefetch_count=1, lazy_connect=True):
         super(RpcReplyPikaListener, self).__init__(
-            pika_engine, no_ack, prefetch_count
+            pika_engine, no_ack, prefetch_count, lazy_connect=lazy_connect
         )
         self.exchange = exchange
         self.queue = queue
-        self._reconnect()
 
     def _on_reconnected(self):
         queue_expiration = (
@@ -440,9 +445,10 @@ class RpcReplyPikaListener(PikaListener):
 
 class NotificationPikaListener(PikaListener):
     def __init__(self, pika_engine, targets_and_priorities,
-                 queue_name=None, prefetch_count=100):
+                 queue_name=None, prefetch_count=100, lazy_connect=True):
         super(NotificationPikaListener, self).__init__(
-            pika_engine, no_ack=False, prefetch_count=prefetch_count
+            pika_engine, no_ack=False, prefetch_count=prefetch_count,
+            lazy_connect=lazy_connect
         )
         self._targets_and_priorities = targets_and_priorities
         self.queue_name = queue_name
@@ -512,17 +518,17 @@ class PikaEngine(object):
             conf.oslo_messaging_pika.notification_persistence
         )
 
-        self._reply_listener = None
         self._reply_queue = None
+
+        self._reply_listener = None
         self._on_reply_callback_list = []
 
-        self._run = True
-        self._pooler_thread = threading.Thread(target=self._poller)
-        self._pooler_thread.daemon = True
-
+        self._reply_consumer_enabled = False
+        self._reply_consumer_thread_run_flag = True
+        self._reply_consumer_lock = threading.Lock()
+        self._pooler_thread = None
 
         self._pika_next_connection_num = 0
-
 
         common_pika_params = {
             'virtual_host': url.virtual_host,
@@ -653,23 +659,39 @@ class PikaEngine(object):
         raise
 
     def get_reply_q(self):
-        if self._reply_queue is None:
-            self._reply_queue = "{}.{}.{}".format(
-                self.conf.project, self.conf.prog, uuid.uuid4().hex
-            )
+        if self._reply_consumer_enabled:
+            return self._reply_queue
 
-            self._reply_listener = RpcReplyPikaListener(
-                pika_engine=self,
-                exchange=self.rpc_reply_exchange,
-                queue=self._reply_queue
-            )
+        with self._reply_consumer_lock:
+            if self._reply_consumer_enabled:
+                return self._reply_queue
 
-            self._pooler_thread.start()
+            if self._reply_queue is None:
+                self._reply_queue = "{}.{}.{}".format(
+                    self.conf.project, self.conf.prog, uuid.uuid4().hex
+                )
+
+            if self._reply_listener is None:
+                self._reply_listener = RpcReplyPikaListener(
+                    pika_engine=self,
+                    exchange=self.rpc_reply_exchange,
+                    queue=self._reply_queue,
+                    lazy_connect=False
+                )
+
+            if self._pooler_thread is None:
+                self._pooler_thread = threading.Thread(target=self._poller)
+                self._pooler_thread.daemon = True
+
+            if not self._pooler_thread.is_alive():
+                self._pooler_thread.start()
+
+            self._reply_consumer_enabled = True
 
         return self._reply_queue
 
     def _poller(self):
-        while self._run:
+        while self._reply_consumer_thread_run_flag:
             try:
                 message = self._reply_listener.poll()
                 if message is None:
@@ -696,13 +718,21 @@ class PikaEngine(object):
         )
 
     def cleanup(self):
-        self._run = False
-        if self._pooler_thread:
-            self._pooler_thread.join()
+        with self._reply_consumer_lock:
+            self._reply_consumer_enabled = False
 
-        self._reply_listener.stop()
-        self._reply_listener.cleanup()
+            if self._pooler_thread:
+                if self._pooler_thread.is_alive():
+                    self._reply_consumer_thread_run_flag = False
+                    self._pooler_thread.join()
+                self._pooler_thread = None
 
+            if self._reply_listener:
+                self._reply_listener.stop()
+                self._reply_listener.cleanup()
+                self._reply_listener = None
+
+                self._reply_queue = None
 
 class PikaDriver(object):
     def __init__(self, conf, url, default_exchange=None,
