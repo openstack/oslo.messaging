@@ -501,6 +501,10 @@ class RoutingException(Exception):
     pass
 
 
+class ConnectionException(Exception):
+    pass
+
+
 class PikaEngine(object):
     def __init__(self, conf, url, default_exchange=None):
         self.conf = conf
@@ -598,8 +602,9 @@ class PikaEngine(object):
                 finally:
                     self._pika_next_connection_num += 1
                     self._pika_next_connection_num %= host_num
-        raise pika_exceptions.AMQPConnectionError(
-            "Can not establish connection to any configured RabbitMQ node"
+        raise ConnectionException(
+            "Can not establish connection to any configured RabbitMQ host: " +
+            str(self._pika_params_list)
         )
 
     def create_host_connection(self, host_index):
