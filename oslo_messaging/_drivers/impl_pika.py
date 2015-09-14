@@ -373,11 +373,12 @@ class PikaListener(object):
 
 class RpcServicePikaListener(PikaListener):
     def __init__(self, pika_engine, target, no_ack=True, prefetch_count=1,
-                 lazy_connect=False):
+                 lazy_connect=True):
+        self._target = target
+
         super(RpcServicePikaListener, self).__init__(
             pika_engine, no_ack=no_ack, prefetch_count=prefetch_count,
             lazy_connect=lazy_connect)
-        self._target = target
 
     def _on_reconnected(self):
         exchange = (self._target.exchange or
@@ -416,12 +417,13 @@ class RpcServicePikaListener(PikaListener):
 
 class RpcReplyPikaListener(PikaListener):
     def __init__(self, pika_engine, exchange, queue, no_ack=True,
-                 prefetch_count=1, lazy_connect=True):
+                 prefetch_count=1, lazy_connect=False):
+        self._exchange = exchange
+        self._queue = queue
+
         super(RpcReplyPikaListener, self).__init__(
             pika_engine, no_ack, prefetch_count, lazy_connect=lazy_connect
         )
-        self.exchange = exchange
-        self.queue = queue
 
     def _on_reconnected(self):
         queue_expiration = (
@@ -429,10 +431,10 @@ class RpcReplyPikaListener(PikaListener):
         )
 
         self._pika_engine.declare_queue_binding(
-            self.exchange, self.queue, 'direct',
+            self._exchange, self._queue, 'direct',
             queue_expiration=queue_expiration
         )
-        self._start_consuming(self.queue)
+        self._start_consuming(self._queue)
 
     def poll(self, timeout=None):
         msg = super(RpcReplyPikaListener, self).poll(timeout)
@@ -446,18 +448,19 @@ class RpcReplyPikaListener(PikaListener):
 class NotificationPikaListener(PikaListener):
     def __init__(self, pika_engine, targets_and_priorities,
                  queue_name=None, prefetch_count=100, lazy_connect=True):
+        self._targets_and_priorities = targets_and_priorities
+        self._queue_name = queue_name
+
         super(NotificationPikaListener, self).__init__(
             pika_engine, no_ack=False, prefetch_count=prefetch_count,
             lazy_connect=lazy_connect
         )
-        self._targets_and_priorities = targets_and_priorities
-        self.queue_name = queue_name
 
     def _on_reconnected(self):
         queues_to_consume = set()
         for target, priority in self._targets_and_priorities:
             routing_key = '%s.%s' % (target.topic, priority)
-            queue = self.queue_name or routing_key
+            queue = self._queue_name or routing_key
             self._pika_engine.declare_queue_binding(
                 exchange=(
                     target.exchange or
