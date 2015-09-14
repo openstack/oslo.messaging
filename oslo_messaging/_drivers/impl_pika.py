@@ -221,7 +221,7 @@ class PikaOutgoingMessage(object):
         self.unique_id = uuid.uuid4().hex
         self.msg_id = None
 
-    def send(self, exchange, rouiting_key=None, wait_for_reply=False,
+    def send(self, exchange, rouiting_key='', wait_for_reply=False,
              confirm=True, mandatory=False, persistent=False, timeout=None):
         msg = self.message.copy()
 
