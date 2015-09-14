@@ -371,11 +371,11 @@ class TestCyrusAuthentication(test_utils.BaseTestCase):
         _t = "echo secret | saslpasswd2 -c -p -f ${db} joe"
         cmd = Template(_t).substitute(db=db)
         try:
-            subprocess.call(args=cmd, shell=True)
+            subprocess.check_call(args=cmd, shell=True)
         except Exception:
             shutil.rmtree(self._conf_dir, ignore_errors=True)
             self._conf_dir = None
-            raise self.SkipTest("Cyrus tool saslpasswd2 not installed")
+            raise self.skip("Cyrus tool saslpasswd2 not installed")
 
         # configure the SASL broker:
         conf = os.path.join(self._conf_dir, 'openstack.conf')

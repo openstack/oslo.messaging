@@ -48,9 +48,23 @@ acl-file=${DATADIR}/qpidd.acl
 sasl-config=${DATADIR}/sasl2
 ${LIBACL}
 mgmt-enable=yes
-auth=yes
 log-to-stderr=no
 EOF
+
+# sadly, older versions of qpidd (<=0.32) cannot authenticate against
+# newer versions of proton (>=0.10).  If this version of qpidd does
+# not support the fix, then do not require authentication
+
+if [ $PROTOCOL == "1" ] && ! `$QPIDD --help | grep -q "sasl-service-name"`; then
+    echo "This version of $QPIDD does not support SASL authentication with AMQP 1.0"
+    cat >> ${DATADIR}/qpidd.conf <<EOF
+auth=no
+EOF
+else
+    cat >> ${DATADIR}/qpidd.conf <<EOF
+auth=yes
+EOF
+fi
 
 if [ $PROTOCOL == "1" ]; then
     cat >> ${DATADIR}/qpidd.conf <<EOF
@@ -59,7 +73,7 @@ queue-patterns=exclusive
 queue-patterns=unicast
 topic-patterns=broadcast
 EOF
-    # some versions of qpidd require this for AMQP 1 and SASL:
+    # versions of qpidd >0.32 require this for AMQP 1 and SASL:
     if `$QPIDD --help | grep -q "sasl-service-name"`; then
         cat >> ${DATADIR}/qpidd.conf <<EOF
 sasl-service-name=amqp
