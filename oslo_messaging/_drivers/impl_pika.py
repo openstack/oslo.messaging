@@ -221,7 +221,7 @@ class PikaOutgoingMessage(object):
         self.unique_id = uuid.uuid4().hex
         self.msg_id = None
 
-    def send(self, exchange, rouiting_key='', wait_for_reply=False,
+    def send(self, exchange, routing_key='', wait_for_reply=False,
              confirm=True, mandatory=False, persistent=False, timeout=None):
         msg = self.message.copy()
 
@@ -258,8 +258,15 @@ class PikaOutgoingMessage(object):
         if timeout:
             properties.expiration = str(timeout * 1000)
 
+        LOG.debug(
+            "Sending message:[msg:{}; properties: {}] to target: "
+            "[exchange:{}; routing_key:{}]".format(
+                msg, properties, exchange, routing_key
+            )
+        )
+
         res = self._pika_engine.publish(
-            exchange=exchange, routing_key=rouiting_key,
+            exchange=exchange, routing_key=routing_key,
             body=jsonutils.dumps(
                 common.serialize_msg(msg),
                 encoding=self.content_encoding
@@ -810,7 +817,7 @@ class PikaDriver(object):
 
             reply = msg.send(
                 exchange=target.exchange or self._pika_engine.default_exchange,
-                rouiting_key=queue,
+                routing_key=queue,
                 wait_for_reply=wait_for_reply,
                 timeout=timeout
             )
@@ -829,16 +836,16 @@ class PikaDriver(object):
     def send_notification(self, target, ctxt, message, version, retry=None):
         msg = PikaOutgoingMessage(self._pika_engine, message, ctxt)
 
-        retryCount = 1 if retry else 2
+        retry_count = 1 if retry else 2
 
-        while retryCount > 0:
+        while retry_count > 0:
             try:
                 msg.send(
                     exchange=(
                         target.exchange or
                         self._pika_engine.default_notification_exchange
                     ),
-                    rouiting_key=target.topic,
+                    routing_key=target.topic,
                     mandatory=True,
                     persistent=self._pika_engine.notification_persistence
                 )
@@ -858,7 +865,7 @@ class PikaDriver(object):
                 LOG.exception(
                     "Error during sending notification. Trying again."
                 )
-                retryCount -= 1
+                retry_count -= 1
 
     def listen(self, target):
         return RpcServicePikaListener(self._pika_engine, target)
