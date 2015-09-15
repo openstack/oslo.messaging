@@ -872,3 +872,28 @@ class PikaDriver(object):
 
     def cleanup(self):
         self._pika_engine.cleanup()
+
+
+class PikaDriverCompatibleWithRabbitDriver(PikaDriver):
+    """
+    Old rabbitmq driver creates exchange before sending message. In this case
+    if no rpc service listen this exchange message will be sent to /dev/null
+    but client will know anything about it. That is strange. But for now we
+    need to keep original behaviour
+    """
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
+             retry=None):
+        try:
+            super(PikaDriverCompatibleWithRabbitDriver, self).send(
+                target=target,
+                ctxt=ctxt,
+                message=message,
+                wait_for_reply=wait_for_reply,
+                timeout=timeout,
+                retry=retry
+            )
+        except ExchangeNotFoundException:
+            if wait_for_reply:
+                raise common.Timeout()
+            else:
+                return None
