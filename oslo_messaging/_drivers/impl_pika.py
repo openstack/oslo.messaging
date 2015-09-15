@@ -884,7 +884,7 @@ class PikaDriverCompatibleWithRabbitDriver(PikaDriver):
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
         try:
-            super(PikaDriverCompatibleWithRabbitDriver, self).send(
+            return super(PikaDriverCompatibleWithRabbitDriver, self).send(
                 target=target,
                 ctxt=ctxt,
                 message=message,
