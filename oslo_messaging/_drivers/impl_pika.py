@@ -646,6 +646,13 @@ class PikaEngine(object):
         retries = (self.conf.oslo_messaging_pika.pool_max_size +
                    len(self._pika_params_list))
 
+        LOG.debug(
+            "Sending message:[body:{}; properties: {}] to target: "
+            "[exchange:{}; routing_key:{}]".format(
+                body, properties, exchange, routing_key
+            )
+        )
+
         while retries > 0:
             try:
                 with pool.acquire() as conn:
