@@ -97,3 +97,4 @@ class TimerTestCase(test_utils.BaseTestCase):
         remaining = t.check_return(callback, 1, a='b')
         self.assertEqual(0, remaining)
         callback.assert_called_once_with(1, a='b')
+

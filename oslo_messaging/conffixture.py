@@ -59,7 +59,8 @@ class ConfFixture(fixtures.Fixture):
         _import_opts(self.conf,
                      'oslo_messaging._drivers.impl_zmq', 'zmq_opts')
         _import_opts(self.conf,
-                     'oslo_messaging._drivers.matchmaker_redis',
+                     'oslo_messaging._drivers.zmq_driver.'
+                     'matchmaker.matchmaker_redis',
                      'matchmaker_redis_opts',
                      'matchmaker_redis')
         _import_opts(self.conf, 'oslo_messaging.rpc.client', '_client_opts')
