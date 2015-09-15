@@ -666,7 +666,14 @@ class PikaEngine(object):
                     "another connection."
                 )
             retries -= 1
-        raise
+        raise ConnectionException(
+            "Can not send message:[body:{}; properties: {}] to target: "
+            "[exchange:{}; routing_key:{}] using any of "
+            "configured hosts:{}".format(
+                body, properties, exchange, routing_key,
+                self._pika_params_list
+            )
+        )
 
     def get_reply_q(self):
         if self._reply_consumer_enabled:
