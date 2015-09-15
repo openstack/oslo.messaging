@@ -258,13 +258,6 @@ class PikaOutgoingMessage(object):
         if timeout:
             properties.expiration = str(timeout * 1000)
 
-        LOG.debug(
-            "Sending message:[msg:{}; properties: {}] to target: "
-            "[exchange:{}; routing_key:{}]".format(
-                msg, properties, exchange, routing_key
-            )
-        )
-
         res = self._pika_engine.publish(
             exchange=exchange, routing_key=routing_key,
             body=jsonutils.dumps(
@@ -400,14 +393,16 @@ class RpcServicePikaListener(PikaListener):
         )
 
         self._pika_engine.declare_queue_binding(
-            exchange, queue, 'direct', queue_expiration=queue_expiration
+            exchange=exchange, queue=queue, routing_key=queue,
+            exchange_type='direct', queue_expiration=queue_expiration
         )
         self._pika_engine.declare_queue_binding(
-            exchange, server_queue, 'direct', queue_expiration=queue_expiration
+            exchange=exchange, queue=server_queue, routing_key=server_queue,
+            exchange_type='direct', queue_expiration=queue_expiration
         )
         self._pika_engine.declare_queue_binding(
-            fanout_exchange, server_queue, 'fanout',
-            queue_expiration=queue_expiration
+            exchange=fanout_exchange, queue=server_queue, routing_key="",
+            exchange_type='fanout', queue_expiration=queue_expiration
         )
 
         self._start_consuming(queue)
@@ -438,7 +433,8 @@ class RpcReplyPikaListener(PikaListener):
         )
 
         self._pika_engine.declare_queue_binding(
-            self._exchange, self._queue, 'direct',
+            exchange=self._exchange, queue=self._queue,
+            routing_key=self._queue, exchange_type='direct',
             queue_expiration=queue_expiration
         )
         self._start_consuming(self._queue)
@@ -473,9 +469,9 @@ class NotificationPikaListener(PikaListener):
                     target.exchange or
                     self._pika_engine.default_notification_exchange
                 ),
-                exchange_type='direct',
                 queue = queue,
                 routing_key=routing_key,
+                exchange_type='direct',
                 queue_expiration=None,
                 queue_auto_delete=False,
                 durable=self._pika_engine.notification_persistence
