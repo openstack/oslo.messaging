@@ -125,7 +125,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         # NOTE(sileht): topic and servier_name must be uniq
         # to be able to run all tests in parallel
         self.topic = topic or str(uuid.uuid4())
-        self.names = names or ["server_%i_%s" % (i, uuid.uuid4())
+        self.names = names or ["server_%i_%s" % (i, str(uuid.uuid4())[:8])
                                for i in range(3)]
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]

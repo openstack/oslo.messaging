@@ -25,10 +25,8 @@ from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_qpid
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers import impl_zmq
-from oslo_messaging._drivers import matchmaker
-from oslo_messaging._drivers import matchmaker_redis
-from oslo_messaging._drivers import matchmaker_ring
 from oslo_messaging._drivers.protocols.amqp import opts as amqp_opts
+from oslo_messaging._drivers.zmq_driver.matchmaker import matchmaker_redis
 from oslo_messaging._executors import impl_pooledexecutor
 from oslo_messaging.notify import notifier
 from oslo_messaging.rpc import client
@@ -37,7 +35,7 @@ from oslo_messaging import transport
 _global_opt_lists = [
     drivers_base.base_opts,
     impl_zmq.zmq_opts,
-    matchmaker.matchmaker_opts,
+    matchmaker_redis.matchmaker_redis_opts,
     impl_pooledexecutor._pool_opts,
     notifier._notifier_opts,
     client._client_opts,
@@ -47,7 +45,6 @@ _global_opt_lists = [
 _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
     ('matchmaker_redis', matchmaker_redis.matchmaker_redis_opts),
-    ('matchmaker_ring', matchmaker_ring.matchmaker_opts),
     ('oslo_messaging_amqp', amqp_opts.amqp1_opts),
     ('oslo_messaging_rabbit', list(itertools.chain(amqp.amqp_opts,
                                                    impl_rabbit.rabbit_opts))),

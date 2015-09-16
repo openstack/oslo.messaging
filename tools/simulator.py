@@ -25,7 +25,6 @@ import oslo_messaging as messaging
 from oslo_messaging import notify  # noqa
 from oslo_messaging import rpc  # noqa
 
-
 LOG = logging.getLogger()
 
 USAGE = """ Usage: ./simulator.py [-h] [--url URL] [-d DEBUG]\
