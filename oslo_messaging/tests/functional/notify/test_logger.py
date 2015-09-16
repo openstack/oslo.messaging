@@ -55,7 +55,7 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         self.conf.notification_topics = [topic]
 
         listener = self.useFixture(
-            utils.NotificationFixture(self.url, [topic]))
+            utils.NotificationFixture(self.conf, self.url, [topic]))
 
         log_notify = oslo_messaging.LoggingNotificationHandler(self.url)
 

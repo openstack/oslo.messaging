@@ -52,12 +52,13 @@ class TestServerEndpoint(object):
 class TransportFixture(fixtures.Fixture):
     """Fixture defined to setup the oslo_messaging transport."""
 
-    def __init__(self, url):
+    def __init__(self, conf, url):
+        self.conf = conf
         self.url = url
 
     def setUp(self):
         super(TransportFixture, self).setUp()
-        self.transport = oslo_messaging.get_transport(cfg.CONF, url=self.url)
+        self.transport = oslo_messaging.get_transport(self.conf, url=self.url)
 
     def cleanUp(self):
         try:
@@ -74,9 +75,10 @@ class TransportFixture(fixtures.Fixture):
 class RpcServerFixture(fixtures.Fixture):
     """Fixture to setup the TestServerEndpoint."""
 
-    def __init__(self, url, target, endpoint=None, ctrl_target=None,
+    def __init__(self, conf, url, target, endpoint=None, ctrl_target=None,
                  executor='eventlet'):
         super(RpcServerFixture, self).__init__()
+        self.conf = conf
         self.url = url
         self.target = target
         self.endpoint = endpoint or TestServerEndpoint()
@@ -87,7 +89,7 @@ class RpcServerFixture(fixtures.Fixture):
     def setUp(self):
         super(RpcServerFixture, self).setUp()
         endpoints = [self.endpoint, self]
-        transport = self.useFixture(TransportFixture(self.url))
+        transport = self.useFixture(TransportFixture(self.conf, self.url))
         self.server = oslo_messaging.get_rpc_server(
             transport=transport.transport,
             target=self.target,
@@ -119,8 +121,9 @@ class RpcServerFixture(fixtures.Fixture):
 
 
 class RpcServerGroupFixture(fixtures.Fixture):
-    def __init__(self, url, topic=None, names=None, exchange=None,
+    def __init__(self, conf, url, topic=None, names=None, exchange=None,
                  use_fanout_ctrl=False):
+        self.conf = conf
         self.url = url
         # NOTE(sileht): topic and servier_name must be uniq
         # to be able to run all tests in parallel
@@ -145,7 +148,8 @@ class RpcServerGroupFixture(fixtures.Fixture):
         ctrl = None
         if self.use_fanout_ctrl:
             ctrl = self._target(fanout=True)
-        server = RpcServerFixture(self.url, target, ctrl_target=ctrl)
+        server = RpcServerFixture(self.conf, self.url, target,
+                                  ctrl_target=ctrl)
         return server
 
     def client(self, server=None, cast=False):
@@ -159,7 +163,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
             else:
                 raise ValueError("Invalid value for server: %r" % server)
 
-        transport = self.useFixture(TransportFixture(self.url))
+        transport = self.useFixture(TransportFixture(self.conf, self.url))
         client = ClientStub(transport.transport, target, cast=cast,
                             timeout=5)
         transport.wait()
@@ -289,8 +293,9 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
 
 
 class NotificationFixture(fixtures.Fixture):
-    def __init__(self, url, topics):
+    def __init__(self, conf, url, topics):
         super(NotificationFixture, self).__init__()
+        self.conf = conf
         self.url = url
         self.topics = topics
         self.events = moves.queue.Queue()
@@ -301,7 +306,7 @@ class NotificationFixture(fixtures.Fixture):
         targets = [oslo_messaging.Target(topic=t) for t in self.topics]
         # add a special topic for internal notifications
         targets.append(oslo_messaging.Target(topic=self.name))
-        transport = self.useFixture(TransportFixture(self.url))
+        transport = self.useFixture(TransportFixture(self.conf, self.url))
         self.server = oslo_messaging.get_notification_listener(
             transport.transport,
             targets,
@@ -324,7 +329,7 @@ class NotificationFixture(fixtures.Fixture):
         self.thread.join()
 
     def notifier(self, publisher, topic=None):
-        transport = self.useFixture(TransportFixture(self.url))
+        transport = self.useFixture(TransportFixture(self.conf, self.url))
         n = notifier.Notifier(transport.transport,
                               publisher,
                               driver='messaging',

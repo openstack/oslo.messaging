@@ -12,26 +12,30 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import collections
-import threading
-import uuid
-import sys
-import time
-
-from oslo_serialization import jsonutils
 
 import pika
 from pika import adapters as pika_adapters
 from pika import credentials as pika_credentials
-from pika import spec as pika_spec
 from pika import exceptions as pika_exceptions
+from pika import spec as pika_spec
+
 import pika_pool
 
-from oslo_config import cfg
+import six
+import sys
+import time
+import threading
+import uuid
 
+
+from oslo_config import cfg
+from oslo_log import log as logging
+
+from oslo_messaging import exceptions
 from oslo_messaging._drivers import common
 
-import logging
-import six
+from oslo_serialization import jsonutils
+
 
 LOG = logging.getLogger(__name__)
 
@@ -141,7 +145,6 @@ class PikaIncomingMessage(object):
         self.msg_id = message_dict.pop('_msg_id', None)
         self.reply_q = message_dict.pop('_reply_q', None)
 
-
         context_dict = {}
 
         for key in list(message_dict.keys()):
@@ -194,7 +197,9 @@ class PikaIncomingMessage(object):
                 self._channel.basic_ack(delivery_tag=self.delivery_tag)
             except Exception:
                 LOG.exception("Unable to acknowledge the message")
-                raise common.RPCException("Unable to acknowledge the message")
+                raise exceptions.MessagingException(
+                    "Unable to acknowledge the message"
+                )
 
     def requeue(self):
         if not self._no_ack:
@@ -276,15 +281,14 @@ class PikaOutgoingMessage(object):
 
         if wait_for_reply:
             if not reply_received.wait(timeout):
-                raise common.Timeout()
+                raise exceptions.MessagingTimeout()
             return reply[0]
 
         return None
 
 
 class PikaListener(object):
-    def __init__(self, pika_engine, no_ack=True, prefetch_count=1,
-                 lazy_connect=True):
+    def __init__(self, pika_engine, no_ack, prefetch_count, lazy_connect):
         self._pika_engine = pika_engine
 
         self._connection = None
@@ -320,9 +324,7 @@ class PikaListener(object):
                                     queue, no_ack=self._no_ack)
 
     def _on_message_callback(self, unused, method, properties, body):
-            self._message_queue.append(
-                (self._channel, method, properties, body)
-            )
+        self._message_queue.append((self._channel, method, properties, body))
 
     def _cleanup(self):
         if self._channel:
@@ -499,15 +501,15 @@ class PooledConnectionWithConfirmations(pika_pool.Connection):
         return self.fairy.channel
 
 
-class ExchangeNotFoundException(Exception):
+class ExchangeNotFoundException(exceptions.MessageDeliveryFailure):
     pass
 
 
-class RoutingException(Exception):
+class RoutingException(exceptions.MessageDeliveryFailure):
     pass
 
 
-class ConnectionException(Exception):
+class ConnectionException(exceptions.MessagingException):
     pass
 
 
@@ -720,7 +722,7 @@ class PikaEngine(object):
     def _poller(self):
         while self._reply_consumer_thread_run_flag:
             try:
-                message = self._reply_listener.poll()
+                message = self._reply_listener.poll(timeout=1)
                 if message is None:
                     continue
                 i = 0
@@ -731,12 +733,12 @@ class PikaEngine(object):
                     )
                     if expiration and expiration < curtime:
                         del self._on_reply_callback_list[i]
-                    if msg_id == message.msg_id:
+                    elif msg_id == message.msg_id:
                         del self._on_reply_callback_list[i]
                         callback(message)
                     else:
                         i += 1
-            except Exception:
+            except BaseException:
                 LOG.exception("Exception during reply polling")
 
     def register_reply_callback(self, msg_id, on_reply, timeout):
@@ -760,6 +762,7 @@ class PikaEngine(object):
                 self._reply_listener = None
 
                 self._reply_queue = None
+
 
 class PikaDriver(object):
     def __init__(self, conf, url, default_exchange=None,
@@ -894,6 +897,6 @@ class PikaDriverCompatibleWithRabbitDriver(PikaDriver):
             )
         except ExchangeNotFoundException:
             if wait_for_reply:
-                raise common.Timeout()
+                raise exceptions.MessagingTimeout()
             else:
                 return None
