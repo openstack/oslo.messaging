@@ -271,21 +271,9 @@ class Consumer(object):
             message.ack()
 
 
-class DummyConnectionLock(object):
-    def acquire(self):
-        pass
-
-    def release(self):
-        pass
-
+class DummyConnectionLock(_utils.DummyLock):
     def heartbeat_acquire(self):
         pass
-
-    def __enter__(self):
-        self.acquire()
-
-    def __exit__(self, type, value, traceback):
-        self.release()
 
 
 class ConnectionLock(DummyConnectionLock):
