@@ -44,7 +44,6 @@ fi
 
 cat > ${DATADIR}/qpidd.conf <<EOF
 port=65123
-acl-file=${DATADIR}/qpidd.acl
 sasl-config=${DATADIR}/sasl2
 ${LIBACL}
 mgmt-enable=yes
@@ -63,6 +62,7 @@ EOF
 else
     cat >> ${DATADIR}/qpidd.conf <<EOF
 auth=yes
+acl-file=${DATADIR}/qpidd.acl
 EOF
 fi
 
@@ -92,8 +92,19 @@ cat > ${DATADIR}/sasl2/qpidd.conf <<EOF
 pwcheck_method: auxprop
 auxprop_plugin: sasldb
 sasldb_path: ${DATADIR}/qpidd.sasldb
+EOF
+
+# TODO(kgiusti): we can remove "ANONYMOUS" once proton 0.10.1+ is released:
+# https://issues.apache.org/jira/browse/PROTON-974
+if [ $PROTOCOL == "1" ]; then
+    cat >> ${DATADIR}/sasl2/qpidd.conf <<EOF
+mech_list: PLAIN ANONYMOUS
+EOF
+else
+    cat >> ${DATADIR}/sasl2/qpidd.conf <<EOF
 mech_list: PLAIN
 EOF
+fi
 
 echo secretqpid | saslpasswd2 -c -p -f ${DATADIR}/qpidd.sasldb -u QPID stackqpid
 
