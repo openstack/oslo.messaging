@@ -90,7 +90,7 @@ pika_pool_opts = [
 ]
 
 notification_opts = [
-     cfg.BoolOpt('notification_persistence', default=True,
+     cfg.BoolOpt('notification_persistence', default=False,
                  deprecated_group='DEFAULT',
                  help="Persist notification messages.")
 ]
@@ -203,8 +203,14 @@ class PikaIncomingMessage(object):
 
     def requeue(self):
         if not self._no_ack:
-            return self._channel.basic_nack(delivery_tag=self.delivery_tag,
-                                            requeue=True)
+            try:
+                return self._channel.basic_nack(delivery_tag=self.delivery_tag,
+                                                requeue=True)
+            except Exception:
+                LOG.exception("Unable to requeue the message")
+                raise exceptions.MessagingException(
+                    "Unable to requeue the message"
+                )
 
 
 class PikaOutgoingMessage(object):
