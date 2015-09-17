@@ -72,6 +72,10 @@ class Replies(pyngus.ReceiverEventHandler):
         self._credit = 0
         self._receiver.open()
 
+    def destroy(self):
+        self._correlation = None
+        self._receiver = None
+
     def ready(self):
         return self._ready
 
@@ -157,6 +161,7 @@ class Server(pyngus.ReceiverEventHandler):
         self._incoming = incoming
         self._addresses = addresses
         self._capacity = 500   # credit per link
+        self._receivers = None
 
     def attach(self, connection):
         """Create receiver links over the given connection for all the
@@ -179,6 +184,9 @@ class Server(pyngus.ReceiverEventHandler):
             r.add_capacity(self._capacity)
             r.open()
             self._receivers.append(r)
+
+    def destroy(self):
+        self._receivers = None
 
     # Pyngus ReceiverLink event callbacks:
 
@@ -310,6 +318,15 @@ class Controller(pyngus.ConnectionEventHandler):
             LOG.debug("Waiting for eventloop to exit")
             self.processor.shutdown(wait, timeout)
             self.processor = None
+        self._tasks = None
+        self._senders = None
+        for server in self._servers.values():
+            server.destroy()
+        self._servers.clear()
+        self._socket_connection = None
+        if self._replies:
+            self._replies.destroy()
+            self._replies = None
         LOG.debug("Eventloop exited, driver shut down")
 
     # The remaining methods are reserved to run from the eventloop thread only!

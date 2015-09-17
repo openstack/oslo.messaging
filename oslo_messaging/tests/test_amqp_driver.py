@@ -396,6 +396,7 @@ mech_list: ${mechs}
         super(TestCyrusAuthentication, self).tearDown()
         if self._broker:
             self._broker.stop()
+            self._broker = None
         if self._conf_dir:
             shutil.rmtree(self._conf_dir, ignore_errors=True)
 
@@ -546,12 +547,20 @@ class FakeBroker(threading.Thread):
                         self.connection.pn_sasl.server()
                 self.connection.open()
                 self.sender_links = set()
+                self.receiver_links = set()
                 self.closed = False
 
             def destroy(self):
                 """Destroy the test connection."""
-                while self.sender_links:
-                    link = self.sender_links.pop()
+                # destroy modifies the set, so make a copy
+                tmp = self.sender_links.copy()
+                while tmp:
+                    link = tmp.pop()
+                    link.destroy()
+                # destroy modifies the set, so make a copy
+                tmp = self.receiver_links.copy()
+                while tmp:
+                    link = tmp.pop()
                     link.destroy()
                 self.connection.destroy()
                 self.connection = None
@@ -622,16 +631,21 @@ class FakeBroker(threading.Thread):
             """An AMQP sending link."""
             def __init__(self, server, conn, handle, src_addr=None):
                 self.server = server
+                self.conn = conn
                 cnn = conn.connection
                 self.link = cnn.accept_sender(handle,
                                               source_override=src_addr,
                                               event_handler=self)
+                conn.sender_links.add(self)
                 self.link.open()
                 self.routed = False
 
             def destroy(self):
                 """Destroy the link."""
                 self._cleanup()
+                conn = self.conn
+                self.conn = None
+                conn.sender_links.remove(self)
                 if self.link:
                     self.link.destroy()
                     self.link = None
@@ -663,12 +677,23 @@ class FakeBroker(threading.Thread):
             """An AMQP Receiving link."""
             def __init__(self, server, conn, handle, addr=None):
                 self.server = server
+                self.conn = conn
                 cnn = conn.connection
                 self.link = cnn.accept_receiver(handle,
                                                 target_override=addr,
                                                 event_handler=self)
+                conn.receiver_links.add(self)
                 self.link.open()
                 self.link.add_capacity(10)
+
+            def destroy(self):
+                """Destroy the link."""
+                conn = self.conn
+                self.conn = None
+                conn.receiver_links.remove(self)
+                if self.link:
+                    self.link.destroy()
+                    self.link = None
 
             # ReceiverEventHandler callbacks:
 
@@ -676,8 +701,7 @@ class FakeBroker(threading.Thread):
                 self.link.close()
 
             def receiver_closed(self, receiver_link):
-                self.link.destroy()
-                self.link = None
+                self.destroy()
 
             def message_received(self, receiver_link, message, handle):
                 """Forward this message out the proper sending link."""
@@ -802,8 +826,11 @@ class FakeBroker(threading.Thread):
 
         # Shutting down
         self._my_socket.close()
-        for conn in self._connections.itervalues():
+        for conn in self._connections.values():
             conn.destroy()
+        self._connections = None
+        self.container.destroy()
+        self.container = None
         return 0
 
     def add_route(self, address, link):
