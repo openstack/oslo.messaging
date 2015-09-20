@@ -379,6 +379,8 @@ class TestCyrusAuthentication(test_utils.BaseTestCase):
 
         # configure the SASL broker:
         conf = os.path.join(self._conf_dir, 'openstack.conf')
+        # Note: don't add ANONYMOUS or EXTERNAL without updating the
+        # test_authentication_bad_mechs test below
         mechs = "DIGEST-MD5 SCRAM-SHA-1 CRAM-MD5 PLAIN"
         t = Template("""sasldb_path: ${db}
 mech_list: ${mechs}
@@ -436,6 +438,50 @@ mech_list: ${mechs}
                           wait_for_reply=True,
                           timeout=2.0)
         driver.cleanup()
+
+    def test_authentication_bad_mechs(self):
+        """Verify that the connection fails if the client's SASL mechanisms do
+        not match the broker's.
+        """
+        self.config(sasl_mechanisms="EXTERNAL ANONYMOUS",
+                    group="oslo_messaging_amqp")
+        addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
+                                            self._broker.port)
+        url = oslo_messaging.TransportURL.parse(self.conf, addr)
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+        target = oslo_messaging.Target(topic="test-topic")
+        _ListenerThread(driver.listen(target), 1)
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send,
+                          target, {"context": True},
+                          {"method": "echo"},
+                          wait_for_reply=True,
+                          timeout=2.0)
+        driver.cleanup()
+        self.config(sasl_mechanisms=None,
+                    group="oslo_messaging_amqp")
+
+    def test_authentication_default_username(self):
+        """Verify that a configured username/password is used if none appears
+        in the URL.
+        """
+        addr = "amqp://%s:%d" % (self._broker.host, self._broker.port)
+        self.config(username="joe",
+                    password="secret",
+                    group="oslo_messaging_amqp")
+        url = oslo_messaging.TransportURL.parse(self.conf, addr)
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(driver.listen(target), 1)
+        rc = driver.send(target, {"context": True},
+                         {"method": "echo"}, wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+        self.config(username=None,
+                    password=None,
+                    group="oslo_messaging_amqp")
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")

@@ -214,23 +214,26 @@ class Server(pyngus.ReceiverEventHandler):
 
 class Hosts(object):
     """An order list of TransportHost addresses. Connection failover
-    progresses from one host to the next.
+    progresses from one host to the next.  username and password come from the
+    configuration and are used only if no username/password was given in the
+    URL.
     """
-    def __init__(self, entries=None):
-        self._entries = entries[:] if entries else []
+    def __init__(self, entries=None, default_username=None,
+                 default_password=None):
+        if entries:
+            self._entries = entries[:]
+        else:
+            self._entries = [transport.TransportHost(hostname="localhost",
+                                                     port=5672)]
         for entry in self._entries:
             entry.port = entry.port or 5672
+            entry.username = entry.username or default_username
+            entry.password = entry.password or default_password
         self._current = 0
-
-    def add(self, transport_host):
-        self._entries.append(transport_host)
 
     @property
     def current(self):
-        if len(self._entries):
-            return self._entries[self._current]
-        else:
-            return transport.TransportHost(hostname="localhost", port=5672)
+        return self._entries[self._current]
 
     def next(self):
         if len(self._entries) > 1:
@@ -253,6 +256,7 @@ class Controller(pyngus.ConnectionEventHandler):
     """
     def __init__(self, hosts, default_exchange, config):
         self.processor = None
+        self._socket_connection = None
         # queue of Task() objects to execute on the eventloop once the
         # connection is ready:
         self._tasks = moves.queue.Queue(maxsize=500)
@@ -264,7 +268,6 @@ class Controller(pyngus.ConnectionEventHandler):
         self._senders = {}
         # Servers (set of receiving links), indexed by target:
         self._servers = {}
-        self.hosts = Hosts(hosts)
 
         opt_group = cfg.OptGroup(name='oslo_messaging_amqp',
                                  title='AMQP 1.0 driver options')
@@ -285,6 +288,11 @@ class Controller(pyngus.ConnectionEventHandler):
         self.ssl_key_password = config.oslo_messaging_amqp.ssl_key_password
         self.ssl_allow_insecure = \
             config.oslo_messaging_amqp.allow_insecure_clients
+        self.sasl_mechanisms = config.oslo_messaging_amqp.sasl_mechanisms
+        self.sasl_config_dir = config.oslo_messaging_amqp.sasl_config_dir
+        self.sasl_config_name = config.oslo_messaging_amqp.sasl_config_name
+        self.hosts = Hosts(hosts, config.oslo_messaging_amqp.username,
+                           config.oslo_messaging_amqp.password)
         self.separator = "."
         self.fanout_qualifier = "all"
         self.default_exchange = default_exchange
@@ -468,6 +476,14 @@ class Controller(pyngus.ConnectionEventHandler):
                                             self.ssl_key_file,
                                             self.ssl_key_password)
             conn_props["x-ssl-allow-cleartext"] = self.ssl_allow_insecure
+        # SASL configuration:
+        if self.sasl_mechanisms:
+            conn_props["x-sasl-mechs"] = self.sasl_mechanisms
+        if self.sasl_config_dir:
+            conn_props["x-sasl-config-dir"] = self.sasl_config_dir
+        if self.sasl_config_name:
+            conn_props["x-sasl-config-name"] = self.sasl_config_name
+
         self._socket_connection = self.processor.connect(host,
                                                          handler=self,
                                                          properties=conn_props)

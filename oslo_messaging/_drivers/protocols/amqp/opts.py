@@ -69,5 +69,30 @@ amqp1_opts = [
     cfg.BoolOpt('allow_insecure_clients',
                 default=False,
                 deprecated_group='amqp1',
-                help='Accept clients using either SSL or plain TCP')
+                help='Accept clients using either SSL or plain TCP'),
+
+    cfg.StrOpt('sasl_mechanisms',
+               default='',
+               deprecated_group='amqp1',
+               help='Space separated list of acceptable SASL mechanisms'),
+
+    cfg.StrOpt('sasl_config_dir',
+               default='',
+               deprecated_group='amqp1',
+               help='Path to directory that contains the SASL configuration'),
+
+    cfg.StrOpt('sasl_config_name',
+               default='',
+               deprecated_group='amqp1',
+               help='Name of configuration file (without .conf suffix)'),
+
+    cfg.StrOpt('username',
+               default='',
+               deprecated_group='amqp1',
+               help='User name for message broker authentication'),
+
+    cfg.StrOpt('password',
+               default='',
+               deprecated_group='amqp1',
+               help='Password for message broker authentication')
 ]
