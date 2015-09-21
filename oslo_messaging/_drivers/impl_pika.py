@@ -51,11 +51,6 @@ pika_opts = [
                 help='Enable SSL'),
     cfg.DictOpt('ssl_options', default=None, deprecated_group='DEFAULT',
                 help='Arguments passed to ssl.wrap_socket'),
-    cfg.IntOpt('connection_attempts', default=None,
-               deprecated_group='DEFAULT',
-               help='Maximum number of retry attempts'),
-    cfg.FloatOpt('retry_delay', default=None, deprecated_group='DEFAULT',
-                 help='Time to wait in seconds, before the next'),
     cfg.FloatOpt('socket_timeout', default=None,
                  deprecated_group='DEFAULT',
                  help='Use for high latency networks'),
@@ -92,22 +87,42 @@ pika_pool_opts = [
 notification_opts = [
      cfg.BoolOpt('notification_persistence', default=False,
                  deprecated_group='DEFAULT',
-                 help="Persist notification messages.")
+                 help="Persist notification messages."),
+     cfg.StrOpt('default_notification_exchange', default=None,
+                deprecated_group='DEFAULT',
+                help="Exchange name for for sending notifications")
 ]
 
 rpc_opts = [
      cfg.IntOpt('rpc_queue_expiration', default=60, deprecated_group='DEFAULT',
                 help="Time to live for rpc queues without consumers in "
                      "seconds."),
-     cfg.StrOpt('rpc_reply_exchange', default="rpc_reply_exchange",
+     cfg.StrOpt('default_rpc_exchange', default=None,
                 deprecated_group='DEFAULT',
-                help="Exchange name for for sending and receiving replies")
+                help="Exchange name for for sending RPC messages"),
+     cfg.StrOpt('rpc_reply_exchange', default="openstack_rpc",
+                deprecated_group='DEFAULT',
+                help="Exchange name for for receiving RPC replies")
 ]
 
 extra_messaging_opts = [
-     cfg.StrOpt('default_durable_exchange', default="openstack_durable",
-                deprecated_group='DEFAULT',
-                help="Default name for durable exchange")
+    cfg.IntOpt(
+        'connection_retry', default=3, deprecated_group='DEFAULT',
+        help="Reconnecting retry count in case of connectivity loosing"
+    ),
+    cfg.FloatOpt(
+        'connection_retry_delay', default=0.1, deprecated_group='DEFAULT',
+        help="Reconnecting retry delay in case of connectivity loosing"
+    ),
+    cfg.IntOpt(
+        'rejected_message_retry', default=3, deprecated_group='DEFAULT',
+        help="Resend rejected messages retry count"
+    ),
+    cfg.FloatOpt(
+        'rejected_message_retry_delay', default=0.1,
+        deprecated_group='DEFAULT',
+        help="Resend rejected messages retry delay"
+    )
 ]
 
 
@@ -116,6 +131,385 @@ def _is_eventlet_monkey_patched():
         return False
     import eventlet.patcher
     return eventlet.patcher.is_monkey_patched('thread')
+
+
+class ExchangeNotFoundException(exceptions.MessageDeliveryFailure):
+    pass
+
+
+class MessageRejectedException(exceptions.MessageDeliveryFailure):
+    pass
+
+
+class RoutingException(exceptions.MessageDeliveryFailure):
+    pass
+
+
+class ConnectionException(exceptions.MessagingException):
+    pass
+
+
+class EstablishConnectionException(ConnectionException):
+    pass
+
+
+class PooledConnectionWithConfirmations(pika_pool.Connection):
+    @property
+    def channel(self):
+        if self.fairy.channel is None:
+            self.fairy.channel = self.fairy.cxn.channel()
+            self.fairy.channel.confirm_delivery()
+        return self.fairy.channel
+
+
+class PikaEngine(object):
+    def __init__(self, conf, url, default_exchange=None):
+        self.conf = conf
+
+        self.default_rpc_exchange = (
+            conf.oslo_messaging_pika.default_rpc_exchange if
+            conf.oslo_messaging_pika.default_rpc_exchange else
+            default_exchange
+        )
+        self.rpc_reply_exchange = (
+            conf.oslo_messaging_pika.rpc_reply_exchange if
+            conf.oslo_messaging_pika.rpc_reply_exchange else
+            default_exchange
+        )
+
+        self.default_notification_exchange = (
+            conf.oslo_messaging_pika.default_notification_exchange if
+            conf.oslo_messaging_pika.default_notification_exchange else
+            default_exchange
+        )
+
+        self.notification_persistence = (
+            conf.oslo_messaging_pika.notification_persistence
+        )
+
+        self.connection_retry = conf.oslo_messaging_pika.connection_retry
+        if self.connection_retry is None or self.connection_retry < 0:
+            raise ValueError("connection_retry should be non-negative integer")
+        self.connection_retry_delay = (
+            conf.oslo_messaging_pika.connection_retry_delay
+        )
+
+        self.rejected_message_retry = (
+            conf.oslo_messaging_pika.rejected_message_retry
+        )
+        if (self.rejected_message_retry is None or
+                self.rejected_message_retry < 0):
+            raise ValueError("rejected_message_retry should be non-negative "
+                             "integer")
+        self.rejected_message_retry_delay = (
+            conf.oslo_messaging_pika.rejected_message_retry_delay
+        )
+
+        # preparing puller for listening replies
+        self._reply_queue = None
+
+        self._reply_listener = None
+        self._on_reply_callback_list = []
+
+        self._reply_consumer_enabled = False
+        self._reply_consumer_thread_run_flag = True
+        self._reply_consumer_lock = threading.Lock()
+        self._puller_thread = None
+
+        # initializing connection parameters for configured RabbitMQ hosts
+        self._pika_next_connection_num = 0
+        common_pika_params = {
+            'virtual_host': url.virtual_host,
+            'channel_max': self.conf.oslo_messaging_pika.channel_max,
+            'frame_max': self.conf.oslo_messaging_pika.frame_max,
+            'heartbeat_interval':
+                self.conf.oslo_messaging_pika.heartbeat_interval,
+            'ssl': self.conf.oslo_messaging_pika.ssl,
+            'ssl_options': self.conf.oslo_messaging_pika.ssl_options,
+            'socket_timeout': self.conf.oslo_messaging_pika.socket_timeout,
+            'locale': self.conf.oslo_messaging_pika.locale,
+            'backpressure_detection': (
+                self.conf.oslo_messaging_pika.backpressure_detection
+            )
+        }
+
+        self._pika_params_list = []
+        self._create_connection_lock = threading.Lock()
+
+        for transport_host in url.hosts:
+            pika_params = pika.ConnectionParameters(
+                host=transport_host.hostname,
+                port=transport_host.port,
+                credentials=pika_credentials.PlainCredentials(
+                    transport_host.username, transport_host.password
+                ),
+                **common_pika_params
+            )
+            self._pika_params_list.append(pika_params)
+
+        # initializing 2 connection pools: 1st for connections without
+        # confirmations, 2nd - with confirmations
+        self.connection_pool = pika_pool.QueuedPool(
+            create=self.create_connection,
+            max_size=self.conf.oslo_messaging_pika.pool_max_size,
+            max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
+            timeout=self.conf.oslo_messaging_pika.pool_timeout,
+            recycle=self.conf.oslo_messaging_pika.pool_recycle,
+            stale=self.conf.oslo_messaging_pika.pool_stale,
+        )
+
+        self.connection_with_confirmation_pool = pika_pool.QueuedPool(
+            create=self.create_connection,
+            max_size=self.conf.oslo_messaging_pika.pool_max_size,
+            max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
+            timeout=self.conf.oslo_messaging_pika.pool_timeout,
+            recycle=self.conf.oslo_messaging_pika.pool_recycle,
+            stale=self.conf.oslo_messaging_pika.pool_stale,
+        )
+
+        self.connection_with_confirmation_pool.Connection = (
+            PooledConnectionWithConfirmations
+        )
+
+    def create_connection(self):
+        """
+        Create and return connection to any available host.
+        Raise ConnectionException if all hosts are not reachable
+        """
+        host_num = len(self._pika_params_list)
+        connection_attempts = host_num
+        while connection_attempts > 0:
+            with self._create_connection_lock:
+                try:
+                    return self.create_host_connection(
+                        self._pika_next_connection_num
+                    )
+                except pika_pool.Connection.connectivity_errors:
+                    connection_attempts -= 1
+                    continue
+                finally:
+                    self._pika_next_connection_num += 1
+                    self._pika_next_connection_num %= host_num
+        raise EstablishConnectionException(
+            "Can not establish connection to any configured RabbitMQ host: " +
+            str(self._pika_params_list)
+        )
+
+    def create_host_connection(self, host_index):
+        """
+        Create new connection to host #host_index
+        :return: New connection
+        """
+        return pika_adapters.BlockingConnection(
+            self._pika_params_list[host_index]
+        )
+
+    def execute_with_connection_retry(self, f, *args, **kwargs):
+        execute_try_count = 0
+
+        # in case of connection error we will check all possible
+        # connections from pool and then will try to reconnect to all
+        # configured hosts `self.connection_retry` times
+        connection_retry = (
+            self.conf.oslo_messaging_pika.pool_max_size +
+            self.connection_retry
+        )
+        while True:
+            try:
+                return f(*args, **kwargs)
+            except ConnectionException as e:
+                if isinstance(e, EstablishConnectionException):
+                    # if we are here that means that we get error during
+                    # creating new connection (not existed from pool). So we
+                    # can reduce try count to `self.connection_retry`
+                    # beginning from current try
+                    connect_retry = min(connection_retry, execute_try_count +
+                                        self.connection_retry)
+
+                execute_try_count += 1
+                if execute_try_count > connection_retry:
+                    raise e
+                LOG.warn(str(e))
+                time.sleep(self.connection_retry_delay)
+
+    def execute_with_rejected_message_retry(self, f, *args, **kwargs):
+        execute_try_count = 0
+
+        while True:
+            try:
+                return f(*args, **kwargs)
+            except MessageRejectedException as e:
+                execute_try_count += 1
+                if execute_try_count > self.rejected_message_retry:
+                    raise e
+                LOG.warn(str(e))
+                time.sleep(self.rejected_message_retry_delay)
+
+    def _do_declare_queue_binding(self, exchange, queue, routing_key,
+                                  exchange_type, queue_expiration,
+                                  queue_auto_delete, durable):
+        with self.connection_pool.acquire() as conn:
+            conn.channel.exchange_declare(
+                exchange, exchange_type, auto_delete=True, durable=durable
+            )
+            arguments = {}
+
+            if queue_expiration > 0:
+                arguments['x-expires'] = queue_expiration * 1000
+
+            conn.channel.queue_declare(queue, auto_delete=queue_auto_delete,
+                                       durable=durable, arguments=arguments)
+
+            conn.channel.queue_bind(queue, exchange, routing_key)
+
+    def declare_queue_binding(self, exchange, queue, routing_key=None,
+                              exchange_type='direct', queue_expiration=None,
+                              queue_auto_delete=False, durable=False):
+        self.execute_with_connection_retry(
+            self._do_declare_queue_binding,
+            exchange=exchange, queue=queue, routing_key=routing_key,
+            exchange_type=exchange_type, queue_expiration=queue_expiration,
+            queue_auto_delete=queue_auto_delete, durable=durable
+        )
+
+    def _do_publish(self, pool, exchange, routing_key, body, properties,
+                    mandatory):
+        try:
+            with pool.acquire() as conn:
+                    conn.channel.publish(
+                        exchange=exchange,
+                        routing_key=routing_key,
+                        body=body,
+                        properties=properties,
+                        mandatory=mandatory
+                    )
+        except pika_exceptions.NackError as e:
+            raise MessageRejectedException(
+                "Can not send message: [body: {}], properties: {}] to "
+                "target [exchange: {}, routing_key: {}]. {}".format(
+                    body, properties, exchange, routing_key, str(e)
+                )
+            )
+        except pika_exceptions.UnroutableError as e:
+            raise RoutingException(
+                "Can not deliver message:[body:{}, properties: {}] to any"
+                "queue using target: [exchange:{}, "
+                "routing_key:{}]. {}".format(
+                    body, properties, exchange, routing_key, str(e)
+                )
+            )
+        except pika_pool.Connection.connectivity_errors as e:
+            if (isinstance(e, pika_exceptions.ChannelClosed)
+                    and e.args and e.args[0] == 404):
+                raise ExchangeNotFoundException(
+                    "Attempt to send message to not existing exchange "
+                    "detected, message: [body:{}, properties: {}], target: "
+                    "[exchange:{}, routing_key:{}]. {}".format(
+                        body, properties, exchange, routing_key, str(e)
+                    )
+                )
+            raise ConnectionException(
+                "Connectivity problem detected during sending the message: "
+                "[body:{}, properties: {}] to target: [exchange:{}, "
+                "routing_key:{}]. {}".format(
+                    body, properties, exchange, routing_key, str(e)
+                )
+            )
+
+    def publish(self, exchange, routing_key, body, properties, confirm,
+                mandatory):
+        pool = (self.connection_with_confirmation_pool if confirm else
+                self.connection_pool)
+
+        LOG.debug(
+            "Sending message:[body:{}; properties: {}] to target: "
+            "[exchange:{}; routing_key:{}]".format(
+                body, properties, exchange, routing_key
+            )
+        )
+
+        self.execute_with_rejected_message_retry(
+            self.execute_with_rejected_message_retry,
+            self._do_publish,
+            pool=pool, exchange=exchange, routing_key=routing_key,
+            body=body, properties=properties, mandatory=mandatory
+        )
+
+    def get_reply_q(self):
+        if self._reply_consumer_enabled:
+            return self._reply_queue
+
+        with self._reply_consumer_lock:
+            if self._reply_consumer_enabled:
+                return self._reply_queue
+
+            if self._reply_queue is None:
+                self._reply_queue = "reply.{}.{}.{}".format(
+                    self.conf.project, self.conf.prog, uuid.uuid4().hex
+                )
+
+            if self._reply_listener is None:
+                self._reply_listener = RpcReplyPikaListener(
+                    pika_engine=self,
+                    exchange=self.rpc_reply_exchange,
+                    queue=self._reply_queue,
+                    lazy_connect=False
+                )
+
+            if self._puller_thread is None:
+                self._puller_thread = threading.Thread(target=self._poller)
+                self._puller_thread.daemon = True
+
+            if not self._puller_thread.is_alive():
+                self._puller_thread.start()
+
+            self._reply_consumer_enabled = True
+
+        return self._reply_queue
+
+    def _poller(self):
+        while self._reply_consumer_thread_run_flag:
+            try:
+                message = self._reply_listener.poll(timeout=1)
+                if message is None:
+                    continue
+                i = 0
+                curtime = time.time()
+                while i < len(self._on_reply_callback_list):
+                    msg_id, callback, expiration = (
+                        self._on_reply_callback_list[i]
+                    )
+                    if expiration and expiration < curtime:
+                        del self._on_reply_callback_list[i]
+                    elif msg_id == message.msg_id:
+                        del self._on_reply_callback_list[i]
+                        callback(message)
+                    else:
+                        i += 1
+            except BaseException:
+                LOG.exception("Exception during reply polling")
+
+    def register_reply_callback(self, msg_id, on_reply, timeout):
+        self._on_reply_callback_list.append(
+            (msg_id, on_reply, time.time() + timeout if timeout else None)
+        )
+
+    def cleanup(self):
+        with self._reply_consumer_lock:
+            self._reply_consumer_enabled = False
+
+            if self._puller_thread:
+                if self._puller_thread.is_alive():
+                    self._reply_consumer_thread_run_flag = False
+                    self._puller_thread.join()
+                self._puller_thread = None
+
+            if self._reply_listener:
+                self._reply_listener.stop()
+                self._reply_listener.cleanup()
+                self._reply_listener = None
+
+                self._reply_queue = None
 
 
 class PikaIncomingMessage(object):
@@ -171,25 +565,33 @@ class PikaIncomingMessage(object):
             'ending': True
         }
 
-        self._pika_engine.publish(
-            exchange=self._pika_engine.rpc_reply_exchange,
-            routing_key=self.reply_q,
-            body=jsonutils.dumps(
-                common.serialize_msg(msg),
-                encoding=self.content_encoding
-            ),
-            properties=pika_spec.BasicProperties(
-                content_encoding=self.content_encoding,
-                content_type=self.content_type,
-                expiration=self.expiration
-            ),
-            confirm=False
-        )
-        LOG.debug(
-            "Message [id:'{}'] replied to '{}'.".format(
-                self.msg_id, self.reply_q
+        try:
+            self._pika_engine.publish(
+                exchange=self._pika_engine.rpc_reply_exchange,
+                routing_key=self.reply_q,
+                body=jsonutils.dumps(
+                    common.serialize_msg(msg),
+                    encoding=self.content_encoding
+                ),
+                properties=pika_spec.BasicProperties(
+                    content_encoding=self.content_encoding,
+                    content_type=self.content_type,
+                    expiration=self.expiration
+                ),
+                confirm=True,
+                mandatory=False
             )
-        )
+            LOG.debug(
+                "Message [id:'{}'] replied to '{}'.".format(
+                    self.msg_id, self.reply_q
+                )
+            )
+        except Exception:
+            LOG.exception(
+                "Message [id:'{}'] wasn't replied to : {}".format(
+                    self.msg_id, self.reply_q
+                )
+            )
 
     def acknowledge(self):
         if not self._no_ack:
@@ -197,9 +599,6 @@ class PikaIncomingMessage(object):
                 self._channel.basic_ack(delivery_tag=self.delivery_tag)
             except Exception:
                 LOG.exception("Unable to acknowledge the message")
-                raise exceptions.MessagingException(
-                    "Unable to acknowledge the message"
-                )
 
     def requeue(self):
         if not self._no_ack:
@@ -208,9 +607,6 @@ class PikaIncomingMessage(object):
                                                 requeue=True)
             except Exception:
                 LOG.exception("Unable to requeue the message")
-                raise exceptions.MessagingException(
-                    "Unable to requeue the message"
-                )
 
 
 class PikaOutgoingMessage(object):
@@ -232,9 +628,25 @@ class PikaOutgoingMessage(object):
         self.unique_id = uuid.uuid4().hex
         self.msg_id = None
 
-    def send(self, exchange, routing_key='', wait_for_reply=False,
-             confirm=True, mandatory=False, persistent=False, timeout=None):
+    def send(self, exchange, routing_key='', confirm=True,
+             wait_for_reply=False, mandatory=True, persistent=False,
+             message_timeout=None):
         msg = self.message.copy()
+
+        msg['_unique_id'] = self.unique_id
+
+        for key, value in self.context.iteritems():
+            key = six.text_type(key)
+            msg['_context_' + key] = value
+
+        properties = pika_spec.BasicProperties(
+            content_encoding=self.content_encoding,
+            content_type=self.content_type,
+            delivery_mode=2 if persistent else 1
+        )
+
+        if message_timeout:
+            properties.expiration = str(message_timeout * 1000)
 
         if wait_for_reply:
             self.msg_id = uuid.uuid4().hex
@@ -251,25 +663,10 @@ class PikaOutgoingMessage(object):
                 reply_received.set()
 
             self._pika_engine.register_reply_callback(
-                msg_id=self.msg_id, on_reply=on_reply, timeout=timeout
+                msg_id=self.msg_id, on_reply=on_reply, timeout=message_timeout
             )
 
-        msg['_unique_id'] = self.unique_id
-
-        for key, value in self.context.iteritems():
-            key = six.text_type(key)
-            msg['_context_' + key] = value
-
-        properties = pika_spec.BasicProperties(
-            content_encoding=self.content_encoding,
-            content_type=self.content_type,
-            delivery_mode=2 if persistent else 1
-        )
-
-        if timeout:
-            properties.expiration = str(timeout * 1000)
-
-        res = self._pika_engine.publish(
+        self._pika_engine.publish(
             exchange=exchange, routing_key=routing_key,
             body=jsonutils.dumps(
                 common.serialize_msg(msg),
@@ -280,17 +677,10 @@ class PikaOutgoingMessage(object):
             mandatory=mandatory
         )
 
-        if not res:
-            raise RoutingException(
-                "Unable to route the message. Probably no bind queue exists"
-            )
-
         if wait_for_reply:
-            if not reply_received.wait(timeout):
+            if not reply_received.wait(message_timeout):
                 raise exceptions.MessagingTimeout()
             return reply[0]
-
-        return None
 
 
 class PikaListener(object):
@@ -390,7 +780,7 @@ class RpcServicePikaListener(PikaListener):
 
     def _on_reconnected(self):
         exchange = (self._target.exchange or
-                    self._pika_engine.default_exchange)
+                    self._pika_engine.default_rpc_exchange)
         queue = '{}'.format(self._target.topic)
         server_queue = '{}.{}'.format(queue, self._target.server)
 
@@ -498,278 +888,6 @@ class NotificationPikaListener(PikaListener):
         )
 
 
-class PooledConnectionWithConfirmations(pika_pool.Connection):
-    @property
-    def channel(self):
-        if self.fairy.channel is None:
-            self.fairy.channel = self.fairy.cxn.channel()
-            self.fairy.channel.confirm_delivery()
-        return self.fairy.channel
-
-
-class ExchangeNotFoundException(exceptions.MessageDeliveryFailure):
-    pass
-
-
-class RoutingException(exceptions.MessageDeliveryFailure):
-    pass
-
-
-class ConnectionException(exceptions.MessagingException):
-    pass
-
-
-class PikaEngine(object):
-    def __init__(self, conf, url, default_exchange=None):
-        self.conf = conf
-
-        self.default_exchange = default_exchange
-        self.rpc_reply_exchange = (
-            conf.oslo_messaging_pika.rpc_reply_exchange
-        )
-        self.default_notification_exchange = (
-            conf.oslo_messaging_pika.default_durable_exchange if
-            conf.oslo_messaging_pika.notification_persistence else
-            default_exchange
-        )
-        self.notification_persistence = (
-            conf.oslo_messaging_pika.notification_persistence
-        )
-
-        self._reply_queue = None
-
-        self._reply_listener = None
-        self._on_reply_callback_list = []
-
-        self._reply_consumer_enabled = False
-        self._reply_consumer_thread_run_flag = True
-        self._reply_consumer_lock = threading.Lock()
-        self._pooler_thread = None
-
-        self._pika_next_connection_num = 0
-
-        common_pika_params = {
-            'virtual_host': url.virtual_host,
-            'channel_max': self.conf.oslo_messaging_pika.channel_max,
-            'frame_max': self.conf.oslo_messaging_pika.frame_max,
-            'heartbeat_interval':
-                self.conf.oslo_messaging_pika.heartbeat_interval,
-            'ssl': self.conf.oslo_messaging_pika.ssl,
-            'ssl_options': self.conf.oslo_messaging_pika.ssl_options,
-            'connection_attempts':
-                self.conf.oslo_messaging_pika.connection_attempts,
-            'retry_delay': self.conf.oslo_messaging_pika.retry_delay,
-            'socket_timeout': self.conf.oslo_messaging_pika.socket_timeout,
-            'locale': self.conf.oslo_messaging_pika.locale,
-            'backpressure_detection': (
-                self.conf.oslo_messaging_pika.backpressure_detection
-            )
-        }
-
-        self._pika_params_list = []
-        self._create_connection_lock = threading.Lock()
-
-        for transport_host in url.hosts:
-            pika_params = pika.ConnectionParameters(
-                host=transport_host.hostname,
-                port=transport_host.port,
-                credentials=pika_credentials.PlainCredentials(
-                    transport_host.username, transport_host.password
-                ),
-                **common_pika_params
-            )
-            self._pika_params_list.append(pika_params)
-
-        self.connection_pool = pika_pool.QueuedPool(
-            create=self.create_connection,
-            max_size=self.conf.oslo_messaging_pika.pool_max_size,
-            max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
-            timeout=self.conf.oslo_messaging_pika.pool_timeout,
-            recycle=self.conf.oslo_messaging_pika.pool_recycle,
-            stale=self.conf.oslo_messaging_pika.pool_stale,
-        )
-
-        self.connection_with_confirmation_pool = pika_pool.QueuedPool(
-            create=self.create_connection,
-            max_size=self.conf.oslo_messaging_pika.pool_max_size,
-            max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
-            timeout=self.conf.oslo_messaging_pika.pool_timeout,
-            recycle=self.conf.oslo_messaging_pika.pool_recycle,
-            stale=self.conf.oslo_messaging_pika.pool_stale,
-        )
-        self.connection_with_confirmation_pool.Connection = (
-            PooledConnectionWithConfirmations
-        )
-
-    def create_connection(self):
-        host_num = len(self._pika_params_list)
-        retries = host_num
-        while retries > 0:
-            with self._create_connection_lock:
-                try:
-                    return self.create_host_connection(
-                        self._pika_next_connection_num
-                    )
-                except pika_pool.Connection.connectivity_errors:
-                    retries -= 1
-                    continue
-                finally:
-                    self._pika_next_connection_num += 1
-                    self._pika_next_connection_num %= host_num
-        raise ConnectionException(
-            "Can not establish connection to any configured RabbitMQ host: " +
-            str(self._pika_params_list)
-        )
-
-    def create_host_connection(self, host_index):
-        """
-        Create new connection to host #host_index
-        :return: New connection
-        """
-        return pika_adapters.BlockingConnection(
-            self._pika_params_list[host_index]
-        )
-
-    def declare_queue_binding(self, exchange, queue, routing_key=None,
-                              exchange_type='direct', queue_expiration=None,
-                              queue_auto_delete=False, durable=False):
-        with self.connection_pool.acquire() as conn:
-            conn.channel.exchange_declare(
-                exchange, exchange_type, auto_delete=True, durable=durable
-            )
-            arguments = {}
-
-            if queue_expiration > 0:
-                arguments['x-expires'] = queue_expiration * 1000
-
-            conn.channel.queue_declare(queue, auto_delete=queue_auto_delete,
-                                       durable=durable, arguments=arguments)
-
-            conn.channel.queue_bind(queue, exchange, routing_key)
-
-    def publish(self, exchange, routing_key, body, properties,
-                confirm=True, mandatory=False):
-        pool = (self.connection_with_confirmation_pool if confirm else
-                self.connection_pool)
-
-        # in case of connection error we will check all possible connections
-        # from pool and then will try to reconnect to all configured hosts
-        retries = (self.conf.oslo_messaging_pika.pool_max_size +
-                   len(self._pika_params_list))
-
-        LOG.debug(
-            "Sending message:[body:{}; properties: {}] to target: "
-            "[exchange:{}; routing_key:{}]".format(
-                body, properties, exchange, routing_key
-            )
-        )
-
-        while retries > 0:
-            try:
-                with pool.acquire() as conn:
-                    return conn.channel.basic_publish(
-                        exchange=exchange,
-                        routing_key=routing_key,
-                        body=body,
-                        properties=properties,
-                        mandatory=mandatory
-                    )
-            except pika_pool.Connection.connectivity_errors as e:
-                if (isinstance(e, pika_exceptions.ChannelClosed)
-                        and e.args and e.args[0] == 404):
-                    raise ExchangeNotFoundException(e.args[1])
-
-                LOG.exception(
-                    "Error during replying on message. Trying to send it via "
-                    "another connection."
-                )
-            retries -= 1
-        raise ConnectionException(
-            "Can not send message:[body:{}; properties: {}] to target: "
-            "[exchange:{}; routing_key:{}] using any of "
-            "configured hosts:{}".format(
-                body, properties, exchange, routing_key,
-                self._pika_params_list
-            )
-        )
-
-    def get_reply_q(self):
-        if self._reply_consumer_enabled:
-            return self._reply_queue
-
-        with self._reply_consumer_lock:
-            if self._reply_consumer_enabled:
-                return self._reply_queue
-
-            if self._reply_queue is None:
-                self._reply_queue = "{}.{}.{}".format(
-                    self.conf.project, self.conf.prog, uuid.uuid4().hex
-                )
-
-            if self._reply_listener is None:
-                self._reply_listener = RpcReplyPikaListener(
-                    pika_engine=self,
-                    exchange=self.rpc_reply_exchange,
-                    queue=self._reply_queue,
-                    lazy_connect=False
-                )
-
-            if self._pooler_thread is None:
-                self._pooler_thread = threading.Thread(target=self._poller)
-                self._pooler_thread.daemon = True
-
-            if not self._pooler_thread.is_alive():
-                self._pooler_thread.start()
-
-            self._reply_consumer_enabled = True
-
-        return self._reply_queue
-
-    def _poller(self):
-        while self._reply_consumer_thread_run_flag:
-            try:
-                message = self._reply_listener.poll(timeout=1)
-                if message is None:
-                    continue
-                i = 0
-                curtime = time.time()
-                while i < len(self._on_reply_callback_list):
-                    msg_id, callback, expiration = (
-                        self._on_reply_callback_list[i]
-                    )
-                    if expiration and expiration < curtime:
-                        del self._on_reply_callback_list[i]
-                    elif msg_id == message.msg_id:
-                        del self._on_reply_callback_list[i]
-                        callback(message)
-                    else:
-                        i += 1
-            except BaseException:
-                LOG.exception("Exception during reply polling")
-
-    def register_reply_callback(self, msg_id, on_reply, timeout):
-        self._on_reply_callback_list.append(
-            (msg_id, on_reply, time.time() + timeout if timeout else None)
-        )
-
-    def cleanup(self):
-        with self._reply_consumer_lock:
-            self._reply_consumer_enabled = False
-
-            if self._pooler_thread:
-                if self._pooler_thread.is_alive():
-                    self._reply_consumer_thread_run_flag = False
-                    self._pooler_thread.join()
-                self._pooler_thread = None
-
-            if self._reply_listener:
-                self._reply_listener.stop()
-                self._reply_listener.cleanup()
-                self._reply_listener = None
-
-                self._reply_queue = None
-
-
 class PikaDriver(object):
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
@@ -805,60 +923,81 @@ class PikaDriver(object):
     def require_features(self, requeue=False):
         pass
 
-    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             retry=None):
-
-        msg = PikaOutgoingMessage(self._pika_engine, message, ctxt)
-
+    def _do_send_rpc(self, target, outgoing_msg, wait_for_reply, timeout):
         if target.fanout:
-            msg.send(
+            return outgoing_msg.send(
                 exchange='{}_fanout'.format(target.topic),
-                timeout=timeout
-            )
-        else:
-            queue = target.topic
-            if target.server:
-                queue = '{}.{}'.format(queue, target.server)
-
-            reply = msg.send(
-                exchange=target.exchange or self._pika_engine.default_exchange,
-                routing_key=queue,
-                wait_for_reply=wait_for_reply,
-                timeout=timeout
+                message_timeout=timeout, confirm=True, mandatory=False
             )
 
-            if reply is None:
-                return None
+        queue = target.topic
+        if target.server:
+            queue = '{}.{}'.format(queue, target.server)
 
+        reply = outgoing_msg.send(
+            exchange=target.exchange or self._pika_engine.default_rpc_exchange,
+            routing_key=queue,
+            wait_for_reply=wait_for_reply,
+            message_timeout=timeout,
+            confirm=True,
+            mandatory=True
+        )
+
+        if reply is not None:
             if reply.message['failure']:
                 ex = common.deserialize_remote_exception(
                     reply.message['failure'], self._allowed_remote_exmods
                 )
                 raise ex
-            else:
-                return reply.message['result']
 
-    def send_notification(self, target, ctxt, message, version, retry=None):
+            return reply.message['result']
+
+    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
+             retry=None):
+
         msg = PikaOutgoingMessage(self._pika_engine, message, ctxt)
 
-        retry_count = 1 if retry else 2
+        if retry is None:
+            retry = 0
+        try_count = 0
 
-        while retry_count > 0:
+        while True:
             try:
-                msg.send(
+                return self._do_send_rpc(
+                    target, msg, wait_for_reply=wait_for_reply, timeout=timeout
+                )
+            except Exception as e:
+                try_count += 1
+
+                if try_count > retry:
+                    raise e
+                LOG.warn(str(e))
+
+    def _do_send_notification(self, target, msg):
+        queue_declared = False
+
+        while True:
+            try:
+                return msg.send(
                     exchange=(
                         target.exchange or
                         self._pika_engine.default_notification_exchange
                     ),
                     routing_key=target.topic,
+                    wait_for_reply=False,
+                    confirm=True,
                     mandatory=True,
                     persistent=self._pika_engine.notification_persistence
                 )
-                break
-            except (ExchangeNotFoundException, RoutingException):
+            except (ExchangeNotFoundException, RoutingException) as e:
+                LOG.warn(str(e))
+                if queue_declared:
+                    raise e
                 self._pika_engine.declare_queue_binding(
-                    exchange=(target.exchange or
-                              self._pika_engine.default_notification_exchange),
+                    exchange=(
+                        target.exchange or
+                        self._pika_engine.default_notification_exchange
+                    ),
                     queue=target.topic,
                     routing_key=target.topic,
                     exchange_type='direct',
@@ -866,11 +1005,24 @@ class PikaDriver(object):
                     queue_auto_delete=False,
                     durable=self._pika_engine.notification_persistence
                 )
-            except Exception:
-                LOG.exception(
-                    "Error during sending notification. Trying again."
-                )
-                retry_count -= 1
+                queue_declared = True
+
+    def send_notification(self, target, ctxt, message, version, retry=None):
+        msg = PikaOutgoingMessage(self._pika_engine, message, ctxt)
+
+        if retry is None:
+            retry = 0
+        try_count = 0
+
+        while True:
+            try:
+                return self._do_send_notification(target, msg)
+            except Exception as e:
+                try_count += 1
+
+                if try_count > retry:
+                    raise e
+                LOG.warn(str(e))
 
     def listen(self, target):
         return RpcServicePikaListener(self._pika_engine, target)
@@ -901,7 +1053,7 @@ class PikaDriverCompatibleWithRabbitDriver(PikaDriver):
                 timeout=timeout,
                 retry=retry
             )
-        except ExchangeNotFoundException:
+        except (ExchangeNotFoundException, RoutingException):
             if wait_for_reply:
                 raise exceptions.MessagingTimeout()
             else:
