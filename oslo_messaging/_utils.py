@@ -114,3 +114,17 @@ def fetch_current_thread_functor():
         return lambda: eventlet.getcurrent()
     else:
         return lambda: threading.current_thread()
+
+
+class DummyLock(object):
+    def acquire(self):
+        pass
+
+    def release(self):
+        pass
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, type, value, traceback):
+        self.release()
