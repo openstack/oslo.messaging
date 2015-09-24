@@ -23,7 +23,7 @@ from oslo_utils import strutils
 from oslo_messaging.notify import notifier
 
 
-class LogDriver(notifier._Driver):
+class LogDriver(notifier.Driver):
 
     "Publish notifications via Python logging infrastructure."
 

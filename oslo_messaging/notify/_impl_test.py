@@ -26,7 +26,7 @@ def reset():
     NOTIFICATIONS = []
 
 
-class TestDriver(notifier._Driver):
+class TestDriver(notifier.Driver):
 
     "Store notifications in memory for test verification."
 

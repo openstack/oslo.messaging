@@ -43,15 +43,35 @@ _LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)
-class _Driver(object):
+class Driver(object):
+    """Base driver for Notifications"""
 
     def __init__(self, conf, topics, transport):
+        """base driver initialization
+
+        :param conf: configuration options
+        :param topics: list of topics
+        :param transport: transport driver to use
+        """
         self.conf = conf
         self.topics = topics
         self.transport = transport
 
     @abc.abstractmethod
     def notify(self, ctxt, msg, priority, retry):
+        """send a single notification with a specific priority
+
+        :param ctxt: current request context
+        :param msg: message to be sent
+        :type msg: str
+        :param priority: priority of the message
+        :type priority: str
+        :param retry: an connection retries configuration
+                      None or -1 means to retry forever
+                      0 means no retry
+                      N means N retries
+        :type retry: int
+        """
         pass
 
 

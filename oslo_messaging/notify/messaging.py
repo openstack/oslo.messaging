@@ -23,7 +23,7 @@ from oslo_messaging.notify import notifier
 LOG = logging.getLogger(__name__)
 
 
-class MessagingDriver(notifier._Driver):
+class MessagingDriver(notifier.Driver):
 
     """Send notifications using the 1.0 message format.
 
