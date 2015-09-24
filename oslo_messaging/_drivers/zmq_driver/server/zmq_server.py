@@ -18,7 +18,6 @@ import logging
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_router_consumer
-from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
 LOG = logging.getLogger(__name__)
@@ -52,17 +51,8 @@ class ZmqServer(base.Listener):
             consumer.cleanup()
 
     def listen(self, target):
-
         consumer = self.rpc_consumer
         consumer.listen(target)
-
-        LOG.info("Listen to target %s on %s:%d" %
-                 (target, consumer.address, consumer.port))
-
-        host = zmq_address.combine_address(self.conf.rpc_zmq_host,
-                                           consumer.port)
-        self.matchmaker.register(target=target,
-                                 hostname=host)
 
     def listen_notification(self, targets_and_priorities):
 
@@ -72,9 +62,6 @@ class ZmqServer(base.Listener):
                  % (consumer.address, consumer.port))
 
         for target, priority in targets_and_priorities:
-            host = zmq_address.combine_address(self.conf.rpc_zmq_host,
-                                               consumer.port)
             t = copy.deepcopy(target)
             t.topic = target.topic + '.' + priority
-            self.matchmaker.register(target=t, hostname=host)
             consumer.listen(t)

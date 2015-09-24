@@ -65,6 +65,10 @@ class RedisMatchMaker(base.MatchMakerBase):
         if hostname not in self._get_hosts_by_key(key):
             self._redis.lpush(key, hostname)
 
+    def unregister(self, target, hostname):
+        key = self._target_to_key(target)
+        self._redis.lrem(key, 0, hostname)
+
     def get_hosts(self, target):
         pattern = self._target_to_key(target)
         if "*" not in pattern:

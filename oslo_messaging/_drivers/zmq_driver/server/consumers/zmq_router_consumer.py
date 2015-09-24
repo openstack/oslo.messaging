@@ -18,6 +18,7 @@ from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_consumer_base
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE, _LI
@@ -56,10 +57,24 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
         super(RouterConsumer, self).__init__(conf, poller, server, zmq.ROUTER)
+        self.matchmaker = server.matchmaker
+        self.targets = []
+        self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
+                                                self.port)
 
     def listen(self, target):
-        LOG.info(_LI("Listen to target %s") % str(target))
-        #  Do nothing here because we have a single socket
+
+        LOG.info("Listen to target %s on %s:%d" %
+                 (target, self.address, self.port))
+
+        self.targets.append(target)
+        self.matchmaker.register(target=target,
+                                 hostname=self.host)
+
+    def cleanup(self):
+        super(RouterConsumer, self).cleanup()
+        for target in self.targets:
+            self.matchmaker.unregister(target, self.host)
 
     def receive_message(self, socket):
         try:
