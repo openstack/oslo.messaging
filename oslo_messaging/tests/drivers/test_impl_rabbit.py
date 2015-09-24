@@ -222,7 +222,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             try_send(e_passive)
 
             with mock.patch('kombu.messaging.Producer', side_effect=exc):
-                # Shoud reset the cache and ensures the exchange does
+                # Should reset the cache and ensures the exchange does
                 # not exists
                 self.assertRaises(exc, try_send, e_passive)
             # Recreate it
@@ -473,7 +473,7 @@ class TestSendReceive(test_utils.BaseTestCase):
         if self.reply_failure_404:
             # NOTE(sileht) all reply fail, first take
             # kombu_reconnect_timeout seconds to fail
-            # next immediatly fail
+            # next immediately fail
             dt = time.time() - start
             timeout = self.conf.oslo_messaging_rabbit.kombu_reconnect_timeout
             self.assertTrue(timeout <= dt < (timeout + 0.100), dt)

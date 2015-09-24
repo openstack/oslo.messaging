@@ -479,7 +479,7 @@ class Connection(object):
         # seconds, but we use a lock around the kombu connection
         # so, to not lock to much this lock to most of the time do nothing
         # expected waiting the events drain, we start heartbeat_check and
-        # retreive the server heartbeat packet only two times more than
+        # retrieve the server heartbeat packet only two times more than
         # the minimum required for the heartbeat works
         # (heatbeat_timeout/heartbeat_rate/2.0, default kombu
         # heartbeat_rate is 2)
@@ -501,7 +501,7 @@ class Connection(object):
         LOG.info(_LI('Connected to AMQP server on %(hostname)s:%(port)s'),
                  self.connection.info())
 
-        # NOTE(sileht): value choosen according the best practice from kombu
+        # NOTE(sileht): value chosen according the best practice from kombu
         # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
         # For heatbeat, we can set a bigger timeout, and check we receive the
         # heartbeat packets regulary
@@ -864,7 +864,7 @@ class Connection(object):
                       exc)
 
         def _consume():
-            # NOTE(sileht): in case the acknowledgement or requeue of a
+            # NOTE(sileht): in case the acknowledgment or requeue of a
             # message fail, the kombu transport can be disconnected
             # In this case, we must redeclare our consumers, so raise
             # a recoverable error to trigger the reconnection code.
@@ -1085,7 +1085,7 @@ class Connection(object):
                 elif exc.code == 404:
                     msg = _("The exchange %(exchange)s to send to "
                             "%(routing_key)s still doesn't exist after "
-                            "%(duration)s sec abandonning...") % {
+                            "%(duration)s sec abandoning...") % {
                                 'duration': duration,
                                 'exchange': exchange.name,
                                 'routing_key': routing_key}
