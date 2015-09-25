@@ -122,7 +122,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         # Mocking executor
         server._executor = mock.Mock()
         # Here assigning executor's listener object to listener variable
-        # before calling wait method, beacuse in wait method we are
+        # before calling wait method, because in wait method we are
         # setting executor to None.
         listener = server._executor.listener
         # call server wait method

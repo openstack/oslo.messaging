@@ -3,7 +3,7 @@
 # However, defining different sets for the same driver allows you
 # to do OR operations.
 #
-# See how this logic is modeled below:
+# See how this logic is modelled below:
 #
 # if (priority in info, warn or error) or
 #    (event == compute.scheduler.run_instance)

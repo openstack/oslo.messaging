@@ -87,7 +87,7 @@ class DispatcherExecutorContext(object):
     def done(self):
         """Callback after the incoming message have been dispathed
 
-        Should be runned in the main executor thread/greenlet/corotine
+        Should be ran in the main executor thread/greenlet/corotine
         """
         # FIXME(sileht): this is not currently true, this works only because
         # the driver connection used for polling write on the wire only to

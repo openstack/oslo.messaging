@@ -127,7 +127,7 @@ class ZmqDriver(base.BaseDriver):
                  allowed_remote_exmods=None):
         """Construct ZeroMQ driver.
 
-        Intialize driver options.
+        Initialize driver options.
 
         Construct matchmaker - pluggable interface to targets management
         Name Service
