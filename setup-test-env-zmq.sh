@@ -22,4 +22,6 @@ EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
 
+oslo-messaging-zmq-broker --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-broker.log 2>&1 &
+
 $*

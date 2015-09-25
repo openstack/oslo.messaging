@@ -18,8 +18,12 @@ def combine_address(host, port):
 
 
 def get_tcp_direct_address(host):
-    return "tcp://%s" % (host)
+    return "tcp://%s" % str(host)
 
 
 def get_tcp_random_address(conf):
     return "tcp://*"
+
+
+def get_broker_address(conf):
+    return "ipc://%s/zmq-broker" % conf.rpc_zmq_ipc_dir

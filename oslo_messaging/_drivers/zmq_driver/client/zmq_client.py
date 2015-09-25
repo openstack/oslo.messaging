@@ -19,6 +19,7 @@ from oslo_messaging._drivers.zmq_driver.client.publishers\
 from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_req_publisher
 from oslo_messaging._drivers.zmq_driver.client import zmq_request
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
 zmq = zmq_async.import_zmq()
@@ -31,8 +32,14 @@ class ZmqClient(object):
         self.context = zmq.Context()
         self.matchmaker = matchmaker
         self.allowed_remote_exmods = allowed_remote_exmods or []
-        self.dealer_publisher = zmq_dealer_publisher.DealerPublisher(
-            conf, matchmaker)
+
+        self.dealer_publisher = None
+        if self.conf.zmq_use_broker:
+            self.dealer_publisher = zmq_dealer_publisher.DealerPublisherLight(
+                conf, zmq_address.get_broker_address(self.conf))
+        else:
+            self.dealer_publisher = zmq_dealer_publisher.DealerPublisher(
+                conf, matchmaker)
 
     def send_call(self, target, context, message, timeout=None, retry=None):
         with contextlib.closing(zmq_request.CallRequest(

@@ -31,6 +31,10 @@ zmq = zmq_async.import_zmq()
 
 class ReqPublisher(zmq_publisher_base.PublisherBase):
 
+    def __init__(self, conf, matchmaker):
+        super(ReqPublisher, self).__init__(conf)
+        self.matchmaker = matchmaker
+
     def send_request(self, request):
 
         if request.msg_type != zmq_names.CALL_TYPE:

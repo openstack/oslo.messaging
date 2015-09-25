@@ -81,29 +81,22 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
             reply_id = socket.recv()
             empty = socket.recv()
             assert empty == b'', 'Bad format: empty delimiter expected'
-            msg_type = socket.recv_string()
-            assert msg_type is not None, 'Bad format: msg type expected'
+            request = socket.recv_pyobj()
 
-            msg_id = None
-            if msg_type != zmq_names.CALL_TYPE:
-                msg_id = socket.recv_string()
-
-            context = socket.recv_pyobj()
-            message = socket.recv_pyobj()
             LOG.info(_LI("Received %(msg_type)s message %(msg)s")
-                     % {"msg_type": msg_type,
-                        "msg": str(message)})
+                     % {"msg_type": request.msg_type,
+                        "msg": str(request.message)})
 
-            if msg_type == zmq_names.CALL_TYPE:
+            if request.msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(
-                    self.server, context, message, socket, reply_id,
-                    self.poller)
-            elif msg_type in (zmq_names.CAST_TYPES + zmq_names.NOTIFY_TYPES):
+                    self.server, request.context, request.message, socket,
+                    reply_id, self.poller)
+            elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
                 return RouterIncomingMessage(
-                    self.server, context, message, socket, reply_id,
-                    msg_id, self.poller)
+                    self.server, request.context, request.message, socket,
+                    reply_id, request.message_id, self.poller)
             else:
-                LOG.error(_LE("Unknown message type: %s") % msg_type)
+                LOG.error(_LE("Unknown message type: %s") % request.msg_type)
 
         except zmq.ZMQError as e:
             LOG.error(_LE("Receiving message failed: %s") % str(e))
