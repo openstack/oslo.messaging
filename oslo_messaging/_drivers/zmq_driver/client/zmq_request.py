@@ -14,6 +14,7 @@
 
 import abc
 import logging
+import uuid
 
 import six
 
@@ -61,6 +62,7 @@ class Request(object):
         self.context = context
         self.message = message
         self.retry = retry
+        self.message_id = str(uuid.uuid1())
 
     @abc.abstractproperty
     def msg_type(self):

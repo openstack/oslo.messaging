@@ -80,6 +80,10 @@ zmq_opts = [
                default=1,
                help='The default number of seconds that poll should wait. '
                     'Poll raises timeout exception when timeout expired.'),
+
+    cfg.BoolOpt('zmq_use_broker',
+                default=True,
+                help='Shows whether zmq-messaging uses broker or not.')
 ]
 
 

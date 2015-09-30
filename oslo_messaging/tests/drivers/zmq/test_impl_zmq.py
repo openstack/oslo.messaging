@@ -77,6 +77,7 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
                   'rpc_zmq_host': '127.0.0.1',
                   'rpc_response_timeout': 5,
                   'rpc_zmq_ipc_dir': self.internal_ipc_dir,
+                  'zmq_use_broker': False,
                   'rpc_zmq_matchmaker': 'dummy'}
         self.config(**kwargs)
 

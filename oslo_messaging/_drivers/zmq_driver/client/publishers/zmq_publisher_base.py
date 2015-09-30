@@ -56,7 +56,7 @@ class PublisherBase(object):
     Publisher can send request objects from zmq_request.
     """
 
-    def __init__(self, conf, matchmaker):
+    def __init__(self, conf):
 
         """Construct publisher
 
@@ -65,13 +65,10 @@ class PublisherBase(object):
 
         :param conf: configuration object
         :type conf: oslo_config.CONF
-        :param matchmaker: Name Service interface object
-        :type matchmaker: matchmaker.MatchMakerBase
         """
 
         self.conf = conf
         self.zmq_context = zmq.Context()
-        self.matchmaker = matchmaker
         self.outbound_sockets = {}
         super(PublisherBase, self).__init__()
 
@@ -92,9 +89,7 @@ class PublisherBase(object):
         :param request: Message data and destination container object
         :type request: zmq_request.Request
         """
-        socket.send_string(request.msg_type, zmq.SNDMORE)
-        socket.send_pyobj(request.context, zmq.SNDMORE)
-        socket.send_pyobj(request.message)
+        socket.send_pyobj(request)
 
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""
@@ -106,8 +101,19 @@ class PublisherBase(object):
 class PublisherMultisend(PublisherBase):
 
     def __init__(self, conf, matchmaker, socket_type):
+
+        """Construct publisher multi-send
+
+        Base class for fanout-sending publishers.
+
+        :param conf: configuration object
+        :type conf: oslo_config.CONF
+        :param matchmaker: Name Service interface object
+        :type matchmaker: matchmaker.MatchMakerBase
+        """
+        super(PublisherMultisend, self).__init__(conf)
         self.socket_type = socket_type
-        super(PublisherMultisend, self).__init__(conf, matchmaker)
+        self.matchmaker = matchmaker
 
     def _check_hosts_connections(self, target):
         #  TODO(ozamiatin): Place for significant optimization
@@ -126,6 +132,7 @@ class PublisherMultisend(PublisherBase):
 
     def _connect_to_host(self, socket, host, target):
         address = zmq_address.get_tcp_direct_address(host)
+        LOG.info(address)
         stype = zmq_names.socket_type_str(self.socket_type)
         try:
             LOG.info(_LI("Connecting %(stype)s to %(address)s for %(target)s")

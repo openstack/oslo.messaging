@@ -13,7 +13,6 @@
 #    under the License.
 
 import logging
-import uuid
 
 from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
@@ -58,13 +57,8 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
 
     def _send_request(self, socket, request):
 
-        message_id = str(uuid.uuid1())
-
         socket.send(b'', zmq.SNDMORE)
-        socket.send_string(request.msg_type, zmq.SNDMORE)
-        socket.send_string(message_id, zmq.SNDMORE)
-        socket.send_pyobj(request.context, zmq.SNDMORE)
-        socket.send_pyobj(request.message)
+        socket.send_pyobj(request)
 
         LOG.info(_LI("Sending message %(message)s to a target %(target)s")
                  % {"message": request.message,
@@ -73,6 +67,26 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
     def cleanup(self):
         self.ack_receiver.cleanup()
         super(DealerPublisher, self).cleanup()
+
+
+class DealerPublisherLight(zmq_publisher_base.PublisherBase):
+
+    def __init__(self, conf, address):
+        super(DealerPublisherLight, self).__init__(conf)
+        self.socket = self.zmq_context.socket(zmq.DEALER)
+        self.socket.connect(address)
+
+    def send_request(self, request):
+
+        if request.msg_type == zmq_names.CALL_TYPE:
+            raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
+
+        self.socket.send(b'', zmq.SNDMORE)
+        self.socket.send_pyobj(request)
+
+    def cleanup(self):
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.close()
 
 
 class AcknowledgementReceiver(object):

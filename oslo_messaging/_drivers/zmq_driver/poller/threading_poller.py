@@ -41,7 +41,7 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
         self.poller.register(socket, zmq.POLLIN)
 
     def poll(self, timeout=None):
-        timeout = timeout * 1000  # zmq poller waits milliseconds
+        timeout *= 1000  # zmq poller waits milliseconds
         sockets = None
 
         try:
