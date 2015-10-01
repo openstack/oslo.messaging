@@ -460,7 +460,7 @@ class Controller(pyngus.ConnectionEventHandler):
     def _do_connect(self):
         """Establish connection and reply subscription on processor thread."""
         host = self.hosts.current
-        conn_props = {}
+        conn_props = {'hostname': host.hostname}
         if self.idle_timeout:
             conn_props["idle-time-out"] = float(self.idle_timeout)
         if self.trace_protocol:
