@@ -17,6 +17,7 @@ import functools
 import itertools
 import logging
 import os
+import random
 import socket
 import ssl
 import threading
@@ -627,6 +628,7 @@ class Connection(object):
                 LOG.warn(_LW('Selecting the kombu transport through the '
                              'transport url (%s) is a experimental feature '
                              'and this is not yet supported.') % url.transport)
+            random.shuffle(url.hosts)
             for host in url.hosts:
                 transport = url.transport.replace('kombu+', '')
                 transport = transport.replace('rabbit', 'amqp')
@@ -644,6 +646,7 @@ class Connection(object):
             transport = url.transport.replace('kombu+', '')
             self._url = "%s://%s" % (transport, virtual_host)
         else:
+            random.shuffle(self.driver_conf.rabbit_hosts)
             for adr in self.driver_conf.rabbit_hosts:
                 hostname, port = netutils.parse_host_port(
                     adr, default_port=self.driver_conf.rabbit_port)
