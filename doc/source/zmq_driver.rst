@@ -197,16 +197,6 @@ The parameters for the script oslo-messaging-zmq-receiver should be::
 
 You can specify ZeroMQ options in /etc/oslo/zeromq.conf if necessary.
 
-Listening Ports (mandatory)
----------------------------
-
-The ZeroMQ driver uses TCP to communicate. The port is configured with
-'rpc_zmq_port' in [DEFAULT] section of each project, which defaults to 9501.
-
-For example::
-
-        rpc_zmq_port = 9501
-
 Thread Pool (optional)
 -----------------------
 

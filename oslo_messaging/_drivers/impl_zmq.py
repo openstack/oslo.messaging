@@ -52,10 +52,6 @@ zmq_opts = [
     cfg.StrOpt('rpc_zmq_concurrency', default='eventlet',
                help='Type of concurrency used. Either "native" or "eventlet"'),
 
-    # The following port is unassigned by IANA as of 2012-05-21
-    cfg.IntOpt('rpc_zmq_port', default=9501,
-               help='ZeroMQ receiver listening port.'),
-
     cfg.IntOpt('rpc_zmq_contexts', default=1,
                help='Number of ZeroMQ contexts, defaults to 1.'),
 
