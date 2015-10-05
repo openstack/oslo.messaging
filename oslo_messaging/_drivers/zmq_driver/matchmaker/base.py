@@ -15,6 +15,7 @@ import abc
 import collections
 import logging
 import random
+import retrying
 
 import six
 
@@ -62,30 +63,70 @@ class MatchMakerBase(object):
        :returns: a list of "hostname:port" hosts
        """
 
-    def get_single_host(self, target):
+    def get_single_host(self, target, timeout=None, retry=0):
         """Get a single host by target.
 
        :param target: the target for messages
        :type target: Target
+       :param timeout: matchmaker query timeout
+       :type timeout: integer
+       :param retry: the number of retries to do
+            None or -1 means retry forever
+            0 means do not retry
+            N means retry N times
+       :type retry: integer
        :returns: a "hostname:port" host
        """
 
-        hosts = self.get_hosts(target)
-        if not hosts:
-            err_msg = "No hosts were found for target %s." % target
-            LOG.error(err_msg)
-            raise oslo_messaging.InvalidTarget(err_msg, target)
+        if not isinstance(timeout, int) and timeout is not None:
+            raise ValueError(
+                "timeout must be integer, not {0}".format(type(timeout)))
+        if not isinstance(retry, int) and retry is not None:
+            raise ValueError(
+                "retry must be integer, not {0}".format(type(retry)))
 
-        if len(hosts) == 1:
-            host = hosts[0]
-            LOG.info(_LI("A single host %(host)s found for target %(target)s.")
-                     % {"host": host, "target": target})
+        if timeout is None or timeout < 0:
+            full_timeout = 0
+            retry_timeout = 0
         else:
-            host = random.choice(hosts)
-            LOG.warning(_LW("Multiple hosts %(hosts)s were found for target "
-                            " %(target)s. Using the random one - %(host)s.")
+            retry_timeout = timeout * 1000
+
+            if retry is None or retry < 0:
+                full_timeout = None
+            else:
+                full_timeout = retry * retry_timeout
+
+        _retry = retrying.retry(stop_max_delay=full_timeout,
+                                wait_fixed=retry_timeout)
+
+        @_retry
+        def _get_single_host():
+            hosts = self.get_hosts(target)
+            try:
+                if not hosts:
+                    err_msg = "No hosts were found for target %s." % target
+                    LOG.error(err_msg)
+                    raise oslo_messaging.InvalidTarget(err_msg, target)
+
+                if len(hosts) == 1:
+                    host = hosts[0]
+                    LOG.info(_LI(
+                        "A single host %(host)s found for target %(target)s.")
+                        % {"host": host, "target": target})
+                else:
+                    host = random.choice(hosts)
+                    LOG.warning(_LW(
+                        "Multiple hosts %(hosts)s were found for target "
+                        " %(target)s. Using the random one - %(host)s.")
                         % {"hosts": hosts, "target": target, "host": host})
-        return host
+                return host
+            except oslo_messaging.InvalidTarget as ex:
+                if timeout:
+                    raise oslo_messaging.MessagingTimeout()
+                else:
+                    raise ex
+
+        return _get_single_host()
 
 
 class DummyMatchMaker(MatchMakerBase):
