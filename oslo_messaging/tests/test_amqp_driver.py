@@ -395,6 +395,8 @@ mech_list: ${mechs}
                                   sasl_config_dir=self._conf_dir,
                                   sasl_config_name="openstack")
         self._broker.start()
+        self.messaging_conf.transport_driver = 'amqp'
+        self.conf = self.messaging_conf.conf
 
     def tearDown(self):
         super(TestCyrusAuthentication, self).tearDown()
@@ -460,8 +462,6 @@ mech_list: ${mechs}
                           wait_for_reply=True,
                           timeout=2.0)
         driver.cleanup()
-        self.config(sasl_mechanisms=None,
-                    group="oslo_messaging_amqp")
 
     def test_authentication_default_username(self):
         """Verify that a configured username/password is used if none appears
@@ -481,9 +481,6 @@ mech_list: ${mechs}
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         driver.cleanup()
-        self.config(username=None,
-                    password=None,
-                    group="oslo_messaging_amqp")
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
