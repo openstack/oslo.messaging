@@ -40,17 +40,17 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
         if request.msg_type != zmq_names.CALL_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        socket = self._connect_to_host(request.target)
+        socket = self._connect_to_host(request.target, request.timeout)
         self._send_request(socket, request)
         return self._receive_reply(socket, request)
 
-    def _connect_to_host(self, target):
+    def _connect_to_host(self, target, timeout=0):
 
         try:
             self.zmq_context = zmq.Context()
             socket = self.zmq_context.socket(zmq.REQ)
 
-            host = self.matchmaker.get_single_host(target)
+            host = self.matchmaker.get_single_host(target, timeout)
             connect_address = zmq_address.get_tcp_direct_address(host)
 
             LOG.info(_LI("Connecting REQ to %s") % connect_address)
