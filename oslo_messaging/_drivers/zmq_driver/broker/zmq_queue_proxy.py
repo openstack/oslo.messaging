@@ -15,7 +15,6 @@
 import logging
 
 import six
-import zmq
 
 from oslo_messaging._drivers.zmq_driver.broker import zmq_base_proxy
 from oslo_messaging._drivers.zmq_driver.client.publishers\
@@ -24,6 +23,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 
+zmq = zmq_async.import_zmq(zmq_concurrency='native')
 LOG = logging.getLogger(__name__)
 
 

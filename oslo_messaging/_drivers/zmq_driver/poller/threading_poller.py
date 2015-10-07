@@ -16,9 +16,11 @@ import logging
 import threading
 
 from oslo_utils import eventletutils
-import zmq
 
+from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_poller
+
+zmq = zmq_async.import_zmq(zmq_concurrency='native')
 
 LOG = logging.getLogger(__name__)
 

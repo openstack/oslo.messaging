@@ -14,11 +14,11 @@
 import logging
 
 from oslo_config import cfg
-import redis
+from oslo_utils import importutils
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import base
 
-
+redis = importutils.try_import('redis')
 LOG = logging.getLogger(__name__)
 
 
