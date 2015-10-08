@@ -19,6 +19,7 @@ import six
 
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._i18n import _LE, _LI
 
@@ -44,7 +45,7 @@ class ConsumerBase(object):
             self.sockets.append(socket)
             self.poller.register(socket, self.receive_message)
             LOG.info(_LI("Run %(stype)s consumer on %(addr)s:%(port)d"),
-                     {"stype": socket_type,
+                     {"stype": zmq_names.socket_type_str(socket_type),
                       "addr": socket.bind_address,
                       "port": socket.port})
             return socket

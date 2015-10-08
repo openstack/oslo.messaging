@@ -29,12 +29,10 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
 
     def __init__(self, conf, matchmaker):
         super(DealerPublisher, self).__init__(conf, matchmaker, zmq.DEALER)
-        self.ack_receiver = AcknowledgementReceiver()
 
     def send_request(self, request):
 
-        if request.msg_type == zmq_names.CALL_TYPE:
-            raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
+        self._check_request_pattern(request)
 
         dealer_socket, hosts = self._check_hosts_connections(request.target)
 
@@ -47,25 +45,26 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
                         % request.msg_type)
             return
 
-        self.ack_receiver.track_socket(dealer_socket.handle)
-
         if request.msg_type in zmq_names.MULTISEND_TYPES:
             for _ in range(dealer_socket.connections_count()):
                 self._send_request(dealer_socket, request)
         else:
             self._send_request(dealer_socket, request)
 
+    def _check_request_pattern(self, request):
+        if request.msg_type == zmq_names.CALL_TYPE:
+            raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
+
     def _send_request(self, socket, request):
 
         socket.send(b'', zmq.SNDMORE)
         socket.send_pyobj(request)
 
-        LOG.info(_LI("Sending message %(message)s to a target %(target)s")
-                 % {"message": request.message,
+        LOG.info(_LI("Sending message_id %(message)s to a target %(target)s")
+                 % {"message": request.message_id,
                     "target": request.target})
 
     def cleanup(self):
-        self.ack_receiver.cleanup()
         super(DealerPublisher, self).cleanup()
 
 
@@ -81,12 +80,76 @@ class DealerPublisherLight(zmq_publisher_base.PublisherBase):
         if request.msg_type == zmq_names.CALL_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
+        envelope = request.create_envelope()
+
         self.socket.send(b'', zmq.SNDMORE)
+        self.socket.send_pyobj(envelope, zmq.SNDMORE)
         self.socket.send_pyobj(request)
 
     def cleanup(self):
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.close()
+
+
+class DealerPublisherProxy(DealerPublisher):
+
+    def __init__(self, conf, matchmaker, reply_receiver):
+        super(DealerPublisherProxy, self).__init__(conf, matchmaker)
+        self.reply_receiver = reply_receiver
+
+    def send_request(self, multipart_message):
+
+        envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
+
+        LOG.info(_LI("Envelope: %s") % envelope)
+
+        target = envelope[zmq_names.FIELD_TARGET]
+        dealer_socket, hosts = self._check_hosts_connections(target)
+
+        if not dealer_socket.connections:
+            # NOTE(ozamiatin): Here we can provide
+            # a queue for keeping messages to send them later
+            # when some listener appears. However such approach
+            # being more reliable will consume additional memory.
+            LOG.warning(_LW("Request %s was dropped because no connection")
+                        % envelope[zmq_names.FIELD_MSG_TYPE])
+            return
+
+        self.reply_receiver.track_socket(dealer_socket.handle)
+
+        LOG.info(_LI("Sending message %(message)s to a target %(target)s")
+                 % {"message": envelope[zmq_names.FIELD_MSG_ID],
+                    "target": envelope[zmq_names.FIELD_TARGET]})
+
+        if envelope[zmq_names.FIELD_MSG_TYPE] in zmq_names.MULTISEND_TYPES:
+            for _ in range(dealer_socket.connections_count()):
+                self._send_request(dealer_socket, multipart_message)
+        else:
+            self._send_request(dealer_socket, multipart_message)
+
+    def _send_request(self, socket, multipart_message):
+
+        socket.send(b'', zmq.SNDMORE)
+        socket.send_pyobj(
+            multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE],
+            zmq.SNDMORE)
+        socket.send(multipart_message[zmq_names.MULTIPART_IDX_BODY])
+
+
+class ReplyReceiver(object):
+
+    def __init__(self, poller):
+        self.poller = poller
+        LOG.info(_LI("Reply waiter created in broker"))
+
+    def _receive_reply(self, socket):
+        return socket.recv_multipart()
+
+    def track_socket(self, socket):
+        self.poller.register(socket, self._receive_reply)
+
+    def cleanup(self):
+        self.poller.close()
 
 
 class AcknowledgementReceiver(object):

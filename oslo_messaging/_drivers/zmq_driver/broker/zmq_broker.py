@@ -16,7 +16,6 @@ import logging
 import os
 
 from oslo_utils import excutils
-import six
 from stevedore import driver
 
 from oslo_messaging._drivers.zmq_driver.broker import zmq_queue_proxy
@@ -51,11 +50,8 @@ class ZmqBroker(object):
         ).driver(self.conf)
 
         self.context = zmq.Context()
-        self.queue = six.moves.queue.Queue()
-        self.proxies = [zmq_queue_proxy.OutgoingQueueProxy(
-            conf, self.context, self.queue, self.matchmaker),
-            zmq_queue_proxy.IncomingQueueProxy(
-                conf, self.context, self.queue)
+        self.proxies = [zmq_queue_proxy.UniversalQueueProxy(
+            conf, self.context, self.matchmaker)
         ]
 
     def _create_ipc_dirs(self):

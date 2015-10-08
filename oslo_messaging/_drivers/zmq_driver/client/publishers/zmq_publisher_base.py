@@ -89,6 +89,13 @@ class PublisherBase(object):
         :param request: Message data and destination container object
         :type request: zmq_request.Request
         """
+        LOG.info(_LI("Sending %(type)s message_id %(message)s to a target"
+                     "%(target)s key: %(key)s, host:%(host)s")
+                 % {"type": request.msg_type,
+                    "message": request.message_id,
+                    "target": request.target,
+                    "key": zmq_address.target_to_key(request.target),
+                    "host": request.host})
         socket.send_pyobj(request)
 
     def cleanup(self):

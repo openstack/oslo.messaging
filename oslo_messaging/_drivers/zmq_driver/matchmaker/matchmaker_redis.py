@@ -17,6 +17,7 @@ from oslo_config import cfg
 from oslo_utils import importutils
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 
 redis = importutils.try_import('redis')
 LOG = logging.getLogger(__name__)
@@ -48,34 +49,30 @@ class RedisMatchMaker(base.MatchMakerBase):
             password=self.conf.matchmaker_redis.password,
         )
 
-    def _target_to_key(self, target):
-        attributes = ['topic', 'exchange', 'server']
-        prefix = "ZMQ-target"
-        key = ":".join((getattr(target, attr) or "*") for attr in attributes)
-        return "%s-%s" % (prefix, key)
-
-    def _get_keys_by_pattern(self, pattern):
-        return self._redis.keys(pattern)
-
     def _get_hosts_by_key(self, key):
         return self._redis.lrange(key, 0, -1)
 
     def register(self, target, hostname):
-        key = self._target_to_key(target)
-        if hostname not in self._get_hosts_by_key(key):
-            self._redis.lpush(key, hostname)
+
+        if target.topic and target.server:
+            key = zmq_address.target_to_key(target)
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
+
+        if target.topic:
+            if hostname not in self._get_hosts_by_key(target.topic):
+                self._redis.lpush(target.topic, hostname)
+
+        if target.server:
+            if hostname not in self._get_hosts_by_key(target.server):
+                self._redis.lpush(target.server, hostname)
 
     def unregister(self, target, hostname):
-        key = self._target_to_key(target)
+        key = zmq_address.target_to_key(target)
         self._redis.lrem(key, 0, hostname)
 
     def get_hosts(self, target):
-        pattern = self._target_to_key(target)
-        if "*" not in pattern:
-            # pattern have no placeholders, so this is valid key
-            return self._get_hosts_by_key(pattern)
-
         hosts = []
-        for key in self._get_keys_by_pattern(pattern):
-            hosts.extend(self._get_hosts_by_key(key))
+        key = zmq_address.target_to_key(target)
+        hosts.extend(self._get_hosts_by_key(key))
         return hosts

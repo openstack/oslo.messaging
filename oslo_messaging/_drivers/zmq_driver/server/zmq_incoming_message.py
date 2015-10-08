@@ -28,10 +28,12 @@ zmq = zmq_async.import_zmq()
 
 class ZmqIncomingRequest(base.IncomingMessage):
 
-    def __init__(self, listener, context, message, socket, rep_id, poller):
-        super(ZmqIncomingRequest, self).__init__(listener, context, message)
+    def __init__(self, listener, socket, rep_id, request, poller):
+        super(ZmqIncomingRequest, self).__init__(listener, request.context,
+                                                 request.message)
         self.reply_socket = socket
         self.reply_id = rep_id
+        self.request = request
         self.received = None
         self.poller = poller
 
@@ -39,15 +41,21 @@ class ZmqIncomingRequest(base.IncomingMessage):
         if failure is not None:
             failure = rpc_common.serialize_remote_exception(failure,
                                                             log_failure)
-        message_reply = {zmq_names.FIELD_REPLY: reply,
+        message_reply = {zmq_names.FIELD_TYPE: zmq_names.REPLY_TYPE,
+                         zmq_names.FIELD_REPLY: reply,
                          zmq_names.FIELD_FAILURE: failure,
-                         zmq_names.FIELD_LOG_FAILURE: log_failure}
+                         zmq_names.FIELD_LOG_FAILURE: log_failure,
+                         zmq_names.FIELD_ID: self.request.proxy_reply_id}
 
-        LOG.info("Replying %s REP", (str(message_reply)))
+        LOG.info("Replying %s REP", (str(self.request.message_id)))
 
         self.received = True
         self.reply_socket.send(self.reply_id, zmq.SNDMORE)
         self.reply_socket.send(b'', zmq.SNDMORE)
+        if self.request.proxy_reply_id:
+            self.reply_socket.send_string(zmq_names.REPLY_TYPE, zmq.SNDMORE)
+            self.reply_socket.send(self.request.proxy_reply_id, zmq.SNDMORE)
+            self.reply_socket.send(b'', zmq.SNDMORE)
         self.reply_socket.send_pyobj(message_reply)
         self.poller.resume_polling(self.reply_socket)
 

@@ -43,11 +43,7 @@ class RouterIncomingMessage(base.IncomingMessage):
         """Reply is not needed for non-call messages"""
 
     def acknowledge(self):
-        LOG.info("Sending acknowledge for %s", self.msg_id)
-        ack_message = {zmq_names.FIELD_ID: self.msg_id}
-        self.socket.send(self.reply_id, zmq.SNDMORE)
-        self.socket.send(b'', zmq.SNDMORE)
-        self.socket.send_pyobj(ack_message)
+        LOG.info("Not sending acknowledge for %s", self.msg_id)
 
     def requeue(self):
         """Requeue is not supported"""
@@ -61,11 +57,11 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         self.targets = []
         self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
                                                 self.port)
+        LOG.info("[%s] Run ROUTER consumer" % self.host)
 
     def listen(self, target):
 
-        LOG.info("Listen to target %s on %s:%d" %
-                 (target, self.address, self.port))
+        LOG.info("[%s] Listen to target %s" % (self.host, target))
 
         self.targets.append(target)
         self.matchmaker.register(target=target,
@@ -76,21 +72,25 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         for target in self.targets:
             self.matchmaker.unregister(target, self.host)
 
+    def _receive_request(self, socket):
+        reply_id = socket.recv()
+        empty = socket.recv()
+        assert empty == b'', 'Bad format: empty delimiter expected'
+        request = socket.recv_pyobj()
+        return request, reply_id
+
     def receive_message(self, socket):
         try:
-            reply_id = socket.recv()
-            empty = socket.recv()
-            assert empty == b'', 'Bad format: empty delimiter expected'
-            request = socket.recv_pyobj()
-
-            LOG.info(_LI("Received %(msg_type)s message %(msg)s")
-                     % {"msg_type": request.msg_type,
-                        "msg": str(request.message)})
+            request, reply_id = self._receive_request(socket)
+            LOG.info(_LI("[%(host)s] Received %(type)s, %(id)s, %(target)s")
+                     % {"host": self.host,
+                        "type": request.msg_type,
+                        "id": request.message_id,
+                        "target": request.target})
 
             if request.msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(
-                    self.server, request.context, request.message, socket,
-                    reply_id, self.poller)
+                    self.server, socket, reply_id, request, self.poller)
             elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
                 return RouterIncomingMessage(
                     self.server, request.context, request.message, socket,
@@ -100,3 +100,20 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
         except zmq.ZMQError as e:
             LOG.error(_LE("Receiving message failed: %s") % str(e))
+
+
+class RouterConsumerBroker(RouterConsumer):
+
+    def __init__(self, conf, poller, server):
+        super(RouterConsumerBroker, self).__init__(conf, poller, server)
+
+    def _receive_request(self, socket):
+        reply_id = socket.recv()
+        empty = socket.recv()
+        assert empty == b'', 'Bad format: empty delimiter expected'
+        envelope = socket.recv_pyobj()
+        request = socket.recv_pyobj()
+
+        if zmq_names.FIELD_REPLY_ID in envelope:
+            request.proxy_reply_id = envelope[zmq_names.FIELD_REPLY_ID]
+        return request, reply_id

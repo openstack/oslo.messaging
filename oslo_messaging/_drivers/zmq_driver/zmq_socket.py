@@ -57,6 +57,9 @@ class ZmqSocket(object):
     def send_pyobj(self, *args, **kwargs):
         self.handle.send_pyobj(*args, **kwargs)
 
+    def send_multipart(self, *args, **kwargs):
+        self.handle.send_multipart(*args, **kwargs)
+
     def recv(self, *args, **kwargs):
         return self.handle.recv(*args, **kwargs)
 
@@ -68,6 +71,9 @@ class ZmqSocket(object):
 
     def recv_pyobj(self, *args, **kwargs):
         return self.handle.recv_pyobj(*args, **kwargs)
+
+    def recv_multipart(self, *args, **kwargs):
+        return self.handle.recv_multipart(*args, **kwargs)
 
     def close(self, *args, **kwargs):
         self.handle.close(*args, **kwargs)
