@@ -14,14 +14,31 @@
 
 from stevedore import driver
 import testscenarios
+import testtools
 
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
+from oslo_utils import importutils
+
+redis = importutils.try_import('redis')
+
+
+def redis_available():
+    '''Helper to see if local redis server is running'''
+    if not redis:
+        return False
+    try:
+        c = redis.StrictRedis(socket_timeout=1)
+        c.ping()
+        return True
+    except redis.exceptions.ConnectionError:
+        return False
 
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
+@testtools.skipIf(not redis_available(), "redis unavailable")
 class TestImplMatchmaker(test_utils.BaseTestCase):
 
     scenarios = [
