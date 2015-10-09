@@ -13,6 +13,8 @@
 import eventlet
 eventlet.monkey_patch()
 
+import os
+
 import argparse
 import datetime
 import logging
@@ -240,6 +242,8 @@ def main():
     cfg.CONF.heartbeat_interval = 5
     cfg.CONF.notification_topics = "notif"
     cfg.CONF.notification_driver = "messaging"
+    cfg.CONF.prog = os.path.basename(__file__)
+    cfg.CONF.project = 'oslo.messaging'
 
     transport = messaging.get_transport(cfg.CONF, url=args.url)
     target = messaging.Target(topic='profiler_topic', server='profiler_server')

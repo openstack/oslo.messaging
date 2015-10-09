@@ -27,11 +27,16 @@ class CallTestCase(utils.SkipIfNoTransportURL):
     def setUp(self):
         super(CallTestCase, self).setUp(conf=cfg.ConfigOpts())
 
+        self.conf.prog="test_prog"
+        self.conf.project="test_project"
+
         self.config(heartbeat_timeout_threshold=0,
                     group='oslo_messaging_rabbit')
 
     def test_specific_server(self):
-        group = self.useFixture(utils.RpcServerGroupFixture(self.url))
+        group = self.useFixture(utils.RpcServerGroupFixture(
+            self.conf, self.url)
+        )
         client = group.client(1)
         client.append(text='open')
         self.assertEqual('openstack', client.append(text='stack'))
@@ -45,7 +50,9 @@ class CallTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(0, group.servers[i].endpoint.ival)
 
     def test_server_in_group(self):
-        group = self.useFixture(utils.RpcServerGroupFixture(self.url))
+        group = self.useFixture(
+            utils.RpcServerGroupFixture(self.conf, self.url)
+        )
 
         client = group.client()
         data = [c for c in 'abcdefghijklmn']
@@ -62,13 +69,13 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         # teardown may hang unless we broadcast all control messages
         # to each server
         group1 = self.useFixture(
-            utils.RpcServerGroupFixture(self.url,
+            utils.RpcServerGroupFixture(self.conf, self.url,
                                         use_fanout_ctrl=True))
         group2 = self.useFixture(
-            utils.RpcServerGroupFixture(self.url, exchange="a",
+            utils.RpcServerGroupFixture(self.conf, self.url, exchange="a",
                                         use_fanout_ctrl=True))
         group3 = self.useFixture(
-            utils.RpcServerGroupFixture(self.url, exchange="b",
+            utils.RpcServerGroupFixture(self.conf, self.url, exchange="b",
                                         use_fanout_ctrl=True))
 
         client1 = group1.client(1)
@@ -101,24 +108,31 @@ class CallTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(0, s.endpoint.ival)
 
     def test_timeout(self):
-        transport = self.useFixture(utils.TransportFixture(self.url))
+        transport = self.useFixture(
+            utils.TransportFixture(self.conf, self.url)
+        )
         target = oslo_messaging.Target(topic="no_such_topic")
         c = utils.ClientStub(transport.transport, target, timeout=1)
         self.assertThat(c.ping,
                         matchers.raises(oslo_messaging.MessagingTimeout))
 
     def test_exception(self):
-        group = self.useFixture(utils.RpcServerGroupFixture(self.url))
+        group = self.useFixture(
+            utils.RpcServerGroupFixture(self.conf, self.url)
+        )
         client = group.client(1)
         client.add(increment=2)
         self.assertRaises(ValueError, client.subtract, increment=3)
 
     def test_timeout_with_concurrently_queues(self):
-        transport = self.useFixture(utils.TransportFixture(self.url))
+        transport = self.useFixture(
+            utils.TransportFixture(self.conf, self.url)
+        )
         target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
                                        server="server_" + str(uuid.uuid4()))
         server = self.useFixture(
-            utils.RpcServerFixture(self.url, target, executor="threading"))
+            utils.RpcServerFixture(self.conf, self.url, target,
+                                   executor="threading"))
         client = utils.ClientStub(transport.transport, target,
                                   cast=False, timeout=5)
 
@@ -141,7 +155,9 @@ class CastTestCase(utils.SkipIfNoTransportURL):
     # making the necessary assertions.
 
     def test_specific_server(self):
-        group = self.useFixture(utils.RpcServerGroupFixture(self.url))
+        group = self.useFixture(
+            utils.RpcServerGroupFixture(self.conf, self.url)
+        )
         client = group.client(1, cast=True)
         client.append(text='open')
         client.append(text='stack')
@@ -159,7 +175,9 @@ class CastTestCase(utils.SkipIfNoTransportURL):
     def test_server_in_group(self):
         if self.url.startswith("amqp:"):
             self.skipTest("QPID-6307")
-        group = self.useFixture(utils.RpcServerGroupFixture(self.url))
+        group = self.useFixture(
+            utils.RpcServerGroupFixture(self.conf, self.url)
+        )
         client = group.client(cast=True)
         for i in range(20):
             client.add(increment=1)
@@ -176,7 +194,9 @@ class CastTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual(20, total)
 
     def test_fanout(self):
-        group = self.useFixture(utils.RpcServerGroupFixture(self.url))
+        group = self.useFixture(
+            utils.RpcServerGroupFixture(self.conf, self.url)
+        )
         client = group.client('all', cast=True)
         client.append(text='open')
         client.append(text='stack')
@@ -195,7 +215,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_simple(self):
         listener = self.useFixture(
-            utils.NotificationFixture(self.url, ['test_simple']))
+            utils.NotificationFixture(self.conf, self.url, ['test_simple']))
         notifier = listener.notifier('abc')
 
         notifier.info({}, 'test', 'Hello World!')
@@ -207,7 +227,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_multiple_topics(self):
         listener = self.useFixture(
-            utils.NotificationFixture(self.url, ['a', 'b']))
+            utils.NotificationFixture(self.conf, self.url, ['a', 'b']))
         a = listener.notifier('pub-a', topic='a')
         b = listener.notifier('pub-b', topic='b')
 
@@ -234,10 +254,10 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         if self.url.startswith("amqp:"):
             self.skipTest("QPID-6307")
         listener_a = self.useFixture(
-            utils.NotificationFixture(self.url, ['test-topic']))
+            utils.NotificationFixture(self.conf, self.url, ['test-topic']))
 
         listener_b = self.useFixture(
-            utils.NotificationFixture(self.url, ['test-topic']))
+            utils.NotificationFixture(self.conf, self.url, ['test-topic']))
 
         n = listener_a.notifier('pub')
 
@@ -254,9 +274,9 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_independent_topics(self):
         listener_a = self.useFixture(
-            utils.NotificationFixture(self.url, ['1']))
+            utils.NotificationFixture(self.conf, self.url, ['1']))
         listener_b = self.useFixture(
-            utils.NotificationFixture(self.url, ['2']))
+            utils.NotificationFixture(self.conf, self.url, ['2']))
 
         a = listener_a.notifier('pub-1', topic='1')
         b = listener_b.notifier('pub-2', topic='2')
@@ -285,7 +305,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_all_categories(self):
         listener = self.useFixture(utils.NotificationFixture(
-            self.url, ['test_all_categories']))
+            self.conf, self.url, ['test_all_categories']))
         n = listener.notifier('abc')
 
         cats = ['debug', 'audit', 'info', 'warn', 'error', 'critical']
