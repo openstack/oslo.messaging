@@ -15,6 +15,7 @@
 
 __all__ = ['Notifier',
            'LoggingNotificationHandler',
+           'get_notification_transport',
            'get_notification_listener',
            'NotificationResult',
            'NotificationFilter',

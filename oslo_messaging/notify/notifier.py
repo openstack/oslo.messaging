@@ -25,6 +25,7 @@ import six
 from stevedore import named
 
 from oslo_messaging import serializer as msg_serializer
+from oslo_messaging import transport as msg_transport
 
 _notifier_opts = [
     cfg.MultiStrOpt('notification_driver',
@@ -32,6 +33,10 @@ _notifier_opts = [
                     help='The Drivers(s) to handle sending notifications. '
                          'Possible values are messaging, messagingv2, '
                          'routing, log, test, noop'),
+    cfg.StrOpt('notification_transport_url',
+               help='A URL representing the messaging driver to use for '
+                    'notifications. If not set, we fall back to the same '
+                    'configuration used for RPC.'),
     cfg.ListOpt('notification_topics',
                 default=['notifications', ],
                 deprecated_name='topics',
@@ -75,6 +80,15 @@ class Driver(object):
         pass
 
 
+def get_notification_transport(conf, url=None,
+                               allowed_remote_exmods=None, aliases=None):
+    if url is None:
+        conf.register_opts(_notifier_opts)
+        url = conf.notification_transport_url
+    return msg_transport.get_transport(conf, url,
+                                       allowed_remote_exmods, aliases)
+
+
 class Notifier(object):
 
     """Send notification messages.
@@ -94,7 +108,8 @@ class Notifier(object):
     A Notifier object can be instantiated with a transport object and a
     publisher ID:
 
-        notifier = messaging.Notifier(get_transport(CONF), 'compute')
+        notifier = messaging.Notifier(get_notification_transport(CONF),
+                                      'compute')
 
     and notifications are sent via drivers chosen with the notification_driver
     config option and on the topics chosen with the notification_topics config
@@ -103,7 +118,8 @@ class Notifier(object):
     Alternatively, a Notifier object can be instantiated with a specific
     driver or topic::
 
-        notifier = notifier.Notifier(RPC_TRANSPORT,
+        transport = notifier.get_notification_transport(CONF)
+        notifier = notifier.Notifier(transport,
                                      'compute.host',
                                      driver='messaging',
                                      topic='notifications')

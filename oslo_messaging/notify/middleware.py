@@ -59,7 +59,8 @@ class RequestNotifier(base.Middleware):
 
     def __init__(self, app, **conf):
         self.notifier = notify.Notifier(
-            oslo_messaging.get_transport(cfg.CONF, conf.get('url')),
+            oslo_messaging.get_notification_transport(cfg.CONF,
+                                                      conf.get('url')),
             publisher_id=conf.get('publisher_id',
                                   os.path.basename(sys.argv[0])))
         self.service_name = conf.get('service_name')
