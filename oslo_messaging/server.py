@@ -157,7 +157,7 @@ class MessageHandlingServer(service.ServiceBase):
     def wait(self):
         """Wait for message processing to complete.
 
-        After calling stop(), there may still be some some existing messages
+        After calling stop(), there may still be some existing messages
         which have not been completely processed. The wait() method blocks
         until all message processing has completed.
 
