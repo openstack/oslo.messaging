@@ -25,7 +25,7 @@ A transport can be obtained simply by calling the get_transport() method::
     transport = messaging.get_transport(conf)
 
 which will load the appropriate transport driver according to the user's
-messaging configuration configuration. See get_transport() for more details.
+messaging configuration. See get_transport() for more details.
 
 The target supplied when creating an RPC server expresses the topic, server
 name and - optionally - the exchange to listen on. See Target for more details
