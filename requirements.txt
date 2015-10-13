@@ -24,7 +24,7 @@ cachetools>=1.0.0 # MIT License
 eventlet>=0.17.4
 greenlet>=0.3.2
 
-WebOb>=1.2.3
+WebOb<1.5.0,>=1.2.3
 
 # for the routing notifier
 PyYAML>=3.1.0
