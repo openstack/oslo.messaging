@@ -130,26 +130,6 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIsNone(server._executor)
         self.assertEqual(1, listener.cleanup.call_count)
 
-    @mock.patch('oslo_messaging._executors.impl_pooledexecutor.'
-                'PooledExecutor.wait')
-    def test_server_invalid_wait_running_server(self, mock_wait):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
-        target = oslo_messaging.Target(topic='foo', server='bar')
-        endpoints = [object()]
-        serializer = object()
-
-        server = oslo_messaging.get_rpc_server(transport, target, endpoints,
-                                               serializer=serializer,
-                                               executor='eventlet')
-        self.addCleanup(server.wait)
-        self.addCleanup(server.stop)
-        server.start()
-        with mock.patch('logging.Logger.warn') as warn:
-            server.wait()
-            warn.assert_called_with('wait() should be called after '
-                                    'stop() as it waits for existing '
-                                    'messages to finish processing')
-
     def test_no_target_server(self):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
 
