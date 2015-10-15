@@ -26,12 +26,16 @@ class FakeBlockingThread(object):
         self._target()
 
     @staticmethod
-    def join():
+    def join(timeout=None):
         pass
 
     @staticmethod
     def stop():
         pass
+
+    @staticmethod
+    def is_alive():
+        return False
 
 
 class BlockingExecutor(impl_pooledexecutor.PooledExecutor):

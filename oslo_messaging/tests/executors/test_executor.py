@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
 import threading
 
 # eventlet 0.16 with monkey patching does not work yet on Python 3,
@@ -71,9 +72,9 @@ class TestExecutor(test_utils.BaseTestCase):
         thread = threading.Thread(target=target, args=(executor,))
         thread.daemon = True
         thread.start()
-        thread.join(timeout=30)
+        return thread
 
-    def test_executor_dispatch(self):
+    def _create_dispatcher(self):
         if impl_aioeventlet is not None:
             aioeventlet_class = impl_aioeventlet.AsyncioEventletExecutor
         else:
@@ -110,11 +111,13 @@ class TestExecutor(test_utils.BaseTestCase):
             endpoint = mock.MagicMock(return_value=simple_coroutine('result'))
             event = eventlet.event.Event()
         else:
+
             def run_executor(executor):
                 executor.start()
                 executor.wait()
 
             endpoint = mock.MagicMock(return_value='result')
+            event = None
 
         class Dispatcher(object):
             def __init__(self, endpoint):
@@ -139,27 +142,52 @@ class TestExecutor(test_utils.BaseTestCase):
                                                        self.callback,
                                                        executor_callback)
 
-        listener = mock.Mock(spec=['poll', 'stop'])
-        dispatcher = Dispatcher(endpoint)
-        executor = self.executor(self.conf, listener, dispatcher)
+        return Dispatcher(endpoint), endpoint, event, run_executor
 
+    def test_slow_wait(self):
+        dispatcher, endpoint, event, run_executor = self._create_dispatcher()
+        listener = mock.Mock(spec=['poll', 'stop'])
+        executor = self.executor(self.conf, listener, dispatcher)
         incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
 
         def fake_poll(timeout=None):
-            if is_aioeventlet:
-                if listener.poll.call_count == 1:
-                    return incoming_message
-                event.wait()
+            time.sleep(0.1)
+            if listener.poll.call_count == 10:
+                if event is not None:
+                    event.wait()
                 executor.stop()
             else:
-                if listener.poll.call_count == 1:
-                    return incoming_message
-                executor.stop()
+                return incoming_message
 
         listener.poll.side_effect = fake_poll
+        thread = self._run_in_thread(run_executor, executor)
+        self.assertFalse(executor.wait(timeout=0.1))
+        thread.join()
+        self.assertTrue(executor.wait())
 
-        self._run_in_thread(run_executor, executor)
+    def test_dead_wait(self):
+        dispatcher, _endpoint, _event, _run_executor = self._create_dispatcher()
+        listener = mock.Mock(spec=['poll', 'stop'])
+        executor = self.executor(self.conf, listener, dispatcher)
+        executor.stop()
+        self.assertTrue(executor.wait())
 
+    def test_executor_dispatch(self):
+        dispatcher, endpoint, event, run_executor = self._create_dispatcher()
+        listener = mock.Mock(spec=['poll', 'stop'])
+        executor = self.executor(self.conf, listener, dispatcher)
+        incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
+
+        def fake_poll(timeout=None):
+            if listener.poll.call_count == 1:
+                return incoming_message
+            if event is not None:
+                event.wait()
+            executor.stop()
+
+        listener.poll.side_effect = fake_poll
+        thread = self._run_in_thread(run_executor, executor)
+        thread.join()
         endpoint.assert_called_once_with({}, {'payload': 'data'})
         self.assertEqual(dispatcher.result, 'result')
 

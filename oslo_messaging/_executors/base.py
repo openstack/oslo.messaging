@@ -30,12 +30,18 @@ class ExecutorBase(object):
 
     @abc.abstractmethod
     def start(self):
-        "Start polling for incoming messages."
+        """Start polling for incoming messages."""
 
     @abc.abstractmethod
     def stop(self):
-        "Stop polling for messages."
+        """Stop polling for messages."""
 
     @abc.abstractmethod
-    def wait(self):
-        "Wait until the executor has stopped polling."
+    def wait(self, timeout=None):
+        """Wait until the executor has stopped polling.
+
+        If a timeout is provided, and it is not ``None`` then this method will
+        wait up to that amount of time for its components to finish, if not
+        all components finish in the alloted time, then false will be returned
+        otherwise true will be returned.
+        """
