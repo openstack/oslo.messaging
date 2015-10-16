@@ -53,16 +53,18 @@ class ListenerSetupMixin(object):
         def __init__(self):
             self._received_msgs = 0
             self.threads = []
-            self.lock = threading.Lock()
+            self.lock = threading.Condition()
 
         def info(self, ctxt, publisher_id, event_type, payload, metadata):
             # NOTE(sileht): this run into an other thread
             with self.lock:
                 self._received_msgs += 1
+                self.lock.notify_all()
 
         def wait_for_messages(self, expect_messages):
-            while self._received_msgs < expect_messages:
-                time.sleep(0.01)
+            with self.lock:
+                while self._received_msgs < expect_messages:
+                    self.lock.wait()
 
         def stop(self):
             for thread in self.threads:
