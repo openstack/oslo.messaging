@@ -13,14 +13,19 @@
 import eventlet
 eventlet.monkey_patch()
 
-import os
-
 import argparse
+import collections
 import datetime
 import logging
+import os
+import random
+import string
 import sys
 import threading
 import time
+import yaml
+
+from scipy.stats import rv_discrete
 
 from oslo_config import cfg
 import oslo_messaging as messaging
@@ -28,6 +33,8 @@ from oslo_messaging import notify  # noqa
 from oslo_messaging import rpc  # noqa
 
 LOG = logging.getLogger()
+RANDOM_VARIABLE = None
+CURRENT_PID = None
 
 USAGE = """ Usage: ./simulator.py [-h] [--url URL] [-d DEBUG]\
  {notify-server,notify-client,rpc-server,rpc-client} ...
@@ -38,6 +45,29 @@ Usage example:
  python tools/simulator.py\
  --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-client\
  --exit-wait 15000 -p 64 -m 64"""
+
+
+def init_random_generator():
+    data = []
+    with open('./messages_length.yaml') as m_file:
+        content = yaml.load(m_file)
+        data += [int(n) for n in content[
+            'test_data']['string_lengths'].split(', ')]
+
+    ranges = collections.defaultdict(int)
+    for msg_length in data:
+        range_start = (msg_length / 500) * 500 + 1
+        ranges[range_start] += 1
+
+    ranges_start = sorted(ranges.keys())
+    total_count = len(data)
+    ranges_dist = []
+    for r in ranges_start:
+        r_dist = float(ranges[r]) / total_count
+        ranges_dist.append(r_dist)
+
+    random_var = rv_discrete(values=(ranges_start, ranges_dist))
+    return random_var
 
 
 class LoggingNoParsingFilter(logging.Filter):
@@ -136,9 +166,19 @@ def send_msg(_id, transport, target, messages, wait_after_msg, timeout,
     client = client.prepare(timeout=timeout)
     rpc_method = _rpc_cast if is_cast else _rpc_call
 
-    for i in range(0, messages):
-        msg = "test message %d" % i
-        LOG.info("SEND: %s" % msg)
+    ranges = RANDOM_VARIABLE.rvs(size=messages)
+    i = 0
+    for range_start in ranges:
+        length = random.randint(range_start, range_start + 497)
+        msg = ''.join(random.choice(string.lowercase) for x in range(length)) \
+              + ' ' + str(i)
+        i += 1
+        # temporary file to log approximate bytes size of messages
+        with open('./oslo_%s_%s.log' % (target.topic, CURRENT_PID), 'a+') as f:
+            # 37 additional bytes for Python String object size canculation.
+            # In fact we may ignore these bytes, and estimate the data flow
+            # via number of symbols
+            f.write(str(length + 37) + '\n')
         rpc_method(client, msg)
         if wait_after_msg > 0:
             time.sleep(wait_after_msg)
@@ -197,6 +237,9 @@ def main():
     parser.add_argument('-d', '--debug', dest='debug', type=bool,
                         default=False,
                         help="Turn on DEBUG logging level instead of WARN")
+    parser.add_argument('-tp', '--topic', dest='topic',
+                        default="profiler_topic",
+                        help="Topic to publish/receive messages to/from.")
     subparsers = parser.add_subparsers(dest='mode',
                                        help='notify/rpc server/client mode')
 
@@ -246,7 +289,7 @@ def main():
     cfg.CONF.project = 'oslo.messaging'
 
     transport = messaging.get_transport(cfg.CONF, url=args.url)
-    target = messaging.Target(topic='profiler_topic', server='profiler_server')
+    target = messaging.Target(topic=args.topic, server='profiler_server')
 
     if args.mode == 'rpc-server':
         if args.url.startswith('zmq'):
@@ -266,11 +309,29 @@ def main():
                         args.is_cast)
         time_ellapsed = (datetime.datetime.now() - start).total_seconds()
         msg_count = args.messages * args.threads
-        print ('%d messages was sent for %s seconds. Bandwight is %s msg/sec'
-               % (msg_count, time_ellapsed, (msg_count / time_ellapsed)))
+        log_msg = '%d messages was sent for %s seconds. ' \
+                  'Bandwidth is %s msg/sec' % (msg_count, time_ellapsed,
+                                               (msg_count / time_ellapsed))
+        print (log_msg)
+        with open('./oslo_res_%s.txt' % args.topic, 'a+') as f:
+            f.write(log_msg + '\n')
+
+        with open('./oslo_%s_%s.log' % (args.topic, CURRENT_PID), 'a+') as f:
+            data = f.read()
+        data = [int(i) for i in data.split()]
+        data_sum = sum(data)
+        log_msg = '%s bytes were sent for %s seconds. Bandwidth is %s b/s' % (
+            data_sum, time_ellapsed, (data_sum / time_ellapsed))
+        print(log_msg)
+        with open('./oslo_res_%s.txt' % args.topic, 'a+') as f:
+            f.write(log_msg + '\n')
+        os.remove('./oslo_%s_%s.log' % (args.topic, CURRENT_PID))
+
         LOG.info("calls finished, wait %d seconds" % args.exit_wait)
         time.sleep(args.exit_wait)
 
 
 if __name__ == '__main__':
+    RANDOM_VARIABLE = init_random_generator()
+    CURRENT_PID = os.getpid()
     main()
