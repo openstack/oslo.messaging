@@ -185,7 +185,7 @@ class MessageHandlingServer(service.ServiceBase):
                     self._state_cond.wait(1.0)
                     if self._running and not self._dummy_cond:
                         LOG.warn(
-                            _LW("wait() should be have been called"
+                            _LW("wait() should have been called"
                                 " after stop() as wait() waits for existing"
                                 " messages to finish processing, it has"
                                 " been %0.2f seconds and stop() still has"
