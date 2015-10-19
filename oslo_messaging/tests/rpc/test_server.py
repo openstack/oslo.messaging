@@ -117,14 +117,23 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         endpoints = [object()]
         serializer = object()
 
+        class MagicMockIgnoreArgs(mock.MagicMock):
+            '''A MagicMock which can never misinterpret the arguments passed to
+            it during construction.'''
+
+            def __init__(self, *args, **kwargs):
+                super(MagicMockIgnoreArgs, self).__init__()
+
         server = oslo_messaging.get_rpc_server(transport, target, endpoints,
                                                serializer=serializer)
         # Mocking executor
-        server._executor_obj = mock.Mock()
+        server._executor_cls = MagicMockIgnoreArgs
         # Here assigning executor's listener object to listener variable
         # before calling wait method, because in wait method we are
         # setting executor to None.
+        server.start()
         listener = server._executor_obj.listener
+        server.stop()
         # call server wait method
         server.wait()
         self.assertIsNone(server._executor_obj)
