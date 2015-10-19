@@ -14,28 +14,57 @@
 #    under the License.
 
 import futurist
+import threading
 
 from oslo_messaging._executors import impl_pooledexecutor
+from oslo_utils import timeutils
 
 
 class FakeBlockingThread(object):
+    '''A minimal implementation of threading.Thread which does not create a
+    thread or start executing the target when start() is called. Instead, the
+    caller must explicitly execute the non-blocking thread.execute() method
+    after start() has been called.
+    '''
+
     def __init__(self, target):
         self._target = target
+        self._running = False
+        self._running_cond = threading.Condition()
 
     def start(self):
-        self._target()
+        if self._running:
+            # Not a user error. No need to translate.
+            raise RuntimeError('FakeBlockingThread already started')
 
-    @staticmethod
-    def join(timeout=None):
-        pass
+        with self._running_cond:
+            self._running = True
+            self._running_cond.notify_all()
 
-    @staticmethod
-    def stop():
-        pass
+    def join(self, timeout=None):
+        with timeutils.StopWatch(duration=timeout) as w, self._running_cond:
+            while self._running:
+                self._running_cond.wait(w.leftover(return_none=True))
 
-    @staticmethod
-    def is_alive():
-        return False
+                # Thread.join() does not raise an exception on timeout. It is
+                # the caller's responsibility to check is_alive().
+                if w.expired():
+                    return
+
+    def is_alive(self):
+        return self._running
+
+    def execute(self):
+        if not self._running:
+            # Not a user error. No need to translate.
+            raise RuntimeError('FakeBlockingThread not started')
+
+        try:
+            self._target()
+        finally:
+            with self._running_cond:
+                self._running = False
+                self._running_cond.notify_all()
 
 
 class BlockingExecutor(impl_pooledexecutor.PooledExecutor):
@@ -52,3 +81,22 @@ class BlockingExecutor(impl_pooledexecutor.PooledExecutor):
 
     _executor_cls = lambda __, ___: futurist.SynchronousExecutor()
     _thread_cls = FakeBlockingThread
+
+    def __init__(self, *args, **kwargs):
+        super(BlockingExecutor, self).__init__(*args, **kwargs)
+
+    def execute(self):
+        '''Explicitly run the executor in the current context.'''
+        # NOTE(mdbooth): Splitting start into start and execute for the
+        # blocking executor closes a potential race. On a non-blocking
+        # executor, calling start performs some initialisation synchronously
+        # before starting the executor and returning control to the caller. In
+        # the non-blocking caller there was no externally visible boundary
+        # between the completion of initialisation and the start of execution,
+        # meaning the caller cannot indicate to another thread that
+        # initialisation is complete. With the split, the start call for the
+        # blocking executor becomes analogous to the non-blocking case,
+        # indicating that initialisation is complete. The caller can then
+        # synchronously call execute.
+        if self._poller is not None:
+            self._poller.execute()

@@ -27,22 +27,38 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 class ServerSetupMixin(object):
 
-    class Server(object):
+    class Server(threading.Thread):
         def __init__(self, transport, topic, server, endpoint, serializer):
+            self.controller = ServerSetupMixin.ServerController()
             target = oslo_messaging.Target(topic=topic, server=server)
-            self._server = oslo_messaging.get_rpc_server(transport,
-                                                         target,
-                                                         [endpoint, self],
-                                                         serializer=serializer)
+            self.server = oslo_messaging.get_rpc_server(transport,
+                                                        target,
+                                                        [endpoint,
+                                                         self.controller],
+                                                        serializer=serializer)
+
+            super(ServerSetupMixin.Server, self).__init__()
+            self.daemon = True
+
+        def wait(self):
+            # Wait for the executor to process the stop message, indicating all
+            # test messages have been processed
+            self.controller.stopped.wait()
+
+            # Check start() does nothing with a running server
+            self.server.start()
+            self.server.stop()
+            self.server.wait()
+
+        def run(self):
+            self.server.start()
+
+    class ServerController(object):
+        def __init__(self):
+            self.stopped = threading.Event()
 
         def stop(self, ctxt):
-            # Check start() does nothing with a running server
-            self._server.start()
-            self._server.stop()
-            self._server.wait()
-
-        def start(self):
-            self._server.start()
+            self.stopped.set()
 
     class TestSerializer(object):
 
@@ -72,13 +88,14 @@ class ServerSetupMixin(object):
         thread.daemon = True
         thread.start()
 
-        return thread
+        return server
 
-    def _stop_server(self, client, server_thread, topic=None):
+    def _stop_server(self, client, server, topic=None):
         if topic is not None:
             client = client.prepare(topic=topic)
         client.cast({}, 'stop')
-        server_thread.join(timeout=30)
+        server.wait()
+
 
     def _setup_client(self, transport, topic='testtopic'):
         return oslo_messaging.RPCClient(transport,
