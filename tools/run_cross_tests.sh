@@ -64,13 +64,13 @@ echo "======================================================================"
 
 # We only want to run the next check if the tool is installed, so look
 # for it before continuing.
-if [ -f /usr/local/jenkins/slave_scripts/subunit2html.py -a -d ".testrepository" ] ; then
+if [ -f /usr/os-testr-env/bin/subunit2html -a -d ".testrepository" ] ; then
     if [ -f ".testrepository/0.2" ] ; then
         cp .testrepository/0.2 ./subunit_log.txt
     elif [ -f ".testrepository/0" ] ; then
         .tox/$venv/bin/subunit-1to2 < .testrepository/0 > ./subunit_log.txt
     fi
-    .tox/$venv/bin/python /usr/local/jenkins/slave_scripts/subunit2html.py ./subunit_log.txt testr_results.html
+    sudo /usr/os-testr-env/bin/subunit2html $BASE/logs/testrepository.subunit $BASE/logs/testr_results.html
     gzip -9 ./subunit_log.txt
     gzip -9 ./testr_results.html
 
