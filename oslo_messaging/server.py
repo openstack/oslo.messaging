@@ -112,7 +112,7 @@ class MessageHandlingServer(service.ServiceBase):
             raise ExecutorLoadFailure(self.executor, ex)
         else:
             self._executor_cls = mgr.driver
-            self._executor = None
+            self._executor_obj = None
             self._running = False
 
         super(MessageHandlingServer, self).__init__()
@@ -131,19 +131,19 @@ class MessageHandlingServer(service.ServiceBase):
         choose to dispatch messages in a new thread, coroutine or simply the
         current thread.
         """
-        if self._executor is not None:
+        if self._executor_obj is not None:
             return
         with self._state_cond:
-            if self._executor is not None:
+            if self._executor_obj is not None:
                 return
             try:
                 listener = self.dispatcher._listen(self.transport)
             except driver_base.TransportDriverError as ex:
                 raise ServerListenError(self.target, ex)
             self._running = True
-            self._executor = self._executor_cls(self.conf, listener,
-                                                self.dispatcher)
-            self._executor.start()
+            self._executor_obj = self._executor_cls(self.conf, listener,
+                                                    self.dispatcher)
+            self._executor_obj.start()
             self._state_cond.notify_all()
 
     def stop(self):
@@ -155,9 +155,9 @@ class MessageHandlingServer(service.ServiceBase):
         server are still in use. See 'wait' for more details.
         """
         with self._state_cond:
-            if self._executor is not None:
+            if self._executor_obj is not None:
                 self._running = False
-                self._executor.stop()
+                self._executor_obj.stop()
             self._state_cond.notify_all()
 
     def wait(self):
@@ -190,8 +190,8 @@ class MessageHandlingServer(service.ServiceBase):
                                 " messages to finish processing, it has"
                                 " been %0.2f seconds and stop() still has"
                                 " not been called"), w.elapsed())
-            executor = self._executor
-            self._executor = None
+            executor = self._executor_obj
+            self._executor_obj = None
         if executor is not None:
             # We are the lucky calling thread to wait on the executor to
             # actually finish.
