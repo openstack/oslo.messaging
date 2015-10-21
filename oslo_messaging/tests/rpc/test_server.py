@@ -120,14 +120,14 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         server = oslo_messaging.get_rpc_server(transport, target, endpoints,
                                                serializer=serializer)
         # Mocking executor
-        server._executor = mock.Mock()
+        server._executor_obj = mock.Mock()
         # Here assigning executor's listener object to listener variable
         # before calling wait method, because in wait method we are
         # setting executor to None.
-        listener = server._executor.listener
+        listener = server._executor_obj.listener
         # call server wait method
         server.wait()
-        self.assertIsNone(server._executor)
+        self.assertIsNone(server._executor_obj)
         self.assertEqual(1, listener.cleanup.call_count)
 
     def test_no_target_server(self):
