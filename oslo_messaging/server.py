@@ -140,11 +140,14 @@ class MessageHandlingServer(service.ServiceBase):
                 listener = self.dispatcher._listen(self.transport)
             except driver_base.TransportDriverError as ex:
                 raise ServerListenError(self.target, ex)
-            self._running = True
             self._executor_obj = self._executor_cls(self.conf, listener,
                                                     self.dispatcher)
             self._executor_obj.start()
+            self._running = True
             self._state_cond.notify_all()
+
+        if self.executor == 'blocking':
+            self._executor_obj.execute()
 
     def stop(self):
         """Stop handling incoming messages.

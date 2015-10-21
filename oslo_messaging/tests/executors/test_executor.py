@@ -81,6 +81,12 @@ class TestExecutor(test_utils.BaseTestCase):
             aioeventlet_class = None
         is_aioeventlet = (self.executor == aioeventlet_class)
 
+        if impl_blocking is not None:
+            blocking_class = impl_blocking.BlockingExecutor
+        else:
+            blocking_class = None
+        is_blocking = (self.executor == blocking_class)
+
         if is_aioeventlet:
             policy = aioeventlet.EventLoopPolicy()
             trollius.set_event_loop_policy(policy)
@@ -110,8 +116,15 @@ class TestExecutor(test_utils.BaseTestCase):
 
             endpoint = mock.MagicMock(return_value=simple_coroutine('result'))
             event = eventlet.event.Event()
-        else:
+        elif is_blocking:
+            def run_executor(executor):
+                executor.start()
+                executor.execute()
+                executor.wait()
 
+            endpoint = mock.MagicMock(return_value='result')
+            event = None
+        else:
             def run_executor(executor):
                 executor.start()
                 executor.wait()
