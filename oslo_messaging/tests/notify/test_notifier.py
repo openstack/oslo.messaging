@@ -412,7 +412,7 @@ group_1:
           - blah.zoo.*
           - zip
         """
-        groups = yaml.load(config)
+        groups = yaml.safe_load(config)
         group = groups['group_1']
 
         # No matching event ...
@@ -443,7 +443,7 @@ group_1:
           - info
           - error
         """
-        groups = yaml.load(config)
+        groups = yaml.safe_load(config)
         group = groups['group_1']
 
         # No matching priority
@@ -476,7 +476,7 @@ group_1:
       accepted_events:
           - foo.*
         """
-        groups = yaml.load(config)
+        groups = yaml.safe_load(config)
         group = groups['group_1']
 
         # Valid event, but no matching priority
