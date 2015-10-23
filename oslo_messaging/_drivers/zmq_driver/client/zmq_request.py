@@ -63,6 +63,12 @@ class Request(object):
         self.message = message
         self.retry = retry
         self.message_id = str(uuid.uuid1())
+        self.proxy_reply_id = None
+
+    def create_envelope(self):
+        return {'msg_type': self.msg_type,
+                'message_id': self.message_id,
+                'target': self.target}
 
     @abc.abstractproperty
     def msg_type(self):
@@ -85,6 +91,11 @@ class RpcRequest(Request):
         assert self.timeout is not None, "Timeout should be specified!"
 
         super(RpcRequest, self).__init__(*args, **kwargs)
+
+    def create_envelope(self):
+        envelope = super(RpcRequest, self).create_envelope()
+        envelope['timeout'] = self.timeout
+        return envelope
 
 
 class CallRequest(RpcRequest):

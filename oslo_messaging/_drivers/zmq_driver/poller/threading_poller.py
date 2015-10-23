@@ -38,12 +38,17 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
         self.recv_methods = {}
 
     def register(self, socket, recv_method=None):
+        if socket in self.recv_methods:
+            return
         if recv_method is not None:
             self.recv_methods[socket] = recv_method
         self.poller.register(socket, zmq.POLLIN)
 
     def poll(self, timeout=None):
-        timeout *= 1000  # zmq poller waits milliseconds
+
+        if timeout:
+            timeout *= 1000  # zmq poller waits milliseconds
+
         sockets = None
 
         try:

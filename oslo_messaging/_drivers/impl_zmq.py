@@ -229,7 +229,7 @@ class ZmqDriver(base.BaseDriver):
         :param target: Message destination target
         :type target: oslo_messaging.Target
         """
-        server = self.server.get()
+        server = zmq_server.ZmqServer(self, self.conf, self.matchmaker)
         server.listen(target)
         return server
 

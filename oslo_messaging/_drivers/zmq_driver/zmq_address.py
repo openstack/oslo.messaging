@@ -27,3 +27,14 @@ def get_tcp_random_address(conf):
 
 def get_broker_address(conf):
     return "ipc://%s/zmq-broker" % conf.rpc_zmq_ipc_dir
+
+
+def target_to_key(target):
+    if target.topic and target.server:
+        attributes = ['topic', 'server']
+        key = ".".join(getattr(target, attr) for attr in attributes)
+        return key
+    if target.topic:
+        return target.topic
+    if target.server:
+        return target.server

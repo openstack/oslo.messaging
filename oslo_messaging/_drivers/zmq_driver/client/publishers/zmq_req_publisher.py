@@ -14,6 +14,9 @@
 
 import contextlib
 import logging
+import uuid
+
+import six
 
 import oslo_messaging
 from oslo_messaging._drivers import common as rpc_common
@@ -40,9 +43,15 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
         if request.msg_type != zmq_names.CALL_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        socket = self._connect_to_host(request.target, request.timeout)
+        socket, connect_address = self._connect_to_host(request.target,
+                                                        request.timeout)
+        request.host = connect_address
         self._send_request(socket, request)
         return self._receive_reply(socket, request)
+
+    def _resolve_host_address(self, target, timeout=0):
+        host = self.matchmaker.get_single_host(target, timeout)
+        return zmq_address.get_tcp_direct_address(host)
 
     def _connect_to_host(self, target, timeout=0):
 
@@ -50,14 +59,18 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
             self.zmq_context = zmq.Context()
             socket = self.zmq_context.socket(zmq.REQ)
 
-            host = self.matchmaker.get_single_host(target, timeout)
-            connect_address = zmq_address.get_tcp_direct_address(host)
+            if six.PY3:
+                socket.setsockopt_string(zmq.IDENTITY, str(uuid.uuid1()))
+            else:
+                socket.identity = str(uuid.uuid1())
+
+            connect_address = self._resolve_host_address(target, timeout)
 
             LOG.info(_LI("Connecting REQ to %s") % connect_address)
 
             socket.connect(connect_address)
             self.outbound_sockets[str(target)] = socket
-            return socket
+            return socket, connect_address
 
         except zmq.ZMQError as e:
             errmsg = _LE("Error connecting to socket: %s") % str(e)
@@ -77,6 +90,7 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
             if reply is None:
                 raise oslo_messaging.MessagingTimeout(
                     "Timeout %s seconds was reached" % request.timeout)
+            LOG.info(_LI("Received reply %s") % reply)
             if reply[zmq_names.FIELD_FAILURE]:
                 raise rpc_common.deserialize_remote_exception(
                     reply[zmq_names.FIELD_FAILURE],
@@ -87,3 +101,26 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
     def close(self):
         # For contextlib compatibility
         self.cleanup()
+
+
+class ReqPublisherLight(ReqPublisher):
+
+    def __init__(self, conf, matchmaker):
+        super(ReqPublisherLight, self).__init__(conf, matchmaker)
+
+    def _resolve_host_address(self, target, timeout=0):
+        return zmq_address.get_broker_address(self.conf)
+
+    def _send_request(self, socket, request):
+
+        LOG.info(_LI("Sending %(type)s message_id %(message)s"
+                     " to a target %(target)s, host:%(host)s")
+                 % {"type": request.msg_type,
+                    "message": request.message_id,
+                    "target": request.target,
+                    "host": request.host})
+
+        envelope = request.create_envelope()
+
+        socket.send_pyobj(envelope, zmq.SNDMORE)
+        socket.send_pyobj(request)

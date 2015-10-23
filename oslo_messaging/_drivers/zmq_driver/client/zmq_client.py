@@ -37,16 +37,18 @@ class ZmqClient(object):
         if self.conf.zmq_use_broker:
             self.dealer_publisher = zmq_dealer_publisher.DealerPublisherLight(
                 conf, zmq_address.get_broker_address(self.conf))
+            self.req_publisher_cls = zmq_req_publisher.ReqPublisherLight
         else:
             self.dealer_publisher = zmq_dealer_publisher.DealerPublisher(
                 conf, matchmaker)
+            self.req_publisher_cls = zmq_req_publisher.ReqPublisher
 
     def send_call(self, target, context, message, timeout=None, retry=None):
         with contextlib.closing(zmq_request.CallRequest(
                 target, context=context, message=message,
                 timeout=timeout, retry=retry,
                 allowed_remote_exmods=self.allowed_remote_exmods)) as request:
-            with contextlib.closing(zmq_req_publisher.ReqPublisher(
+            with contextlib.closing(self.req_publisher_cls(
                     self.conf, self.matchmaker)) as req_publisher:
                 return req_publisher.send_request(request)
 
