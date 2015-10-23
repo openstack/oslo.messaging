@@ -381,7 +381,6 @@ class TransportURL(object):
 
         hosts = []
 
-        username = password = ''
         for host in url.netloc.split(','):
             if not host:
                 continue
