@@ -812,7 +812,9 @@ class RpcServicePikaListener(PikaListener):
         queue = '{}'.format(self._target.topic)
         server_queue = '{}.{}'.format(queue, self._target.server)
 
-        fanout_exchange = '{}_fanout'.format(self._target.topic)
+        fanout_exchange = '{}_fanout_{}'.format(
+            self._pika_engine.default_rpc_exchange, self._target.topic
+        )
 
         queue_expiration = (
             self._pika_engine.conf.oslo_messaging_pika.rpc_queue_expiration
@@ -997,7 +999,9 @@ class PikaDriver(object):
 
         if target.fanout:
             return msg.send(
-                exchange='{}_fanout'.format(target.topic),
+                exchange='{}_fanout_{}'.format(
+                    self._pika_engine.default_rpc_exchange, target.topic
+                ),
                 timeout=timeout, confirm=True, mandatory=False,
                 retrier=retrier
             )
