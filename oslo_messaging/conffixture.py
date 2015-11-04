@@ -51,9 +51,6 @@ class ConfFixture(fixtures.Fixture):
                      'oslo_messaging._drivers.amqp', 'amqp_opts',
                      'oslo_messaging_rabbit')
         _import_opts(self.conf,
-                     'oslo_messaging._drivers.impl_qpid', 'qpid_opts',
-                     'oslo_messaging_qpid')
-        _import_opts(self.conf,
                      'oslo_messaging._drivers.amqp', 'amqp_opts',
                      'oslo_messaging_qpid')
         _import_opts(self.conf,
@@ -77,7 +74,7 @@ class ConfFixture(fixtures.Fixture):
 
     @property
     def transport_driver(self):
-        """The transport driver - for example 'rabbit', 'qpid' or 'fake'."""
+        """The transport driver - for example 'rabbit', 'amqp' or 'fake'."""
         return self.conf.rpc_backend
 
     @transport_driver.setter

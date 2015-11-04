@@ -45,7 +45,7 @@ Juno release, as almost all the core projects in OpenStack have switched to
 oslo_messaging, ZeroMQ can be the only RPC driver across the OpenStack cluster.
 This document provides deployment information for this driver in oslo_messaging.
 
-Other than AMQP-based drivers, like RabbitMQ or Qpid, ZeroMQ doesn't have
+Other than AMQP-based drivers, like RabbitMQ, ZeroMQ doesn't have
 any central brokers in oslo.messaging, instead, each host (running OpenStack
 services) is both ZeroMQ client and server. As a result, each host needs to
 listen to a certain TCP port for incoming connections and directly connect
@@ -172,7 +172,6 @@ The parameters for the script oslo-messaging-zmq-receiver should be::
 
 You can specify ZeroMQ options in /etc/oslo/zeromq.conf if necessary.
 
-
 Listening Address (optional)
 ----------------------------
 
@@ -204,7 +203,7 @@ DevStack Support
 
 ZeroMQ driver has been supported by DevStack. The configuration is as follows::
 
-        ENABLED_SERVICES+=,-rabbit,-qpid,zeromq
+        ENABLED_SERVICES+=,-rabbit,zeromq
         ZEROMQ_MATCHMAKER=redis
 
 In local.conf [localrc] section need to enable zmq plugin which lives in

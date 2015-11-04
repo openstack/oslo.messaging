@@ -19,7 +19,7 @@
 Shared code between AMQP based openstack.common.rpc implementations.
 
 The code in this module is shared between the rpc implementations based on
-AMQP. Specifically, this includes impl_kombu and impl_qpid.  impl_carrot also
+AMQP. Specifically, this includes impl_kombu.  impl_carrot also
 uses AMQP, but is deprecated and predates this code.
 """
 
@@ -66,7 +66,7 @@ amqp_opts = [
 UNIQUE_ID = '_unique_id'
 LOG = logging.getLogger(__name__)
 
-# NOTE(sileht): Even if rabbit/qpid have only one Connection class,
+# NOTE(sileht): Even if rabbit has only one Connection class,
 # this connection can be used for two purposes:
 # * wait and receive amqp messages (only do read stuffs on the socket)
 # * send messages to the broker (only do write stuffs on the socket)

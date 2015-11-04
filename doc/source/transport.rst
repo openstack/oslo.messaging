@@ -25,6 +25,4 @@ different 3rd party libraries that don't ensure that. In certain
 cases, with some drivers, it does work:
 
 * rabbit: works only if no connection have already been established.
-* qpid: doesn't work (The qpid library has a global state that uses
-  file descriptors that can't be reset)
 * amqp1: works
