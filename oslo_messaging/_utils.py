@@ -116,6 +116,29 @@ def fetch_current_thread_functor():
         return lambda: threading.current_thread()
 
 
+class DummyCondition(object):
+    def acquire(self):
+        pass
+
+    def notify(self):
+        pass
+
+    def notify_all(self):
+        pass
+
+    def wait(self, timeout=None):
+        pass
+
+    def release(self):
+        pass
+
+    def __enter__(self):
+        self.acquire()
+
+    def __exit__(self, type, value, traceback):
+        self.release()
+
+
 class DummyLock(object):
     def acquire(self):
         pass
