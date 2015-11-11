@@ -35,7 +35,8 @@ class PubPublisher(zmq_publisher_base.PublisherMultisend):
         if request.msg_type not in zmq_names.NOTIFY_TYPES:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        pub_socket, hosts = self._check_hosts_connections(request.target)
+        pub_socket, hosts = self._check_hosts_connections(
+            request.target, zmq_names.socket_type_str(zmq.SUB))
         self._send_request(pub_socket, request)
 
     def _send_request(self, socket, request):

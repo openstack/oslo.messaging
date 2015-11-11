@@ -64,13 +64,14 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         LOG.info("[%s] Listen to target %s" % (self.host, target))
 
         self.targets.append(target)
-        self.matchmaker.register(target=target,
-                                 hostname=self.host)
+        self.matchmaker.register(target, self.host,
+                                 zmq_names.socket_type_str(zmq.ROUTER))
 
     def cleanup(self):
         super(RouterConsumer, self).cleanup()
         for target in self.targets:
-            self.matchmaker.unregister(target, self.host)
+            self.matchmaker.unregister(target, self.host,
+                                       zmq_names.socket_type_str(zmq.ROUTER))
 
     def _receive_request(self, socket):
         reply_id = socket.recv()

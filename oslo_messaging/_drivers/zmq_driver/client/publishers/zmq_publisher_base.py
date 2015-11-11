@@ -90,11 +90,10 @@ class PublisherBase(object):
         :type request: zmq_request.Request
         """
         LOG.info(_LI("Sending %(type)s message_id %(message)s to a target"
-                     "%(target)s key: %(key)s, host:%(host)s")
+                     "%(target)s host:%(host)s")
                  % {"type": request.msg_type,
                     "message": request.message_id,
                     "target": request.target,
-                    "key": zmq_address.target_to_key(request.target),
                     "host": request.host})
         socket.send_pyobj(request)
 
@@ -122,10 +121,11 @@ class PublisherMultisend(PublisherBase):
         self.socket_type = socket_type
         self.matchmaker = matchmaker
 
-    def _check_hosts_connections(self, target):
+    def _check_hosts_connections(self, target, listener_type):
         #  TODO(ozamiatin): Place for significant optimization
         #  Matchmaker cache should be implemented
-        hosts = self.matchmaker.get_hosts(target)
+        hosts = self.matchmaker.get_hosts(
+            target, listener_type)
         if str(target) in self.outbound_sockets:
             socket = self.outbound_sockets[str(target)]
         else:
