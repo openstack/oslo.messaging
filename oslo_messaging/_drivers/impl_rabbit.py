@@ -465,8 +465,8 @@ class Connection(object):
             },
         )
 
-        LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)s'),
-                 self.connection.info())
+        LOG.debug('Connecting to AMQP server on %(hostname)s:%(port)s',
+                  self.connection.info())
 
         # NOTE(sileht): kombu recommend to run heartbeat_check every
         # seconds, but we use a lock around the kombu connection
@@ -491,8 +491,8 @@ class Connection(object):
         if purpose == rpc_amqp.PURPOSE_SEND:
             self._heartbeat_start()
 
-        LOG.info(_LI('Connected to AMQP server on %(hostname)s:%(port)s'),
-                 self.connection.info())
+        LOG.debug('Connected to AMQP server on %(hostname)s:%(port)s',
+                  self.connection.info())
 
         # NOTE(sileht): value chosen according the best practice from kombu
         # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
