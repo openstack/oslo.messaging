@@ -229,7 +229,7 @@ class RPCClient(object):
         class TestClient(object):
 
             def __init__(self, transport):
-                target = messaging.Target(topic='testtopic', version='2.0')
+                target = messaging.Target(topic='test', version='2.0')
                 self._client = messaging.RPCClient(transport, target)
 
             def test(self, ctxt, arg):
@@ -254,7 +254,7 @@ class RPCClient(object):
     For example::
 
         transport = messaging.get_transport(cfg.CONF)
-        target = messaging.Target(topic='testtopic', version='2.0')
+        target = messaging.Target(topic='test', version='2.0')
         client = messaging.RPCClient(transport, target)
         client.call(ctxt, 'test', arg=arg)
 
