@@ -21,6 +21,7 @@ import testtools
 import oslo_messaging
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._i18n import _
 from oslo_messaging.tests import utils as test_utils
 
@@ -78,7 +79,9 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
                   'rpc_response_timeout': 5,
                   'rpc_zmq_ipc_dir': self.internal_ipc_dir,
                   'zmq_use_broker': False,
-                  'rpc_zmq_matchmaker': 'dummy'}
+                  'rpc_zmq_matchmaker': 'dummy',
+                  'rpc_zmq_min_port': 5555,
+                  'rpc_zmq_max_port': 5560}
         self.config(**kwargs)
 
         # Get driver
@@ -114,6 +117,22 @@ class stopRpc(object):
 
 
 class TestZmqBasics(ZmqBaseTestCase):
+
+    def test_ports_range(self):
+        listeners = []
+
+        for i in range(10):
+            try:
+                target = oslo_messaging.Target(topic='testtopic_'+str(i))
+                new_listener = self.driver.listen(target)
+                listeners.append(new_listener)
+            except zmq_socket.ZmqPortRangeExceededException:
+                pass
+
+        self.assertLessEqual(len(listeners), 5)
+
+        for l in listeners:
+            l.cleanup()
 
     def test_send_receive_raises(self):
         """Call() without method."""

@@ -79,7 +79,20 @@ zmq_opts = [
 
     cfg.BoolOpt('zmq_use_broker',
                 default=True,
-                help='Shows whether zmq-messaging uses broker or not.')
+                help='Shows whether zmq-messaging uses broker or not.'),
+
+    cfg.IntOpt('rpc_zmq_min_port',
+               default=49152,
+               help='Minimal port number for random ports range.'),
+
+    cfg.IntOpt('rpc_zmq_max_port',
+               default=65536,
+               help='Maximal port number for random ports range.'),
+
+    cfg.IntOpt('rpc_zmq_bind_port_retries',
+               default=100,
+               help='Number of retries to find free port number before '
+                    'fail with ZMQBindError.')
 ]
 
 

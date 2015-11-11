@@ -17,6 +17,8 @@ import logging
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._i18n import _LE
+from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
 
@@ -79,10 +81,23 @@ class ZmqSocket(object):
         self.handle.close(*args, **kwargs)
 
 
+class ZmqPortRangeExceededException(exceptions.MessagingException):
+    """Raised by ZmqRandomPortSocket - wrapping zmq.ZMQBindError"""
+
+
 class ZmqRandomPortSocket(ZmqSocket):
 
     def __init__(self, conf, context, socket_type):
         super(ZmqRandomPortSocket, self).__init__(context, socket_type)
         self.conf = conf
         self.bind_address = zmq_address.get_tcp_random_address(self.conf)
-        self.port = self.handle.bind_to_random_port(self.bind_address)
+
+        try:
+            self.port = self.handle.bind_to_random_port(
+                self.bind_address,
+                min_port=conf.rpc_zmq_min_port,
+                max_port=conf.rpc_zmq_max_port,
+                max_tries=conf.rpc_zmq_bind_port_retries)
+        except zmq.ZMQBindError:
+            LOG.error(_LE("Random ports range exceeded!"))
+            raise ZmqPortRangeExceededException()
