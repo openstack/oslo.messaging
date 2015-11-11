@@ -13,17 +13,19 @@
 #    under the License.
 
 import retrying
-
 import sys
+import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
 
 from oslo_messaging._drivers import common
-from oslo_messaging._drivers.pika_driver import pika_engine
+
+from oslo_messaging._drivers.pika_driver import pika_engine as pika_drv_engine
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
-from oslo_messaging._drivers.pika_driver import pika_listener
-from oslo_messaging._drivers.pika_driver import pika_message
+from oslo_messaging._drivers.pika_driver import pika_listener as pika_drv_lstnr
+from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
+from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
 
 from oslo_messaging import exceptions
 
@@ -95,15 +97,6 @@ rpc_opts = [
                help="Exchange name for for sending RPC messages"),
     cfg.StrOpt('rpc_reply_exchange', default="${control_exchange}_rpc_reply",
                help="Exchange name for for receiving RPC replies"),
-
-    cfg.BoolOpt('rpc_listener_ack', default=True,
-                help="Disable to increase performance. If disabled - some "
-                     "messages may be lost in case of connectivity problem. "
-                     "If enabled - may cause not needed message redelivery "
-                     "and rpc request could be processed more then one time"),
-    cfg.BoolOpt('rpc_reply_listener_ack', default=True,
-                help="Disable to increase performance. If disabled - some "
-                     "replies may be lost in case of connectivity problem."),
     cfg.IntOpt(
         'rpc_listener_prefetch_count', default=10,
         help="Max number of not acknowledged message which RabbitMQ can send "
@@ -176,13 +169,19 @@ class PikaDriver(object):
         self.conf = conf
         self._allowed_remote_exmods = allowed_remote_exmods
 
-        self._pika_engine = pika_engine.PikaEngine(conf, url, default_exchange)
+        self._pika_engine = pika_drv_engine.PikaEngine(
+            conf, url, default_exchange
+        )
+        self._reply_listener = pika_drv_lstnr.RpcReplyPikaListener(
+            self._pika_engine
+        )
 
     def require_features(self, requeue=False):
         pass
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
+        expiration_time = None if timeout is None else time.time() + timeout
 
         if retry is None:
             retry = self._pika_engine.default_rpc_retry_attempts
@@ -204,29 +203,12 @@ class PikaDriver(object):
             )
         )
 
-        msg = pika_message.PikaOutgoingMessage(self._pika_engine, message,
-                                               ctxt)
-
-        if target.fanout:
-            return msg.send(
-                exchange='{}_fanout_{}'.format(
-                    self._pika_engine.default_rpc_exchange, target.topic
-                ),
-                timeout=timeout, confirm=True, mandatory=False,
-                retrier=retrier
-            )
-
-        queue = target.topic
-        if target.server:
-            queue = '{}.{}'.format(queue, target.server)
-
+        msg = pika_drv_msg.RpcPikaOutgoingMessage(self._pika_engine, message,
+                                                  ctxt)
         reply = msg.send(
-            exchange=target.exchange or self._pika_engine.default_rpc_exchange,
-            routing_key=queue,
-            wait_for_reply=wait_for_reply,
-            timeout=timeout,
-            confirm=True,
-            mandatory=True,
+            target,
+            reply_listener=self._reply_listener if wait_for_reply else None,
+            expiration_time=expiration_time,
             retrier=retrier
         )
 
@@ -276,16 +258,14 @@ class PikaDriver(object):
             wait_fixed=self._pika_engine.notification_retry_delay * 1000,
         )
 
-        msg = pika_message.PikaOutgoingMessage(self._pika_engine, message,
+        msg = pika_drv_msg.PikaOutgoingMessage(self._pika_engine, message,
                                                ctxt)
-
         return msg.send(
             exchange=(
                 target.exchange or
                 self._pika_engine.default_notification_exchange
             ),
             routing_key=target.topic,
-            wait_for_reply=False,
             confirm=True,
             mandatory=True,
             persistent=self._pika_engine.notification_persistence,
@@ -293,23 +273,22 @@ class PikaDriver(object):
         )
 
     def listen(self, target):
-        listener = pika_listener.RpcServicePikaListener(
+        listener = pika_drv_poller.RpcServicePikaPoller(
             self._pika_engine, target,
-            no_ack=not self._pika_engine.rpc_listener_ack,
             prefetch_count=self._pika_engine.rpc_listener_prefetch_count
         )
         listener.start()
         return listener
 
     def listen_for_notifications(self, targets_and_priorities, pool):
-        listener = pika_listener.NotificationPikaListener(
+        listener = pika_drv_poller.NotificationPikaPoller(
             self._pika_engine, targets_and_priorities, pool
         )
         listener.start()
         return listener
 
     def cleanup(self):
-        self._pika_engine.cleanup()
+        self._reply_listener.cleanup()
 
 
 class PikaDriverCompatibleWithRabbitDriver(PikaDriver):

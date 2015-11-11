@@ -22,10 +22,13 @@ from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 from oslo_serialization import jsonutils
 
+from pika import exceptions as pika_exceptions
 from pika import spec as pika_spec
+import pika_pool
 
 import retrying
 import six
+import socket
 import time
 import uuid
 
@@ -47,7 +50,7 @@ class PikaIncomingMessage(object):
 
         self.expiration_time = (
             None if properties.expiration is None else
-            time.time() + int(properties.expiration) / 1000
+            time.time() + float(properties.expiration) / 1000
         )
 
         if self.content_type != "application/json":
@@ -58,10 +61,6 @@ class PikaIncomingMessage(object):
             jsonutils.loads(body, encoding=self.content_encoding)
         )
 
-        self.unique_id = message_dict.pop('_unique_id')
-        self.msg_id = message_dict.pop('_msg_id', None)
-        self.reply_q = message_dict.pop('_reply_q', None)
-
         context_dict = {}
 
         for key in list(message_dict.keys()):
@@ -69,9 +68,30 @@ class PikaIncomingMessage(object):
             if key.startswith('_context_'):
                 value = message_dict.pop(key)
                 context_dict[key[9:]] = value
-
+            elif key.startswith('_'):
+                value = message_dict.pop(key)
+                setattr(self, key[1:], value)
         self.message = message_dict
         self.ctxt = context_dict
+
+    def acknowledge(self):
+        if not self._no_ack:
+            self._channel.basic_ack(delivery_tag=self.delivery_tag)
+
+    def requeue(self):
+        if not self._no_ack:
+            return self._channel.basic_nack(delivery_tag=self.delivery_tag,
+                                            requeue=True)
+
+
+class RpcPikaIncomingMessage(PikaIncomingMessage):
+    def __init__(self, pika_engine, channel, method, properties, body, no_ack):
+        self.msg_id = None
+        self.reply_q = None
+
+        super(RpcPikaIncomingMessage, self).__init__(
+            pika_engine, channel, method, properties, body, no_ack
+        )
 
     def reply(self, reply=None, failure=None, log_failure=True):
         if not (self.msg_id and self.reply_q):
@@ -83,10 +103,13 @@ class PikaIncomingMessage(object):
         msg = {
             'result': reply,
             'failure': failure,
-            '_unique_id': uuid.uuid4().hex,
             '_msg_id': self.msg_id,
-            'ending': True
         }
+
+        reply_outgoing_message = PikaOutgoingMessage(
+            self._pika_engine, msg, self.ctxt, content_type=self.content_type,
+            content_encoding=self.content_encoding
+        )
 
         def on_exception(ex):
             if isinstance(ex, pika_drv_exc.ConnectionException):
@@ -105,19 +128,12 @@ class PikaIncomingMessage(object):
         )
 
         try:
-            self._pika_engine.publish(
+            reply_outgoing_message.send(
                 exchange=self._pika_engine.rpc_reply_exchange,
                 routing_key=self.reply_q,
-                body=jsonutils.dumps(
-                    common.serialize_msg(msg),
-                    encoding=self.content_encoding
-                ),
-                properties=pika_spec.BasicProperties(
-                    content_encoding=self.content_encoding,
-                    content_type=self.content_type,
-                ),
                 confirm=True,
                 mandatory=False,
+                persistent=False,
                 expiration_time=self.expiration_time,
                 retrier=retrier
             )
@@ -133,18 +149,8 @@ class PikaIncomingMessage(object):
                 )
             )
 
-    def acknowledge(self):
-        if not self._no_ack:
-            self._channel.basic_ack(delivery_tag=self.delivery_tag)
-
-    def requeue(self):
-        if not self._no_ack:
-            return self._channel.basic_nack(delivery_tag=self.delivery_tag,
-                                            requeue=True)
-
 
 class PikaOutgoingMessage(object):
-
     def __init__(self, pika_engine, message, context,
                  content_type="application/json", content_encoding="utf-8"):
         self._pika_engine = pika_engine
@@ -160,11 +166,8 @@ class PikaOutgoingMessage(object):
         self.context = context
 
         self.unique_id = uuid.uuid4().hex
-        self.msg_id = None
 
-    def send(self, exchange, routing_key='', confirm=True,
-             wait_for_reply=False, mandatory=True, persistent=False,
-             timeout=None, retrier=None):
+    def _prepare_message_to_send(self):
         msg = self.message.copy()
 
         msg['_unique_id'] = self.unique_id
@@ -172,46 +175,158 @@ class PikaOutgoingMessage(object):
         for key, value in self.context.iteritems():
             key = six.text_type(key)
             msg['_context_' + key] = value
+        return msg
 
+    @staticmethod
+    def _publish(pool, exchange, routing_key, body, properties, mandatory,
+                 expiration_time):
+        timeout = (None if expiration_time is None else
+                   expiration_time - time.time())
+        if timeout is not None and timeout < 0:
+            raise exceptions.MessagingTimeout(
+                "Timeout for current operation was expired."
+            )
+        try:
+            with pool.acquire(timeout=timeout) as conn:
+                if timeout is not None:
+                    properties.expiration = str(int(timeout * 1000))
+                conn.channel.publish(
+                    exchange=exchange,
+                    routing_key=routing_key,
+                    body=body,
+                    properties=properties,
+                    mandatory=mandatory
+                )
+        except pika_exceptions.NackError as e:
+            raise pika_drv_exc.MessageRejectedException(
+                "Can not send message: [body: {}], properties: {}] to "
+                "target [exchange: {}, routing_key: {}]. {}".format(
+                    body, properties, exchange, routing_key, str(e)
+                )
+            )
+        except pika_exceptions.UnroutableError as e:
+            raise pika_drv_exc.RoutingException(
+                "Can not deliver message:[body:{}, properties: {}] to any"
+                "queue using target: [exchange:{}, "
+                "routing_key:{}]. {}".format(
+                    body, properties, exchange, routing_key, str(e)
+                )
+            )
+        except pika_pool.Timeout as e:
+            raise exceptions.MessagingTimeout(
+                "Timeout for current operation was expired. {}".format(str(e))
+            )
+        except pika_pool.Connection.connectivity_errors as e:
+            if (isinstance(e, pika_exceptions.ChannelClosed)
+                    and e.args and e.args[0] == 404):
+                raise pika_drv_exc.ExchangeNotFoundException(
+                    "Attempt to send message to not existing exchange "
+                    "detected, message: [body:{}, properties: {}], target: "
+                    "[exchange:{}, routing_key:{}]. {}".format(
+                        body, properties, exchange, routing_key, str(e)
+                    )
+                )
+
+            raise pika_drv_exc.ConnectionException(
+                "Connectivity problem detected during sending the message: "
+                "[body:{}, properties: {}] to target: [exchange:{}, "
+                "routing_key:{}]. {}".format(
+                    body, properties, exchange, routing_key, str(e)
+                )
+            )
+        except socket.timeout:
+            raise pika_drv_exc.TimeoutConnectionException(
+                "Socket timeout exceeded."
+            )
+
+    def _do_send(self, exchange, routing_key, msg_dict, confirm=True,
+                 mandatory=True, persistent=False, expiration_time=None,
+                 retrier=None):
         properties = pika_spec.BasicProperties(
             content_encoding=self.content_encoding,
             content_type=self.content_type,
             delivery_mode=2 if persistent else 1
         )
 
-        expiration_time = (
-            None if timeout is None else (timeout + time.time())
+        pool = (self._pika_engine.connection_with_confirmation_pool
+                if confirm else self._pika_engine.connection_pool)
+
+        body = jsonutils.dumps(
+            common.serialize_msg(msg_dict),
+            encoding=self.content_encoding
         )
 
-        if wait_for_reply:
-            self.msg_id = uuid.uuid4().hex
-            msg['_msg_id'] = self.msg_id
-            LOG.debug('MSG_ID is %s', self.msg_id)
+        LOG.debug(
+            "Sending message:[body:{}; properties: {}] to target: "
+            "[exchange:{}; routing_key:{}]".format(
+                body, properties, exchange, routing_key
+            )
+        )
 
-            msg['_reply_q'] = self._pika_engine.get_reply_q(timeout)
+        publish = (self._publish if retrier is None else
+                   retrier(self._publish))
 
+        return publish(pool, exchange, routing_key, body, properties,
+                       mandatory, expiration_time)
+
+    def send(self, exchange, routing_key='', confirm=True, mandatory=True,
+             persistent=False, expiration_time=None, retrier=None):
+        msg_dict = self._prepare_message_to_send()
+
+        return self._do_send(exchange, routing_key, msg_dict, confirm,
+                             mandatory, persistent, expiration_time, retrier)
+
+
+class RpcPikaOutgoingMessage(PikaOutgoingMessage):
+    def __init__(self, pika_engine, message, context,
+                 content_type="application/json", content_encoding="utf-8"):
+        super(RpcPikaOutgoingMessage, self).__init__(
+            pika_engine, message, context, content_type, content_encoding
+        )
+        self.msg_id = None
+        self.reply_q = None
+
+    def send(self, target, reply_listener=None, expiration_time=None,
+             retrier=None):
+
+        exchange = self._pika_engine.get_rpc_exchange_name(
+            target.exchange, target.topic, target.fanout, retrier is None
+        )
+
+        queue = "" if target.fanout else self._pika_engine.get_rpc_queue_name(
+            target.topic, target.server, retrier is None
+        )
+
+        msg_dict = self._prepare_message_to_send()
+
+        if reply_listener:
+            msg_id = uuid.uuid4().hex
+            msg_dict["_msg_id"] = msg_id
+            LOG.debug('MSG_ID is %s', msg_id)
+
+            msg_dict["_reply_q"] = reply_listener.get_reply_qname(
+                expiration_time - time.time()
+            )
             future = futures.Future()
 
-            self._pika_engine.register_reply_waiter(
-                msg_id=self.msg_id, future=future,
+            reply_listener.register_reply_waiter(
+                msg_id=msg_id, future=future,
                 expiration_time=expiration_time
             )
 
-        self._pika_engine.publish(
-            exchange=exchange, routing_key=routing_key,
-            body=jsonutils.dumps(
-                common.serialize_msg(msg),
-                encoding=self.content_encoding
-            ),
-            properties=properties,
-            confirm=confirm,
-            mandatory=mandatory,
-            expiration_time=expiration_time,
-            retrier=retrier
-        )
+            self._do_send(
+                exchange=exchange, routing_key=queue, msg_dict=msg_dict,
+                confirm=True, mandatory=True, persistent=False,
+                expiration_time=expiration_time, retrier=retrier
+            )
 
-        if wait_for_reply:
             try:
-                return future.result(timeout)
+                return future.result(expiration_time - time.time())
             except futures.TimeoutError:
                 raise exceptions.MessagingTimeout()
+        else:
+            self._do_send(
+                exchange=exchange, routing_key=queue, msg_dict=msg_dict,
+                confirm=True, mandatory=True, persistent=False,
+                expiration_time=expiration_time, retrier=retrier
+            )

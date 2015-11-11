@@ -18,18 +18,15 @@ from oslo_log import log as logging
 from oslo_messaging import exceptions
 
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
-from oslo_messaging._drivers.pika_driver import pika_listener
 
 import pika
 from pika import adapters as pika_adapters
 from pika import credentials as pika_credentials
-from pika import exceptions as pika_exceptions
 
 import pika_pool
 
 import threading
 import time
-import uuid
 
 LOG = logging.getLogger(__name__)
 
@@ -63,12 +60,6 @@ class PikaEngine(object):
             conf.oslo_messaging_pika.rpc_reply_exchange if
             conf.oslo_messaging_pika.rpc_reply_exchange else
             default_exchange
-        )
-
-        self.rpc_listener_ack = conf.oslo_messaging_pika.rpc_listener_ack
-
-        self.rpc_reply_listener_ack = (
-            conf.oslo_messaging_pika.rpc_reply_listener_ack
         )
 
         self.rpc_listener_prefetch_count = (
@@ -128,17 +119,6 @@ class PikaEngine(object):
                 self.notification_retry_delay < 0):
             raise ValueError("notification_retry_delay should be non-negative "
                              "integer")
-
-        # preparing poller for listening replies
-        self._reply_queue = None
-
-        self._reply_listener = None
-        self._reply_waiting_future_list = []
-
-        self._reply_consumer_enabled = False
-        self._reply_consumer_thread_run_flag = True
-        self._reply_consumer_lock = threading.Lock()
-        self._puller_thread = None
 
         self._tcp_user_timeout = self.conf.oslo_messaging_pika.tcp_user_timeout
         self._host_connection_reconnect_delay = (
@@ -348,163 +328,19 @@ class PikaEngine(object):
                 )
             )
 
+    def get_rpc_exchange_name(self, exchange, topic, fanout, no_ack):
+        exchange = (exchange or self.default_rpc_exchange)
+
+        if fanout:
+            exchange = '{}_fanout_{}_{}'.format(
+                exchange, "no_ack" if no_ack else "with_ack", topic
+            )
+        return exchange
+
     @staticmethod
-    def _do_publish(pool, exchange, routing_key, body, properties,
-                    mandatory, expiration_time):
-        timeout = (None if expiration_time is None else
-                   expiration_time - time.time())
-        if timeout is not None and timeout < 0:
-            raise exceptions.MessagingTimeout(
-                "Timeout for current operation was expired."
-            )
-        try:
-            with pool.acquire(timeout=timeout) as conn:
-                if timeout is not None:
-                    properties.expiration = str(int(timeout * 1000))
-                conn.channel.publish(
-                    exchange=exchange,
-                    routing_key=routing_key,
-                    body=body,
-                    properties=properties,
-                    mandatory=mandatory
-                )
-        except pika_exceptions.NackError as e:
-            raise pika_drv_exc.MessageRejectedException(
-                "Can not send message: [body: {}], properties: {}] to "
-                "target [exchange: {}, routing_key: {}]. {}".format(
-                    body, properties, exchange, routing_key, str(e)
-                )
-            )
-        except pika_exceptions.UnroutableError as e:
-            raise pika_drv_exc.RoutingException(
-                "Can not deliver message:[body:{}, properties: {}] to any"
-                "queue using target: [exchange:{}, "
-                "routing_key:{}]. {}".format(
-                    body, properties, exchange, routing_key, str(e)
-                )
-            )
-        except pika_pool.Timeout as e:
-            raise exceptions.MessagingTimeout(
-                "Timeout for current operation was expired. {}".format(str(e))
-            )
-        except pika_pool.Connection.connectivity_errors as e:
-            if (isinstance(e, pika_exceptions.ChannelClosed)
-                    and e.args and e.args[0] == 404):
-                raise pika_drv_exc.ExchangeNotFoundException(
-                    "Attempt to send message to not existing exchange "
-                    "detected, message: [body:{}, properties: {}], target: "
-                    "[exchange:{}, routing_key:{}]. {}".format(
-                        body, properties, exchange, routing_key, str(e)
-                    )
-                )
-
-            raise pika_drv_exc.ConnectionException(
-                "Connectivity problem detected during sending the message: "
-                "[body:{}, properties: {}] to target: [exchange:{}, "
-                "routing_key:{}]. {}".format(
-                    body, properties, exchange, routing_key, str(e)
-                )
-            )
-        except socket.timeout:
-            raise pika_drv_exc.TimeoutConnectionException(
-                "Socket timeout exceeded."
-            )
-
-    def publish(self, exchange, routing_key, body, properties, confirm,
-                mandatory, expiration_time, retrier):
-        pool = (self.connection_with_confirmation_pool if confirm else
-                self.connection_pool)
-
-        LOG.debug(
-            "Sending message:[body:{}; properties: {}] to target: "
-            "[exchange:{}; routing_key:{}]".format(
-                body, properties, exchange, routing_key
-            )
-        )
-
-        do_publish = (self._do_publish if retrier is None else
-                      retrier(self._do_publish))
-
-        return do_publish(pool, exchange, routing_key, body, properties,
-                          mandatory, expiration_time)
-
-    def get_reply_q(self, timeout=None):
-        if self._reply_consumer_enabled:
-            return self._reply_queue
-
-        with self._reply_consumer_lock:
-            if self._reply_consumer_enabled:
-                return self._reply_queue
-
-            if self._reply_queue is None:
-                self._reply_queue = "reply.{}.{}.{}".format(
-                    self.conf.project, self.conf.prog, uuid.uuid4().hex
-                )
-
-            if self._reply_listener is None:
-                self._reply_listener = pika_listener.RpcReplyPikaListener(
-                    pika_engine=self,
-                    exchange=self.rpc_reply_exchange,
-                    queue=self._reply_queue,
-                    no_ack=not self.rpc_reply_listener_ack,
-                    prefetch_count=self.rpc_reply_listener_prefetch_count
-                )
-
-                self._reply_listener.start(timeout=timeout)
-
-            if self._puller_thread is None:
-                self._puller_thread = threading.Thread(target=self._poller)
-                self._puller_thread.daemon = True
-
-            if not self._puller_thread.is_alive():
-                self._puller_thread.start()
-
-            self._reply_consumer_enabled = True
-
-        return self._reply_queue
-
-    def _poller(self):
-        while self._reply_consumer_thread_run_flag:
-            try:
-                message = self._reply_listener.poll(timeout=1)
-                message.acknowledge()
-                if message is None:
-                    continue
-                i = 0
-                curtime = time.time()
-                while (i < len(self._reply_waiting_future_list) and
-                        self._reply_consumer_thread_run_flag):
-                    msg_id, future, expiration = (
-                        self._reply_waiting_future_list[i]
-                    )
-                    if expiration and expiration < curtime:
-                        del self._reply_waiting_future_list[i]
-                    elif msg_id == message.msg_id:
-                        del self._reply_waiting_future_list[i]
-                        future.set_result(message)
-                    else:
-                        i += 1
-            except BaseException:
-                LOG.exception("Exception during reply polling")
-
-    def register_reply_waiter(self, msg_id, future, expiration_time):
-        self._reply_waiting_future_list.append(
-            (msg_id, future, expiration_time)
-        )
-
-    def cleanup(self):
-        with self._reply_consumer_lock:
-            self._reply_consumer_enabled = False
-
-            if self._puller_thread:
-                if self._puller_thread.is_alive():
-                    self._reply_consumer_thread_run_flag = False
-                    self._puller_thread.join()
-                self._puller_thread = None
-
-            if self._reply_listener:
-                self._reply_listener.stop()
-                self._reply_listener.cleanup()
-                self._reply_listener = None
-
-                self._reply_queue = None
+    def get_rpc_queue_name(topic, server, no_ack):
+        queue_parts = ["no_ack" if no_ack else "with_ack", topic]
+        if server is not None:
+            queue_parts.append(server)
+        queue = '.'.join(queue_parts)
+        return queue
