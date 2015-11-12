@@ -22,7 +22,7 @@ def get_tcp_direct_address(host):
 
 
 def get_tcp_random_address(conf):
-    return "tcp://*"
+    return "tcp://%s" % conf.rpc_zmq_bind_address
 
 
 def get_broker_address(conf):
