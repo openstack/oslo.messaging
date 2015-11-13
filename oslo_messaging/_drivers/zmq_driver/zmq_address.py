@@ -29,12 +29,20 @@ def get_broker_address(conf):
     return "ipc://%s/zmq-broker" % conf.rpc_zmq_ipc_dir
 
 
-def target_to_key(target):
+def prefix_str(key, listener_type):
+    return listener_type + "_" + key
+
+
+def target_to_key(target, listener_type):
+
+    def prefix(key):
+        return prefix_str(key, listener_type)
+
     if target.topic and target.server:
         attributes = ['topic', 'server']
         key = ".".join(getattr(target, attr) for attr in attributes)
-        return key
+        return prefix(key)
     if target.topic:
-        return target.topic
+        return prefix(target.topic)
     if target.server:
-        return target.server
+        return prefix(target.server)

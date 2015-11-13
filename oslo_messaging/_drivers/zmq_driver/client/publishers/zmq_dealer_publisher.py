@@ -34,7 +34,8 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
 
         self._check_request_pattern(request)
 
-        dealer_socket, hosts = self._check_hosts_connections(request.target)
+        dealer_socket, hosts = self._check_hosts_connections(
+            request.target, zmq_names.socket_type_str(zmq.ROUTER))
 
         if not dealer_socket.connections:
             # NOTE(ozamiatin): Here we can provide
@@ -104,7 +105,8 @@ class DealerPublisherProxy(DealerPublisher):
         LOG.info(_LI("Envelope: %s") % envelope)
 
         target = envelope[zmq_names.FIELD_TARGET]
-        dealer_socket, hosts = self._check_hosts_connections(target)
+        dealer_socket, hosts = self._check_hosts_connections(
+            target, zmq_names.socket_type_str(zmq.ROUTER))
 
         if not dealer_socket.connections:
             # NOTE(ozamiatin): Here we can provide

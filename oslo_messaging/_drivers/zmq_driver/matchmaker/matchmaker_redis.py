@@ -52,27 +52,29 @@ class RedisMatchMaker(base.MatchMakerBase):
     def _get_hosts_by_key(self, key):
         return self._redis.lrange(key, 0, -1)
 
-    def register(self, target, hostname):
+    def register(self, target, hostname, listener_type):
 
         if target.topic and target.server:
-            key = zmq_address.target_to_key(target)
+            key = zmq_address.target_to_key(target, listener_type)
             if hostname not in self._get_hosts_by_key(key):
                 self._redis.lpush(key, hostname)
 
         if target.topic:
-            if hostname not in self._get_hosts_by_key(target.topic):
-                self._redis.lpush(target.topic, hostname)
+            key = zmq_address.prefix_str(target.topic, listener_type)
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
 
         if target.server:
-            if hostname not in self._get_hosts_by_key(target.server):
-                self._redis.lpush(target.server, hostname)
+            key = zmq_address.prefix_str(target.server, listener_type)
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
 
-    def unregister(self, target, hostname):
-        key = zmq_address.target_to_key(target)
+    def unregister(self, target, hostname, listener_type):
+        key = zmq_address.target_to_key(target, listener_type)
         self._redis.lrem(key, 0, hostname)
 
-    def get_hosts(self, target):
+    def get_hosts(self, target, listener_type):
         hosts = []
-        key = zmq_address.target_to_key(target)
+        key = zmq_address.target_to_key(target, listener_type)
         hosts.extend(self._get_hosts_by_key(key))
         return hosts

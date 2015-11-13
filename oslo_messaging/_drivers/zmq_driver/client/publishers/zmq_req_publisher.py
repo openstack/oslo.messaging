@@ -50,7 +50,8 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
         return self._receive_reply(socket, request)
 
     def _resolve_host_address(self, target, timeout=0):
-        host = self.matchmaker.get_single_host(target, timeout)
+        host = self.matchmaker.get_single_host(
+            target, zmq_names.socket_type_str(zmq.ROUTER), timeout)
         return zmq_address.get_tcp_direct_address(host)
 
     def _connect_to_host(self, target, timeout=0):

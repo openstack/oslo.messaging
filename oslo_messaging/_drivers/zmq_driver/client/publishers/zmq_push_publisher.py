@@ -35,7 +35,8 @@ class PushPublisher(zmq_publisher_base.PublisherMultisend):
         if request.msg_type == zmq_names.CALL_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        push_socket, hosts = self._check_hosts_connections(request.target)
+        push_socket, hosts = self._check_hosts_connections(
+            request.target, zmq_names.socket_type_str(zmq.PULL))
 
         if not push_socket.connections:
             LOG.warning(_LW("Request %s was dropped because no connection")
