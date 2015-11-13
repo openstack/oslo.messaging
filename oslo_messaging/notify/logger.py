@@ -19,7 +19,6 @@ import logging
 from oslo_config import cfg
 
 from oslo_messaging.notify import notifier
-from oslo_messaging import transport
 
 
 class LoggingNotificationHandler(logging.Handler):
@@ -47,7 +46,7 @@ class LoggingNotificationHandler(logging.Handler):
     def __init__(self, url, publisher_id=None, driver=None,
                  topic=None, serializer=None):
         self.notifier = notifier.Notifier(
-            transport.get_transport(self.CONF, url),
+            notifier.get_notification_transport(self.CONF, url),
             publisher_id, driver,
             topic,
             serializer() if serializer else None)

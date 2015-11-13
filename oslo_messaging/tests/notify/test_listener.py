@@ -21,6 +21,7 @@ import testscenarios
 
 import oslo_messaging
 from oslo_messaging.notify import dispatcher
+from oslo_messaging.notify import notifier as msg_notifier
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -126,7 +127,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         ListenerSetupMixin.setUp(self)
 
     def test_constructor(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo')
         endpoints = [object()]
 
@@ -141,7 +143,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertEqual('blocking', listener.executor)
 
     def test_no_target_topic(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         listener = oslo_messaging.get_notification_listener(
             transport,
@@ -155,7 +158,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             self.assertTrue(False)
 
     def test_unknown_executor(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         try:
             oslo_messaging.get_notification_listener(transport, [], [],
@@ -167,7 +171,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             self.assertTrue(False)
 
     def test_one_topic(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
@@ -184,7 +189,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             {'message_id': mock.ANY, 'timestamp': mock.ANY})
 
     def test_two_topics(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
@@ -210,7 +216,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             any_order=True)
 
     def test_two_exchanges(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
@@ -254,7 +261,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             any_order=True)
 
     def test_two_endpoints(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         endpoint1 = mock.Mock()
         endpoint1.info.return_value = None
@@ -279,7 +287,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                 'message_id': mock.ANY})
 
     def test_requeue(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
         endpoint = mock.Mock()
         endpoint.info = mock.Mock()
 
@@ -303,7 +312,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                       {'timestamp': mock.ANY, 'message_id': mock.ANY})])
 
     def test_two_pools(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         endpoint1 = mock.Mock()
         endpoint1.info.return_value = None
@@ -336,7 +346,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                          mocked_endpoint_call(1)])
 
     def test_two_pools_three_listener(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = msg_notifier.get_notification_transport(
+            self.conf, url='fake:')
 
         endpoint1 = mock.Mock()
         endpoint1.info.return_value = None

@@ -21,7 +21,7 @@ class LoggingErrorNotificationHandler(logging.Handler):
         # at runtime.
         import oslo_messaging
         logging.Handler.__init__(self, *args, **kwargs)
-        self._transport = oslo_messaging.get_transport(cfg.CONF)
+        self._transport = oslo_messaging.get_notification_transport(cfg.CONF)
         self._notifier = oslo_messaging.Notifier(
             self._transport,
             publisher_id='error.publisher')

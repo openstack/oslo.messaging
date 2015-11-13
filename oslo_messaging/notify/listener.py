@@ -19,12 +19,13 @@ contain a set of methods. Each method corresponds to a notification priority.
 To create a notification listener, you supply a transport, list of targets and
 a list of endpoints.
 
-A transport can be obtained simply by calling the get_transport() method::
+A transport can be obtained simply by calling the get_notification_transport()
+method::
 
-    transport = messaging.get_transport(conf)
+    transport = messaging.get_notification_transport(conf)
 
 which will load the appropriate transport driver according to the user's
-messaging configuration. See get_transport() for more details.
+messaging configuration. See get_notification_transport() for more details.
 
 The target supplied when creating a notification listener expresses the topic
 and - optionally - the exchange to listen on. See Target for more details
@@ -56,7 +57,7 @@ A simple example of a notification listener with multiple endpoints might be::
         def error(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
-    transport = oslo_messaging.get_transport(cfg.CONF)
+    transport = oslo_messaging.get_notification_transport(cfg.CONF)
     targets = [
         oslo_messaging.Target(topic='notifications')
         oslo_messaging.Target(topic='notifications_bis')
