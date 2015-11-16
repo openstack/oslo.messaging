@@ -19,26 +19,28 @@ from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
 zmq = zmq_async.import_zmq()
 
 
-class ZmqClient(zmq_client_base.ZmqClientBase):
+class ZmqClientLight(zmq_client_base.ZmqClientBase):
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
-        if conf.zmq_use_broker:
-            raise rpc_common.RPCException("This client doesn't need proxy!")
+        if not conf.zmq_use_broker:
+            raise rpc_common.RPCException(
+                "This client needs proxy to be configured!")
 
-        super(ZmqClient, self).__init__(
+        super(ZmqClientLight, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
                 zmq_names.CALL_TYPE:
                     zmq_dealer_call_publisher.DealerCallPublisher(
                         conf, matchmaker),
 
-                "default": zmq_dealer_publisher.DealerPublisher(
-                    conf, matchmaker)
+                "default": zmq_dealer_publisher.DealerPublisherLight(
+                        conf, zmq_address.get_broker_address(self.conf))
             }
         )

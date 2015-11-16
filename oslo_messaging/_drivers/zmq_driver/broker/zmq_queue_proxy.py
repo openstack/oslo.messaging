@@ -15,8 +15,8 @@
 import logging
 
 from oslo_messaging._drivers.zmq_driver.broker import zmq_base_proxy
-from oslo_messaging._drivers.zmq_driver.client.publishers\
-    import zmq_dealer_publisher
+from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
+    import zmq_dealer_publisher_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -39,8 +39,8 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
         LOG.info(_LI("Polling at universal proxy"))
 
         self.matchmaker = matchmaker
-        reply_receiver = zmq_dealer_publisher.ReplyReceiver(self.poller)
-        self.publisher = zmq_dealer_publisher.DealerPublisherProxy(
+        reply_receiver = zmq_dealer_publisher_proxy.ReplyReceiver(self.poller)
+        self.publisher = zmq_dealer_publisher_proxy.DealerPublisherProxy(
             conf, matchmaker, reply_receiver)
 
     def run(self):
@@ -54,18 +54,18 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
             self._redirect_reply(message)
 
     def _redirect_in_request(self, request):
-        LOG.info(_LI("-> Redirecting request %s to TCP publisher")
-                 % request)
+        LOG.debug("-> Redirecting request %s to TCP publisher"
+                  % request)
         self.publisher.send_request(request)
 
     def _redirect_reply(self, reply):
-        LOG.info(_LI("Reply proxy %s") % reply)
+        LOG.debug("Reply proxy %s" % reply)
         if reply[zmq_names.IDX_REPLY_TYPE] == zmq_names.ACK_TYPE:
-            LOG.info(_LI("Acknowledge dropped %s") % reply)
+            LOG.debug("Acknowledge dropped %s" % reply)
             return
 
-        LOG.info(_LI("<- Redirecting reply to ROUTER: reply: %s")
-                 % reply[zmq_names.IDX_REPLY_BODY:])
+        LOG.debug("<- Redirecting reply to ROUTER: reply: %s"
+                  % reply[zmq_names.IDX_REPLY_BODY:])
 
         self.router_socket.send_multipart(reply[zmq_names.IDX_REPLY_BODY:])
 

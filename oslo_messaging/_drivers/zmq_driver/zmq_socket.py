@@ -47,6 +47,9 @@ class ZmqSocket(object):
     def setsockopt(self, *args, **kwargs):
         self.handle.setsockopt(*args, **kwargs)
 
+    def setsockopt_string(self, *args, **kwargs):
+        self.handle.setsockopt_string(*args, **kwargs)
+
     def send(self, *args, **kwargs):
         self.handle.send(*args, **kwargs)
 
