@@ -121,7 +121,7 @@ class PikaEngine(object):
                              "integer")
 
         self._tcp_user_timeout = self.conf.oslo_messaging_pika.tcp_user_timeout
-        self._host_connection_reconnect_delay = (
+        self.host_connection_reconnect_delay = (
             self.conf.oslo_messaging_pika.host_connection_reconnect_delay
         )
 
@@ -249,7 +249,7 @@ class PikaEngine(object):
             ]
             if (last_time != last_success_time and
                     cur_time - last_time <
-                    self._host_connection_reconnect_delay):
+                    self.host_connection_reconnect_delay):
                 raise pika_drv_exc.HostConnectionNotAllowedException(
                     "Connection to host #{} is not allowed now because of "
                     "previous failure".format(host_index)

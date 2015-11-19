@@ -101,7 +101,8 @@ class PikaPoller(object):
             self._connection = None
 
     def poll(self, timeout=None):
-        start = time.time()
+        expiration_time = time.time() + timeout if timeout else None
+
         while not self._message_queue:
             with self._lock:
                 if not self._started:
@@ -110,12 +111,16 @@ class PikaPoller(object):
                 try:
                     if self._channel is None:
                         self._reconnect()
-                    self._connection.process_data_events()
+                    self._connection.process_data_events(
+                        time_limit=timeout
+                    )
                 except Exception:
                     self._cleanup()
                     raise
-            if timeout and time.time() - start > timeout:
-                return None
+            if timeout is not None:
+                timeout = expiration_time - time.time()
+                if timeout <= 0:
+                    return None
 
         return self._message_queue.popleft()
 

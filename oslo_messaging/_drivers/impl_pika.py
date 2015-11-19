@@ -47,7 +47,7 @@ pika_opts = [
     cfg.FloatOpt('tcp_user_timeout', default=0.25,
                  help="Set TCP_USER_TIMEOUT in seconds for connection's "
                       "socket"),
-    cfg.FloatOpt('host_connection_reconnect_delay', default=5,
+    cfg.FloatOpt('host_connection_reconnect_delay', default=0.25,
                  help="Set delay for reconnection to some host which has "
                       "connection error")
 ]

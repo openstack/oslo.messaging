@@ -14,12 +14,13 @@
 
 from oslo_log import log as logging
 
+from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
-
 
 import threading
 import time
 import uuid
+
 
 LOG = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class RpcReplyPikaListener(object):
         self._reply_queue = None
 
         self._reply_poller = None
-        self._reply_waiting_future_list = []
+        self._reply_waiting_futures = {}
 
         self._reply_consumer_enabled = False
         self._reply_consumer_thread_run_flag = True
@@ -83,27 +84,21 @@ class RpcReplyPikaListener(object):
                 if message is None:
                     continue
                 message.acknowledge()
-                i = 0
-                curtime = time.time()
-                while (i < len(self._reply_waiting_future_list) and
-                        self._reply_consumer_thread_run_flag):
-                    msg_id, future, expiration = (
-                        self._reply_waiting_future_list[i]
-                    )
-                    if expiration and expiration < curtime:
-                        del self._reply_waiting_future_list[i]
-                    elif msg_id == message.msg_id:
-                        del self._reply_waiting_future_list[i]
-                        future.set_result(message)
-                    else:
-                        i += 1
+                future = self._reply_waiting_futures.pop(message.msg_id, None)
+                if future is not None:
+                    future.set_result(message)
+            except pika_drv_exc.EstablishConnectionException:
+                LOG.exception("Problem during establishing connection for "
+                              "reply polling")
+                time.sleep(self._pika_engine.host_connection_reconnect_delay)
             except BaseException:
-                LOG.exception("Exception during reply polling")
+                LOG.exception("Unexpected exception during reply polling")
 
-    def register_reply_waiter(self, msg_id, future, expiration_time):
-        self._reply_waiting_future_list.append(
-            (msg_id, future, expiration_time)
-        )
+    def register_reply_waiter(self, msg_id, future):
+        self._reply_waiting_futures[msg_id] = future
+
+    def unregister_reply_waiter(self, msg_id):
+        self._reply_waiting_futures.pop(msg_id, None)
 
     def cleanup(self):
         with self._reply_consumer_lock:

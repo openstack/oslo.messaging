@@ -310,8 +310,7 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
             future = futures.Future()
 
             reply_listener.register_reply_waiter(
-                msg_id=msg_id, future=future,
-                expiration_time=expiration_time
+                msg_id=msg_id, future=future
             )
 
             self._do_send(
@@ -324,6 +323,8 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
                 return future.result(expiration_time - time.time())
             except futures.TimeoutError:
                 raise exceptions.MessagingTimeout()
+            finally:
+                reply_listener.unregister_reply_waiter(self.msg_id)
         else:
             self._do_send(
                 exchange=exchange, routing_key=queue, msg_dict=msg_dict,
