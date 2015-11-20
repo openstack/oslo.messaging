@@ -33,7 +33,7 @@ _pool_opts = [
 
 
 class PooledExecutor(base.ExecutorBase):
-    """A message executor which integrates with some async executor.
+    """A message executor which integrates with some executor.
 
     This will create a message thread that polls for messages from a
     dispatching thread and on reception of an incoming message places the
