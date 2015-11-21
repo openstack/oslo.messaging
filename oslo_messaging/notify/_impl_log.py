@@ -16,6 +16,7 @@
 #    under the License.
 
 import logging
+import warnings
 
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
@@ -40,3 +41,7 @@ class LogDriver(notifier.Driver):
         method = getattr(logger, priority.lower(), None)
         if method:
             method(strutils.mask_password(jsonutils.dumps(message)))
+        else:
+            warnings.warn('Unable to log message as notify cannot find a '
+                          'logger with the priority specified '
+                          '%s' % priority.lower())
