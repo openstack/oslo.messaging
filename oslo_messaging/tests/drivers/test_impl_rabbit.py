@@ -167,7 +167,7 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
                                              'on_blocked': mock.ANY,
                                              'on_unblocked': mock.ANY},
             ssl=self.expected, login_method='AMQPLAIN',
-            heartbeat=60, failover_strategy="shuffle")
+            heartbeat=60, failover_strategy='round-robin')
 
 
 class TestRabbitPublisher(test_utils.BaseTestCase):

@@ -84,6 +84,13 @@ rabbit_opts = [
                help='How long to wait before considering a reconnect '
                     'attempt to have failed. This value should not be '
                     'longer than rpc_response_timeout.'),
+    cfg.StrOpt('kombu_failover_strategy',
+               choices=('round-robin', 'shuffle'),
+               default='round-robin',
+               help='Determines how the next RabbitMQ node is chosen in case '
+                    'the one we are currently connected to becomes '
+                    'unavailable. Takes effect only if more than one '
+                    'RabbitMQ node is provided in config.'),
     cfg.StrOpt('rabbit_host',
                default='localhost',
                deprecated_group='DEFAULT',
@@ -394,6 +401,7 @@ class Connection(object):
         self.amqp_auto_delete = driver_conf.amqp_auto_delete
         self.rabbit_use_ssl = driver_conf.rabbit_use_ssl
         self.kombu_reconnect_timeout = driver_conf.kombu_reconnect_timeout
+        self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
 
         if self.rabbit_use_ssl:
             self.kombu_ssl_version = driver_conf.kombu_ssl_version
@@ -471,8 +479,8 @@ class Connection(object):
         self.connection = kombu.connection.Connection(
             self._url, ssl=self._fetch_ssl_params(),
             login_method=self.login_method,
-            failover_strategy="shuffle",
             heartbeat=self.heartbeat_timeout_threshold,
+            failover_strategy=self.kombu_failover_strategy,
             transport_options={
                 'confirm_publish': True,
                 'on_blocked': self._on_connection_blocked,
