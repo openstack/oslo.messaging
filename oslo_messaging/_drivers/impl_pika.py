@@ -12,10 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import retrying
-import sys
-import time
-
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -28,6 +24,9 @@ from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
 
 from oslo_messaging import exceptions
+
+import retrying
+import time
 
 LOG = logging.getLogger(__name__)
 
@@ -133,31 +132,9 @@ rpc_opts = [
 ]
 
 
-def _is_eventlet_monkey_patched():
-    if 'eventlet.patcher' not in sys.modules:
-        return False
-    import eventlet.patcher
-    return eventlet.patcher.is_monkey_patched('thread')
-
-
 class PikaDriver(object):
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
-        if 'eventlet.patcher' in sys.modules:
-            import eventlet.patcher
-            if eventlet.patcher.is_monkey_patched('select'):
-                import select
-
-                try:
-                    del select.poll
-                except AttributeError:
-                    pass
-
-                try:
-                    del select.epoll
-                except AttributeError:
-                    pass
-
         opt_group = cfg.OptGroup(name='oslo_messaging_pika',
                                  title='Pika driver options')
         conf.register_group(opt_group)
