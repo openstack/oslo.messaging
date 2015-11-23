@@ -22,7 +22,6 @@ import itertools
 
 from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import base as drivers_base
-from oslo_messaging._drivers import impl_qpid
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.protocols.amqp import opts as amqp_opts
@@ -48,8 +47,6 @@ _opts = [
     ('oslo_messaging_amqp', amqp_opts.amqp1_opts),
     ('oslo_messaging_rabbit', list(itertools.chain(amqp.amqp_opts,
                                                    impl_rabbit.rabbit_opts))),
-    ('oslo_messaging_qpid', list(itertools.chain(amqp.amqp_opts,
-                                                 impl_qpid.qpid_opts)))
 ]
 
 

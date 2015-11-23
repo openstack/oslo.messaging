@@ -43,7 +43,7 @@ _transport_opts = [
     cfg.StrOpt('rpc_backend',
                default='rabbit',
                help='The messaging driver to use, defaults to rabbit. Other '
-                    'drivers include qpid and zmq.'),
+                    'drivers include amqp and zmq.'),
     cfg.StrOpt('control_exchange',
                default='openstack',
                help='The default exchange under which topics are scoped. May '
@@ -232,7 +232,7 @@ class TransportURL(object):
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
-    :param transport: a transport name for example 'rabbit' or 'qpid'
+    :param transport: a transport name for example 'rabbit'
     :type transport: str
     :param virtual_host: a virtual host path for example '/'
     :type virtual_host: str

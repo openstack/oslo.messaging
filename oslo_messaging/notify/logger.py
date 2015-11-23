@@ -33,7 +33,7 @@ class LoggingNotificationHandler(logging.Handler):
       [handler_notifier]
       class=oslo_messaging.LoggingNotificationHandler
       level=ERROR
-      args=('qpid:///')
+      args=('rabbit:///')
 
     """
 
