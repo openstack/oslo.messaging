@@ -54,8 +54,12 @@ class PikaIncomingMessage(object):
         )
 
         if self.content_type != "application/json":
-            raise NotImplementedError("Content-type['{}'] is not valid, "
-                                      "'application/json' only is supported.")
+            raise NotImplementedError(
+                "Content-type['{}'] is not valid, "
+                "'application/json' only is supported.".format(
+                    self.content_type
+                )
+            )
 
         message_dict = common.deserialize_msg(
             jsonutils.loads(body, encoding=self.content_encoding)
@@ -159,8 +163,12 @@ class PikaOutgoingMessage(object):
         self.content_encoding = content_encoding
 
         if self.content_type != "application/json":
-            raise NotImplementedError("Content-type['{}'] is not valid, "
-                                      "'application/json' only is supported.")
+            raise NotImplementedError(
+                "Content-type['{}'] is not valid, "
+                "'application/json' only is supported.".format(
+                    self.content_type
+                )
+            )
 
         self.message = message
         self.context = context
