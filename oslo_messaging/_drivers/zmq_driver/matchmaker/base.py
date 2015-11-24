@@ -14,14 +14,11 @@
 import abc
 import collections
 import logging
-import random
 import retrying
 
 import six
 
-import oslo_messaging
 from oslo_messaging._drivers.zmq_driver import zmq_address
-from oslo_messaging._i18n import _LI, _LW
 
 
 LOG = logging.getLogger(__name__)
@@ -32,8 +29,50 @@ class MatchMakerBase(object):
 
     def __init__(self, conf, *args, **kwargs):
         super(MatchMakerBase, self).__init__(*args, **kwargs)
-
         self.conf = conf
+
+    @abc.abstractmethod
+    def register_publisher(self, hostname):
+        """Register publisher on nameserver.
+
+        This works for PUB-SUB only
+
+       :param hostname: host for the topic in "host:port" format
+                        host for back-chatter in "host:port" format
+       :type hostname: tuple
+       """
+
+    @abc.abstractmethod
+    def unregister_publisher(self, hostname):
+        """Unregister publisher on nameserver.
+
+        This works for PUB-SUB only
+
+       :param hostname: host for the topic in "host:port" format
+                        host for back-chatter in "host:port" format
+       :type hostname: tuple
+       """
+
+    def get_publishers_retrying(self):
+        """Retry until at least one publisher appears"""
+
+        def retry_if_empty(publishers):
+            return not publishers
+
+        _retry = retrying.retry(retry_on_result=retry_if_empty)
+
+        @_retry
+        def _get_publishers():
+            return self.get_publishers()
+
+        return _get_publishers()
+
+    @abc.abstractmethod
+    def get_publishers(self):
+        """Get all publisher-hosts from nameserver.
+
+       :returns: a list of tuples of strings "hostname:port" hosts
+       """
 
     @abc.abstractmethod
     def register(self, target, hostname, listener_type):
@@ -68,71 +107,6 @@ class MatchMakerBase(object):
        :returns: a list of "hostname:port" hosts
        """
 
-    def get_single_host(self, target, listener_type, timeout=None, retry=0):
-        """Get a single host by target.
-
-       :param target: the target for messages
-       :type target: Target
-       :param timeout: matchmaker query timeout
-       :type timeout: integer
-       :param retry: the number of retries to do
-            None or -1 means retry forever
-            0 means do not retry
-            N means retry N times
-       :type retry: integer
-       :returns: a "hostname:port" host
-       """
-
-        if not isinstance(timeout, int) and timeout is not None:
-            raise ValueError(
-                "timeout must be integer, not {0}".format(type(timeout)))
-        if not isinstance(retry, int) and retry is not None:
-            raise ValueError(
-                "retry must be integer, not {0}".format(type(retry)))
-
-        if timeout is None or timeout < 0:
-            full_timeout = 0
-            retry_timeout = 0
-        else:
-            retry_timeout = timeout * 1000
-
-            if retry is None or retry < 0:
-                full_timeout = None
-            else:
-                full_timeout = retry * retry_timeout
-
-        _retry = retrying.retry(stop_max_delay=full_timeout,
-                                wait_fixed=retry_timeout)
-
-        @_retry
-        def _get_single_host():
-            hosts = self.get_hosts(target, listener_type)
-            try:
-                if not hosts:
-                    err_msg = "No hosts were found for target %s." % target
-                    LOG.error(err_msg)
-                    raise oslo_messaging.InvalidTarget(err_msg, target)
-
-                if len(hosts) == 1:
-                    host = hosts[0]
-                    LOG.info(_LI(
-                        "A single host %(host)s found for target %(target)s.")
-                        % {"host": host, "target": target})
-                else:
-                    host = random.choice(hosts)
-                    LOG.warning(_LW(
-                        "Multiple hosts %(hosts)s were found for target "
-                        " %(target)s. Using the random one - %(host)s.")
-                        % {"hosts": hosts, "target": target, "host": host})
-                return host
-            except oslo_messaging.InvalidTarget as ex:
-                if timeout:
-                    raise oslo_messaging.MessagingTimeout()
-                else:
-                    raise ex
-
-        return _get_single_host()
-
 
 class DummyMatchMaker(MatchMakerBase):
 
@@ -140,6 +114,18 @@ class DummyMatchMaker(MatchMakerBase):
         super(DummyMatchMaker, self).__init__(conf, *args, **kwargs)
 
         self._cache = collections.defaultdict(list)
+        self._publishers = set()
+
+    def register_publisher(self, hostname):
+        if hostname not in self._publishers:
+            self._publishers.add(hostname)
+
+    def unregister_publisher(self, hostname):
+        if hostname in self._publishers:
+            self._publishers.remove(hostname)
+
+    def get_publishers(self):
+        return list(self._publishers)
 
     def register(self, target, hostname, listener_type):
         key = zmq_address.target_to_key(target, listener_type)

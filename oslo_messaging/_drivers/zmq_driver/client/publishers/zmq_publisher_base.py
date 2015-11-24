@@ -132,7 +132,6 @@ class PublisherMultisend(PublisherBase):
             self.outbound_sockets[str(target)] = socket
             for host in hosts:
                 self._connect_to_host(socket, host, target)
-
         return socket
 
     def _connect_to_address(self, socket, address, target):

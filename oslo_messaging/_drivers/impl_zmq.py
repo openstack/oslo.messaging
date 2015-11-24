@@ -14,7 +14,6 @@
 
 import logging
 import os
-import pprint
 import socket
 import threading
 
@@ -24,14 +23,12 @@ from stevedore import driver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client import zmq_client
-from oslo_messaging._drivers.zmq_driver.client import zmq_client_light
 from oslo_messaging._drivers.zmq_driver.server import zmq_server
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._executors import impl_pooledexecutor  # FIXME(markmc)
+from oslo_messaging._executors import impl_pooledexecutor
 from oslo_messaging._i18n import _LE
 
 
-pformat = pprint.pformat
 LOG = logging.getLogger(__name__)
 RPCException = rpc_common.RPCException
 
@@ -42,16 +39,8 @@ zmq_opts = [
                     'The "host" option should point or resolve to this '
                     'address.'),
 
-    # The module.Class to use for matchmaking.
-    cfg.StrOpt(
-        'rpc_zmq_matchmaker',
-        default='redis',
-        help='MatchMaker driver.',
-    ),
-
-    cfg.BoolOpt('rpc_zmq_all_req_rep',
-                default=True,
-                help='Use REQ/REP pattern for all methods CALL/CAST/FANOUT.'),
+    cfg.StrOpt('rpc_zmq_matchmaker', default='redis',
+               help='MatchMaker driver.'),
 
     cfg.StrOpt('rpc_zmq_concurrency', default='eventlet',
                help='Type of concurrency used. Either "native" or "eventlet"'),
@@ -71,19 +60,21 @@ zmq_opts = [
                help='Name of this node. Must be a valid hostname, FQDN, or '
                     'IP address. Must match "host" option, if running Nova.'),
 
-    cfg.IntOpt('rpc_cast_timeout',
-               default=30,
+    cfg.IntOpt('rpc_cast_timeout', default=30,
                help='Seconds to wait before a cast expires (TTL). '
                     'Only supported by impl_zmq.'),
 
-    cfg.IntOpt('rpc_poll_timeout',
-               default=1,
+    cfg.IntOpt('rpc_poll_timeout', default=1,
                help='The default number of seconds that poll should wait. '
                     'Poll raises timeout exception when timeout expired.'),
 
-    cfg.BoolOpt('zmq_use_broker',
-                default=False,
-                help='Configures zmq-messaging to use broker or not.'),
+    cfg.BoolOpt('direct_over_proxy', default=True,
+                help='Configures zmq-messaging to use proxy with '
+                     'non PUB/SUB patterns.'),
+
+    cfg.BoolOpt('use_pub_sub', default=True,
+                help='Use PUB/SUB pattern for fanout methods. '
+                     'PUB/SUB always uses proxy.'),
 
     cfg.PortOpt('rpc_zmq_min_port',
                 default=49152,
@@ -185,15 +176,12 @@ class ZmqDriver(base.BaseDriver):
         self.notify_server = LazyDriverItem(
             zmq_server.ZmqServer, self, self.conf, self.matchmaker)
 
-        client_cls = zmq_client_light.ZmqClientLight \
-            if conf.zmq_use_broker else zmq_client.ZmqClient
-
         self.client = LazyDriverItem(
-            client_cls, self.conf, self.matchmaker,
+            zmq_client.ZmqClient, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
 
         self.notifier = LazyDriverItem(
-            client_cls, self.conf, self.matchmaker,
+            zmq_client.ZmqClient, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,

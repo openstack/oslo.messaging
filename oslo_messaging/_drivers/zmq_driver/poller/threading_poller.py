@@ -47,8 +47,6 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
 
     def poll(self, timeout=None):
 
-        LOG.debug("Entering poll method")
-
         if timeout:
             timeout *= 1000  # zmq poller waits milliseconds
 
@@ -94,3 +92,6 @@ class ThreadingExecutor(zmq_poller.Executor):
 
     def wait(self):
         self.thread.join()
+
+    def done(self):
+        self._stop.set()

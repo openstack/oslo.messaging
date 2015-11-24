@@ -13,12 +13,12 @@
 #    under the License.
 
 
-from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_call_publisher
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -28,8 +28,11 @@ zmq = zmq_async.import_zmq()
 class ZmqClient(zmq_client_base.ZmqClientBase):
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
-        if conf.zmq_use_broker:
-            raise rpc_common.RPCException("This client doesn't need proxy!")
+
+        default_publisher = zmq_dealer_publisher.DealerPublisher(
+            conf, matchmaker) if not conf.direct_over_proxy else \
+            zmq_dealer_publisher.DealerPublisherLight(
+                conf, zmq_address.get_broker_address(conf))
 
         super(ZmqClient, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
@@ -38,7 +41,14 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
                     zmq_dealer_call_publisher.DealerCallPublisher(
                         conf, matchmaker),
 
-                "default": zmq_dealer_publisher.DealerPublisher(
-                    conf, matchmaker)
+                # Here use DealerPublisherLight for sending request to proxy
+                # which finally uses PubPublisher to send fanout in case of
+                # 'use_pub_sub' option configured.
+                zmq_names.CAST_FANOUT_TYPE:
+                    zmq_dealer_publisher.DealerPublisherLight(
+                        conf, zmq_address.get_broker_address(conf))
+                    if conf.use_pub_sub else default_publisher,
+
+                "default": default_publisher
             }
         )

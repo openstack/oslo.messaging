@@ -61,7 +61,12 @@ class Request(object):
         self.target = target
         self.context = context
         self.message = message
+
         self.retry = retry
+        if not isinstance(retry, int) and retry is not None:
+            raise ValueError(
+                "retry must be an integer, not {0}".format(type(retry)))
+
         self.message_id = str(uuid.uuid1())
         self.proxy_reply_id = None
 
@@ -89,6 +94,11 @@ class RpcRequest(Request):
 
         self.timeout = kwargs.pop("timeout")
         assert self.timeout is not None, "Timeout should be specified!"
+
+        if not isinstance(self.timeout, int) and self.timeout is not None:
+            raise ValueError(
+                "timeout must be an integer, not {0}"
+                .format(type(self.timeout)))
 
         super(RpcRequest, self).__init__(*args, **kwargs)
 

@@ -75,6 +75,7 @@ class DealerPublisherLight(zmq_publisher_base.PublisherBase):
     def __init__(self, conf, address):
         super(DealerPublisherLight, self).__init__(conf)
         self.socket = self.zmq_context.socket(zmq.DEALER)
+        self.address = address
         self.socket.connect(address)
 
     def send_request(self, request):
@@ -87,6 +88,12 @@ class DealerPublisherLight(zmq_publisher_base.PublisherBase):
         self.socket.send(b'', zmq.SNDMORE)
         self.socket.send_pyobj(envelope, zmq.SNDMORE)
         self.socket.send_pyobj(request)
+
+        LOG.debug("->[proxy:%(addr)s] Sending message_id %(message)s to "
+                  "a target %(target)s"
+                  % {"message": request.message_id,
+                     "target": request.target,
+                     "addr": self.address})
 
     def cleanup(self):
         self.socket.setsockopt(zmq.LINGER, 0)

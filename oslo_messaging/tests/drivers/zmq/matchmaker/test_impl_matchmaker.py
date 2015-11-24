@@ -66,8 +66,6 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
 
         self.assertEqual(self.test_matcher.get_hosts(self.target, "test"),
                          [self.host1])
-        self.assertEqual(self.test_matcher.get_single_host(self.target, "test"),
-                         self.host1)
 
     def test_register_two_hosts(self):
         self.test_matcher.register(self.target, self.host1, "test")
@@ -75,8 +73,6 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
 
         self.assertItemsEqual(self.test_matcher.get_hosts(self.target, "test"),
                               [self.host1, self.host2])
-        self.assertIn(self.test_matcher.get_single_host(self.target, "test"),
-                      [self.host1, self.host2])
 
     def test_register_unsibscribe(self):
         self.test_matcher.register(self.target, self.host1, "test")
@@ -86,8 +82,6 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
 
         self.assertItemsEqual(self.test_matcher.get_hosts(self.target, "test"),
                               [self.host1])
-        self.assertNotIn(self.test_matcher.get_single_host(self.target, "test"),
-                         [self.host2])
 
     def test_register_two_same_hosts(self):
         self.test_matcher.register(self.target, self.host1, "test")
@@ -95,14 +89,7 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
 
         self.assertEqual(self.test_matcher.get_hosts(self.target, "test"),
                          [self.host1])
-        self.assertEqual(self.test_matcher.get_single_host(self.target, "test"),
-                         self.host1)
 
     def test_get_hosts_wrong_topic(self):
         target = oslo_messaging.Target(topic="no_such_topic")
         self.assertEqual(self.test_matcher.get_hosts(target, "test"), [])
-
-    def test_get_single_host_wrong_topic(self):
-        target = oslo_messaging.Target(topic="no_such_topic")
-        self.assertRaises(oslo_messaging.InvalidTarget,
-                          self.test_matcher.get_single_host, target, "test")

@@ -70,6 +70,11 @@ def get_executor(method, zmq_concurrency='eventlet'):
     return threading_poller.ThreadingExecutor(method)
 
 
+def get_proc_executor(method):
+    from oslo_messaging._drivers.zmq_driver import zmq_poller
+    return zmq_poller.MutliprocessingExecutor(method)
+
+
 def _is_eventlet_zmq_available():
     return importutils.try_import('eventlet.green.zmq')
 

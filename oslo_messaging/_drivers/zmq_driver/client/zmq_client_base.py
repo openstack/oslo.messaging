@@ -73,5 +73,8 @@ class ZmqClientBase(object):
             self.notify_publisher.send_request(request)
 
     def cleanup(self):
+        cleaned = set()
         for publisher in self.publishers.values():
-            publisher.cleanup()
+            if publisher not in cleaned:
+                publisher.cleanup()
+                cleaned.add(publisher)

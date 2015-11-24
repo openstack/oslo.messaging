@@ -36,6 +36,8 @@ matchmaker_redis_opts = [
                help='Password for Redis server (optional).'),
 ]
 
+_PUBLISHERS_KEY = "PUBLISHERS"
+
 
 class RedisMatchMaker(base.MatchMakerBase):
 
@@ -48,6 +50,22 @@ class RedisMatchMaker(base.MatchMakerBase):
             port=self.conf.matchmaker_redis.port,
             password=self.conf.matchmaker_redis.password,
         )
+
+    def register_publisher(self, hostname):
+        host_str = ",".join(hostname)
+        if host_str not in self._get_hosts_by_key(_PUBLISHERS_KEY):
+            self._redis.lpush(_PUBLISHERS_KEY, host_str)
+
+    def unregister_publisher(self, hostname):
+        host_str = ",".join(hostname)
+        self._redis.lrem(_PUBLISHERS_KEY, 0, host_str)
+
+    def get_publishers(self):
+        hosts = []
+        hosts.extend([tuple(host_str.split(","))
+                      for host_str in
+                      self._get_hosts_by_key(_PUBLISHERS_KEY)])
+        return hosts
 
     def _get_hosts_by_key(self, key):
         return self._redis.lrange(key, 0, -1)

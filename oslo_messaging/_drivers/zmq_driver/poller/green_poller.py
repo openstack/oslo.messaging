@@ -96,9 +96,10 @@ class GreenExecutor(zmq_poller.Executor):
     def __init__(self, method):
         self._method = method
         super(GreenExecutor, self).__init__(None)
+        self._done = threading.Event()
 
     def _loop(self):
-        while True:
+        while not self._done.is_set():
             self._method()
             eventlet.sleep()
 
@@ -112,3 +113,6 @@ class GreenExecutor(zmq_poller.Executor):
     def stop(self):
         if self.thread is not None:
             self.thread.kill()
+
+    def done(self):
+        self._done.set()

@@ -38,24 +38,6 @@ class ConsumerBase(object):
         self.sockets = []
         self.context = zmq.Context()
 
-    def subscribe_socket(self, socket_type):
-        try:
-            socket = zmq_socket.ZmqRandomPortSocket(
-                self.conf, self.context, socket_type)
-            self.sockets.append(socket)
-            self.poller.register(socket, self.receive_message)
-            LOG.debug("Run %(stype)s consumer on %(addr)s:%(port)d",
-                      {"stype": zmq_names.socket_type_str(socket_type),
-                       "addr": socket.bind_address,
-                       "port": socket.port})
-            return socket
-        except zmq.ZMQError as e:
-            errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
-                % (self.port, e)
-            LOG.error(_LE("Failed binding to port %(port)d: %(e)s")
-                      % (self.port, e))
-            raise rpc_common.RPCException(errmsg)
-
     @abc.abstractmethod
     def listen(self, target):
         """Associate new sockets with targets here"""
@@ -77,6 +59,24 @@ class SingleSocketConsumer(ConsumerBase):
     def __init__(self, conf, poller, server, socket_type):
         super(SingleSocketConsumer, self).__init__(conf, poller, server)
         self.socket = self.subscribe_socket(socket_type)
+
+    def subscribe_socket(self, socket_type):
+        try:
+            socket = zmq_socket.ZmqRandomPortSocket(
+                self.conf, self.context, socket_type)
+            self.sockets.append(socket)
+            self.poller.register(socket, self.receive_message)
+            LOG.debug("Run %(stype)s consumer on %(addr)s:%(port)d",
+                      {"stype": zmq_names.socket_type_str(socket_type),
+                       "addr": socket.bind_address,
+                       "port": socket.port})
+            return socket
+        except zmq.ZMQError as e:
+            errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
+                % (self.port, e)
+            LOG.error(_LE("Failed binding to port %(port)d: %(e)s")
+                      % (self.port, e))
+            raise rpc_common.RPCException(errmsg)
 
     @property
     def address(self):

@@ -16,32 +16,108 @@ import logging
 
 from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_socket
+from oslo_messaging._i18n import _LI
 
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
-class PubPublisher(zmq_publisher_base.PublisherMultisend):
+class PubPublisherProxy(zmq_publisher_base.PublisherBase):
+    """PUB/SUB based request publisher
+
+        The publisher intended to be used for Fanout and Notify
+        multi-sending patterns.
+
+        It differs from direct publishers like DEALER or PUSH based
+        in a way it treats matchmaker. Here all publishers register
+        in the matchmaker. Subscribers (server-side) take the list
+        of publishers and connect to all of them but subscribe
+        only to a specific topic-filtering tag generated from the
+        Target object.
+    """
 
     def __init__(self, conf, matchmaker):
-        super(PubPublisher, self).__init__(conf, matchmaker, zmq.PUB)
+        super(PubPublisherProxy, self).__init__(conf)
+        self.matchmaker = matchmaker
 
-    def send_request(self, request):
+        self.socket = zmq_socket.ZmqRandomPortSocket(
+            self.conf, self.zmq_context, zmq.PUB)
 
-        if request.msg_type not in zmq_names.NOTIFY_TYPES:
-            raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
+        self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
+                                                self.socket.port)
 
-        pub_socket = self._check_hosts_connections(
-            request.target, zmq_names.socket_type_str(zmq.SUB))
-        self._send_request(pub_socket, request)
+        self.sync_channel = SyncChannel(conf, matchmaker, self.zmq_context)
 
-    def _send_request(self, socket, request):
+        LOG.info(_LI("[PUB:%(pub)s, PULL:%(pull)s] Run PUB publisher") %
+                 {"pub": self.host,
+                  "pull": self.sync_channel.sync_host})
 
-        super(PubPublisher, self)._send_request(socket, request)
+        self.matchmaker.register_publisher(
+            (self.host, self.sync_channel.sync_host))
 
-        LOG.debug("Publishing message %(message)s to a target %(target)s"
-                  % {"message": request.message,
-                     "target": request.target})
+    def send_request(self, multipart_message):
+
+        envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
+        msg_type = envelope[zmq_names.FIELD_MSG_TYPE]
+        target = envelope[zmq_names.FIELD_TARGET]
+        message_id = envelope[zmq_names.FIELD_MSG_ID]
+        if msg_type not in zmq_names.MULTISEND_TYPES:
+            raise zmq_publisher_base.UnsupportedSendPattern(msg_type)
+
+        topic_filter = zmq_address.target_to_subscribe_filter(target)
+
+        self.socket.send(topic_filter, zmq.SNDMORE)
+        self.socket.send(multipart_message[zmq_names.MULTIPART_IDX_BODY])
+
+        LOG.debug("Publishing message [%(topic)s] %(message_id)s to "
+                  "a target %(target)s "
+                  % {"message_id": message_id,
+                     "target": target,
+                     "topic": topic_filter})
+
+    def cleanup(self):
+        self.matchmaker.unregister_publisher(
+            (self.host, self.sync_channel.sync_host))
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.close()
+
+
+class SyncChannel(object):
+    """Subscribers synchronization channel
+
+        As far as PUB/SUB is one directed way pattern we need some
+        backwards channel to have a possibility of subscribers
+        to talk back to publisher.
+
+        May be used for heartbeats or some kind of acknowledgments etc.
+    """
+
+    def __init__(self, conf, matchmaker, context):
+        self.conf = conf
+        self.matchmaker = matchmaker
+        self.context = context
+        self._ready = None
+
+        #  NOTE(ozamiatin): May be used for heartbeats when we
+        #  implement them
+        self.sync_socket = zmq_socket.ZmqRandomPortSocket(
+            self.conf, self.context, zmq.PULL)
+        self.poller = zmq_async.get_poller()
+        self.poller.register(self.sync_socket)
+
+        self.sync_host = zmq_address.combine_address(self.conf.rpc_zmq_host,
+                                                     self.sync_socket.port)
+
+    def is_ready(self):
+        LOG.debug("[%s] Waiting for ready from first subscriber" %
+                  self.sync_host)
+        if self._ready is None:
+            self._ready = self.poller.poll()
+            LOG.debug("[%s] Received ready from first subscriber" %
+                      self.sync_host)
+        return self._ready is not None

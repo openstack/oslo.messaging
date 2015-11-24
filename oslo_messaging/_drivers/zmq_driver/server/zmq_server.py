@@ -18,6 +18,8 @@ import logging
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_router_consumer
+from oslo_messaging._drivers.zmq_driver.server.consumers\
+    import zmq_sub_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
 LOG = logging.getLogger(__name__)
@@ -31,14 +33,17 @@ class ZmqServer(base.Listener):
         super(ZmqServer, self).__init__(driver)
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller()
-        if conf.zmq_use_broker:
-            self.rpc_consumer = zmq_router_consumer.RouterConsumerBroker(
-                conf, self.poller, self)
-        else:
-            self.rpc_consumer = zmq_router_consumer.RouterConsumer(
+        self.rpc_consumer = zmq_router_consumer.RouterConsumerBroker(
+            conf, self.poller, self) if conf.direct_over_proxy else \
+            zmq_router_consumer.RouterConsumer(
                 conf, self.poller, self)
         self.notify_consumer = self.rpc_consumer
+        self.sub_consumer = zmq_sub_consumer.SubConsumer(
+            conf, self.poller, self) if conf.use_pub_sub else None
+
         self.consumers = [self.rpc_consumer]
+        if self.sub_consumer:
+            self.consumers.append(self.sub_consumer)
 
     @base.batch_poll_helper
     def poll(self, timeout=None):
@@ -58,6 +63,9 @@ class ZmqServer(base.Listener):
     def listen(self, target):
         consumer = self.rpc_consumer
         consumer.listen(target)
+
+        if self.sub_consumer:
+            self.sub_consumer.listen(target)
 
     def listen_notification(self, targets_and_priorities):
 

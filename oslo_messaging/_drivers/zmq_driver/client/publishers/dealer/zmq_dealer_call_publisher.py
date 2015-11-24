@@ -26,6 +26,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
+from oslo_messaging._i18n import _LW
 
 LOG = logging.getLogger(__name__)
 
@@ -44,7 +45,7 @@ class DealerCallPublisher(zmq_publisher_base.PublisherBase):
         self.matchmaker = matchmaker
         self.reply_waiter = ReplyWaiter(conf)
         self.sender = RequestSender(conf, matchmaker, self.reply_waiter) \
-            if not conf.zmq_use_broker else \
+            if not conf.direct_over_proxy else \
             RequestSenderLight(conf, matchmaker, self.reply_waiter)
 
     def send_request(self, request):
@@ -124,7 +125,7 @@ class RequestSenderLight(RequestSender):
     """
 
     def __init__(self, conf, matchmaker, reply_waiter):
-        if not conf.zmq_use_broker:
+        if not conf.direct_over_proxy:
             raise rpc_common.RPCException("RequestSenderLight needs a proxy!")
 
         super(RequestSenderLight, self).__init__(
@@ -190,5 +191,9 @@ class ReplyWaiter(object):
         reply, socket = self.poller.poll(
             timeout=self.conf.rpc_poll_timeout)
         if reply is not None:
-            call_future = self.replies[reply[zmq_names.FIELD_MSG_ID]]
-            call_future.set_result(reply)
+            reply_id = reply[zmq_names.FIELD_MSG_ID]
+            call_future = self.replies.get(reply_id)
+            if call_future:
+                call_future.set_result(reply)
+            else:
+                LOG.warning(_LW("Received timed out reply: %s") % reply_id)

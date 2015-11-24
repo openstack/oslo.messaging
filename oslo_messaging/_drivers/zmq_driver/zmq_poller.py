@@ -13,6 +13,7 @@
 #    under the License.
 
 import abc
+import multiprocessing
 
 import six
 
@@ -104,3 +105,31 @@ class Executor(object):
     @abc.abstractmethod
     def wait(self):
         """Wait until pass"""
+
+    @abc.abstractmethod
+    def done(self):
+        """More soft way to stop rather than killing thread"""
+
+
+class MutliprocessingExecutor(Executor):
+
+    def __init__(self, method):
+        process = multiprocessing.Process(target=self._loop)
+        self._method = method
+        super(MutliprocessingExecutor, self).__init__(process)
+
+    def _loop(self):
+        while not self._stop.is_set():
+            self._method()
+
+    def execute(self):
+        self.thread.start()
+
+    def stop(self):
+        self._stop.set()
+
+    def wait(self):
+        self.thread.join()
+
+    def done(self):
+        self._stop.set()

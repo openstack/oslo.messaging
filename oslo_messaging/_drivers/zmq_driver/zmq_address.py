@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import six
+
 
 def combine_address(host, port):
     return "%s:%s" % (host, port)
@@ -46,3 +48,14 @@ def target_to_key(target, listener_type):
         return prefix(target.topic)
     if target.server:
         return prefix(target.server)
+
+
+def target_to_subscribe_filter(target):
+    if target.topic and target.server:
+        attributes = ['topic', 'server']
+        key = "/".join(getattr(target, attr) for attr in attributes)
+        return six.b(key)
+    if target.topic:
+        return six.b(target.topic)
+    if target.server:
+        return six.b(target.server)
