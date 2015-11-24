@@ -79,9 +79,7 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
                   'rpc_response_timeout': 5,
                   'rpc_zmq_ipc_dir': self.internal_ipc_dir,
                   'zmq_use_broker': False,
-                  'rpc_zmq_matchmaker': 'dummy',
-                  'rpc_zmq_min_port': 5555,
-                  'rpc_zmq_max_port': 5560}
+                  'rpc_zmq_matchmaker': 'dummy'}
         self.config(**kwargs)
 
         # Get driver
@@ -92,6 +90,33 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
 
         self.addCleanup(stopRpc(self.__dict__))
 
+
+class ZmqTestPortsRange(ZmqBaseTestCase):
+
+    @testtools.skipIf(zmq is None, "zmq not available")
+    def setUp(self):
+        super(ZmqTestPortsRange, self).setUp()
+
+        # Set config values
+        kwargs = {'rpc_zmq_min_port': 5555,
+                  'rpc_zmq_max_port': 5560}
+        self.config(**kwargs)
+
+    def test_ports_range(self):
+        listeners = []
+
+        for i in range(10):
+            try:
+                target = oslo_messaging.Target(topic='testtopic_'+str(i))
+                new_listener = self.driver.listen(target)
+                listeners.append(new_listener)
+            except zmq_socket.ZmqPortRangeExceededException:
+                pass
+
+        self.assertLessEqual(len(listeners), 5)
+
+        for l in listeners:
+            l.cleanup()
 
 class TestConfZmqDriverLoad(test_utils.BaseTestCase):
 
@@ -117,22 +142,6 @@ class stopRpc(object):
 
 
 class TestZmqBasics(ZmqBaseTestCase):
-
-    def test_ports_range(self):
-        listeners = []
-
-        for i in range(10):
-            try:
-                target = oslo_messaging.Target(topic='testtopic_'+str(i))
-                new_listener = self.driver.listen(target)
-                listeners.append(new_listener)
-            except zmq_socket.ZmqPortRangeExceededException:
-                pass
-
-        self.assertLessEqual(len(listeners), 5)
-
-        for l in listeners:
-            l.cleanup()
 
     def test_send_receive_raises(self):
         """Call() without method."""
