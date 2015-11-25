@@ -28,7 +28,8 @@ class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
 
     def test_emit_cfg_log_notifier_in_notifier_drivers(self):
         drivers = ['messaging', 'log']
-        self.config(notification_driver=drivers)
+        self.config(driver=drivers,
+                    group='oslo_messaging_notifications')
         self.stub_flg = True
 
         transport = test_notifier._FakeTransport(self.conf)

@@ -6,7 +6,8 @@ I don't need notifications on the message bus. How do I disable them?
 =====================================================================
 
 Notification messages can be disabled using the ``noop`` notify
-driver. Set ``notification_driver = noop`` in your configuration file.
+driver. Set ``driver = noop`` in your configuration file under the
+[oslo_messaging_notifications] section.
 
 Why does the notification publisher create queues, too? Shouldn't the subscriber do that?
 =========================================================================================
@@ -26,9 +27,9 @@ notification "level". The default topic is ``notifications``, so an
 info-level notification is published to the topic
 ``notifications.info``. A subscriber queue of the same name is created
 automatically for each of these topics. To change the queue names,
-change the notification topic using the ``notification_topics``
-configuration option. The option accepts a list of values, so it is
-possible to publish to multiple topics.
+change the notification topic using the ``topics``
+configuration option in ``[oslo_messaging_notifications]``. The option
+accepts a list of values, so it is possible to publish to multiple topics.
 
 What are the other choices of notification drivers available?
 =============================================================

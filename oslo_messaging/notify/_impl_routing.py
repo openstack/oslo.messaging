@@ -27,11 +27,13 @@ from oslo_messaging.notify import notifier
 
 LOG = logging.getLogger(__name__)
 
-router_config = cfg.StrOpt('routing_notifier_config', default='',
+router_config = cfg.StrOpt('routing_config', default='',
+                           deprecated_group='DEFAULT',
+                           deprecated_name='routing_notifier_config',
                            help='RoutingNotifier configuration file location.')
 
 CONF = cfg.CONF
-CONF.register_opt(router_config)
+CONF.register_opt(router_config, group='oslo_messaging_notifications')
 
 
 class RoutingDriver(notifier.Driver):
@@ -56,7 +58,7 @@ class RoutingDriver(notifier.Driver):
         """One-time load of notifier config file."""
         self.routing_groups = {}
         self.used_drivers = set()
-        filename = CONF.routing_notifier_config
+        filename = CONF.oslo_messaging_notifications.routing_config
         if not filename:
             return
 

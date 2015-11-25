@@ -156,8 +156,9 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         if self.v2:
             drivers.append('messagingv2')
 
-        self.config(notification_driver=drivers,
-                    notification_topics=self.topics)
+        self.config(driver=drivers,
+                    topics=self.topics,
+                    group='oslo_messaging_notifications')
 
         transport = _FakeTransport(self.conf)
 
@@ -269,7 +270,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):
-        self.config(notification_driver=['log'])
+        self.config(driver=['log'],
+                    group='oslo_messaging_notifications')
 
         transport = _FakeTransport(self.conf)
 
@@ -338,7 +340,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
 class TestRoutingNotifier(test_utils.BaseTestCase):
     def setUp(self):
         super(TestRoutingNotifier, self).setUp()
-        self.config(notification_driver=['routing'])
+        self.config(driver=['routing'],
+                    group='oslo_messaging_notifications')
 
         transport = _FakeTransport(self.conf)
         self.notifier = oslo_messaging.Notifier(transport)
@@ -360,13 +363,14 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         self.assertTrue(self.router._should_load_plugin(ext))
 
     def test_load_notifiers_no_config(self):
-        # default routing_notifier_config=""
+        # default routing_config=""
         self.router._load_notifiers()
         self.assertEqual({}, self.router.routing_groups)
         self.assertEqual(0, len(self.router.used_drivers))
 
     def test_load_notifiers_no_extensions(self):
-        self.config(routing_notifier_config="routing_notifier.yaml")
+        self.config(routing_config="routing_notifier.yaml",
+                    group='oslo_messaging_notifications')
         routing_config = r""
         config_file = mock.MagicMock()
         config_file.return_value = routing_config
@@ -382,7 +386,8 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         self.assertEqual({}, self.router.routing_groups)
 
     def test_load_notifiers_config(self):
-        self.config(routing_notifier_config="routing_notifier.yaml")
+        self.config(routing_config="routing_notifier.yaml",
+                    group='oslo_messaging_notifications')
         routing_config = r"""
 group_1:
    rpc : foo
@@ -519,7 +524,8 @@ group_1:
                                  sorted(pm.map.call_args[0][6]))
 
     def test_notify_filtered(self):
-        self.config(routing_notifier_config="routing_notifier.yaml")
+        self.config(routing_config="routing_notifier.yaml",
+                    group='oslo_messaging_notifications')
         routing_config = r"""
 group_1:
     rpc:

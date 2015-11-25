@@ -28,19 +28,27 @@ from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import transport as msg_transport
 
 _notifier_opts = [
-    cfg.MultiStrOpt('notification_driver',
+    cfg.MultiStrOpt('driver',
                     default=[],
+                    deprecated_name='notification_driver',
+                    deprecated_group='DEFAULT',
                     help='The Drivers(s) to handle sending notifications. '
                          'Possible values are messaging, messagingv2, '
                          'routing, log, test, noop'),
-    cfg.StrOpt('notification_transport_url',
+    cfg.StrOpt('transport_url',
+               deprecated_name='notification_transport_url',
+               deprecated_group='DEFAULT',
                help='A URL representing the messaging driver to use for '
                     'notifications. If not set, we fall back to the same '
                     'configuration used for RPC.'),
-    cfg.ListOpt('notification_topics',
+    cfg.ListOpt('topics',
                 default=['notifications', ],
-                deprecated_name='topics',
-                deprecated_group='rpc_notifier2',
+                deprecated_opts=[
+                    cfg.DeprecatedOpt('topics',
+                                      group='rpc_notifier2'),
+                    cfg.DeprecatedOpt('notification_topics',
+                                      group='DEFAULT')
+                ],
                 help='AMQP topic used for OpenStack notifications.'),
 ]
 
@@ -83,8 +91,9 @@ class Driver(object):
 def get_notification_transport(conf, url=None,
                                allowed_remote_exmods=None, aliases=None):
     if url is None:
-        conf.register_opts(_notifier_opts)
-        url = conf.notification_transport_url
+        conf.register_opts(_notifier_opts,
+                           group='oslo_messaging_notifications')
+        url = conf.oslo_messaging_notifications.transport_url
     return msg_transport.get_transport(conf, url,
                                        allowed_remote_exmods, aliases)
 
@@ -111,9 +120,9 @@ class Notifier(object):
         notifier = messaging.Notifier(get_notification_transport(CONF),
                                       'compute')
 
-    and notifications are sent via drivers chosen with the notification_driver
-    config option and on the topics chosen with the notification_topics config
-    option.
+    and notifications are sent via drivers chosen with the driver
+    config option and on the topics chosen with the topics config
+    option in [oslo_messaging_notifications] section.
 
     Alternatively, a Notifier object can be instantiated with a specific
     driver or topic::
@@ -154,24 +163,26 @@ class Notifier(object):
                       N means N retries
         :type retry: int
         """
-        transport.conf.register_opts(_notifier_opts)
+        conf = transport.conf
+        conf.register_opts(_notifier_opts,
+                           group='oslo_messaging_notifications')
 
         self.transport = transport
         self.publisher_id = publisher_id
         self.retry = retry
 
-        self._driver_names = ([driver] if driver is not None
-                              else transport.conf.notification_driver)
+        self._driver_names = ([driver] if driver is not None else
+                              conf.oslo_messaging_notifications.driver)
 
-        self._topics = ([topic] if topic is not None
-                        else transport.conf.notification_topics)
+        self._topics = ([topic] if topic is not None else
+                        conf.oslo_messaging_notifications.topics)
         self._serializer = serializer or msg_serializer.NoOpSerializer()
 
         self._driver_mgr = named.NamedExtensionManager(
             'oslo.messaging.notify.drivers',
             names=self._driver_names,
             invoke_on_load=True,
-            invoke_args=[transport.conf],
+            invoke_args=[conf],
             invoke_kwds={
                 'topics': self._topics,
                 'transport': self.transport,

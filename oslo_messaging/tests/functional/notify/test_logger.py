@@ -51,8 +51,9 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         # NOTE(gtt): Using different topic to make tests run in parallel
         topic = 'test_logging_%s_driver_%s' % (self.priority, self.driver)
 
-        self.conf.notification_driver = [self.driver]
-        self.conf.notification_topics = [topic]
+        self.config(driver=[self.driver],
+                    topics=[topic],
+                    group='oslo_messaging_notifications')
 
         listener = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, [topic]))

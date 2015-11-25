@@ -283,8 +283,8 @@ def main():
 
     # oslo.config defaults
     cfg.CONF.heartbeat_interval = 5
-    cfg.CONF.notification_topics = "notif"
-    cfg.CONF.notification_driver = "messaging"
+    cfg.CONF.oslo_messaging_notifications.topics = "notif"
+    cfg.CONF.oslo_messaging_notifications.driver = "messaging"
     cfg.CONF.prog = os.path.basename(__file__)
     cfg.CONF.project = 'oslo.messaging'
 
