@@ -81,11 +81,13 @@ zmq_opts = [
                 default=True,
                 help='Shows whether zmq-messaging uses broker or not.'),
 
-    cfg.IntOpt('rpc_zmq_min_port',
-               default=49152,
-               help='Minimal port number for random ports range.'),
+    cfg.PortOpt('rpc_zmq_min_port',
+                default=49152,
+                help='Minimal port number for random ports range.'),
 
     cfg.IntOpt('rpc_zmq_max_port',
+               min=1,
+               max=65536,
                default=65536,
                help='Maximal port number for random ports range.'),
 
