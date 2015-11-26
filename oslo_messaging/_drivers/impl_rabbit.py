@@ -491,7 +491,8 @@ class Connection(object):
         if purpose == rpc_amqp.PURPOSE_SEND:
             self._heartbeat_start()
 
-        LOG.debug('Connected to AMQP server on %(hostname)s:%(port)s',
+        LOG.debug('Connected to AMQP server on %(hostname)s:%(port)s '
+                  'via [%(transport)s] client',
                   self.connection.info())
 
         # NOTE(sileht): value chosen according the best practice from kombu
@@ -649,7 +650,7 @@ class Connection(object):
                 consumer.declare(self)
 
             LOG.info(_LI('Reconnected to AMQP server on '
-                         '%(hostname)s:%(port)s'),
+                         '%(hostname)s:%(port)s via [%(transport)s] client'),
                      self.connection.info())
 
         def execute_method(channel):
