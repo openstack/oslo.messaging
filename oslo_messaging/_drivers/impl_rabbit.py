@@ -73,6 +73,10 @@ rabbit_opts = [
                  deprecated_group='DEFAULT',
                  help='How long to wait before reconnecting in response to an '
                       'AMQP consumer cancel notification.'),
+    cfg.StrOpt('kombu_compression',
+               help="EXPERIMENTAL: Possible values are: gzip, bz2. If not "
+                    "set compression will not be used. This option may not"
+                    "be available in future versions."),
     cfg.IntOpt('kombu_missing_consumer_retry_timeout',
                deprecated_name="kombu_reconnect_timeout",
                default=60,
@@ -300,7 +304,6 @@ class Consumer(object):
         m2p = getattr(self.queue.channel, 'message_to_python', None)
         if m2p:
             message = m2p(message)
-
         try:
             self.callback(RabbitMessage(message))
         except Exception:
@@ -420,6 +423,7 @@ class Connection(object):
         self.kombu_missing_consumer_retry_timeout = \
             driver_conf.kombu_missing_consumer_retry_timeout
         self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
+        self.kombu_compression = driver_conf.kombu_compression
 
         if self.rabbit_use_ssl:
             self.kombu_ssl_version = driver_conf.kombu_ssl_version
@@ -1047,7 +1051,8 @@ class Connection(object):
         LOG.trace('Connection._publish: sending message %(msg)s to'
                   ' %(who)s with routing key %(key)s', log_info)
         with self._transport_socket_timeout(transport_timeout):
-            producer.publish(msg, expiration=timeout)
+            producer.publish(msg, expiration=timeout,
+                             compression=self.kombu_compression)
 
     # List of notification queue declared on the channel to avoid
     # unnecessary redeclaration. This list is resetted each time
