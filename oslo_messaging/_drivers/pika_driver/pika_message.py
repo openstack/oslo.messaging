@@ -125,7 +125,7 @@ class RpcPikaIncomingMessage(PikaIncomingMessage):
             ),
             retry_on_exception=on_exception,
             wait_fixed=self._pika_engine.rpc_reply_retry_delay * 1000,
-        )
+        ) if self._pika_engine.rpc_reply_retry_attempts else None
 
         try:
             reply_outgoing_message.send(
@@ -321,10 +321,12 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
 
             try:
                 return future.result(expiration_time - time.time())
-            except futures.TimeoutError:
-                raise exceptions.MessagingTimeout()
-            finally:
+            except BaseException as e:
                 reply_listener.unregister_reply_waiter(self.msg_id)
+                if isinstance(e, futures.TimeoutError):
+                    e = exceptions.MessagingTimeout()
+                raise e
+
         else:
             self._do_send(
                 exchange=exchange, routing_key=queue, msg_dict=msg_dict,
