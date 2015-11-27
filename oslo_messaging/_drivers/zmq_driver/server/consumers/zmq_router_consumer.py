@@ -21,7 +21,7 @@ from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ class RouterIncomingMessage(base.IncomingMessage):
         """Reply is not needed for non-call messages"""
 
     def acknowledge(self):
-        LOG.info("Not sending acknowledge for %s", self.msg_id)
+        LOG.debug("Not sending acknowledge for %s", self.msg_id)
 
     def requeue(self):
         """Requeue is not supported"""
@@ -83,11 +83,11 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
     def receive_message(self, socket):
         try:
             request, reply_id = self._receive_request(socket)
-            LOG.info(_LI("[%(host)s] Received %(type)s, %(id)s, %(target)s")
-                     % {"host": self.host,
-                        "type": request.msg_type,
-                        "id": request.message_id,
-                        "target": request.target})
+            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s"
+                      % {"host": self.host,
+                         "type": request.msg_type,
+                         "id": request.message_id,
+                         "target": request.target})
 
             if request.msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(

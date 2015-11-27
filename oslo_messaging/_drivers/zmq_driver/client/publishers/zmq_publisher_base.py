@@ -14,6 +14,7 @@
 
 import abc
 import logging
+import uuid
 
 import six
 
@@ -89,12 +90,11 @@ class PublisherBase(object):
         :param request: Message data and destination container object
         :type request: zmq_request.Request
         """
-        LOG.info(_LI("Sending %(type)s message_id %(message)s to a target"
-                     "%(target)s host:%(host)s")
-                 % {"type": request.msg_type,
-                    "message": request.message_id,
-                    "target": request.target,
-                    "host": request.host})
+        LOG.debug("Sending %(type)s message_id %(message)s to a target"
+                  "%(target)s"
+                  % {"type": request.msg_type,
+                     "message": request.message_id,
+                     "target": request.target})
         socket.send_pyobj(request)
 
     def cleanup(self):
@@ -124,28 +124,30 @@ class PublisherMultisend(PublisherBase):
     def _check_hosts_connections(self, target, listener_type):
         #  TODO(ozamiatin): Place for significant optimization
         #  Matchmaker cache should be implemented
-        hosts = self.matchmaker.get_hosts(
-            target, listener_type)
         if str(target) in self.outbound_sockets:
             socket = self.outbound_sockets[str(target)]
         else:
+            hosts = self.matchmaker.get_hosts(target, listener_type)
             socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
             self.outbound_sockets[str(target)] = socket
+            for host in hosts:
+                self._connect_to_host(socket, host, target)
 
-        for host in hosts:
-            self._connect_to_host(socket, host, target)
+        return socket
 
-        return socket, hosts
-
-    def _connect_to_host(self, socket, host, target):
-        address = zmq_address.get_tcp_direct_address(host)
-        LOG.info(address)
+    def _connect_to_address(self, socket, address, target):
         stype = zmq_names.socket_type_str(self.socket_type)
         try:
             LOG.info(_LI("Connecting %(stype)s to %(address)s for %(target)s")
                      % {"stype": stype,
                         "address": address,
                         "target": target})
+
+            if six.PY3:
+                socket.setsockopt_string(zmq.IDENTITY, str(uuid.uuid1()))
+            else:
+                socket.handle.identity = str(uuid.uuid1())
+
             socket.connect(address)
         except zmq.ZMQError as e:
             errmsg = _LE("Failed connecting %(stype) to %(address)s: %(e)s")\
@@ -153,3 +155,7 @@ class PublisherMultisend(PublisherBase):
             LOG.error(_LE("Failed connecting %(stype) to %(address)s: %(e)s")
                       % (stype, address, e))
             raise rpc_common.RPCException(errmsg)
+
+    def _connect_to_host(self, socket, host, target):
+        address = zmq_address.get_tcp_direct_address(host)
+        self._connect_to_address(socket, address, target)

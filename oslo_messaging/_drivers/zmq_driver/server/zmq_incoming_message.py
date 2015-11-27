@@ -45,9 +45,10 @@ class ZmqIncomingRequest(base.IncomingMessage):
                          zmq_names.FIELD_REPLY: reply,
                          zmq_names.FIELD_FAILURE: failure,
                          zmq_names.FIELD_LOG_FAILURE: log_failure,
-                         zmq_names.FIELD_ID: self.request.proxy_reply_id}
+                         zmq_names.FIELD_ID: self.request.proxy_reply_id,
+                         zmq_names.FIELD_MSG_ID: self.request.message_id}
 
-        LOG.info("Replying %s REP", (str(self.request.message_id)))
+        LOG.debug("Replying %s", (str(self.request.message_id)))
 
         self.received = True
         self.reply_socket.send(self.reply_id, zmq.SNDMORE)

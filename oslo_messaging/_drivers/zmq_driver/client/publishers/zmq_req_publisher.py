@@ -82,8 +82,11 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
     def _receive_reply(socket, request):
 
         def _receive_method(socket):
-            return socket.recv_pyobj()
+            reply = socket.recv_pyobj()
+            LOG.debug("Received reply %s" % reply)
+            return reply
 
+        LOG.debug("Start waiting reply")
         # NOTE(ozamiatin): Check for retry here (no retries now)
         with contextlib.closing(zmq_async.get_reply_poller()) as poller:
             poller.register(socket, recv_method=_receive_method)
@@ -91,7 +94,7 @@ class ReqPublisher(zmq_publisher_base.PublisherBase):
             if reply is None:
                 raise oslo_messaging.MessagingTimeout(
                     "Timeout %s seconds was reached" % request.timeout)
-            LOG.info(_LI("Received reply %s") % reply)
+            LOG.debug("Received reply %s" % reply)
             if reply[zmq_names.FIELD_FAILURE]:
                 raise rpc_common.deserialize_remote_exception(
                     reply[zmq_names.FIELD_FAILURE],
@@ -114,12 +117,12 @@ class ReqPublisherLight(ReqPublisher):
 
     def _send_request(self, socket, request):
 
-        LOG.info(_LI("Sending %(type)s message_id %(message)s"
-                     " to a target %(target)s, host:%(host)s")
-                 % {"type": request.msg_type,
-                    "message": request.message_id,
-                    "target": request.target,
-                    "host": request.host})
+        LOG.debug("Sending %(type)s message_id %(message)s"
+                  " to a target %(target)s, host:%(host)s"
+                  % {"type": request.msg_type,
+                     "message": request.message_id,
+                     "target": request.target,
+                     "host": request.host})
 
         envelope = request.create_envelope()
 
