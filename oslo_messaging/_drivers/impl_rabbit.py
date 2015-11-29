@@ -37,6 +37,7 @@ from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers import pool
 from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
@@ -448,7 +449,7 @@ class Connection(object):
         # NOTE(sileht): if purpose is PURPOSE_LISTEN
         # we don't need the lock because we don't
         # have a heartbeat thread
-        if purpose == rpc_amqp.PURPOSE_SEND:
+        if purpose == rpc_common.PURPOSE_SEND:
             self._connection_lock = ConnectionLock()
         else:
             self._connection_lock = DummyConnectionLock()
@@ -488,7 +489,7 @@ class Connection(object):
         # the consume code does the heartbeat stuff
         # we don't need a thread
         self._heartbeat_thread = None
-        if purpose == rpc_amqp.PURPOSE_SEND:
+        if purpose == rpc_common.PURPOSE_SEND:
             self._heartbeat_start()
 
         LOG.debug('Connected to AMQP server on %(hostname)s:%(port)s '
@@ -1151,7 +1152,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
         conf.register_opts(base.base_opts, group=opt_group)
 
-        connection_pool = rpc_amqp.ConnectionPool(
+        connection_pool = pool.ConnectionPool(
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
             url, Connection)
 
