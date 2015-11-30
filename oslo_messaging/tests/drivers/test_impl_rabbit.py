@@ -177,7 +177,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
     def test_send_with_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
-        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
                           timeout=1)
@@ -187,7 +187,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
     def test_send_no_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
-        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key')
         fake_publish.assert_called_with('msg', expiration=None)
@@ -207,7 +207,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             type='topic',
             passive=False)
 
-        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             exc = conn.connection.channel_errors[0]
 
@@ -240,7 +240,7 @@ class TestRabbitConsume(test_utils.BaseTestCase):
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
         deadline = time.time() + 6
-        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_LISTEN) as conn:
             self.assertRaises(driver_common.Timeout,
                               conn.consume, timeout=3)
 
@@ -259,7 +259,7 @@ class TestRabbitConsume(test_utils.BaseTestCase):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
-        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_LISTEN) as conn:
             channel = conn.connection.channel
             with mock.patch('kombu.connection.Connection.connected',
                             new_callable=mock.PropertyMock,
@@ -902,7 +902,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         # starting from the first broker in the list
         url = oslo_messaging.TransportURL.parse(self.conf, None)
         self.connection = rabbit_driver.Connection(self.conf, url,
-                                                   amqp.PURPOSE_SEND)
+                                                   driver_common.PURPOSE_SEND)
         self.addCleanup(self.connection.close)
 
     def test_ensure_four_retry(self):
