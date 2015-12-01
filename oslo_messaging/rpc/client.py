@@ -356,6 +356,10 @@ class RPCClient(object):
         Similarly, the request context must be a dict unless the client's
         serializer supports serializing another type.
 
+        Note: cast doesn't ensure the remote method to be been executed
+        on each destination. But ensures that it will be not executed twice
+        on a destination.
+
         :param ctxt: a request context dict
         :type ctxt: dict
         :param method: the method name
@@ -391,6 +395,12 @@ class RPCClient(object):
         Secondly, if a remote exception is not from a module listed in the
         allowed_remote_exmods list, then a messaging.RemoteError exception is
         raised with all details of the remote exception.
+
+        Note: call is done 'at-most-once'. In case of we can't known
+        if the call have been done correctly, because we didn't get the
+        response on time, MessagingTimeout exception is raised.
+        The real reason can vary, transport failure, worker
+        doesn't answer in time or crash, ...
 
         :param ctxt: a request context dict
         :type ctxt: dict
