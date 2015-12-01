@@ -44,7 +44,7 @@ try:
 except ImportError:
     impl_eventlet = None
 from oslo_messaging._executors import impl_thread
-from oslo_messaging import _utils as utils
+from oslo_messaging import dispatcher as dispatcher_base
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -151,9 +151,8 @@ class TestExecutor(test_utils.BaseTestCase):
                 return result
 
             def __call__(self, incoming, executor_callback=None):
-                return utils.DispatcherExecutorContext(incoming,
-                                                       self.callback,
-                                                       executor_callback)
+                return dispatcher_base.DispatcherExecutorContext(
+                    incoming, self.callback, executor_callback)
 
         return Dispatcher(endpoint), endpoint, event, run_executor
 
