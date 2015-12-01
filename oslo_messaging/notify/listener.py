@@ -137,7 +137,6 @@ def get_notification_listener(transport, targets, endpoints,
     :type pool: str
     :raises: NotImplementedError
     """
-    transport._require_driver_features(requeue=allow_requeue)
     dispatcher = notify_dispatcher.NotificationDispatcher(targets, endpoints,
                                                           serializer,
                                                           allow_requeue, pool)
@@ -180,7 +179,6 @@ def get_batch_notification_listener(transport, targets, endpoints,
     :type batch_timeout: int
     :raises: NotImplementedError
     """
-    transport._require_driver_features(requeue=allow_requeue)
     dispatcher = notify_dispatcher.BatchNotificationDispatcher(
         targets, endpoints, serializer, allow_requeue, pool,
         batch_size, batch_timeout)
