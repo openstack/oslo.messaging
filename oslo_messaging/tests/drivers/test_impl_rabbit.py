@@ -28,7 +28,6 @@ from oslotest import mockpatch
 import testscenarios
 
 import oslo_messaging
-from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
@@ -363,11 +362,6 @@ class TestSendReceive(test_utils.BaseTestCase):
         ('timeout', dict(timeout=0.01)),  # FIXME(markmc): timeout=0 is broken?
     ]
 
-    _reply_ending = [
-        ('old_behavior', dict(send_single_reply=False)),
-        ('new_behavior', dict(send_single_reply=True)),
-    ]
-
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._n_senders,
@@ -375,15 +369,12 @@ class TestSendReceive(test_utils.BaseTestCase):
                                                          cls._reply,
                                                          cls._reply_fail,
                                                          cls._failure,
-                                                         cls._timeout,
-                                                         cls._reply_ending)
+                                                         cls._timeout)
 
     def test_send_receive(self):
         self.config(kombu_missing_consumer_retry_timeout=0.5,
                     group="oslo_messaging_rabbit")
         self.config(heartbeat_timeout_threshold=0,
-                    group="oslo_messaging_rabbit")
-        self.config(send_single_reply=self.send_single_reply,
                     group="oslo_messaging_rabbit")
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
