@@ -17,6 +17,7 @@ __all__ = ['AMQPDriverBase']
 
 import logging
 import threading
+import time
 import uuid
 
 from six import moves
@@ -69,10 +70,38 @@ class AMQPIncomingMessage(base.IncomingMessage):
             # NOTE(Alexei_987) not sending reply, if msg_id is empty
             #    because reply should not be expected by caller side
             return
-        with self.listener.driver._get_connection(
-                rpc_amqp.PURPOSE_SEND) as conn:
-            self._send_reply(conn, reply, failure, log_failure=log_failure)
-            self._send_reply(conn, ending=True)
+
+        # NOTE(sileht): we read the configuration value from the driver
+        # to be able to backport this change in previous version that
+        # still have the qpid driver
+        duration = self.listener.driver.missing_destination_retry_timeout
+        timer = rpc_common.DecayingTimer(duration=duration)
+        timer.start()
+
+        while True:
+            try:
+                with self.listener.driver._get_connection(
+                        rpc_amqp.PURPOSE_SEND) as conn:
+                    self._send_reply(conn, reply, failure,
+                                     log_failure=log_failure)
+                    self._send_reply(conn, ending=True)
+                return
+            except rpc_amqp.AMQPDestinationNotFound:
+                if timer.check_return() > 0:
+                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
+                                 "%(reply_q)s reply queue don't exist, "
+                                 "retrying...") % {
+                                     'msg_id': self.msg_id,
+                                     'reply_q': self.reply_q})
+                    time.sleep(0.25)
+                else:
+                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
+                                 "%(reply_q)s reply queue don't exist after "
+                                 "%(duration)s sec abandoning...") % {
+                                     'msg_id': self.msg_id,
+                                     'reply_q': self.reply_q,
+                                     'duration': duration})
+                    return
 
     def acknowledge(self):
         self.listener.msg_id_cache.add(self.unique_id)
@@ -251,6 +280,7 @@ class ReplyWaiter(object):
 
 
 class AMQPDriverBase(base.BaseDriver):
+    missing_destination_retry_timeout = 0
 
     def __init__(self, conf, url, connection_pool,
                  default_exchange=None, allowed_remote_exmods=None):

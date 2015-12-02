@@ -452,35 +452,24 @@ class RetryOnMissingExchangePublisher(Publisher):
     passive = True
 
     def send(self, conn, msg, timeout=None):
-        # TODO(sileht):
-        # * use timeout parameter when available
-        # * use rpc_timeout if not instead of hardcoded 60
-        # * use @retrying
-        timer = rpc_common.DecayingTimer(duration=60)
-        timer.start()
-
-        while True:
-            try:
-                super(RetryOnMissingExchangePublisher, self).send(conn, msg,
-                                                                  timeout)
-                return
-            except conn.connection.channel_errors as exc:
-                # NOTE(noelbk/sileht):
-                # If rabbit dies, the consumer can be disconnected before the
-                # publisher sends, and if the consumer hasn't declared the
-                # queue, the publisher's will send a message to an exchange
-                # that's not bound to a queue, and the message wll be lost.
-                # So we set passive=True to the publisher exchange and catch
-                # the 404 kombu ChannelError and retry until the exchange
-                # appears
-                if exc.code == 404 and timer.check_return() > 0:
-                    LOG.info(_LI("The exchange %(exchange)s to send to "
-                                 "%(routing_key)s doesn't exist yet, "
-                                 "retrying...") % {
-                                     'exchange': self.exchange,
-                                     'routing_key': self.routing_key})
-                    time.sleep(1)
-                    continue
+        try:
+            super(RetryOnMissingExchangePublisher, self).send(conn, msg,
+                                                              timeout)
+            return
+        except conn.connection.channel_errors as exc:
+            # NOTE(noelbk/sileht):
+            # If rabbit dies, the consumer can be disconnected before the
+            # publisher sends, and if the consumer hasn't declared the
+            # queue, the publisher's will send a message to an exchange
+            # that's not bound to a queue, and the message wll be lost.
+            # So we set passive=True to the publisher exchange and catch
+            # the 404 kombu ChannelError and retry until the exchange
+            # appears
+            if exc.code == 404:
+                raise rpc_amqp.AMQPDestinationNotFound(
+                    "exchange %s doesn't exists" %
+                    self.exchange.name)
+            else:
                 raise
 
 
@@ -1197,6 +1186,8 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_group(opt_group)
         conf.register_opts(rabbit_opts, group=opt_group)
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
+
+        self.missing_destination_retry_timeout = 60
 
         connection_pool = rpc_amqp.ConnectionPool(
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
