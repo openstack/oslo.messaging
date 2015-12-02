@@ -73,18 +73,12 @@ rabbit_opts = [
                  deprecated_group='DEFAULT',
                  help='How long to wait before reconnecting in response to an '
                       'AMQP consumer cancel notification.'),
-    cfg.IntOpt('kombu_reconnect_timeout',
-               # NOTE(dhellmann): We want this to be similar to
-               # rpc_response_timeout, but we can't use
-               # "$rpc_response_timeout" as a default because that
-               # option may not have been defined by the time this
-               # option is accessed. Instead, document the intent in
-               # the help text for this option and provide a separate
-               # literal default value.
+    cfg.IntOpt('kombu_missing_consumer_retry_timeout',
+               deprecated_name="kombu_reconnect_timeout",
                default=60,
-               help='How long to wait before considering a reconnect '
-                    'attempt to have failed. This value should not be '
-                    'longer than rpc_response_timeout.'),
+               help='How long to wait a missing client beforce abandoning to '
+                    'send it its replies. This value should not be longer '
+                    'than rpc_response_timeout.'),
     cfg.StrOpt('kombu_failover_strategy',
                choices=('round-robin', 'shuffle'),
                default='round-robin',
@@ -384,7 +378,8 @@ class Connection(object):
         self.amqp_durable_queues = driver_conf.amqp_durable_queues
         self.amqp_auto_delete = driver_conf.amqp_auto_delete
         self.rabbit_use_ssl = driver_conf.rabbit_use_ssl
-        self.kombu_reconnect_timeout = driver_conf.kombu_reconnect_timeout
+        self.kombu_missing_consumer_retry_timeout = \
+            driver_conf.kombu_missing_consumer_retry_timeout
         self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
 
         if self.rabbit_use_ssl:
@@ -1134,7 +1129,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(base.base_opts, group=opt_group)
 
         self.missing_destination_retry_timeout = (
-            conf.oslo_messaging_rabbit.kombu_reconnect_timeout)
+            conf.oslo_messaging_rabbit.kombu_missing_consumer_retry_timeout)
 
         connection_pool = pool.ConnectionPool(
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
