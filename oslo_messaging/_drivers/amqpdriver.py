@@ -17,6 +17,7 @@ __all__ = ['AMQPDriverBase']
 
 import logging
 import threading
+import time
 import uuid
 
 import cachetools
@@ -69,10 +70,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
         # Otherwise use the msg_id for backward compatibility.
         if self.reply_q:
             msg['_msg_id'] = self.msg_id
-            try:
-                conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
-            except rpc_amqp.AMQPDestinationNotFound:
-                self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
+            conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
         else:
             # TODO(sileht): look at which version of oslo-incubator rpc
             # send need this, but I guess this is older than icehouse
@@ -86,20 +84,52 @@ class AMQPIncomingMessage(base.IncomingMessage):
             #    because reply should not be expected by caller side
             return
 
-        # NOTE(sileht): return without hold the a connection if possible
+        # NOTE(sileht): return without using a connection if possible
         if (self.reply_q and
             not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
                                                           self.msg_id)):
             return
 
-        with self.listener.driver._get_connection(
-                rpc_amqp.PURPOSE_SEND) as conn:
-            if self.listener.driver.send_single_reply:
-                self._send_reply(conn, reply, failure, log_failure=log_failure,
-                                 ending=True)
-            else:
-                self._send_reply(conn, reply, failure, log_failure=log_failure)
-                self._send_reply(conn, ending=True)
+        # NOTE(sileht): we read the configuration value from the driver
+        # to be able to backport this change in previous version that
+        # still have the qpid driver
+        duration = self.listener.driver.missing_destination_retry_timeout
+        timer = rpc_common.DecayingTimer(duration=duration)
+        timer.start()
+
+        first_reply_sent = False
+        while True:
+            try:
+                with self.listener.driver._get_connection(
+                        rpc_amqp.PURPOSE_SEND) as conn:
+                    if self.listener.driver.send_single_reply:
+                        self._send_reply(conn, reply, failure,
+                                         log_failure=log_failure,
+                                         ending=True)
+                    else:
+                        if not first_reply_sent:
+                            self._send_reply(conn, reply, failure,
+                                             log_failure=log_failure)
+                            first_reply_sent = True
+                        self._send_reply(conn, ending=True)
+                return
+            except rpc_amqp.AMQPDestinationNotFound:
+                if timer.check_return() > 0:
+                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
+                                 "%(reply_q)s reply queue don't exist, "
+                                 "retrying...") % {
+                                     'msg_id': self.msg_id,
+                                     'reply_q': self.reply_q})
+                    time.sleep(0.25)
+                else:
+                    self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
+                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
+                                 "%(reply_q)s reply queue don't exist after "
+                                 "%(duration)s sec abandoning...") % {
+                                     'msg_id': self.msg_id,
+                                     'reply_q': self.reply_q,
+                                     'duration': duration})
+                    return
 
     def acknowledge(self):
         self.acknowledge_callback()
@@ -329,6 +359,7 @@ class ReplyWaiter(object):
 
 
 class AMQPDriverBase(base.BaseDriver):
+    missing_destination_retry_timeout = 0
 
     def __init__(self, conf, url, connection_pool,
                  default_exchange=None, allowed_remote_exmods=None,
