@@ -38,6 +38,11 @@ pyngus = importutils.try_import("pyngus")
 if pyngus:
     from oslo_messaging._drivers.protocols.amqp import driver as amqp_driver
 
+# The Cyrus-based SASL tests can only be run if the installed version of proton
+# has been built with Cyrus SASL support.
+_proton = importutils.try_import("proton")
+CYRUS_ENABLED = (pyngus and pyngus.VERSION >= (2, 0, 0) and _proton
+                 and getattr(_proton.SASL, "extended", lambda: False)())
 
 LOG = logging.getLogger(__name__)
 
@@ -354,8 +359,7 @@ class TestAuthentication(test_utils.BaseTestCase):
         driver.cleanup()
 
 
-@testtools.skipUnless(pyngus and pyngus.VERSION >= (2, 0, 0),
-                      "pyngus module not present")
+@testtools.skipUnless(CYRUS_ENABLED, "Cyrus SASL not supported")
 class TestCyrusAuthentication(test_utils.BaseTestCase):
     """Test the driver's Cyrus SASL integration"""
 
