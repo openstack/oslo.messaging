@@ -1043,32 +1043,20 @@ class Connection(object):
 
         self._publish(exchange, msg, routing_key=routing_key, timeout=timeout)
 
-    def _publish_and_retry_on_missing_exchange(self, exchange, msg,
-                                               routing_key=None, timeout=None):
-        """Publisher that retry if the exchange is missing.
-        """
-
+    def _publish_and_raises_on_missing_exchange(self, exchange, msg,
+                                                routing_key=None,
+                                                timeout=None):
+        """Publisher that raises exception if exchange is missing."""
         if not exchange.passive:
             raise RuntimeError("_publish_and_retry_on_missing_exchange() must "
                                "be called with an passive exchange.")
 
-        # TODO(sileht): use @retrying
-        # NOTE(sileht): no need to wait the application expect a response
-        # before timeout is exshauted
-        duration = (
-            timeout if timeout is not None
-            else self.kombu_reconnect_timeout
-        )
-
-        timer = rpc_common.DecayingTimer(duration=duration)
-        timer.start()
-
-        while True:
-            try:
-                self._publish(exchange, msg, routing_key=routing_key,
-                              timeout=timeout)
-                return
-            except self.connection.channel_errors as exc:
+        try:
+            self._publish(exchange, msg, routing_key=routing_key,
+                          timeout=timeout)
+            return
+        except self.connection.channel_errors as exc:
+            if exc.code == 404:
                 # NOTE(noelbk/sileht):
                 # If rabbit dies, the consumer can be disconnected before the
                 # publisher sends, and if the consumer hasn't declared the
@@ -1077,24 +1065,9 @@ class Connection(object):
                 # So we set passive=True to the publisher exchange and catch
                 # the 404 kombu ChannelError and retry until the exchange
                 # appears
-                if exc.code == 404 and timer.check_return() > 0:
-                    LOG.info(_LI("The exchange %(exchange)s to send to "
-                                 "%(routing_key)s doesn't exist yet, "
-                                 "retrying...") % {
-                                     'exchange': exchange.name,
-                                     'routing_key': routing_key})
-                    time.sleep(0.25)
-                    continue
-                elif exc.code == 404:
-                    msg = _("The exchange %(exchange)s to send to "
-                            "%(routing_key)s still doesn't exist after "
-                            "%(duration)s sec abandoning...") % {
-                                'duration': duration,
-                                'exchange': exchange.name,
-                                'routing_key': routing_key}
-                    LOG.info(msg)
-                    raise rpc_amqp.AMQPDestinationNotFound(msg)
-                raise
+                raise rpc_amqp.AMQPDestinationNotFound(
+                    "exchange %s doesn't exists" % exchange.name)
+            raise
 
     def direct_send(self, msg_id, msg):
         """Send a 'direct' message."""
@@ -1104,7 +1077,7 @@ class Connection(object):
                                          auto_delete=True,
                                          passive=True)
 
-        self._ensure_publishing(self._publish_and_retry_on_missing_exchange,
+        self._ensure_publishing(self._publish_and_raises_on_missing_exchange,
                                 exchange, msg, routing_key=msg_id)
 
     def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None):
@@ -1159,6 +1132,9 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(rabbit_opts, group=opt_group)
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
         conf.register_opts(base.base_opts, group=opt_group)
+
+        self.missing_destination_retry_timeout = (
+            conf.oslo_messaging_rabbit.kombu_reconnect_timeout)
 
         connection_pool = pool.ConnectionPool(
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
