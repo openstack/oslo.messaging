@@ -15,8 +15,6 @@
 from oslo_config import cfg
 from oslo_log import log as logging
 
-from oslo_messaging._drivers import common
-
 from oslo_messaging._drivers.pika_driver import pika_engine as pika_drv_engine
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_listener as pika_drv_lstnr
@@ -149,7 +147,7 @@ class PikaDriver(object):
         self._allowed_remote_exmods = allowed_remote_exmods
 
         self._pika_engine = pika_drv_engine.PikaEngine(
-            conf, url, default_exchange
+            conf, url, default_exchange, allowed_remote_exmods
         )
         self._reply_listener = pika_drv_lstnr.RpcReplyPikaListener(
             self._pika_engine
@@ -192,13 +190,10 @@ class PikaDriver(object):
         )
 
         if reply is not None:
-            if reply.message['failure']:
-                ex = common.deserialize_remote_exception(
-                    reply.message['failure'], self._allowed_remote_exmods
-                )
-                raise ex
+            if reply.failure is not None:
+                raise reply.failure
 
-            return reply.message['result']
+            return reply.result
 
     def _declare_notification_queue_binding(self, target, timeout=None):
         if timeout is not None and timeout < 0:

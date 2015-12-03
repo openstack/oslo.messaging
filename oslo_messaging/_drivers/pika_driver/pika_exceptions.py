@@ -59,3 +59,10 @@ class HostConnectionNotAllowedException(EstablishConnectionException):
     not allowed host (because of reconnection policy for example)
     """
     pass
+
+
+class UnsupportedDriverVersion(exceptions.MessagingException):
+    """Is raised when message is received but was sent by different,
+    not supported driver version
+    """
+    pass

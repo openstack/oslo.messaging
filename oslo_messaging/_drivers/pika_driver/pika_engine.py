@@ -21,6 +21,7 @@ from pika import credentials as pika_credentials
 
 import pika_pool
 
+import six
 import socket
 import sys
 
@@ -28,6 +29,8 @@ import threading
 import time
 
 LOG = logging.getLogger(__name__)
+
+_EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
 
 
 def _is_eventlet_monkey_patched(module):
@@ -91,7 +94,8 @@ class PikaEngine(object):
     # (it should be defined in 'select' module of standard library in future)
     TCP_USER_TIMEOUT = 18
 
-    def __init__(self, conf, url, default_exchange=None):
+    def __init__(self, conf, url, default_exchange=None,
+                 allowed_remote_exmods=None):
         self.conf = conf
 
         self._force_select_poller_use = _is_eventlet_monkey_patched('select')
@@ -107,6 +111,10 @@ class PikaEngine(object):
             conf.oslo_messaging_pika.rpc_reply_exchange else
             default_exchange
         )
+
+        self.allowed_remote_exmods = [_EXCEPTIONS_MODULE]
+        if allowed_remote_exmods:
+            self.allowed_remote_exmods.extend(allowed_remote_exmods)
 
         self.rpc_listener_prefetch_count = (
             conf.oslo_messaging_pika.rpc_listener_prefetch_count

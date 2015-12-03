@@ -255,7 +255,7 @@ class RpcReplyPikaPoller(PikaPoller):
         msg = super(RpcReplyPikaPoller, self).poll(timeout)
         if msg is None:
             return None
-        return pika_drv_msg.PikaIncomingMessage(
+        return pika_drv_msg.RpcReplyPikaIncomingMessage(
             self._pika_engine, *msg
         )
 
