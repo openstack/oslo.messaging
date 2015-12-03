@@ -111,8 +111,12 @@ class PikaPoller(object):
                 try:
                     if self._channel is None:
                         self._reconnect()
+                    # we need some time_limit here, not too small to avoid a
+                    # lot of not needed iterations but not too large to release
+                    # lock time to time and give a chance to perform another
+                    # method waiting this lock
                     self._connection.process_data_events(
-                        time_limit=timeout
+                        time_limit=0.25
                     )
                 except Exception:
                     self._cleanup()
@@ -183,18 +187,17 @@ class RpcServicePikaPoller(PikaPoller):
             self._pika_engine.declare_queue_binding_by_channel(
                 channel=self._channel, exchange=exchange, queue=queue,
                 routing_key=queue, exchange_type='direct', durable=False,
-                queue_expiration=queue_expiration, queue_auto_delete=False
+                queue_expiration=queue_expiration
             )
             self._pika_engine.declare_queue_binding_by_channel(
                 channel=self._channel, exchange=exchange, queue=server_queue,
                 routing_key=server_queue, exchange_type='direct',
-                queue_expiration=queue_expiration, queue_auto_delete=False,
-                durable=False
+                queue_expiration=queue_expiration, durable=False
             )
             self._pika_engine.declare_queue_binding_by_channel(
                 channel=self._channel, exchange=fanout_exchange, durable=False,
                 queue=server_queue, routing_key="", exchange_type='fanout',
-                queue_expiration=queue_expiration, queue_auto_delete=False,
+                queue_expiration=queue_expiration
             )
         self._queues_to_consume = queues_to_consume
 
@@ -225,7 +228,7 @@ class RpcReplyPikaPoller(PikaPoller):
             channel=self._channel,
             exchange=self._exchange, queue=self._queue,
             routing_key=self._queue, exchange_type='direct',
-            queue_expiration=queue_expiration, queue_auto_delete=False,
+            queue_expiration=queue_expiration,
             durable=False
         )
 
@@ -282,7 +285,6 @@ class NotificationPikaPoller(PikaPoller):
                 routing_key=routing_key,
                 exchange_type='direct',
                 queue_expiration=None,
-                queue_auto_delete=False,
                 durable=self._pika_engine.notification_persistence,
             )
             queues_to_consume[queue] = False

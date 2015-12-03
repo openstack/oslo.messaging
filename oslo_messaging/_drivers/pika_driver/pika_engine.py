@@ -13,8 +13,6 @@
 #    under the License.
 from oslo_log import log as logging
 
-from oslo_messaging import exceptions
-
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 import pika
@@ -33,6 +31,12 @@ LOG = logging.getLogger(__name__)
 
 
 def _is_eventlet_monkey_patched(module):
+    """Determines safely is eventlet patching for module enabled or not
+
+    :param module: String, module name
+    :return Bool, True if module is pathed, False otherwise
+    """
+
     if 'eventlet.patcher' not in sys.modules:
         return False
     import eventlet.patcher
@@ -42,6 +46,14 @@ def _is_eventlet_monkey_patched(module):
 def _create__select_poller_connection_impl(
         parameters, on_open_callback, on_open_error_callback,
         on_close_callback, stop_ioloop_on_close):
+    """Used for disabling autochoise of poller ('select', 'poll', 'epool', etc)
+    inside default 'SelectConnection.__init__(...)' logic. It is necessary to
+    force 'select' poller usage if eventlet is monkeypatched because eventlet
+    patches only 'select' system call
+
+    Method signature is copied form 'SelectConnection.__init__(...)', because
+    it is used as replacement of 'SelectConnection' class to create instances
+    """
     return select_connection.SelectConnection(
         parameters=parameters,
         on_open_callback=on_open_callback,
@@ -53,6 +65,10 @@ def _create__select_poller_connection_impl(
 
 
 class _PooledConnectionWithConfirmations(pika_pool.Connection):
+    """Derived from 'pika_pool.Connection' and extends its logic - adds
+    'confirm_delivery' call after channel creation to enable delivery
+    confirmation for channel
+    """
     @property
     def channel(self):
         if self.fairy.channel is None:
@@ -62,9 +78,17 @@ class _PooledConnectionWithConfirmations(pika_pool.Connection):
 
 
 class PikaEngine(object):
+    """Used for shared functionality between other pika driver modules, like
+    connection factory, connection pools, processing and holding configuration,
+    etc.
+    """
+
+    # constants for creating connection statistics
     HOST_CONNECTION_LAST_TRY_TIME = "last_try_time"
     HOST_CONNECTION_LAST_SUCCESS_TRY_TIME = "last_success_try_time"
 
+    # constant for setting tcp_user_timeout socket option
+    # (it should be defined in 'select' module of standard library in future)
     TCP_USER_TIMEOUT = 18
 
     def __init__(self, conf, url, default_exchange=None):
@@ -73,7 +97,6 @@ class PikaEngine(object):
         self._force_select_poller_use = _is_eventlet_monkey_patched('select')
 
         # processing rpc options
-
         self.default_rpc_exchange = (
             conf.oslo_messaging_pika.default_rpc_exchange if
             conf.oslo_messaging_pika.default_rpc_exchange else
@@ -105,6 +128,10 @@ class PikaEngine(object):
                 self.rpc_reply_retry_delay < 0):
             raise ValueError("rpc_reply_retry_delay should be non-negative "
                              "integer")
+
+        self.rpc_queue_expiration = (
+            self.conf.oslo_messaging_pika.rpc_queue_expiration
+        )
 
         # processing notification options
         self.default_notification_exchange = (
@@ -146,6 +173,9 @@ class PikaEngine(object):
         self._tcp_user_timeout = self.conf.oslo_messaging_pika.tcp_user_timeout
         self.host_connection_reconnect_delay = (
             self.conf.oslo_messaging_pika.host_connection_reconnect_delay
+        )
+        self._heartbeat_interval = (
+            self.conf.oslo_messaging_pika.heartbeat_interval
         )
 
         # initializing connection parameters for configured RabbitMQ hosts
@@ -204,6 +234,11 @@ class PikaEngine(object):
         )
 
     def _next_connection_num(self):
+        """Used for creating connections to different RabbitMQ nodes in
+        round robin order
+
+        :return: next host number to create connection to
+        """
         with self._connection_lock:
             cur_num = self._next_connection_host_num
             self._next_connection_host_num += 1
@@ -215,7 +250,7 @@ class PikaEngine(object):
     def create_connection(self, for_listening=False):
         """Create and return connection to any available host.
 
-        :return: cerated connection
+        :return: created connection
         :raise: ConnectionException if all hosts are not reachable
         """
         host_count = len(self._connection_host_param_list)
@@ -257,7 +292,9 @@ class PikaEngine(object):
 
     def create_host_connection(self, host_index, for_listening=False):
         """Create new connection to host #host_index
-
+        :param host_index: Integer, number of host for connection establishing
+        :param for_listening: Boolean, creates connection for listening
+            (enable heartbeats) if True
         :return: New connection
         """
 
@@ -270,6 +307,10 @@ class PikaEngine(object):
             last_time = self._connection_host_status_list[host_index][
                 self.HOST_CONNECTION_LAST_TRY_TIME
             ]
+
+            # raise HostConnectionNotAllowedException if we tried to establish
+            # connection in last 'host_connection_reconnect_delay' and got
+            # failure
             if (last_time != last_success_time and
                     cur_time - last_time <
                     self.host_connection_reconnect_delay):
@@ -284,7 +325,7 @@ class PikaEngine(object):
                 connection = pika.BlockingConnection(
                     parameters=pika.ConnectionParameters(
                         heartbeat_interval=(
-                            self.conf.oslo_messaging_pika.heartbeat_interval
+                            self._heartbeat_interval
                             if for_listening else None
                         ),
                         **base_host_params
@@ -308,52 +349,53 @@ class PikaEngine(object):
     @staticmethod
     def declare_queue_binding_by_channel(channel, exchange, queue, routing_key,
                                          exchange_type, queue_expiration,
-                                         queue_auto_delete, durable):
-        channel.exchange_declare(
-            exchange, exchange_type, auto_delete=True, durable=durable
-        )
-        arguments = {}
+                                         durable):
+        """Declare exchange, queue and bind them using already created
+        channel, if they don't exist
 
-        if queue_expiration > 0:
-            arguments['x-expires'] = queue_expiration * 1000
-
-        channel.queue_declare(
-            queue, auto_delete=queue_auto_delete, durable=durable,
-            arguments=arguments
-        )
-
-        channel.queue_bind(queue, exchange, routing_key)
-
-    def declare_queue_binding(self, exchange, queue, routing_key,
-                              exchange_type, queue_expiration,
-                              queue_auto_delete, durable,
-                              timeout=None):
-        if timeout is not None and timeout < 0:
-            raise exceptions.MessagingTimeout(
-                "Timeout for current operation was expired."
-            )
+        :param channel: Channel for communication with RabbitMQ
+        :param exchange:  String, RabbitMQ exchange name
+        :param queue: Sting, RabbitMQ queue name
+        :param routing_key: Sting, RabbitMQ routing key for queue binding
+        :param exchange_type: String ('direct', 'topic' or 'fanout')
+            exchange type for exchange to be declared
+        :param queue_expiration: Integer, time in seconds which queue will
+            remain existing in RabbitMQ when there no consumers connected
+        :param durable: Boolean, creates durable exchange and queue if true
+        """
         try:
-            with self.connection_pool.acquire(timeout=timeout) as conn:
-                self.declare_queue_binding_by_channel(
-                    conn.channel, exchange, queue, routing_key, exchange_type,
-                    queue_expiration, queue_auto_delete, durable
-                )
-        except pika_pool.Timeout as e:
-            raise exceptions.MessagingTimeout(
-                "Timeout for current operation was expired. {}.".format(str(e))
+            channel.exchange_declare(
+                exchange, exchange_type, auto_delete=True, durable=durable
             )
+            arguments = {}
+
+            if queue_expiration > 0:
+                arguments['x-expires'] = queue_expiration * 1000
+
+            channel.queue_declare(queue, durable=durable, arguments=arguments)
+
+            channel.queue_bind(queue, exchange, routing_key)
         except pika_pool.Connection.connectivity_errors as e:
             raise pika_drv_exc.ConnectionException(
                 "Connectivity problem detected during declaring queue "
                 "binding: exchange:{}, queue: {}, routing_key: {}, "
-                "exchange_type: {}, queue_expiration: {}, queue_auto_delete: "
-                "{}, durable: {}. {}".format(
+                "exchange_type: {}, queue_expiration: {}, "
+                "durable: {}. {}".format(
                     exchange, queue, routing_key, exchange_type,
-                    queue_expiration, queue_auto_delete, durable, str(e)
+                    queue_expiration, durable, str(e)
                 )
             )
 
     def get_rpc_exchange_name(self, exchange, topic, fanout, no_ack):
+        """Returns RabbitMQ exchange name for given rpc request
+
+        :param exchange: String, oslo.messaging target's exchange
+        :param topic: String, oslo.messaging target's topic
+        :param fanout: Boolean, oslo.messaging target's fanout mode
+        :param no_ack: Boolean, use message delivery with acknowledges or not
+
+        :return: String, RabbitMQ exchange name
+        """
         exchange = (exchange or self.default_rpc_exchange)
 
         if fanout:
@@ -364,6 +406,14 @@ class PikaEngine(object):
 
     @staticmethod
     def get_rpc_queue_name(topic, server, no_ack):
+        """Returns RabbitMQ queue name for given rpc request
+
+        :param topic: String, oslo.messaging target's topic
+        :param server: String, oslo.messaging target's server
+        :param no_ack: Boolean, use message delivery with acknowledges or not
+
+        :return: String, RabbitMQ exchange name
+        """
         queue_parts = ["no_ack" if no_ack else "with_ack", topic]
         if server is not None:
             queue_parts.append(server)

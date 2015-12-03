@@ -25,6 +25,8 @@ from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
 
 from oslo_messaging import exceptions
 
+import pika_pool
+
 import retrying
 import time
 
@@ -198,6 +200,31 @@ class PikaDriver(object):
 
             return reply.message['result']
 
+    def _declare_notification_queue_binding(self, target, timeout=None):
+        if timeout is not None and timeout < 0:
+            raise exceptions.MessagingTimeout(
+                "Timeout for current operation was expired."
+            )
+        try:
+            with self._pika_engine.connection_pool.acquire(
+                    timeout=timeout) as conn:
+                self._pika_engine.declare_queue_binding_by_channel(
+                    conn.channel,
+                    exchange=(
+                        target.exchange or
+                        self._pika_engine.default_notification_exchange
+                    ),
+                    queue=target.topic,
+                    routing_key=target.topic,
+                    exchange_type='direct',
+                    queue_expiration=None,
+                    durable=self._pika_engine.notification_persistence,
+                )
+        except pika_pool.Timeout as e:
+            raise exceptions.MessagingTimeout(
+                "Timeout for current operation was expired. {}.".format(str(e))
+            )
+
     def send_notification(self, target, ctxt, message, version, retry=None):
         if retry is None:
             retry = self._pika_engine.default_notification_retry_attempts
@@ -207,18 +234,7 @@ class PikaDriver(object):
                                pika_drv_exc.RoutingException)):
                 LOG.warn(str(ex))
                 try:
-                    self._pika_engine.declare_queue_binding(
-                        exchange=(
-                            target.exchange or
-                            self._pika_engine.default_notification_exchange
-                        ),
-                        queue=target.topic,
-                        routing_key=target.topic,
-                        exchange_type='direct',
-                        queue_expiration=None,
-                        queue_auto_delete=False,
-                        durable=self._pika_engine.notification_persistence,
-                    )
+                    self._declare_notification_queue_binding(target)
                 except pika_drv_exc.ConnectionException as e:
                     LOG.warn(str(e))
                 return True

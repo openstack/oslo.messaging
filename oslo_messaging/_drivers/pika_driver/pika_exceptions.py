@@ -16,28 +16,46 @@ from oslo_messaging import exceptions
 
 
 class ExchangeNotFoundException(exceptions.MessageDeliveryFailure):
+    """Is raised if specified exchange is not found in RabbitMQ."""
     pass
 
 
 class MessageRejectedException(exceptions.MessageDeliveryFailure):
+    """Is raised if message which you are trying to send was nacked by RabbitMQ
+    it may happen if RabbitMQ is not able to process message
+    """
     pass
 
 
 class RoutingException(exceptions.MessageDeliveryFailure):
+    """Is raised if message can not be delivered to any queue. Usually it means
+    that any queue is not binded to given exchange with given routing key.
+    Raised if 'mandatory' flag specified only
+    """
     pass
 
 
 class ConnectionException(exceptions.MessagingException):
-    pass
-
-
-class HostConnectionNotAllowedException(ConnectionException):
-    pass
-
-
-class EstablishConnectionException(ConnectionException):
+    """Is raised if some operation can not be performed due to connectivity
+    problem
+    """
     pass
 
 
 class TimeoutConnectionException(ConnectionException):
+    """Is raised if socket timeout was expired during network interaction"""
+    pass
+
+
+class EstablishConnectionException(ConnectionException):
+    """Is raised if we have some problem during establishing connection
+    procedure
+    """
+    pass
+
+
+class HostConnectionNotAllowedException(EstablishConnectionException):
+    """Is raised in case of try to establish connection to temporary
+    not allowed host (because of reconnection policy for example)
+    """
     pass
