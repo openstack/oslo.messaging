@@ -224,6 +224,7 @@ class TestZmqBasics(ZmqBaseTestCase):
 
 class TestPoller(test_utils.BaseTestCase):
 
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestPoller, self).setUp()
         self.poller = zmq_async.get_poller()

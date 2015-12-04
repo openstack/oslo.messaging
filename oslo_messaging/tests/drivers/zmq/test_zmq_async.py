@@ -11,15 +11,19 @@
 #    under the License.
 
 import mock
+import testtools
 
 from oslo_messaging._drivers.zmq_driver.poller import green_poller
 from oslo_messaging._drivers.zmq_driver.poller import threading_poller
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging.tests import utils as test_utils
 
+zmq = zmq_async.import_zmq()
+
 
 class TestImportZmq(test_utils.BaseTestCase):
 
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestImportZmq, self).setUp()
 
@@ -29,12 +33,12 @@ class TestImportZmq(test_utils.BaseTestCase):
 
         zmq_async.importutils.try_import.return_value = 'mock zmq module'
         self.assertEqual('mock zmq module', zmq_async.import_zmq('native'))
-        mock_try_import.assert_called_with('zmq', default='zmq')
+        mock_try_import.assert_called_with('zmq', default=None)
 
         zmq_async.importutils.try_import.return_value = 'mock eventlet module'
         self.assertEqual('mock eventlet module',
                          zmq_async.import_zmq('eventlet'))
-        mock_try_import.assert_called_with('eventlet.green.zmq', default='zmq')
+        mock_try_import.assert_called_with('eventlet.green.zmq', default=None)
 
     def test_when_no_args_then_default_zmq_module_is_loaded(self):
         mock_try_import = mock.Mock()
@@ -42,14 +46,7 @@ class TestImportZmq(test_utils.BaseTestCase):
 
         zmq_async.import_zmq()
 
-        mock_try_import.assert_called_with('eventlet.green.zmq', default='zmq')
-
-    def test_when_import_fails_then_raise_ImportError(self):
-        zmq_async.importutils.try_import = mock.Mock()
-        zmq_async.importutils.try_import.return_value = None
-
-        with self.assertRaisesRegexp(ImportError, "ZeroMQ not found!"):
-            zmq_async.import_zmq('native')
+        mock_try_import.assert_called_with('eventlet.green.zmq', default=None)
 
     def test_invalid_config_value_raise_ValueError(self):
         invalid_opt = 'x'
@@ -61,6 +58,7 @@ class TestImportZmq(test_utils.BaseTestCase):
 
 class TestGetPoller(test_utils.BaseTestCase):
 
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestGetPoller, self).setUp()
 
@@ -100,6 +98,7 @@ class TestGetPoller(test_utils.BaseTestCase):
 
 class TestGetReplyPoller(test_utils.BaseTestCase):
 
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestGetReplyPoller, self).setUp()
 
@@ -134,6 +133,7 @@ class TestGetReplyPoller(test_utils.BaseTestCase):
 
 class TestGetExecutor(test_utils.BaseTestCase):
 
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestGetExecutor, self).setUp()
 
