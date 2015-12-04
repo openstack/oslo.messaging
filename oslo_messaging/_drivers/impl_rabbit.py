@@ -581,7 +581,10 @@ class Connection(object):
         LOG.info(_LI("The broker has unblocked the connection"))
 
     def ensure_connection(self):
-        self.ensure(method=lambda: True)
+        # NOTE(sileht): we reset the channel and ensure
+        # the kombu underlying connection works
+        self._set_current_channel(None)
+        self.ensure(method=lambda: self.connection.connection)
 
     def ensure(self, method, retry=None,
                recoverable_error_callback=None, error_callback=None,
@@ -732,7 +735,6 @@ class Connection(object):
                 for tag, consumer in enumerate(self._consumers):
                     consumer.cancel(tag=tag)
             except recoverable_errors:
-                self._set_current_channel(None)
                 self.ensure_connection()
             self._consumers = []
 
