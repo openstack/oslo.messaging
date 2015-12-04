@@ -379,7 +379,7 @@ class TestSendReceive(test_utils.BaseTestCase):
                                                          cls._reply_ending)
 
     def test_send_receive(self):
-        self.config(kombu_reconnect_timeout=0.5,
+        self.config(kombu_missing_consumer_retry_timeout=0.5,
                     group="oslo_messaging_rabbit")
         self.config(heartbeat_timeout_threshold=0,
                     group="oslo_messaging_rabbit")
@@ -474,10 +474,10 @@ class TestSendReceive(test_utils.BaseTestCase):
 
         if self.reply_failure_404:
             # NOTE(sileht) all reply fail, first take
-            # kombu_reconnect_timeout seconds to fail
+            # kombu_missing_consumer_retry_timeout seconds to fail
             # next immediately fail
             dt = time.time() - start
-            timeout = self.conf.oslo_messaging_rabbit.kombu_reconnect_timeout
+            timeout = self.conf.oslo_messaging_rabbit.kombu_missing_consumer_retry_timeout
             self.assertTrue(timeout <= dt < (timeout + 0.100), dt)
 
         self.assertEqual(len(senders), len(replies))
