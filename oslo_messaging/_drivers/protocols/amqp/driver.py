@@ -180,7 +180,7 @@ class ProtonDriver(base.BaseDriver):
         """Send a message to the given target."""
         # TODO(kgiusti) need to add support for retry
         if retry is not None:
-            raise NotImplementedError('"retry" not implemented by'
+            raise NotImplementedError('"retry" not implemented by '
                                       'this transport driver')
 
         request = marshal_request(message, ctxt, envelope)
@@ -210,7 +210,7 @@ class ProtonDriver(base.BaseDriver):
         """Send a notification message to the given target."""
         # TODO(kgiusti) need to add support for retry
         if retry is not None:
-            raise NotImplementedError('"retry" not implemented by'
+            raise NotImplementedError('"retry" not implemented by '
                                       'this transport driver')
         return self.send(target, ctxt, message, envelope=(version == 2.0))
 
@@ -226,7 +226,7 @@ class ProtonDriver(base.BaseDriver):
     def listen_for_notifications(self, targets_and_priorities, pool):
         LOG.debug("Listen for notifications %s", targets_and_priorities)
         if pool:
-            raise NotImplementedError('"pool" not implemented by'
+            raise NotImplementedError('"pool" not implemented by '
                                       'this transport driver')
         listener = ProtonListener(self)
         for target, priority in targets_and_priorities:
