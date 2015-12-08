@@ -281,15 +281,19 @@ def main():
 
     _setup_logging(is_debug=args.debug)
 
+    if args.mode in ['rpc-server', 'rpc-client']:
+        transport = messaging.get_transport(cfg.CONF, url=args.url)
+    else:
+        transport = messaging.get_notification_transport(cfg.CONF,
+                                                         url=args.url)
+        cfg.CONF.oslo_messaging_notifications.topics = "notif"
+        cfg.CONF.oslo_messaging_notifications.driver = "messaging"
+    target = messaging.Target(topic=args.topic, server='profiler_server')
+
     # oslo.config defaults
     cfg.CONF.heartbeat_interval = 5
-    cfg.CONF.oslo_messaging_notifications.topics = "notif"
-    cfg.CONF.oslo_messaging_notifications.driver = "messaging"
     cfg.CONF.prog = os.path.basename(__file__)
     cfg.CONF.project = 'oslo.messaging'
-
-    transport = messaging.get_transport(cfg.CONF, url=args.url)
-    target = messaging.Target(topic=args.topic, server='profiler_server')
 
     if args.mode == 'rpc-server':
         if args.url.startswith('zmq'):

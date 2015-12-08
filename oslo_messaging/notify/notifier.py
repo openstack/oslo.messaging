@@ -90,9 +90,9 @@ class Driver(object):
 
 def get_notification_transport(conf, url=None,
                                allowed_remote_exmods=None, aliases=None):
+    conf.register_opts(_notifier_opts,
+                       group='oslo_messaging_notifications')
     if url is None:
-        conf.register_opts(_notifier_opts,
-                           group='oslo_messaging_notifications')
         url = conf.oslo_messaging_notifications.transport_url
     return msg_transport.get_transport(conf, url,
                                        allowed_remote_exmods, aliases)
