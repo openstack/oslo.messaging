@@ -12,15 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_log import log as logging
-
-from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
-from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
-
 import threading
 import time
 import uuid
 
+from concurrent import futures
+from oslo_log import log as logging
+
+from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
+from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
 
 LOG = logging.getLogger(__name__)
 
@@ -111,13 +111,16 @@ class RpcReplyPikaListener(object):
             except BaseException:
                 LOG.exception("Unexpected exception during reply polling")
 
-    def register_reply_waiter(self, msg_id, future):
+    def register_reply_waiter(self, msg_id):
         """Register reply waiter. Should be called before message sending to
         the server
         :param msg_id: String, message_id of expected reply
-        :param future: Future, container for expected reply to be returned over
+        :return future: Future, container for expected reply to be returned
+            over
         """
+        future = futures.Future()
         self._reply_waiting_futures[msg_id] = future
+        return future
 
     def unregister_reply_waiter(self, msg_id):
         """Unregister reply waiter. Should be called if client has not got

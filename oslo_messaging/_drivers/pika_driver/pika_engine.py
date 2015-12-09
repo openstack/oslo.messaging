@@ -11,22 +11,20 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+import socket
+import sys
+import threading
+import time
+
 from oslo_log import log as logging
-
-from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
-
 import pika
 from pika.adapters import select_connection
 from pika import credentials as pika_credentials
-
 import pika_pool
-
 import six
-import socket
-import sys
 
-import threading
-import time
+from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 LOG = logging.getLogger(__name__)
 

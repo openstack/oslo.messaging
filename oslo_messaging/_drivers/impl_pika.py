@@ -12,21 +12,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import time
+
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_messaging import exceptions
+import pika_pool
+import retrying
 
 from oslo_messaging._drivers.pika_driver import pika_engine as pika_drv_engine
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_listener as pika_drv_lstnr
 from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
-
-from oslo_messaging import exceptions
-
-import pika_pool
-
-import retrying
-import time
 
 LOG = logging.getLogger(__name__)
 
@@ -144,7 +142,6 @@ class PikaDriver(object):
         conf.register_opts(notification_opts, group=opt_group)
 
         self.conf = conf
-        self._allowed_remote_exmods = allowed_remote_exmods
 
         self._pika_engine = pika_drv_engine.PikaEngine(
             conf, url, default_exchange, allowed_remote_exmods
@@ -277,27 +274,3 @@ class PikaDriver(object):
 
     def cleanup(self):
         self._reply_listener.cleanup()
-
-
-class PikaDriverCompatibleWithRabbitDriver(PikaDriver):
-    """Old RabbitMQ driver creates exchange before sending message.
-    In this case if no rpc service listen this exchange message will be sent
-    to /dev/null but client will know anything about it. That is strange.
-    But for now we need to keep original behaviour
-    """
-    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             retry=None):
-        try:
-            return super(PikaDriverCompatibleWithRabbitDriver, self).send(
-                target=target,
-                ctxt=ctxt,
-                message=message,
-                wait_for_reply=wait_for_reply,
-                timeout=timeout,
-                retry=retry
-            )
-        except exceptions.MessageDeliveryFailure:
-            if wait_for_reply:
-                raise exceptions.MessagingTimeout()
-            else:
-                return None

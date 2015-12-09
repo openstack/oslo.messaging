@@ -564,11 +564,8 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
             msg_dict["_reply_q"] = reply_listener.get_reply_qname(
                 expiration_time - time.time()
             )
-            future = futures.Future()
 
-            reply_listener.register_reply_waiter(
-                msg_id=msg_id, future=future
-            )
+            future = reply_listener.register_reply_waiter(msg_id=msg_id)
 
             self._do_send(
                 exchange=exchange, routing_key=queue, msg_dict=msg_dict,
