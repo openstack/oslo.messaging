@@ -897,6 +897,8 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             'kombu.connection.Connection.connect',
             side_effect=self.kombu_connect))
         self.useFixture(mockpatch.Patch(
+            'kombu.connection.Connection.connection'))
+        self.useFixture(mockpatch.Patch(
             'kombu.connection.Connection.channel'))
 
         # starting from the first broker in the list
