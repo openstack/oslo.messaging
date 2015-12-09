@@ -1141,8 +1141,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
             conf, url,
             connection_pool,
             default_exchange,
-            allowed_remote_exmods,
-            conf.oslo_messaging_rabbit.send_single_reply,
+            allowed_remote_exmods
         )
 
     def require_features(self, requeue=True):
