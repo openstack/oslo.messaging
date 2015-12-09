@@ -41,7 +41,7 @@ class SendTask(controller.Task):
         """Wait for the send to complete, and, optionally, a reply message from
         the remote.  Will raise MessagingTimeout if the send does not complete
         or no reply is received within timeout seconds. If the request has
-        failed for any other reason, a MessagingException is raised."
+        failed for any other reason, a MessagingException is raised.
         """
         try:
             result = self._results_queue.get(timeout=timeout)
