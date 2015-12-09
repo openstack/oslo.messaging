@@ -878,6 +878,10 @@ class Connection(object):
                         'retry': retry}
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
+        except rpc_amqp.AMQPDestinationNotFound:
+            # NOTE(sileht): we must reraise this without
+            # trigger error_callback
+            raise
         except Exception as exc:
             error_callback and error_callback(exc)
             raise
