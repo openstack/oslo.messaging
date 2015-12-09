@@ -145,7 +145,9 @@ class RPCDispatcher(object):
                       e.exc_info[1])
             incoming.reply(failure=e.exc_info, log_failure=False)
         except Exception as e:
-            # sys.exc_info() is deleted by LOG.exception().
+            # current sys.exc_info() content can be overriden
+            # by another exception raise by a log handler during
+            # LOG.exception(). So keep a copy and delete it later.
             exc_info = sys.exc_info()
             LOG.error(_LE('Exception during message handling: %s'), e,
                       exc_info=exc_info)
