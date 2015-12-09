@@ -90,7 +90,7 @@ class PublisherBase(object):
         :param request: Message data and destination container object
         :type request: zmq_request.Request
         """
-        LOG.debug("Sending %(type)s message_id %(message)s to a target"
+        LOG.debug("Sending %(type)s message_id %(message)s to a target "
                   "%(target)s"
                   % {"type": request.msg_type,
                      "message": request.message_id,
