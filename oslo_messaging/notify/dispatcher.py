@@ -18,7 +18,7 @@ import itertools
 import logging
 import sys
 
-from oslo_messaging import _utils as utils
+from oslo_messaging import dispatcher
 from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
 
@@ -33,7 +33,7 @@ class NotificationResult(object):
     REQUEUE = 'requeue'
 
 
-class NotificationDispatcher(object):
+class NotificationDispatcher(dispatcher.DispatcherBase):
     """A message dispatcher which understands Notification messages.
 
     A MessageHandlingServer is constructed by passing a callable dispatcher
@@ -69,7 +69,7 @@ class NotificationDispatcher(object):
                                                    pool=self.pool)
 
     def __call__(self, incoming, executor_callback=None):
-        return utils.DispatcherExecutorContext(
+        return dispatcher.DispatcherExecutorContext(
             incoming, self._dispatch_and_handle_error,
             executor_callback=executor_callback,
             post=self._post_dispatch)

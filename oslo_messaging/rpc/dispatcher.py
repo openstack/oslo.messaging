@@ -31,6 +31,7 @@ import six
 
 from oslo_messaging._i18n import _LE
 from oslo_messaging import _utils as utils
+from oslo_messaging import dispatcher
 from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import server as msg_server
@@ -75,7 +76,7 @@ class UnsupportedVersion(RPCDispatcherError):
         self.method = method
 
 
-class RPCDispatcher(object):
+class RPCDispatcher(dispatcher.DispatcherBase):
     """A message dispatcher which understands RPC messages.
 
     A MessageHandlingServer is constructed by passing a callable dispatcher
@@ -131,7 +132,7 @@ class RPCDispatcher(object):
 
     def __call__(self, incoming, executor_callback=None):
         incoming.acknowledge()
-        return utils.DispatcherExecutorContext(
+        return dispatcher.DispatcherExecutorContext(
             incoming, self._dispatch_and_reply,
             executor_callback=executor_callback)
 

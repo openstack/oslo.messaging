@@ -46,57 +46,6 @@ def version_is_compatible(imp_version, version):
     return True
 
 
-class DispatcherExecutorContext(object):
-    """Dispatcher executor context helper
-
-    A dispatcher can have work to do before and after the dispatch of the
-    request in the main server thread while the dispatcher itself can be
-    done in its own thread.
-
-    The executor can use the helper like this:
-
-        callback = dispatcher(incoming)
-        callback.prepare()
-        thread = MyWhateverThread()
-        thread.on_done(callback.done)
-        thread.run(callback.run)
-
-    """
-    def __init__(self, incoming, dispatch, executor_callback=None,
-                 post=None):
-        self._result = None
-        self._incoming = incoming
-        self._dispatch = dispatch
-        self._post = post
-        self._executor_callback = executor_callback
-
-    def run(self):
-        """The incoming message dispath itself
-
-        Can be run in an other thread/greenlet/corotine if the executor is
-        able to do it.
-        """
-        try:
-            self._result = self._dispatch(self._incoming,
-                                          self._executor_callback)
-        except Exception:
-            msg = 'The dispatcher method must catches all exceptions'
-            LOG.exception(msg)
-            raise RuntimeError(msg)
-
-    def done(self):
-        """Callback after the incoming message have been dispathed
-
-        Should be ran in the main executor thread/greenlet/corotine
-        """
-        # FIXME(sileht): this is not currently true, this works only because
-        # the driver connection used for polling write on the wire only to
-        # ack/requeue message, but what if one day, the driver do something
-        # else
-        if self._post is not None:
-            self._post(self._incoming, self._result)
-
-
 def fetch_current_thread_functor():
     # Until https://github.com/eventlet/eventlet/issues/172 is resolved
     # or addressed we have to use complicated workaround to get a object
