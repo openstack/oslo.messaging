@@ -109,7 +109,7 @@ class Timeout(RPCException):
 
         :param info: Extra info to convey to the user
         :param topic: The topic that the rpc call was sent to
-        :param rpc_method_name: The name of the rpc method being
+        :param method: The name of the rpc method being
                                 called
         """
         self.info = info

@@ -342,14 +342,6 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         registering a callback with an event loop. Similarly, the executor may
         choose to dispatch messages in a new thread, coroutine or simply the
         current thread.
-
-        :param log_after: Emit a log message if waiting longer than `log_after`
-                          seconds to run this task. If set to zero, no log
-                          message will be emitted.  Defaults to 30 seconds.
-        :type log_after: int
-        :param timeout: Raise `TaskTimeout` if the task has to wait longer than
-                        `timeout` seconds before executing.
-        :type timeout: int
         """
         # Warn that restarting will be deprecated
         if self._started:
@@ -382,14 +374,6 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         the server. However, the server may still be in the process of handling
         some messages, and underlying driver resources associated to this
         server are still in use. See 'wait' for more details.
-
-        :param log_after: Emit a log message if waiting longer than `log_after`
-                          seconds to run this task. If set to zero, no log
-                          message will be emitted.  Defaults to 30 seconds.
-        :type log_after: int
-        :param timeout: Raise `TaskTimeout` if the task has to wait longer than
-                        `timeout` seconds before executing.
-        :type timeout: int
         """
         self._executor_obj.stop()
 
@@ -403,14 +387,6 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
 
         Once it's finished, the underlying driver resources associated to this
         server are released (like closing useless network connections).
-
-        :param log_after: Emit a log message if waiting longer than `log_after`
-                          seconds to run this task. If set to zero, no log
-                          message will be emitted.  Defaults to 30 seconds.
-        :type log_after: int
-        :param timeout: Raise `TaskTimeout` if the task has to wait longer than
-                        `timeout` seconds before executing.
-        :type timeout: int
         """
         try:
             self._executor_obj.wait()
