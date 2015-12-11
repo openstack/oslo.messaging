@@ -16,6 +16,7 @@ import uuid
 
 import concurrent.futures
 from oslo_config import cfg
+import six.moves
 from testtools import matchers
 
 import oslo_messaging
@@ -27,8 +28,8 @@ class CallTestCase(utils.SkipIfNoTransportURL):
     def setUp(self):
         super(CallTestCase, self).setUp(conf=cfg.ConfigOpts())
 
-        self.conf.prog="test_prog"
-        self.conf.project="test_project"
+        self.conf.prog = "test_prog"
+        self.conf.project = "test_project"
 
         self.config(heartbeat_timeout_threshold=0,
                     group='oslo_messaging_rabbit')
@@ -324,3 +325,18 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(expected[1], actual[0])
             self.assertEqual(expected[2], actual[1])
             self.assertEqual(expected[3], actual[2])
+
+    def test_simple_batch(self):
+        listener = self.useFixture(
+            utils.BatchNotificationFixture(self.conf, self.url,
+                                           ['test_simple_batch'],
+                                           batch_size=100, batch_timeout=2))
+        notifier = listener.notifier('abc')
+
+        for i in six.moves.range(0, 205):
+            notifier.info({}, 'test%s' % i, 'Hello World!')
+        events = listener.get_events(timeout=3)
+        self.assertEqual(3, len(events), events)
+        self.assertEqual(100, len(events[0][1]))
+        self.assertEqual(100, len(events[1][1]))
+        self.assertEqual(5, len(events[2][1]))

@@ -107,7 +107,7 @@ class TestDispatcher(test_utils.BaseTestCase):
                          sorted(dispatcher._targets_priorities))
 
         incoming = mock.Mock(ctxt={}, message=msg)
-        callback = dispatcher(incoming)
+        callback = dispatcher([incoming])
         callback.run()
         callback.done()
 
@@ -144,7 +144,7 @@ class TestDispatcher(test_utils.BaseTestCase):
         msg['priority'] = 'what???'
         dispatcher = notify_dispatcher.NotificationDispatcher(
             [mock.Mock()], [mock.Mock()], None, allow_requeue=True, pool=None)
-        callback = dispatcher(mock.Mock(ctxt={}, message=msg))
+        callback = dispatcher([mock.Mock(ctxt={}, message=msg)])
         callback.run()
         callback.done()
         mylog.warning.assert_called_once_with('Unknown priority "%s"',
@@ -246,7 +246,7 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
                    'timestamp': '2014-03-03 18:21:04.369234',
                    'message_id': '99863dda-97f0-443a-a0c1-6ed317b7fd45'}
         incoming = mock.Mock(ctxt=self.context, message=message)
-        callback = dispatcher(incoming)
+        callback = dispatcher([incoming])
         callback.run()
         callback.done()
 

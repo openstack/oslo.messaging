@@ -423,7 +423,7 @@ class TestSendReceive(test_utils.BaseTestCase):
         for i in range(len(senders)):
             senders[i].start()
 
-            received = listener.poll()
+            received = listener.poll()[0]
             self.assertIsNotNone(received)
             self.assertEqual(self.ctxt, received.ctxt)
             self.assertEqual({'tx_id': i}, received.message)
@@ -501,7 +501,7 @@ class TestPollAsync(test_utils.BaseTestCase):
         target = oslo_messaging.Target(topic='testtopic')
         listener = driver.listen(target)
         received = listener.poll(timeout=0.050)
-        self.assertIsNone(received)
+        self.assertEqual([], received)
 
 
 class TestRacyWaitForReply(test_utils.BaseTestCase):
@@ -561,13 +561,13 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
             senders[0].start()
             notify_condition.wait()
 
-        msgs.append(listener.poll())
+        msgs.extend(listener.poll())
         self.assertEqual({'tx_id': 0}, msgs[-1].message)
 
         # Start the second guy, receive his message
         senders[1].start()
 
-        msgs.append(listener.poll())
+        msgs.extend(listener.poll())
         self.assertEqual({'tx_id': 1}, msgs[-1].message)
 
         # Reply to both in order, making the second thread queue
@@ -581,7 +581,7 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         # Start the 3rd guy, receive his message
         senders[2].start()
 
-        msgs.append(listener.poll())
+        msgs.extend(listener.poll())
         self.assertEqual({'tx_id': 2}, msgs[-1].message)
 
         # Verify the _send_reply was not invoked by driver:
@@ -862,7 +862,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
 
         producer.publish(msg)
 
-        received = listener.poll()
+        received = listener.poll()[0]
         self.assertIsNotNone(received)
         self.assertEqual(self.expected_ctxt, received.ctxt)
         self.assertEqual(self.expected, received.message)

@@ -131,9 +131,9 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         return self.serializer.serialize_entity(ctxt, result)
 
     def __call__(self, incoming, executor_callback=None):
-        incoming.acknowledge()
+        incoming[0].acknowledge()
         return dispatcher.DispatcherExecutorContext(
-            incoming, self._dispatch_and_reply,
+            incoming[0], self._dispatch_and_reply,
             executor_callback=executor_callback)
 
     def _dispatch_and_reply(self, incoming, executor_callback):

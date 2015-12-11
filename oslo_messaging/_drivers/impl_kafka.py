@@ -252,6 +252,7 @@ class KafkaListener(base.Listener):
         self.conn = conn
         self.incoming_queue = []
 
+    @base.batch_poll_helper
     def poll(self, timeout=None):
         while not self._stopped.is_set():
             if self.incoming_queue:

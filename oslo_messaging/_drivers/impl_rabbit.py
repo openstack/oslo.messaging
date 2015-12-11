@@ -859,7 +859,8 @@ class Connection(object):
             raise rpc_common.Timeout()
 
         def _recoverable_error_callback(exc):
-            self._new_consumers = self._consumers
+            if not isinstance(exc, rpc_common.Timeout):
+                self._new_consumers = self._consumers
             timer.check_return(_raise_timeout, exc)
 
         def _error_callback(exc):
