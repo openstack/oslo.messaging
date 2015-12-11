@@ -115,11 +115,11 @@ class AMQPIncomingMessage(base.IncomingMessage):
                 return
             except rpc_amqp.AMQPDestinationNotFound:
                 if timer.check_return() > 0:
-                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
-                                 "%(reply_q)s reply queue don't exist, "
-                                 "retrying...") % {
-                                     'msg_id': self.msg_id,
-                                     'reply_q': self.reply_q})
+                    LOG.debug(("The reply %(msg_id)s cannot be sent  "
+                               "%(reply_q)s reply queue don't exist, "
+                               "retrying...") % {
+                                   'msg_id': self.msg_id,
+                                   'reply_q': self.reply_q})
                     time.sleep(0.25)
                 else:
                     self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
