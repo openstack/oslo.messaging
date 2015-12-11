@@ -56,6 +56,7 @@ class _NotificationDispatcherBase(dispatcher.DispatcherBase):
                                                          priorities))
 
     def _listen(self, transport):
+        transport._require_driver_features(requeue=self.allow_requeue)
         return transport._listen_for_notifications(self._targets_priorities,
                                                    pool=self.pool)
 
