@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import random
 import socket
 import sys
 import threading
@@ -44,7 +45,7 @@ def _is_eventlet_monkey_patched(module):
     return eventlet.patcher.is_monkey_patched(module)
 
 
-def _create__select_poller_connection_impl(
+def _create_select_poller_connection_impl(
         parameters, on_open_callback, on_open_error_callback,
         on_close_callback, stop_ioloop_on_close):
     """Used for disabling autochoise of poller ('select', 'poll', 'epool', etc)
@@ -198,7 +199,6 @@ class PikaEngine(object):
 
         self._connection_host_param_list = []
         self._connection_host_status_list = []
-        self._next_connection_host_num = 0
 
         for transport_host in url.hosts:
             pika_params = common_pika_params.copy()
@@ -215,9 +215,13 @@ class PikaEngine(object):
                 self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME: 0
             })
 
+        self._next_connection_host_num = random.randint(
+            0, len(self._connection_host_param_list) - 1
+        )
+
         # initializing 2 connection pools: 1st for connections without
         # confirmations, 2nd - with confirmations
-        self.connection_pool = pika_pool.QueuedPool(
+        self.connection_without_confirmation_pool = pika_pool.QueuedPool(
             create=self.create_connection,
             max_size=self.conf.oslo_messaging_pika.pool_max_size,
             max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
@@ -336,7 +340,7 @@ class PikaEngine(object):
                         ),
                         **base_host_params
                     ),
-                    _impl_class=(_create__select_poller_connection_impl
+                    _impl_class=(_create_select_poller_connection_impl
                                  if self._force_select_poller_use else None)
                 )
 

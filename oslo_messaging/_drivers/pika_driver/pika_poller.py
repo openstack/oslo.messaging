@@ -18,6 +18,7 @@ import time
 from oslo_log import log as logging
 import pika_pool
 import retrying
+import six
 
 from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 
@@ -68,7 +69,7 @@ class PikaPoller(object):
         if self._queues_to_consume is None:
             self._queues_to_consume = self._declare_queue_binding()
 
-        for queue, no_ack in self._queues_to_consume.iteritems():
+        for queue, no_ack in six.iteritems(self._queues_to_consume):
             self._start_consuming(queue, no_ack)
 
     def _declare_queue_binding(self):

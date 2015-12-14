@@ -198,8 +198,8 @@ class PikaDriver(object):
                 "Timeout for current operation was expired."
             )
         try:
-            with self._pika_engine.connection_pool.acquire(
-                    timeout=timeout) as conn:
+            with (self._pika_engine.connection_without_confirmation_pool
+                    .acquire)(timeout=timeout) as conn:
                 self._pika_engine.declare_queue_binding_by_channel(
                     conn.channel,
                     exchange=(

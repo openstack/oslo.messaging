@@ -95,40 +95,36 @@ class PikaIncomingMessage(object):
         self._pika_engine = pika_engine
         self._no_ack = no_ack
         self._channel = channel
-        self.delivery_tag = method.delivery_tag
+        self._delivery_tag = method.delivery_tag
 
-        self.version = version
+        self._version = version
 
-        self.content_type = getattr(properties, "content_type",
-                                    "application/json")
-        self.content_encoding = getattr(properties, "content_encoding",
-                                        "utf-8")
+        self._content_type = properties.content_type
+        self._content_encoding = properties.content_encoding
+        self.unique_id = properties.message_id
 
         self.expiration_time = (
             None if properties.expiration is None else
             time.time() + float(properties.expiration) / 1000
         )
 
-        if self.content_type != "application/json":
+        if self._content_type != "application/json":
             raise NotImplementedError(
                 "Content-type['{}'] is not valid, "
                 "'application/json' only is supported.".format(
-                    self.content_type
+                    self._content_type
                 )
             )
 
-        message_dict = jsonutils.loads(body, encoding=self.content_encoding)
+        message_dict = jsonutils.loads(body, encoding=self._content_encoding)
 
         context_dict = {}
 
         for key in list(message_dict.keys()):
             key = six.text_type(key)
-            if key.startswith('_context_'):
+            if key.startswith('_$_'):
                 value = message_dict.pop(key)
-                context_dict[key[9:]] = value
-            elif key.startswith('_'):
-                value = message_dict.pop(key)
-                setattr(self, key[1:], value)
+                context_dict[key[3:]] = value
         self.message = message_dict
         self.ctxt = context_dict
 
@@ -138,7 +134,7 @@ class PikaIncomingMessage(object):
         message anymore)
         """
         if not self._no_ack:
-            self._channel.basic_ack(delivery_tag=self.delivery_tag)
+            self._channel.basic_ack(delivery_tag=self._delivery_tag)
 
     def requeue(self):
         """Rollback the message. Should be called by message processing logic
@@ -146,7 +142,7 @@ class PikaIncomingMessage(object):
         later if it is possible
         """
         if not self._no_ack:
-            return self._channel.basic_nack(delivery_tag=self.delivery_tag,
+            return self._channel.basic_nack(delivery_tag=self._delivery_tag,
                                             requeue=True)
 
 
@@ -170,58 +166,30 @@ class RpcPikaIncomingMessage(PikaIncomingMessage):
         :param no_ack: Boolean, defines should this message be acked by
             consumer or not
         """
-        self.msg_id = None
-        self.reply_q = None
-
         super(RpcPikaIncomingMessage, self).__init__(
             pika_engine, channel, method, properties, body, no_ack
         )
+        self.reply_q = properties.reply_to
+        self.msg_id = properties.correlation_id
 
     def reply(self, reply=None, failure=None, log_failure=True):
         """Send back reply to the RPC client
-        :param reply - Dictionary, reply. In case of exception should be None
-        :param failure - Exception, exception, raised during processing RPC
-            request. Should be None if RPC request was successfully processed
-        :param log_failure, Boolean, not used in this implementation.
+        :param reply: Dictionary, reply. In case of exception should be None
+        :param failure: Tuple, should be a sys.exc_info() tuple.
+            Should be None if RPC request was successfully processed.
+        :param log_failure: Boolean, not used in this implementation.
             It present here to be compatible with driver API
+
+        :return RpcReplyPikaIncomingMessage, message with reply
         """
-        if not (self.msg_id and self.reply_q):
+
+        if self.reply_q is None:
             return
 
-        msg = {
-            '_msg_id': self.msg_id,
-        }
-
-        if failure is not None:
-            if isinstance(failure, RemoteExceptionMixin):
-                failure_data = {
-                    'class': failure.clazz,
-                    'module': failure.module,
-                    'message': failure.message,
-                    'tb': failure.trace
-                }
-            else:
-                tb = traceback.format_exception(*failure)
-                failure = failure[1]
-
-                cls_name = six.text_type(failure.__class__.__name__)
-                mod_name = six.text_type(failure.__class__.__module__)
-
-                failure_data = {
-                    'class': cls_name,
-                    'module': mod_name,
-                    'message': six.text_type(failure),
-                    'tb': tb
-                }
-
-            msg['_failure'] = failure_data
-
-        if reply is not None:
-            msg['_result'] = reply
-
-        reply_outgoing_message = PikaOutgoingMessage(
-            self._pika_engine, msg, self.ctxt, content_type=self.content_type,
-            content_encoding=self.content_encoding
+        reply_outgoing_message = RpcReplyPikaOutgoingMessage(
+            self._pika_engine, self.msg_id, reply=reply, failure_info=failure,
+            content_type=self._content_type,
+            content_encoding=self._content_encoding
         )
 
         def on_exception(ex):
@@ -242,11 +210,7 @@ class RpcPikaIncomingMessage(PikaIncomingMessage):
 
         try:
             reply_outgoing_message.send(
-                exchange=self._pika_engine.rpc_reply_exchange,
-                routing_key=self.reply_q,
-                confirm=True,
-                mandatory=False,
-                persistent=False,
+                reply_q=self.reply_q,
                 expiration_time=self.expiration_time,
                 retrier=retrier
             )
@@ -282,18 +246,20 @@ class RpcReplyPikaIncomingMessage(PikaIncomingMessage):
         :param no_ack: Boolean, defines should this message be acked by
             consumer or not
         """
-        self.result = None
-        self.failure = None
-
         super(RpcReplyPikaIncomingMessage, self).__init__(
             pika_engine, channel, method, properties, body, no_ack
         )
 
+        self.msg_id = properties.correlation_id
+
+        self.result = self.message.get("s", None)
+        self.failure = self.message.get("e", None)
+
         if self.failure is not None:
-            trace = self.failure.get('tb', [])
-            message = self.failure.get('message', "")
-            class_name = self.failure.get('class')
-            module_name = self.failure.get('module')
+            trace = self.failure.get('t', [])
+            message = self.failure.get('s', "")
+            class_name = self.failure.get('c')
+            module_name = self.failure.get('m')
 
             res_exc = None
 
@@ -343,14 +309,14 @@ class PikaOutgoingMessage(object):
 
         self._pika_engine = pika_engine
 
-        self.content_type = content_type
-        self.content_encoding = content_encoding
+        self._content_type = content_type
+        self._content_encoding = content_encoding
 
-        if self.content_type != "application/json":
+        if self._content_type != "application/json":
             raise NotImplementedError(
                 "Content-type['{}'] is not valid, "
                 "'application/json' only is supported.".format(
-                    self.content_type
+                    self._content_type
                 )
             )
 
@@ -362,23 +328,21 @@ class PikaOutgoingMessage(object):
     def _prepare_message_to_send(self):
         """Combine user's message fields an system fields (_unique_id,
         context's data etc)
-
-        :param pika_engine: PikaEngine, shared object with configuration and
-            shared driver functionality
-        :param message: Dictionary, user's message fields
-        :param context: Dictionary, request context's fields
-        :param content_type: String, content-type header, defines serialization
-            mechanism
-        :param content_encoding: String, defines encoding for text data
         """
         msg = self.message.copy()
 
-        msg['_unique_id'] = self.unique_id
+        if self.context:
+            for key, value in six.iteritems(self.context):
+                key = six.text_type(key)
+                msg['_$_' + key] = value
 
-        for key, value in self.context.iteritems():
-            key = six.text_type(key)
-            msg['_context_' + key] = value
-        return msg
+        props = pika_spec.BasicProperties(
+            content_encoding=self._content_encoding,
+            content_type=self._content_type,
+            headers={_VERSION_HEADER: _VERSION},
+            message_id=self.unique_id,
+        )
+        return msg, props
 
     @staticmethod
     def _publish(pool, exchange, routing_key, body, properties, mandatory,
@@ -456,14 +420,15 @@ class PikaOutgoingMessage(object):
                 "Socket timeout exceeded."
             )
 
-    def _do_send(self, exchange, routing_key, msg_dict, confirm=True,
-                 mandatory=True, persistent=False, expiration_time=None,
-                 retrier=None):
+    def _do_send(self, exchange, routing_key, msg_dict, msg_props,
+                 confirm=True, mandatory=True, persistent=False,
+                 expiration_time=None, retrier=None):
         """Send prepared message with configured retrying
 
         :param exchange: String, RabbitMQ exchange name for message sending
         :param routing_key: String, RabbitMQ routing key for message routing
         :param msg_dict: Dictionary, message payload
+        :param msg_props: Properties, message properties
         :param confirm: Boolean, enable publisher confirmation if True
         :param mandatory: Boolean, RabbitMQ publish mandatory flag (raise
             exception if it is not possible to deliver message to any queue)
@@ -474,29 +439,26 @@ class PikaOutgoingMessage(object):
         :param retrier: retrying.Retrier, configured retrier object for sending
             message, if None no retrying is performed
         """
-        properties = pika_spec.BasicProperties(
-            content_encoding=self.content_encoding,
-            content_type=self.content_type,
-            headers={_VERSION_HEADER: _VERSION},
-            delivery_mode=2 if persistent else 1
-        )
+        msg_props.delivery_mode = 2 if persistent else 1
 
         pool = (self._pika_engine.connection_with_confirmation_pool
-                if confirm else self._pika_engine.connection_pool)
+                if confirm else
+                self._pika_engine.connection_without_confirmation_pool)
 
-        body = jsonutils.dumps(msg_dict, encoding=self.content_encoding)
+        body = jsonutils.dump_as_bytes(msg_dict,
+                                       encoding=self._content_encoding)
 
         LOG.debug(
             "Sending message:[body:{}; properties: {}] to target: "
             "[exchange:{}; routing_key:{}]".format(
-                body, properties, exchange, routing_key
+                body, msg_props, exchange, routing_key
             )
         )
 
         publish = (self._publish if retrier is None else
                    retrier(self._publish))
 
-        return publish(pool, exchange, routing_key, body, properties,
+        return publish(pool, exchange, routing_key, body, msg_props,
                        mandatory, expiration_time)
 
     def send(self, exchange, routing_key='', confirm=True, mandatory=True,
@@ -515,10 +477,11 @@ class PikaOutgoingMessage(object):
         :param retrier: retrying.Retrier, configured retrier object for sending
             message, if None no retrying is performed
         """
-        msg_dict = self._prepare_message_to_send()
+        msg_dict, msg_props = self._prepare_message_to_send()
 
-        return self._do_send(exchange, routing_key, msg_dict, confirm,
-                             mandatory, persistent, expiration_time, retrier)
+        return self._do_send(exchange, routing_key, msg_dict, msg_props,
+                             confirm, mandatory, persistent, expiration_time,
+                             retrier)
 
 
 class RpcPikaOutgoingMessage(PikaOutgoingMessage):
@@ -554,23 +517,25 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
             target.topic, target.server, retrier is None
         )
 
-        msg_dict = self._prepare_message_to_send()
+        msg_dict, msg_props = self._prepare_message_to_send()
 
         if reply_listener:
-            msg_id = uuid.uuid4().hex
-            msg_dict["_msg_id"] = msg_id
-            LOG.debug('MSG_ID is %s', msg_id)
+            self.msg_id = uuid.uuid4().hex
+            msg_props.correlation_id = self.msg_id
+            LOG.debug('MSG_ID is %s', self.msg_id)
 
-            msg_dict["_reply_q"] = reply_listener.get_reply_qname(
+            self.reply_q = reply_listener.get_reply_qname(
                 expiration_time - time.time()
             )
+            msg_props.reply_to = self.reply_q
 
-            future = reply_listener.register_reply_waiter(msg_id=msg_id)
+            future = reply_listener.register_reply_waiter(msg_id=self.msg_id)
 
             self._do_send(
                 exchange=exchange, routing_key=queue, msg_dict=msg_dict,
-                confirm=True, mandatory=True, persistent=False,
-                expiration_time=expiration_time, retrier=retrier
+                msg_props=msg_props, confirm=True, mandatory=True,
+                persistent=False, expiration_time=expiration_time,
+                retrier=retrier
             )
 
             try:
@@ -580,10 +545,78 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
                 if isinstance(e, futures.TimeoutError):
                     e = exceptions.MessagingTimeout()
                 raise e
-
         else:
             self._do_send(
                 exchange=exchange, routing_key=queue, msg_dict=msg_dict,
-                confirm=True, mandatory=True, persistent=False,
-                expiration_time=expiration_time, retrier=retrier
+                msg_props=msg_props, confirm=True, mandatory=True,
+                persistent=False, expiration_time=expiration_time,
+                retrier=retrier
             )
+
+
+class RpcReplyPikaOutgoingMessage(PikaOutgoingMessage):
+    """PikaOutgoingMessage implementation for RPC reply messages. It sets
+    correlation_id AMQP property to link this reply with response
+    """
+    def __init__(self, pika_engine, msg_id, reply=None, failure_info=None,
+                 content_type="application/json", content_encoding="utf-8"):
+        """Initialize with reply information for sending
+
+        :param pika_engine: PikaEngine, shared object with configuration and
+            shared driver functionality
+        :param msg_id: String, msg_id of RPC request, which waits for reply
+        :param reply: Dictionary, reply. In case of exception should be None
+        :param failure_info: Tuple, should be a sys.exc_info() tuple.
+            Should be None if RPC request was successfully processed.
+        :param content_type: String, content-type header, defines serialization
+            mechanism
+        :param content_encoding: String, defines encoding for text data
+        """
+        self.msg_id = msg_id
+
+        if failure_info is not None:
+            ex_class = failure_info[0]
+            ex = failure_info[1]
+            tb = traceback.format_exception(*failure_info)
+            if issubclass(ex_class, RemoteExceptionMixin):
+                failure_data = {
+                    'c': ex.clazz,
+                    'm': ex.module,
+                    's': ex.message,
+                    't': tb
+                }
+            else:
+                failure_data = {
+                    'c': six.text_type(ex_class.__name__),
+                    'm': six.text_type(ex_class.__module__),
+                    's': six.text_type(ex),
+                    't': tb
+                }
+
+            msg = {'e': failure_data}
+        else:
+            msg = {'s': reply}
+
+        super(RpcReplyPikaOutgoingMessage, self).__init__(
+            pika_engine, msg, None, content_type, content_encoding
+        )
+
+    def send(self, reply_q, expiration_time=None, retrier=None):
+        """Send RPC message with configured retrying
+
+        :param reply_q: String, queue name for sending reply
+        :param expiration_time: Float, expiration time in seconds
+            (like time.time())
+        :param retrier: retrying.Retrier, configured retrier object for sending
+            message, if None no retrying is performed
+        """
+
+        msg_dict, msg_props = self._prepare_message_to_send()
+        msg_props.correlation_id = self.msg_id
+
+        self._do_send(
+            exchange=self._pika_engine.rpc_reply_exchange, routing_key=reply_q,
+            msg_dict=msg_dict, msg_props=msg_props, confirm=True,
+            mandatory=True, persistent=False, expiration_time=expiration_time,
+            retrier=retrier
+        )
