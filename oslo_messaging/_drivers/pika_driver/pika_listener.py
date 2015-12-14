@@ -97,17 +97,27 @@ class RpcReplyPikaListener(object):
         """
         while self._reply_poller:
             try:
-                message = self._reply_poller.poll()
-                if message is None:
+                try:
+                    messages = self._reply_poller.poll()
+                except pika_drv_exc.EstablishConnectionException:
+                    LOG.exception("Problem during establishing connection for "
+                                  "reply polling")
+                    time.sleep(
+                        self._pika_engine.host_connection_reconnect_delay
+                    )
                     continue
-                message.acknowledge()
-                future = self._reply_waiting_futures.pop(message.msg_id, None)
-                if future is not None:
-                    future.set_result(message)
-            except pika_drv_exc.EstablishConnectionException:
-                LOG.exception("Problem during establishing connection for "
-                              "reply polling")
-                time.sleep(self._pika_engine.host_connection_reconnect_delay)
+
+                for message in messages:
+                    try:
+                        message.acknowledge()
+                        future = self._reply_waiting_futures.pop(
+                            message.msg_id, None
+                        )
+                        if future is not None:
+                            future.set_result(message)
+                    except Exception:
+                        LOG.exception("Unexpected exception during processing"
+                                      "reply message")
             except BaseException:
                 LOG.exception("Unexpected exception during reply polling")
 
