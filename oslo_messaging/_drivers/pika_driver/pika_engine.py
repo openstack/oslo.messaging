@@ -200,6 +200,9 @@ class PikaEngine(object):
         self._connection_host_param_list = []
         self._connection_host_status_list = []
 
+        if not url.hosts:
+            raise ValueError("You should provide at least one RabbitMQ host")
+
         for transport_host in url.hosts:
             pika_params = common_pika_params.copy()
             pika_params.update(

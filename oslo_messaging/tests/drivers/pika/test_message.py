@@ -46,7 +46,7 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
     def test_message_body_parsing(self):
         message = pika_drv_msg.PikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._body
         )
 
         self.assertEqual(message.ctxt.get("key_context", None),
@@ -57,7 +57,7 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
     def test_message_acknowledge(self):
         message = pika_drv_msg.PikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, False
+            self._body
         )
 
         message.acknowledge()
@@ -68,8 +68,8 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
 
     def test_message_acknowledge_no_ack(self):
         message = pika_drv_msg.PikaIncomingMessage(
-            self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._pika_engine, None, self._method, self._properties,
+            self._body
         )
 
         message.acknowledge()
@@ -79,7 +79,7 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
     def test_message_requeue(self):
         message = pika_drv_msg.PikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, False
+            self._body
         )
 
         message.requeue()
@@ -90,8 +90,8 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
 
     def test_message_requeue_no_ack(self):
         message = pika_drv_msg.PikaIncomingMessage(
-            self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._pika_engine, None, self._method, self._properties,
+            self._body
         )
 
         message.requeue()
@@ -126,7 +126,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         message = pika_drv_msg.RpcPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._body
         )
 
         self.assertEqual(message.ctxt.get("key_context", None),
@@ -140,7 +140,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
     def test_cast_message_body_parsing(self):
         message = pika_drv_msg.RpcPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._body
         )
 
         self.assertEqual(message.ctxt.get("key_context", None),
@@ -156,7 +156,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
     def test_reply_for_cast_message(self, send_reply_mock):
         message = pika_drv_msg.RpcPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._body
         )
 
         self.assertEqual(message.ctxt.get("key_context", None),
@@ -182,7 +182,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         message = pika_drv_msg.RpcPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._body
         )
 
         self.assertEqual(message.ctxt.get("key_context", None),
@@ -218,7 +218,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         message = pika_drv_msg.RpcPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            self._body, True
+            self._body
         )
 
         self.assertEqual(message.ctxt.get("key_context", None),
@@ -274,7 +274,7 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
 
         message = pika_drv_msg.RpcReplyPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            body, True
+            body
         )
 
         self.assertEqual(message.msg_id, 123456789)
@@ -294,7 +294,7 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
 
         message = pika_drv_msg.RpcReplyPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
-            body, True
+            body
         )
 
         self.assertEqual(message.msg_id, 123456789)

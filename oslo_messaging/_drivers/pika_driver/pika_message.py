@@ -72,18 +72,17 @@ class PikaIncomingMessage(object):
     information from RabbitMQ message and provide access to it
     """
 
-    def __init__(self, pika_engine, channel, method, properties, body, no_ack):
+    def __init__(self, pika_engine, channel, method, properties, body):
         """Parse RabbitMQ message
 
         :param pika_engine: PikaEngine, shared object with configuration and
             shared driver functionality
         :param channel: Channel, RabbitMQ channel which was used for
-            this message delivery
+            this message delivery, used for sending ack back.
+            If None - ack is not required
         :param method: Method, RabbitMQ message method
         :param properties: Properties, RabbitMQ message properties
         :param body: Bytes, RabbitMQ message body
-        :param no_ack: Boolean, defines should this message be acked by
-            consumer or not
         """
         headers = getattr(properties, "headers", {})
         version = headers.get(_VERSION_HEADER, None)
@@ -93,7 +92,6 @@ class PikaIncomingMessage(object):
                 "{}".format(version, _VERSION))
 
         self._pika_engine = pika_engine
-        self._no_ack = no_ack
         self._channel = channel
         self._delivery_tag = method.delivery_tag
 
@@ -128,12 +126,15 @@ class PikaIncomingMessage(object):
         self.message = message_dict
         self.ctxt = context_dict
 
+    def need_ack(self):
+        return self._channel is not None
+
     def acknowledge(self):
         """Ack the message. Should be called by message processing logic when
         it considered as consumed (means that we don't need redelivery of this
         message anymore)
         """
-        if not self._no_ack:
+        if self.need_ack():
             self._channel.basic_ack(delivery_tag=self._delivery_tag)
 
     def requeue(self):
@@ -141,7 +142,7 @@ class PikaIncomingMessage(object):
         when it can not process the message right now and should be redelivered
         later if it is possible
         """
-        if not self._no_ack:
+        if self.need_ack():
             return self._channel.basic_nack(delivery_tag=self._delivery_tag,
                                             requeue=True)
 
@@ -152,22 +153,21 @@ class RpcPikaIncomingMessage(PikaIncomingMessage):
     method added to allow consumer to send RPC reply back to the RPC client
     """
 
-    def __init__(self, pika_engine, channel, method, properties, body, no_ack):
+    def __init__(self, pika_engine, channel, method, properties, body):
         """Defines default values of msg_id and reply_q fields and just call
         super.__init__ method
 
         :param pika_engine: PikaEngine, shared object with configuration and
             shared driver functionality
         :param channel: Channel, RabbitMQ channel which was used for
-            this message delivery
+            this message delivery, used for sending ack back.
+            If None - ack is not required
         :param method: Method, RabbitMQ message method
         :param properties: Properties, RabbitMQ message properties
         :param body: Bytes, RabbitMQ message body
-        :param no_ack: Boolean, defines should this message be acked by
-            consumer or not
         """
         super(RpcPikaIncomingMessage, self).__init__(
-            pika_engine, channel, method, properties, body, no_ack
+            pika_engine, channel, method, properties, body
         )
         self.reply_q = properties.reply_to
         self.msg_id = properties.correlation_id
@@ -231,7 +231,7 @@ class RpcReplyPikaIncomingMessage(PikaIncomingMessage):
     """PikaIncomingMessage implementation for RPC reply messages. It expects
     extra RPC reply related fields in message body (result and failure).
     """
-    def __init__(self, pika_engine, channel, method, properties, body, no_ack):
+    def __init__(self, pika_engine, channel, method, properties, body):
         """Defines default values of result and failure fields, call
         super.__init__ method and then construct Exception object if failure is
         not None
@@ -239,15 +239,14 @@ class RpcReplyPikaIncomingMessage(PikaIncomingMessage):
         :param pika_engine: PikaEngine, shared object with configuration and
             shared driver functionality
         :param channel: Channel, RabbitMQ channel which was used for
-            this message delivery
+            this message delivery, used for sending ack back.
+            If None - ack is not required
         :param method: Method, RabbitMQ message method
         :param properties: Properties, RabbitMQ message properties
         :param body: Bytes, RabbitMQ message body
-        :param no_ack: Boolean, defines should this message be acked by
-            consumer or not
         """
         super(RpcReplyPikaIncomingMessage, self).__init__(
-            pika_engine, channel, method, properties, body, no_ack
+            pika_engine, channel, method, properties, body
         )
 
         self.msg_id = properties.correlation_id
