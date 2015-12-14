@@ -5,21 +5,22 @@
 #
 # Translators:
 # Maxime COQUEREL <max.coquerel@gmail.com>, 2014
+# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging\n"
+"Project-Id-Version: oslo.messaging 2.7.1.dev15\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2015-08-04 06:29+0000\n"
+"POT-Creation-Date: 2015-10-23 06:27+0000\n"
 "PO-Revision-Date: 2014-09-25 08:57+0000\n"
 "Last-Translator: Maxime COQUEREL <max.coquerel@gmail.com>\n"
-"Language-Team: French (http://www.transifex.com/openstack/oslomessaging/"
-"language/fr/)\n"
+"Language-Team: French\n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Generated-By: Babel 2.0\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"Generated-By: Babel 2.0\n"
+"X-Generator: Zanata 3.7.1\n"
 
 #, python-format
 msgid "An exception occurred processing the API call: %s "

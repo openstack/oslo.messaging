@@ -44,6 +44,7 @@ A simple example of an RPC server with multiple endpoints might be::
 
     from oslo_config import cfg
     import oslo_messaging
+    import time
 
     class ServerControlEndpoint(object):
 
@@ -54,7 +55,7 @@ A simple example of an RPC server with multiple endpoints might be::
             self.server = server
 
         def stop(self, ctx):
-            if server:
+            if self.server:
                 self.server.stop()
 
     class TestEndpoint(object):
@@ -70,7 +71,14 @@ A simple example of an RPC server with multiple endpoints might be::
     ]
     server = oslo_messaging.get_rpc_server(transport, target, endpoints,
                                            executor='blocking')
-    server.start()
+    try:
+        server.start()
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Stopping server")
+
+    server.stop()
     server.wait()
 
 Clients can invoke methods on the server by sending the request to a topic and

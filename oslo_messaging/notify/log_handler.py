@@ -21,14 +21,15 @@ class LoggingErrorNotificationHandler(logging.Handler):
         # at runtime.
         import oslo_messaging
         logging.Handler.__init__(self, *args, **kwargs)
-        self._transport = oslo_messaging.get_transport(cfg.CONF)
+        self._transport = oslo_messaging.get_notification_transport(cfg.CONF)
         self._notifier = oslo_messaging.Notifier(
             self._transport,
             publisher_id='error.publisher')
 
     def emit(self, record):
+        conf = self._transport.conf
         # NOTE(bnemec): Notifier registers this opt with the transport.
-        if ('log' in self._transport.conf.notification_driver):
+        if ('log' in conf.oslo_messaging_notifications.driver):
             # NOTE(lbragstad): If we detect that log is one of the
             # notification drivers, then return. This protects from infinite
             # recursion where something bad happens, it gets logged, the log

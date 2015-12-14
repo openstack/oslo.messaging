@@ -19,6 +19,7 @@ __all__ = ['Serializer', 'NoOpSerializer', 'JsonPayloadSerializer',
 
 import abc
 
+from debtcollector import removals
 from oslo_context import context as common_context
 from oslo_serialization import jsonutils
 import six
@@ -63,6 +64,7 @@ class Serializer(object):
         """
 
 
+@removals.remove(version="2.9", removal_version="3.0")
 class RequestContextSerializer(Serializer):
 
     def __init__(self, base):

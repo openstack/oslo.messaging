@@ -37,6 +37,7 @@ from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers import pool
 from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
@@ -72,27 +73,28 @@ rabbit_opts = [
                  deprecated_group='DEFAULT',
                  help='How long to wait before reconnecting in response to an '
                       'AMQP consumer cancel notification.'),
-    cfg.IntOpt('kombu_reconnect_timeout',
-               # NOTE(dhellmann): We want this to be similar to
-               # rpc_response_timeout, but we can't use
-               # "$rpc_response_timeout" as a default because that
-               # option may not have been defined by the time this
-               # option is accessed. Instead, document the intent in
-               # the help text for this option and provide a separate
-               # literal default value.
+    cfg.IntOpt('kombu_missing_consumer_retry_timeout',
+               deprecated_name="kombu_reconnect_timeout",
                default=60,
-               help='How long to wait before considering a reconnect '
-                    'attempt to have failed. This value should not be '
-                    'longer than rpc_response_timeout.'),
+               help='How long to wait a missing client beforce abandoning to '
+                    'send it its replies. This value should not be longer '
+                    'than rpc_response_timeout.'),
+    cfg.StrOpt('kombu_failover_strategy',
+               choices=('round-robin', 'shuffle'),
+               default='round-robin',
+               help='Determines how the next RabbitMQ node is chosen in case '
+                    'the one we are currently connected to becomes '
+                    'unavailable. Takes effect only if more than one '
+                    'RabbitMQ node is provided in config.'),
     cfg.StrOpt('rabbit_host',
                default='localhost',
                deprecated_group='DEFAULT',
                help='The RabbitMQ broker address where a single node is '
                     'used.'),
-    cfg.IntOpt('rabbit_port',
-               default=5672,
-               deprecated_group='DEFAULT',
-               help='The RabbitMQ broker port where a single node is used.'),
+    cfg.PortOpt('rabbit_port',
+                default=5672,
+                deprecated_group='DEFAULT',
+                help='The RabbitMQ broker port where a single node is used.'),
     cfg.ListOpt('rabbit_hosts',
                 default=['$rabbit_host:$rabbit_port'],
                 deprecated_group='DEFAULT',
@@ -376,7 +378,9 @@ class Connection(object):
         self.amqp_durable_queues = driver_conf.amqp_durable_queues
         self.amqp_auto_delete = driver_conf.amqp_auto_delete
         self.rabbit_use_ssl = driver_conf.rabbit_use_ssl
-        self.kombu_reconnect_timeout = driver_conf.kombu_reconnect_timeout
+        self.kombu_missing_consumer_retry_timeout = \
+            driver_conf.kombu_missing_consumer_retry_timeout
+        self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
 
         if self.rabbit_use_ssl:
             self.kombu_ssl_version = driver_conf.kombu_ssl_version
@@ -448,7 +452,7 @@ class Connection(object):
         # NOTE(sileht): if purpose is PURPOSE_LISTEN
         # we don't need the lock because we don't
         # have a heartbeat thread
-        if purpose == rpc_amqp.PURPOSE_SEND:
+        if purpose == rpc_common.PURPOSE_SEND:
             self._connection_lock = ConnectionLock()
         else:
             self._connection_lock = DummyConnectionLock()
@@ -456,8 +460,8 @@ class Connection(object):
         self.connection = kombu.connection.Connection(
             self._url, ssl=self._fetch_ssl_params(),
             login_method=self.login_method,
-            failover_strategy="shuffle",
             heartbeat=self.heartbeat_timeout_threshold,
+            failover_strategy=self.kombu_failover_strategy,
             transport_options={
                 'confirm_publish': True,
                 'on_blocked': self._on_connection_blocked,
@@ -465,8 +469,8 @@ class Connection(object):
             },
         )
 
-        LOG.info(_LI('Connecting to AMQP server on %(hostname)s:%(port)s'),
-                 self.connection.info())
+        LOG.debug('Connecting to AMQP server on %(hostname)s:%(port)s',
+                  self.connection.info())
 
         # NOTE(sileht): kombu recommend to run heartbeat_check every
         # seconds, but we use a lock around the kombu connection
@@ -488,11 +492,12 @@ class Connection(object):
         # the consume code does the heartbeat stuff
         # we don't need a thread
         self._heartbeat_thread = None
-        if purpose == rpc_amqp.PURPOSE_SEND:
+        if purpose == rpc_common.PURPOSE_SEND:
             self._heartbeat_start()
 
-        LOG.info(_LI('Connected to AMQP server on %(hostname)s:%(port)s'),
-                 self.connection.info())
+        LOG.debug('Connected to AMQP server on %(hostname)s:%(port)s '
+                  'via [%(transport)s] client',
+                  self.connection.info())
 
         # NOTE(sileht): value chosen according the best practice from kombu
         # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
@@ -576,7 +581,10 @@ class Connection(object):
         LOG.info(_LI("The broker has unblocked the connection"))
 
     def ensure_connection(self):
-        self.ensure(method=lambda: True)
+        # NOTE(sileht): we reset the channel and ensure
+        # the kombu underlying connection works
+        self._set_current_channel(None)
+        self.ensure(method=lambda: self.connection.connection)
 
     def ensure(self, method, retry=None,
                recoverable_error_callback=None, error_callback=None,
@@ -649,7 +657,7 @@ class Connection(object):
                 consumer.declare(self)
 
             LOG.info(_LI('Reconnected to AMQP server on '
-                         '%(hostname)s:%(port)s'),
+                         '%(hostname)s:%(port)s via [%(transport)s] client'),
                      self.connection.info())
 
         def execute_method(channel):
@@ -695,6 +703,10 @@ class Connection(object):
                     'tries: %(err_str)s') % info
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
+        except rpc_amqp.AMQPDestinationNotFound:
+            # NOTE(sileht): we must reraise this without
+            # trigger error_callback
+            raise
         except Exception as exc:
             error_callback and error_callback(exc)
             raise
@@ -727,7 +739,6 @@ class Connection(object):
                 for tag, consumer in enumerate(self._consumers):
                     consumer.cancel(tag=tag)
             except recoverable_errors:
-                self._set_current_channel(None)
                 self.ensure_connection()
             self._consumers = []
 
@@ -848,7 +859,8 @@ class Connection(object):
             raise rpc_common.Timeout()
 
         def _recoverable_error_callback(exc):
-            self._new_consumers = self._consumers
+            if not isinstance(exc, rpc_common.Timeout):
+                self._new_consumers = self._consumers
             timer.check_return(_raise_timeout, exc)
 
         def _error_callback(exc):
@@ -1033,32 +1045,20 @@ class Connection(object):
 
         self._publish(exchange, msg, routing_key=routing_key, timeout=timeout)
 
-    def _publish_and_retry_on_missing_exchange(self, exchange, msg,
-                                               routing_key=None, timeout=None):
-        """Publisher that retry if the exchange is missing.
-        """
-
+    def _publish_and_raises_on_missing_exchange(self, exchange, msg,
+                                                routing_key=None,
+                                                timeout=None):
+        """Publisher that raises exception if exchange is missing."""
         if not exchange.passive:
             raise RuntimeError("_publish_and_retry_on_missing_exchange() must "
                                "be called with an passive exchange.")
 
-        # TODO(sileht): use @retrying
-        # NOTE(sileht): no need to wait the application expect a response
-        # before timeout is exshauted
-        duration = (
-            timeout if timeout is not None
-            else self.kombu_reconnect_timeout
-        )
-
-        timer = rpc_common.DecayingTimer(duration=duration)
-        timer.start()
-
-        while True:
-            try:
-                self._publish(exchange, msg, routing_key=routing_key,
-                              timeout=timeout)
-                return
-            except self.connection.channel_errors as exc:
+        try:
+            self._publish(exchange, msg, routing_key=routing_key,
+                          timeout=timeout)
+            return
+        except self.connection.channel_errors as exc:
+            if exc.code == 404:
                 # NOTE(noelbk/sileht):
                 # If rabbit dies, the consumer can be disconnected before the
                 # publisher sends, and if the consumer hasn't declared the
@@ -1067,24 +1067,9 @@ class Connection(object):
                 # So we set passive=True to the publisher exchange and catch
                 # the 404 kombu ChannelError and retry until the exchange
                 # appears
-                if exc.code == 404 and timer.check_return() > 0:
-                    LOG.info(_LI("The exchange %(exchange)s to send to "
-                                 "%(routing_key)s doesn't exist yet, "
-                                 "retrying...") % {
-                                     'exchange': exchange.name,
-                                     'routing_key': routing_key})
-                    time.sleep(0.25)
-                    continue
-                elif exc.code == 404:
-                    msg = _("The exchange %(exchange)s to send to "
-                            "%(routing_key)s still doesn't exist after "
-                            "%(duration)s sec abandoning...") % {
-                                'duration': duration,
-                                'exchange': exchange.name,
-                                'routing_key': routing_key}
-                    LOG.info(msg)
-                    raise rpc_amqp.AMQPDestinationNotFound(msg)
-                raise
+                raise rpc_amqp.AMQPDestinationNotFound(
+                    "exchange %s doesn't exists" % exchange.name)
+            raise
 
     def direct_send(self, msg_id, msg):
         """Send a 'direct' message."""
@@ -1094,7 +1079,7 @@ class Connection(object):
                                          auto_delete=True,
                                          passive=True)
 
-        self._ensure_publishing(self._publish_and_retry_on_missing_exchange,
+        self._ensure_publishing(self._publish_and_raises_on_missing_exchange,
                                 exchange, msg, routing_key=msg_id)
 
     def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None):
@@ -1150,7 +1135,10 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
         conf.register_opts(base.base_opts, group=opt_group)
 
-        connection_pool = rpc_amqp.ConnectionPool(
+        self.missing_destination_retry_timeout = (
+            conf.oslo_messaging_rabbit.kombu_missing_consumer_retry_timeout)
+
+        connection_pool = pool.ConnectionPool(
             conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
             url, Connection)
 
@@ -1158,8 +1146,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
             conf, url,
             connection_pool,
             default_exchange,
-            allowed_remote_exmods,
-            conf.oslo_messaging_rabbit.send_single_reply,
+            allowed_remote_exmods
         )
 
     def require_features(self, requeue=True):

@@ -49,7 +49,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
     def setUp(self):
         super(TestLogNotifier, self).setUp()
         self.addCleanup(oslo_messaging.notify._impl_test.reset)
-        self.config(notification_driver=['test'])
+        self.config(driver=['test'],
+                    group='oslo_messaging_notifications')
         # NOTE(jamespage) disable thread information logging for testing
         # as this causes test failures when zmq tests monkey_patch via
         # eventlet

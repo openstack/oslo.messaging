@@ -19,7 +19,7 @@
 Shared code between AMQP based openstack.common.rpc implementations.
 
 The code in this module is shared between the rpc implementations based on
-AMQP. Specifically, this includes impl_kombu and impl_qpid.  impl_carrot also
+AMQP. Specifically, this includes impl_kombu.  impl_carrot also
 uses AMQP, but is deprecated and predates this code.
 """
 
@@ -31,7 +31,6 @@ from oslo_config import cfg
 import six
 
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers import pool
 
 deprecated_durable_opts = [
     cfg.DeprecatedOpt('amqp_durable_queues',
@@ -49,138 +48,10 @@ amqp_opts = [
                 default=False,
                 deprecated_group='DEFAULT',
                 help='Auto-delete queues in AMQP.'),
-    cfg.BoolOpt('send_single_reply',
-                default=False,
-                help='Send a single AMQP reply to call message. The current '
-                     'behaviour since oslo-incubator is to send two AMQP '
-                     'replies - first one with the payload, a second one to '
-                     'ensure the other have finish to send the payload. We '
-                     'are going to remove it in the N release, but we must '
-                     'keep backward compatible at the same time. This option '
-                     'provides such compatibility - it defaults to False in '
-                     'Liberty and can be turned on for early adopters with a '
-                     'new installations or for testing. Please note, that '
-                     'this option will be removed in the Mitaka release.')
 ]
 
 UNIQUE_ID = '_unique_id'
 LOG = logging.getLogger(__name__)
-
-# NOTE(sileht): Even if rabbit/qpid have only one Connection class,
-# this connection can be used for two purposes:
-# * wait and receive amqp messages (only do read stuffs on the socket)
-# * send messages to the broker (only do write stuffs on the socket)
-# The code inside a connection class is not concurrency safe.
-# Using one Connection class instance for doing both, will result
-# of eventlet complaining of multiple greenthreads that read/write the
-# same fd concurrently... because 'send' and 'listen' run in different
-# greenthread.
-# So, a connection cannot be shared between thread/greenthread and
-# this two variables permit to define the purpose of the connection
-# to allow drivers to add special handling if needed (like heatbeat).
-# amqp drivers create 3 kind of connections:
-# * driver.listen*(): each call create a new 'PURPOSE_LISTEN' connection
-# * driver.send*(): a pool of 'PURPOSE_SEND' connections is used
-# * driver internally have another 'PURPOSE_LISTEN' connection dedicated
-#   to wait replies of rpc call
-PURPOSE_LISTEN = 'listen'
-PURPOSE_SEND = 'send'
-
-
-class ConnectionPool(pool.Pool):
-    """Class that implements a Pool of Connections."""
-    def __init__(self, conf, rpc_conn_pool_size, url, connection_cls):
-        self.connection_cls = connection_cls
-        self.conf = conf
-        self.url = url
-        super(ConnectionPool, self).__init__(rpc_conn_pool_size)
-        self.reply_proxy = None
-
-    # TODO(comstud): Timeout connections not used in a while
-    def create(self, purpose=None):
-        if purpose is None:
-            purpose = PURPOSE_SEND
-        LOG.debug('Pool creating new connection')
-        return self.connection_cls(self.conf, self.url, purpose)
-
-    def empty(self):
-        for item in self.iter_free():
-            item.close()
-
-
-class ConnectionContext(rpc_common.Connection):
-    """The class that is actually returned to the create_connection() caller.
-
-    This is essentially a wrapper around Connection that supports 'with'.
-    It can also return a new Connection, or one from a pool.
-
-    The function will also catch when an instance of this class is to be
-    deleted.  With that we can return Connections to the pool on exceptions
-    and so forth without making the caller be responsible for catching them.
-    If possible the function makes sure to return a connection to the pool.
-    """
-
-    def __init__(self, connection_pool, purpose):
-        """Create a new connection, or get one from the pool."""
-        self.connection = None
-        self.connection_pool = connection_pool
-        pooled = purpose == PURPOSE_SEND
-        if pooled:
-            self.connection = connection_pool.get()
-        else:
-            # a non-pooled connection is requested, so create a new connection
-            self.connection = connection_pool.create(purpose)
-        self.pooled = pooled
-        self.connection.pooled = pooled
-
-    def __enter__(self):
-        """When with ConnectionContext() is used, return self."""
-        return self
-
-    def _done(self):
-        """If the connection came from a pool, clean it up and put it back.
-        If it did not come from a pool, close it.
-        """
-        if self.connection:
-            if self.pooled:
-                # Reset the connection so it's ready for the next caller
-                # to grab from the pool
-                try:
-                    self.connection.reset()
-                except Exception:
-                    LOG.exception("Fail to reset the connection, drop it")
-                    try:
-                        self.connection.close()
-                    except Exception:
-                        pass
-                    self.connection = self.connection_pool.create()
-                finally:
-                    self.connection_pool.put(self.connection)
-            else:
-                try:
-                    self.connection.close()
-                except Exception:
-                    pass
-            self.connection = None
-
-    def __exit__(self, exc_type, exc_value, tb):
-        """End of 'with' statement.  We're done here."""
-        self._done()
-
-    def __del__(self):
-        """Caller is done with this connection.  Make sure we cleaned up."""
-        self._done()
-
-    def close(self):
-        """Caller is done with this connection."""
-        self._done()
-
-    def __getattr__(self, key):
-        """Proxy all other calls to the Connection instance."""
-        if self.connection:
-            return getattr(self.connection, key)
-        else:
-            raise rpc_common.InvalidRPCConnectionReuse()
 
 
 class RpcContext(rpc_common.CommonRpcContext):

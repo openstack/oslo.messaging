@@ -17,6 +17,8 @@ import logging
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._i18n import _LE
+from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
 
@@ -45,6 +47,9 @@ class ZmqSocket(object):
     def setsockopt(self, *args, **kwargs):
         self.handle.setsockopt(*args, **kwargs)
 
+    def setsockopt_string(self, *args, **kwargs):
+        self.handle.setsockopt_string(*args, **kwargs)
+
     def send(self, *args, **kwargs):
         self.handle.send(*args, **kwargs)
 
@@ -56,6 +61,9 @@ class ZmqSocket(object):
 
     def send_pyobj(self, *args, **kwargs):
         self.handle.send_pyobj(*args, **kwargs)
+
+    def send_multipart(self, *args, **kwargs):
+        self.handle.send_multipart(*args, **kwargs)
 
     def recv(self, *args, **kwargs):
         return self.handle.recv(*args, **kwargs)
@@ -69,8 +77,15 @@ class ZmqSocket(object):
     def recv_pyobj(self, *args, **kwargs):
         return self.handle.recv_pyobj(*args, **kwargs)
 
+    def recv_multipart(self, *args, **kwargs):
+        return self.handle.recv_multipart(*args, **kwargs)
+
     def close(self, *args, **kwargs):
         self.handle.close(*args, **kwargs)
+
+
+class ZmqPortRangeExceededException(exceptions.MessagingException):
+    """Raised by ZmqRandomPortSocket - wrapping zmq.ZMQBindError"""
 
 
 class ZmqRandomPortSocket(ZmqSocket):
@@ -79,4 +94,13 @@ class ZmqRandomPortSocket(ZmqSocket):
         super(ZmqRandomPortSocket, self).__init__(context, socket_type)
         self.conf = conf
         self.bind_address = zmq_address.get_tcp_random_address(self.conf)
-        self.port = self.handle.bind_to_random_port(self.bind_address)
+
+        try:
+            self.port = self.handle.bind_to_random_port(
+                self.bind_address,
+                min_port=conf.rpc_zmq_min_port,
+                max_port=conf.rpc_zmq_max_port,
+                max_tries=conf.rpc_zmq_bind_port_retries)
+        except zmq.ZMQBindError:
+            LOG.error(_LE("Random ports range exceeded!"))
+            raise ZmqPortRangeExceededException()

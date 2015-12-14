@@ -17,6 +17,7 @@ __all__ = ['AMQPDriverBase']
 
 import logging
 import threading
+import time
 import uuid
 
 import cachetools
@@ -47,45 +48,27 @@ class AMQPIncomingMessage(base.IncomingMessage):
         self.requeue_callback = message.requeue
         self._obsolete_reply_queues = obsolete_reply_queues
 
-    def _send_reply(self, conn, reply=None, failure=None,
-                    ending=False, log_failure=True):
-        if (self.reply_q and
-            not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
-                                                          self.msg_id)):
+    def _send_reply(self, conn, reply=None, failure=None, log_failure=True):
+        if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
+                                                         self.msg_id):
             return
 
         if failure:
             failure = rpc_common.serialize_remote_exception(failure,
                                                             log_failure)
-
-        msg = {'result': reply, 'failure': failure}
-        if ending:
-            msg['ending'] = True
-
+        # NOTE(sileht): ending can be removed in N*, see Listener.wait()
+        # for more detail.
+        msg = {'result': reply, 'failure': failure, 'ending': True,
+               '_msg_id': self.msg_id}
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
 
-        # If a reply_q exists, add the msg_id to the reply and pass the
-        # reply_q to direct_send() to use it as the response queue.
-        # Otherwise use the msg_id for backward compatibility.
-        if self.reply_q:
-            msg['_msg_id'] = self.msg_id
-            try:
-                if ending:
-                    LOG.debug("sending reply msg_id: %(msg_id)s "
-                              "reply queue: %(reply_q)s" % {
-                                  'msg_id': self.msg_id,
-                                  'unique_id': unique_id,
-                                  'reply_q': self.reply_q})
-                conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
-            except rpc_amqp.AMQPDestinationNotFound:
-                self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
-        else:
-            # TODO(sileht): look at which version of oslo-incubator rpc
-            # send need this, but I guess this is older than icehouse
-            # if this is icehouse, we can drop this at Mitaka
-            # if this is havana, we can drop this now.
-            conn.direct_send(self.msg_id, rpc_common.serialize_msg(msg))
+        LOG.debug("sending reply msg_id: %(msg_id)s "
+                  "reply queue: %(reply_q)s" % {
+                      'msg_id': self.msg_id,
+                      'unique_id': unique_id,
+                      'reply_q': self.reply_q})
+        conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None, log_failure=True):
         if not self.msg_id:
@@ -94,19 +77,41 @@ class AMQPIncomingMessage(base.IncomingMessage):
             return
 
         # NOTE(sileht): return without hold the a connection if possible
-        if (self.reply_q and
-            not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
-                                                          self.msg_id)):
+        if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
+                                                         self.msg_id):
             return
 
-        with self.listener.driver._get_connection(
-                rpc_amqp.PURPOSE_SEND) as conn:
-            if self.listener.driver.send_single_reply:
-                self._send_reply(conn, reply, failure, log_failure=log_failure,
-                                 ending=True)
-            else:
-                self._send_reply(conn, reply, failure, log_failure=log_failure)
-                self._send_reply(conn, ending=True)
+        # NOTE(sileht): we read the configuration value from the driver
+        # to be able to backport this change in previous version that
+        # still have the qpid driver
+        duration = self.listener.driver.missing_destination_retry_timeout
+        timer = rpc_common.DecayingTimer(duration=duration)
+        timer.start()
+
+        while True:
+            try:
+                with self.listener.driver._get_connection(
+                        rpc_common.PURPOSE_SEND) as conn:
+                    self._send_reply(conn, reply, failure,
+                                     log_failure=log_failure)
+                return
+            except rpc_amqp.AMQPDestinationNotFound:
+                if timer.check_return() > 0:
+                    LOG.debug(("The reply %(msg_id)s cannot be sent  "
+                               "%(reply_q)s reply queue don't exist, "
+                               "retrying...") % {
+                                   'msg_id': self.msg_id,
+                                   'reply_q': self.reply_q})
+                    time.sleep(0.25)
+                else:
+                    self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
+                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
+                                 "%(reply_q)s reply queue don't exist after "
+                                 "%(duration)s sec abandoning...") % {
+                                     'msg_id': self.msg_id,
+                                     'reply_q': self.reply_q,
+                                     'duration': duration})
+                    return
 
     def acknowledge(self):
         self.acknowledge_callback()
@@ -187,12 +192,8 @@ class AMQPListener(base.Listener):
 
         unique_id = self.msg_id_cache.check_duplicate_message(message)
 
-        if ctxt.reply_q:
-            LOG.debug(
-                "received message msg_id: %(msg_id)s reply to %(queue)s" % {
-                    'queue': ctxt.reply_q, 'msg_id': ctxt.msg_id})
-        else:
-            LOG.debug("received message unique_id: %s " % unique_id)
+        LOG.debug("received message msg_id: %(msg_id)s reply to %(queue)s" % {
+            'queue': ctxt.reply_q, 'msg_id': ctxt.msg_id})
 
         self.incoming.append(AMQPIncomingMessage(self,
                                                  ctxt.to_dict(),
@@ -202,6 +203,7 @@ class AMQPListener(base.Listener):
                                                  ctxt.reply_q,
                                                  self._obsolete_reply_queues))
 
+    @base.batch_poll_helper
     def poll(self, timeout=None):
         while not self._stopped.is_set():
             if self.incoming:
@@ -345,10 +347,10 @@ class ReplyWaiter(object):
 
 
 class AMQPDriverBase(base.BaseDriver):
+    missing_destination_retry_timeout = 0
 
     def __init__(self, conf, url, connection_pool,
-                 default_exchange=None, allowed_remote_exmods=None,
-                 send_single_reply=False):
+                 default_exchange=None, allowed_remote_exmods=None):
         super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
                                              allowed_remote_exmods)
 
@@ -361,14 +363,12 @@ class AMQPDriverBase(base.BaseDriver):
         self._reply_q_conn = None
         self._waiter = None
 
-        self.send_single_reply = send_single_reply
-
     def _get_exchange(self, target):
         return target.exchange or self._default_exchange
 
-    def _get_connection(self, purpose=rpc_amqp.PURPOSE_SEND):
-        return rpc_amqp.ConnectionContext(self._connection_pool,
-                                          purpose=purpose)
+    def _get_connection(self, purpose=rpc_common.PURPOSE_SEND):
+        return rpc_common.ConnectionContext(self._connection_pool,
+                                            purpose=purpose)
 
     def _get_reply_q(self):
         with self._reply_q_lock:
@@ -377,7 +377,7 @@ class AMQPDriverBase(base.BaseDriver):
 
             reply_q = 'reply_' + uuid.uuid4().hex
 
-            conn = self._get_connection(rpc_amqp.PURPOSE_LISTEN)
+            conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
             self._waiter = ReplyWaiter(reply_q, conn,
                                        self._allowed_remote_exmods)
@@ -422,7 +422,7 @@ class AMQPDriverBase(base.BaseDriver):
             log_msg = "CAST unique_id: %s " % unique_id
 
         try:
-            with self._get_connection(rpc_amqp.PURPOSE_SEND) as conn:
+            with self._get_connection(rpc_common.PURPOSE_SEND) as conn:
                 if notify:
                     exchange = self._get_exchange(target)
                     log_msg += "NOTIFY exchange '%(exchange)s'" \
@@ -468,7 +468,7 @@ class AMQPDriverBase(base.BaseDriver):
                           envelope=(version == 2.0), notify=True, retry=retry)
 
     def listen(self, target):
-        conn = self._get_connection(rpc_amqp.PURPOSE_LISTEN)
+        conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
         listener = AMQPListener(self, conn)
 
@@ -484,7 +484,7 @@ class AMQPDriverBase(base.BaseDriver):
         return listener
 
     def listen_for_notifications(self, targets_and_priorities, pool):
-        conn = self._get_connection(rpc_amqp.PURPOSE_LISTEN)
+        conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
         listener = AMQPListener(self, conn)
         for target, priority in targets_and_priorities:

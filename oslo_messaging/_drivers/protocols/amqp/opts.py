@@ -64,6 +64,7 @@ amqp1_opts = [
     cfg.StrOpt('ssl_key_password',
                default=None,
                deprecated_group='amqp1',
+               secret=True,
                help='Password for decrypting ssl_key_file (if encrypted)'),
 
     cfg.BoolOpt('allow_insecure_clients',
@@ -94,5 +95,6 @@ amqp1_opts = [
     cfg.StrOpt('password',
                default='',
                deprecated_group='amqp1',
+               secret=True,
                help='Password for message broker authentication')
 ]

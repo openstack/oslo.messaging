@@ -8,9 +8,9 @@ ZeroMQ Driver Deployment Guide
 Introduction
 ============
 
-0MQ (also known as ZeroMQ or zmq) looks like an embeddable
-networking library but acts like a concurrency framework. It gives
-you sockets that carry atomic messages across various transports
+0MQ (also known as ZeroMQ or zmq) is embeddable networking library
+but acts like a concurrency framework. It gives you sockets
+that carry atomic messages across various transports
 like in-process, inter-process, TCP, and multicast. You can connect
 sockets N-to-N with patterns like fan-out, pub-sub, task distribution,
 and request-reply. It's fast enough to be the fabric for clustered
@@ -45,7 +45,7 @@ Juno release, as almost all the core projects in OpenStack have switched to
 oslo_messaging, ZeroMQ can be the only RPC driver across the OpenStack cluster.
 This document provides deployment information for this driver in oslo_messaging.
 
-Other than AMQP-based drivers, like RabbitMQ or Qpid, ZeroMQ doesn't have
+Other than AMQP-based drivers, like RabbitMQ, ZeroMQ doesn't have
 any central brokers in oslo.messaging, instead, each host (running OpenStack
 services) is both ZeroMQ client and server. As a result, each host needs to
 listen to a certain TCP port for incoming connections and directly connect
@@ -96,8 +96,9 @@ must be set to the hostname of the current node.
         rpc_backend = zmq
         rpc_zmq_host = {hostname}
 
+
 Match Making (mandatory)
--------------------------
+------------------------
 
 The ZeroMQ driver implements a matching capability to discover hosts available
 for communication when sending to a bare topic. This allows broker-less
@@ -105,35 +106,20 @@ communications.
 
 The MatchMaker is pluggable and it provides two different MatchMaker classes.
 
-MatchMakerLocalhost: default matchmaker driver for all-in-one scenario (messages
+DummyMatchMaker: default matchmaker driver for all-in-one scenario (messages
 are sent to itself).
 
-MatchMakerRing: loads a static hash table from a JSON file, sends messages to
-a certain host via directed topics or cycles hosts per bare topic and supports
-broker-less fanout messaging. On fanout messages returns an array of directed
-topics (messages are sent to all destinations).
-
-MatchMakerRedis: loads the hash table from a remote Redis server, supports
+RedisMatchMaker: loads the hash table from a remote Redis server, supports
 dynamic host/topic registrations, host expiration, and hooks for consuming
 applications to acknowledge or neg-acknowledge topic.host service availability.
 
 To set the MatchMaker class, use option 'rpc_zmq_matchmaker' in [DEFAULT].
 
-        rpc_zmq_matchmaker = local
-        or
-        rpc_zmq_matchmaker = ring
+        rpc_zmq_matchmaker = dummy
         or
         rpc_zmq_matchmaker = redis
 
-To specify the ring file for MatchMakerRing, use option 'ringfile' in
-[matchmaker_ring].
-
-For example::
-
-        [matchmaker_ring]
-        ringfile = /etc/oslo/oslo_matchmaker_ring.json
-
-To specify the Redis server for MatchMakerRedis, use options in
+To specify the Redis server for RedisMatchMaker, use options in
 [matchmaker_redis] of each project.
 
         [matchmaker_redis]
@@ -141,47 +127,36 @@ To specify the Redis server for MatchMakerRedis, use options in
         port = 6379
         password = None
 
+
 MatchMaker Data Source (mandatory)
------------------------------------
+----------------------------------
 
 MatchMaker data source is stored in files or Redis server discussed in the
 previous section. How to make up the database is the key issue for making ZeroMQ
 driver work.
 
-If deploying the MatchMakerRing, a ring file is required. The format of the ring
-file should contain a hash where each key is a base topic and the values are
-hostname arrays to be sent to.
-
-For example::
-
-        /etc/oslo/oslo_matchmaker_ring.json
-        {
-            "scheduler": ["host1", "host2"],
-            "conductor": ["host1", "host2"],
-        }
-
-The AMQP-based methods like RabbitMQ and Qpid don't require any knowledge
-about the source and destination of any topic. However, ZeroMQ driver
-with MatchMakerRing does. The challenging task is that you should learn
-and get all the (K, V) pairs from each OpenStack project to make up the
-matchmaker ring file.
-
-If deploying the MatchMakerRedis, a Redis server is required. Each (K, V) pair
+If deploying the RedisMatchMaker, a Redis server is required. Each (K, V) pair
 stored in Redis is that the key is a base topic and the corresponding values are
 hostname arrays to be sent to.
 
-Message Receivers (mandatory)
--------------------------------
 
-Each machine running OpenStack services, or sending RPC messages, must run the
-'oslo-messaging-zmq-receiver' daemon. This receives replies to call requests and
-routes responses via IPC to blocked callers.
+Proxy to avoid blocking (optional)
+----------------------------------
 
-The way that deploy the receiver process is to run it under a new user 'oslo'
-and give all openstack daemons access via group membership of 'oslo' - this
-supports using /var/run/openstack as a shared IPC directory for all openstack
-processes, allowing different services to be hosted on the same server, served
-by a single oslo-messaging-zmq-receiver process.
+Each machine running OpenStack services, or sending RPC messages, may run the
+'oslo-messaging-zmq-broker' daemon. This is needed to avoid blocking
+if a listener (server) appears after the sender (client).
+
+Running the local broker (proxy) or not is defined by the option 'zmq_use_broker'
+(True by default). This option can be set in [DEFAULT] section.
+
+For example::
+
+        zmq_use_broker = False
+
+
+In case of using the broker all publishers (clients) talk to servers over
+the local broker connecting to it via IPC transport.
 
 The IPC runtime directory, 'rpc_zmq_ipc_dir', can be set in [DEFAULT] section.
 
@@ -191,28 +166,14 @@ For example::
 
 The parameters for the script oslo-messaging-zmq-receiver should be::
 
-        oslo-messaging-zmq-receiver
+        oslo-messaging-zmq-broker
             --config-file /etc/oslo/zeromq.conf
-            --log-file /var/log/oslo/zmq-receiver.log
+            --log-file /var/log/oslo/zmq-broker.log
 
 You can specify ZeroMQ options in /etc/oslo/zeromq.conf if necessary.
 
-Thread Pool (optional)
------------------------
-
-Each service will launch threads for incoming requests. These threads are
-maintained via a pool, the maximum number of threads is limited by
-rpc_thread_pool_size. The default value is 1024. (This is a common RPC
-configuration variable, also applicable to Kombu and Qpid)
-
-This configuration can be set in [DEFAULT] section.
-
-For example::
-
-        rpc_thread_pool_size = 1024
-
 Listening Address (optional)
-------------------------------
+----------------------------
 
 All services bind to an IP address or Ethernet adapter. By default, all services
 bind to '*', effectively binding to 0.0.0.0. This may be changed with the option
@@ -224,18 +185,40 @@ For example::
 
         rpc_zmq_bind_address = *
 
+Currently zmq driver uses dynamic port binding mechanism, which means that
+each listener will allocate port of a random number. Ports range is controlled
+by two options 'rpc_zmq_min_port' and 'rpc_zmq_max_port'. Change them to
+restrict current service's port binding range. 'rpc_zmq_bind_port_retries'
+controls number of retries before 'ports range exceeded' failure.
+
+For example::
+
+        rpc_zmq_min_port = 9050
+        rpc_zmq_max_port = 10050
+        rpc_zmq_bind_port_retries = 100
+
+
 DevStack Support
 ----------------
 
 ZeroMQ driver has been supported by DevStack. The configuration is as follows::
 
-        ENABLED_SERVICES+=,-rabbit,-qpid,zeromq
+        ENABLED_SERVICES+=,-rabbit,zeromq
         ZEROMQ_MATCHMAKER=redis
 
+In local.conf [localrc] section need to enable zmq plugin which lives in
+`devstack-plugin-zmq`_ repository.
+
+For example::
+
+    enable_plugin zmq https://github.com/openstack/devstack-plugin-zmq.git
+
+.. _devstack-plugin-zmq: https://github.com/openstack/devstack-plugin-zmq.git
+
+
 Current Status
----------------
+--------------
 
 The current development status of ZeroMQ driver is shown in `wiki`_.
 
 .. _wiki: https://wiki.openstack.org/ZeroMQ
-

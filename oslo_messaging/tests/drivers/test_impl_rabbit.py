@@ -28,7 +28,6 @@ from oslotest import mockpatch
 import testscenarios
 
 import oslo_messaging
-from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
@@ -91,10 +90,12 @@ class TestHeartbeat(test_utils.BaseTestCase):
 
         if not heartbeat_side_effect:
             self.assertEqual(1, fake_ensure_connection.call_count)
-            self.assertEqual(2, fake_logger.info.call_count)
+            self.assertEqual(2, fake_logger.debug.call_count)
+            self.assertEqual(0, fake_logger.info.call_count)
         else:
             self.assertEqual(2, fake_ensure_connection.call_count)
-            self.assertEqual(3, fake_logger.info.call_count)
+            self.assertEqual(2, fake_logger.debug.call_count)
+            self.assertEqual(1, fake_logger.info.call_count)
             self.assertIn(mock.call(info, mock.ANY),
                           fake_logger.info.mock_calls)
 
@@ -167,7 +168,7 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
                                              'on_blocked': mock.ANY,
                                              'on_unblocked': mock.ANY},
             ssl=self.expected, login_method='AMQPLAIN',
-            heartbeat=60, failover_strategy="shuffle")
+            heartbeat=60, failover_strategy='round-robin')
 
 
 class TestRabbitPublisher(test_utils.BaseTestCase):
@@ -175,7 +176,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
     def test_send_with_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
-        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
                           timeout=1)
@@ -185,7 +186,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
     def test_send_no_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
-        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key')
         fake_publish.assert_called_with('msg', expiration=None)
@@ -205,7 +206,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             type='topic',
             passive=False)
 
-        with transport._driver._get_connection(amqp.PURPOSE_SEND) as pool_conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             exc = conn.connection.channel_errors[0]
 
@@ -238,7 +239,7 @@ class TestRabbitConsume(test_utils.BaseTestCase):
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
         deadline = time.time() + 6
-        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_LISTEN) as conn:
             self.assertRaises(driver_common.Timeout,
                               conn.consume, timeout=3)
 
@@ -257,7 +258,7 @@ class TestRabbitConsume(test_utils.BaseTestCase):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
-        with transport._driver._get_connection(amqp.PURPOSE_LISTEN) as conn:
+        with transport._driver._get_connection(driver_common.PURPOSE_LISTEN) as conn:
             channel = conn.connection.channel
             with mock.patch('kombu.connection.Connection.connected',
                             new_callable=mock.PropertyMock,
@@ -361,11 +362,6 @@ class TestSendReceive(test_utils.BaseTestCase):
         ('timeout', dict(timeout=0.01)),  # FIXME(markmc): timeout=0 is broken?
     ]
 
-    _reply_ending = [
-        ('old_behavior', dict(send_single_reply=False)),
-        ('new_behavior', dict(send_single_reply=True)),
-    ]
-
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._n_senders,
@@ -373,15 +369,12 @@ class TestSendReceive(test_utils.BaseTestCase):
                                                          cls._reply,
                                                          cls._reply_fail,
                                                          cls._failure,
-                                                         cls._timeout,
-                                                         cls._reply_ending)
+                                                         cls._timeout)
 
     def test_send_receive(self):
-        self.config(kombu_reconnect_timeout=0.5,
+        self.config(kombu_missing_consumer_retry_timeout=0.5,
                     group="oslo_messaging_rabbit")
         self.config(heartbeat_timeout_threshold=0,
-                    group="oslo_messaging_rabbit")
-        self.config(send_single_reply=self.send_single_reply,
                     group="oslo_messaging_rabbit")
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
@@ -430,7 +423,7 @@ class TestSendReceive(test_utils.BaseTestCase):
         for i in range(len(senders)):
             senders[i].start()
 
-            received = listener.poll()
+            received = listener.poll()[0]
             self.assertIsNotNone(received)
             self.assertEqual(self.ctxt, received.ctxt)
             self.assertEqual({'tx_id': i}, received.message)
@@ -472,10 +465,10 @@ class TestSendReceive(test_utils.BaseTestCase):
 
         if self.reply_failure_404:
             # NOTE(sileht) all reply fail, first take
-            # kombu_reconnect_timeout seconds to fail
+            # kombu_missing_consumer_retry_timeout seconds to fail
             # next immediately fail
             dt = time.time() - start
-            timeout = self.conf.oslo_messaging_rabbit.kombu_reconnect_timeout
+            timeout = self.conf.oslo_messaging_rabbit.kombu_missing_consumer_retry_timeout
             self.assertTrue(timeout <= dt < (timeout + 0.100), dt)
 
         self.assertEqual(len(senders), len(replies))
@@ -508,7 +501,7 @@ class TestPollAsync(test_utils.BaseTestCase):
         target = oslo_messaging.Target(topic='testtopic')
         listener = driver.listen(target)
         received = listener.poll(timeout=0.050)
-        self.assertIsNone(received)
+        self.assertEqual([], received)
 
 
 class TestRacyWaitForReply(test_utils.BaseTestCase):
@@ -568,13 +561,13 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
             senders[0].start()
             notify_condition.wait()
 
-        msgs.append(listener.poll())
+        msgs.extend(listener.poll())
         self.assertEqual({'tx_id': 0}, msgs[-1].message)
 
         # Start the second guy, receive his message
         senders[1].start()
 
-        msgs.append(listener.poll())
+        msgs.extend(listener.poll())
         self.assertEqual({'tx_id': 1}, msgs[-1].message)
 
         # Reply to both in order, making the second thread queue
@@ -588,7 +581,7 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         # Start the 3rd guy, receive his message
         senders[2].start()
 
-        msgs.append(listener.poll())
+        msgs.extend(listener.poll())
         self.assertEqual({'tx_id': 2}, msgs[-1].message)
 
         # Verify the _send_reply was not invoked by driver:
@@ -869,7 +862,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
 
         producer.publish(msg)
 
-        received = listener.poll()
+        received = listener.poll()[0]
         self.assertIsNotNone(received)
         self.assertEqual(self.expected_ctxt, received.ctxt)
         self.assertEqual(self.expected, received.message)
@@ -895,12 +888,14 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             'kombu.connection.Connection.connect',
             side_effect=self.kombu_connect))
         self.useFixture(mockpatch.Patch(
+            'kombu.connection.Connection.connection'))
+        self.useFixture(mockpatch.Patch(
             'kombu.connection.Connection.channel'))
 
         # starting from the first broker in the list
         url = oslo_messaging.TransportURL.parse(self.conf, None)
         self.connection = rabbit_driver.Connection(self.conf, url,
-                                                   amqp.PURPOSE_SEND)
+                                                   driver_common.PURPOSE_SEND)
         self.addCleanup(self.connection.close)
 
     def test_ensure_four_retry(self):

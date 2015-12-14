@@ -23,6 +23,7 @@ Contents
    opts
    conffixture
    drivers
+   supported-messaging-drivers
    AMQP1.0
    zmq_driver
    FAQ

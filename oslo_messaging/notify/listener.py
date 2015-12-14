@@ -19,12 +19,13 @@ contain a set of methods. Each method corresponds to a notification priority.
 To create a notification listener, you supply a transport, list of targets and
 a list of endpoints.
 
-A transport can be obtained simply by calling the get_transport() method::
+A transport can be obtained simply by calling the get_notification_transport()
+method::
 
-    transport = messaging.get_transport(conf)
+    transport = messaging.get_notification_transport(conf)
 
 which will load the appropriate transport driver according to the user's
-messaging configuration. See get_transport() for more details.
+messaging configuration. See get_notification_transport() for more details.
 
 The target supplied when creating a notification listener expresses the topic
 and - optionally - the exchange to listen on. See Target for more details
@@ -56,7 +57,7 @@ A simple example of a notification listener with multiple endpoints might be::
         def error(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
-    transport = oslo_messaging.get_transport(cfg.CONF)
+    transport = oslo_messaging.get_notification_transport(cfg.CONF)
     targets = [
         oslo_messaging.Target(topic='notifications')
         oslo_messaging.Target(topic='notifications_bis')
@@ -136,8 +137,49 @@ def get_notification_listener(transport, targets, endpoints,
     :type pool: str
     :raises: NotImplementedError
     """
-    transport._require_driver_features(requeue=allow_requeue)
     dispatcher = notify_dispatcher.NotificationDispatcher(targets, endpoints,
                                                           serializer,
                                                           allow_requeue, pool)
+    return msg_server.MessageHandlingServer(transport, dispatcher, executor)
+
+
+def get_batch_notification_listener(transport, targets, endpoints,
+                                    executor='blocking', serializer=None,
+                                    allow_requeue=False, pool=None,
+                                    batch_size=None, batch_timeout=None):
+    """Construct a batch notification listener
+
+    The executor parameter controls how incoming messages will be received and
+    dispatched. By default, the most simple executor is used - the blocking
+    executor.
+
+    If the eventlet executor is used, the threading and time library need to be
+    monkeypatched.
+
+    :param transport: the messaging transport
+    :type transport: Transport
+    :param targets: the exchanges and topics to listen on
+    :type targets: list of Target
+    :param endpoints: a list of endpoint objects
+    :type endpoints: list
+    :param executor: name of a message executor - for example
+                     'eventlet', 'blocking'
+    :type executor: str
+    :param serializer: an optional entity serializer
+    :type serializer: Serializer
+    :param allow_requeue: whether NotificationResult.REQUEUE support is needed
+    :type allow_requeue: bool
+    :param pool: the pool name
+    :type pool: str
+    :param batch_size: number of messages to wait before calling
+                       endpoints callacks
+    :type batch_size: int
+    :param batch_timeout: number of seconds to wait before calling
+                       endpoints callacks
+    :type batch_timeout: int
+    :raises: NotImplementedError
+    """
+    dispatcher = notify_dispatcher.BatchNotificationDispatcher(
+        targets, endpoints, serializer, allow_requeue, pool,
+        batch_size, batch_timeout)
     return msg_server.MessageHandlingServer(transport, dispatcher, executor)

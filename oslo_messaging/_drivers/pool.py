@@ -17,7 +17,12 @@ import abc
 import collections
 import threading
 
+from oslo_log import log as logging
 import six
+
+from oslo_messaging._drivers import common
+
+LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -86,3 +91,24 @@ class Pool(object):
     @abc.abstractmethod
     def create(self):
         """Construct a new item."""
+
+
+class ConnectionPool(Pool):
+    """Class that implements a Pool of Connections."""
+    def __init__(self, conf, rpc_conn_pool_size, url, connection_cls):
+        self.connection_cls = connection_cls
+        self.conf = conf
+        self.url = url
+        super(ConnectionPool, self).__init__(rpc_conn_pool_size)
+        self.reply_proxy = None
+
+    # TODO(comstud): Timeout connections not used in a while
+    def create(self, purpose=None):
+        if purpose is None:
+            purpose = common.PURPOSE_SEND
+        LOG.debug('Pool creating new connection')
+        return self.connection_cls(self.conf, self.url, purpose)
+
+    def empty(self):
+        for item in self.iter_free():
+            item.close()

@@ -13,6 +13,7 @@
 #    under the License.
 
 import logging
+import os
 import pprint
 import socket
 import threading
@@ -23,8 +24,11 @@ from stevedore import driver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client import zmq_client
+from oslo_messaging._drivers.zmq_driver.client import zmq_client_light
 from oslo_messaging._drivers.zmq_driver.server import zmq_server
+from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._executors import impl_pooledexecutor  # FIXME(markmc)
+from oslo_messaging._i18n import _LE
 
 
 pformat = pprint.pformat
@@ -78,8 +82,23 @@ zmq_opts = [
                     'Poll raises timeout exception when timeout expired.'),
 
     cfg.BoolOpt('zmq_use_broker',
-                default=True,
-                help='Shows whether zmq-messaging uses broker or not.')
+                default=False,
+                help='Configures zmq-messaging to use broker or not.'),
+
+    cfg.PortOpt('rpc_zmq_min_port',
+                default=49152,
+                help='Minimal port number for random ports range.'),
+
+    cfg.IntOpt('rpc_zmq_max_port',
+               min=1,
+               max=65536,
+               default=65536,
+               help='Maximal port number for random ports range.'),
+
+    cfg.IntOpt('rpc_zmq_bind_port_retries',
+               default=100,
+               help='Number of retries to find free port number before '
+                    'fail with ZMQBindError.')
 ]
 
 
@@ -91,6 +110,7 @@ class LazyDriverItem(object):
         self.item_class = item_cls
         self.args = args
         self.kwargs = kwargs
+        self.process_id = os.getpid()
 
     def get(self):
         #  NOTE(ozamiatin): Lazy initialization.
@@ -99,11 +119,12 @@ class LazyDriverItem(object):
         # __init__, but 'fork' extensively used by services
         #  breaks all things.
 
-        if self.item is not None:
+        if self.item is not None and os.getpid() == self.process_id:
             return self.item
 
         self._lock.acquire()
-        if self.item is None:
+        if self.item is None or os.getpid() != self.process_id:
+            self.process_id = os.getpid()
             self.item = self.item_class(*self.args, **self.kwargs)
         self._lock.release()
         return self.item
@@ -143,6 +164,10 @@ class ZmqDriver(base.BaseDriver):
         :param allowed_remote_exmods: remote exception passing options
         :type allowed_remote_exmods: list
         """
+        zmq = zmq_async.import_zmq()
+        if zmq is None:
+            raise ImportError(_LE("ZeroMQ is not available!"))
+
         conf.register_opts(zmq_opts)
         conf.register_opts(impl_pooledexecutor._pool_opts)
         conf.register_opts(base.base_opts)
@@ -160,12 +185,15 @@ class ZmqDriver(base.BaseDriver):
         self.notify_server = LazyDriverItem(
             zmq_server.ZmqServer, self, self.conf, self.matchmaker)
 
+        client_cls = zmq_client_light.ZmqClientLight \
+            if conf.zmq_use_broker else zmq_client.ZmqClient
+
         self.client = LazyDriverItem(
-            zmq_client.ZmqClient, self.conf, self.matchmaker,
+            client_cls, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
 
         self.notifier = LazyDriverItem(
-            zmq_client.ZmqClient, self.conf, self.matchmaker,
+            client_cls, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
@@ -229,7 +257,7 @@ class ZmqDriver(base.BaseDriver):
         :param target: Message destination target
         :type target: oslo_messaging.Target
         """
-        server = self.server.get()
+        server = zmq_server.ZmqServer(self, self.conf, self.matchmaker)
         server.listen(target)
         return server
 

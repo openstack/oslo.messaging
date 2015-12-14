@@ -18,7 +18,6 @@ from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LI
 
 LOG = logging.getLogger(__name__)
 
@@ -35,13 +34,14 @@ class PubPublisher(zmq_publisher_base.PublisherMultisend):
         if request.msg_type not in zmq_names.NOTIFY_TYPES:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        pub_socket, hosts = self._check_hosts_connections(request.target)
+        pub_socket = self._check_hosts_connections(
+            request.target, zmq_names.socket_type_str(zmq.SUB))
         self._send_request(pub_socket, request)
 
     def _send_request(self, socket, request):
 
         super(PubPublisher, self)._send_request(socket, request)
 
-        LOG.info(_LI("Publishing message %(message)s to a target %(target)s")
-                 % {"message": request.message,
-                    "target": request.target})
+        LOG.debug("Publishing message %(message)s to a target %(target)s"
+                  % {"message": request.message,
+                     "target": request.target})

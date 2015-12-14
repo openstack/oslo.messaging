@@ -31,6 +31,7 @@ import six
 
 from oslo_messaging._i18n import _LE
 from oslo_messaging import _utils as utils
+from oslo_messaging import dispatcher
 from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import server as msg_server
@@ -75,7 +76,7 @@ class UnsupportedVersion(RPCDispatcherError):
         self.method = method
 
 
-class RPCDispatcher(object):
+class RPCDispatcher(dispatcher.DispatcherBase):
     """A message dispatcher which understands RPC messages.
 
     A MessageHandlingServer is constructed by passing a callable dispatcher
@@ -130,9 +131,9 @@ class RPCDispatcher(object):
         return self.serializer.serialize_entity(ctxt, result)
 
     def __call__(self, incoming, executor_callback=None):
-        incoming.acknowledge()
-        return utils.DispatcherExecutorContext(
-            incoming, self._dispatch_and_reply,
+        incoming[0].acknowledge()
+        return dispatcher.DispatcherExecutorContext(
+            incoming[0], self._dispatch_and_reply,
             executor_callback=executor_callback)
 
     def _dispatch_and_reply(self, incoming, executor_callback):
@@ -145,7 +146,9 @@ class RPCDispatcher(object):
                       e.exc_info[1])
             incoming.reply(failure=e.exc_info, log_failure=False)
         except Exception as e:
-            # sys.exc_info() is deleted by LOG.exception().
+            # current sys.exc_info() content can be overriden
+            # by another exception raise by a log handler during
+            # LOG.exception(). So keep a copy and delete it later.
             exc_info = sys.exc_info()
             LOG.error(_LE('Exception during message handling: %s'), e,
                       exc_info=exc_info)

@@ -133,7 +133,7 @@ class TestDispatcher(test_utils.BaseTestCase):
         incoming = mock.Mock(ctxt=self.ctxt, message=self.msg)
         incoming.reply.side_effect = check_reply
 
-        callback = dispatcher(incoming)
+        callback = dispatcher([incoming])
         callback.run()
         callback.done()
 

@@ -17,6 +17,7 @@ from oslo_config import cfg
 from oslo_utils import importutils
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 
 redis = importutils.try_import('redis')
 LOG = logging.getLogger(__name__)
@@ -26,9 +27,9 @@ matchmaker_redis_opts = [
     cfg.StrOpt('host',
                default='127.0.0.1',
                help='Host to locate redis.'),
-    cfg.IntOpt('port',
-               default=6379,
-               help='Use this port to connect to redis host.'),
+    cfg.PortOpt('port',
+                default=6379,
+                help='Use this port to connect to redis host.'),
     cfg.StrOpt('password',
                default='',
                secret=True,
@@ -48,34 +49,32 @@ class RedisMatchMaker(base.MatchMakerBase):
             password=self.conf.matchmaker_redis.password,
         )
 
-    def _target_to_key(self, target):
-        attributes = ['topic', 'exchange', 'server']
-        prefix = "ZMQ-target"
-        key = ":".join((getattr(target, attr) or "*") for attr in attributes)
-        return "%s-%s" % (prefix, key)
-
-    def _get_keys_by_pattern(self, pattern):
-        return self._redis.keys(pattern)
-
     def _get_hosts_by_key(self, key):
         return self._redis.lrange(key, 0, -1)
 
-    def register(self, target, hostname):
-        key = self._target_to_key(target)
-        if hostname not in self._get_hosts_by_key(key):
-            self._redis.lpush(key, hostname)
+    def register(self, target, hostname, listener_type):
 
-    def unregister(self, target, hostname):
-        key = self._target_to_key(target)
+        if target.topic and target.server:
+            key = zmq_address.target_to_key(target, listener_type)
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
+
+        if target.topic:
+            key = zmq_address.prefix_str(target.topic, listener_type)
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
+
+        if target.server:
+            key = zmq_address.prefix_str(target.server, listener_type)
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
+
+    def unregister(self, target, hostname, listener_type):
+        key = zmq_address.target_to_key(target, listener_type)
         self._redis.lrem(key, 0, hostname)
 
-    def get_hosts(self, target):
-        pattern = self._target_to_key(target)
-        if "*" not in pattern:
-            # pattern have no placeholders, so this is valid key
-            return self._get_hosts_by_key(pattern)
-
+    def get_hosts(self, target, listener_type):
         hosts = []
-        for key in self._get_keys_by_pattern(pattern):
-            hosts.extend(self._get_hosts_by_key(key))
+        key = zmq_address.target_to_key(target, listener_type)
+        hosts.extend(self._get_hosts_by_key(key))
         return hosts

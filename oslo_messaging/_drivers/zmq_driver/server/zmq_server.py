@@ -31,11 +31,16 @@ class ZmqServer(base.Listener):
         super(ZmqServer, self).__init__(driver)
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller()
-        self.rpc_consumer = zmq_router_consumer.RouterConsumer(
-            conf, self.poller, self)
+        if conf.zmq_use_broker:
+            self.rpc_consumer = zmq_router_consumer.RouterConsumerBroker(
+                conf, self.poller, self)
+        else:
+            self.rpc_consumer = zmq_router_consumer.RouterConsumer(
+                conf, self.poller, self)
         self.notify_consumer = self.rpc_consumer
         self.consumers = [self.rpc_consumer]
 
+    @base.batch_poll_helper
     def poll(self, timeout=None):
         message, socket = self.poller.poll(
             timeout or self.conf.rpc_poll_timeout)

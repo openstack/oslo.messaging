@@ -20,6 +20,7 @@ import retrying
 import six
 
 import oslo_messaging
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._i18n import _LI, _LW
 
 
@@ -35,27 +36,31 @@ class MatchMakerBase(object):
         self.conf = conf
 
     @abc.abstractmethod
-    def register(self, target, hostname):
+    def register(self, target, hostname, listener_type):
         """Register target on nameserver.
 
        :param target: the target for host
        :type target: Target
        :param hostname: host for the topic in "host:port" format
        :type hostname: String
+       :param listener_type: Listener socket type ROUTER, SUB etc.
+       :type listener_type: String
        """
 
     @abc.abstractmethod
-    def unregister(self, target, hostname):
+    def unregister(self, target, hostname, listener_type):
         """Unregister target from nameserver.
 
        :param target: the target for host
        :type target: Target
        :param hostname: host for the topic in "host:port" format
        :type hostname: String
+       :param listener_type: Listener socket type ROUTER, SUB etc.
+       :type listener_type: String
        """
 
     @abc.abstractmethod
-    def get_hosts(self, target):
+    def get_hosts(self, target, listener_type):
         """Get all hosts from nameserver by target.
 
        :param target: the default target for invocations
@@ -63,7 +68,7 @@ class MatchMakerBase(object):
        :returns: a list of "hostname:port" hosts
        """
 
-    def get_single_host(self, target, timeout=None, retry=0):
+    def get_single_host(self, target, listener_type, timeout=None, retry=0):
         """Get a single host by target.
 
        :param target: the target for messages
@@ -101,7 +106,7 @@ class MatchMakerBase(object):
 
         @_retry
         def _get_single_host():
-            hosts = self.get_hosts(target)
+            hosts = self.get_hosts(target, listener_type)
             try:
                 if not hosts:
                     err_msg = "No hosts were found for target %s." % target
@@ -136,16 +141,16 @@ class DummyMatchMaker(MatchMakerBase):
 
         self._cache = collections.defaultdict(list)
 
-    def register(self, target, hostname):
-        key = str(target)
+    def register(self, target, hostname, listener_type):
+        key = zmq_address.target_to_key(target, listener_type)
         if hostname not in self._cache[key]:
             self._cache[key].append(hostname)
 
-    def unregister(self, target, hostname):
-        key = str(target)
+    def unregister(self, target, hostname, listener_type):
+        key = zmq_address.target_to_key(target, listener_type)
         if hostname in self._cache[key]:
             self._cache[key].remove(hostname)
 
-    def get_hosts(self, target):
-        key = str(target)
+    def get_hosts(self, target, listener_type):
+        key = zmq_address.target_to_key(target, listener_type)
         return self._cache[key]

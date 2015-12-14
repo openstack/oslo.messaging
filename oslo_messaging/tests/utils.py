@@ -66,7 +66,6 @@ class ServerThreadHelper(threading.Thread):
         self.daemon = True
         self._server = server
         self._stop_event = threading.Event()
-        self._wait_event = threading.Event()
 
     def run(self):
         self._server.start()
@@ -75,7 +74,6 @@ class ServerThreadHelper(threading.Thread):
         self._server.start()
         self._server.stop()
         self._server.wait()
-        self._wait_event.set()
 
     def stop(self):
         self._stop_event.set()

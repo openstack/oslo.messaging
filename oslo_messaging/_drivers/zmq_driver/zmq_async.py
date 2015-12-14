@@ -30,12 +30,10 @@ def import_zmq(zmq_concurrency='eventlet'):
     _raise_error_if_invalid_config_value(zmq_concurrency)
 
     imported_zmq = importutils.try_import(ZMQ_MODULES[zmq_concurrency],
-                                          default='zmq')
+                                          default=None)
 
     if imported_zmq is None:
-        errmsg = _LE("ZeroMQ not found!")
         LOG.error(_LE("ZeroMQ not found!"))
-        raise ImportError(errmsg)
     return imported_zmq
 
 
@@ -80,3 +78,13 @@ def _raise_error_if_invalid_config_value(zmq_concurrency):
     if zmq_concurrency not in ZMQ_MODULES:
         errmsg = _('Invalid zmq_concurrency value: %s')
         raise ValueError(errmsg % zmq_concurrency)
+
+
+def get_queue(zmq_concurrency='eventlet'):
+    _raise_error_if_invalid_config_value(zmq_concurrency)
+    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
+        import eventlet
+        return eventlet.queue.Queue(), eventlet.queue.Empty
+    else:
+        import six
+        return six.moves.queue.Queue(), six.moves.queue.Empty

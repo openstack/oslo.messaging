@@ -19,8 +19,9 @@ import six
 
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -43,10 +44,10 @@ class ConsumerBase(object):
                 self.conf, self.context, socket_type)
             self.sockets.append(socket)
             self.poller.register(socket, self.receive_message)
-            LOG.info(_LI("Run %(stype)s consumer on %(addr)s:%(port)d"),
-                     {"stype": socket_type,
-                      "addr": socket.bind_address,
-                      "port": socket.port})
+            LOG.debug("Run %(stype)s consumer on %(addr)s:%(port)d",
+                      {"stype": zmq_names.socket_type_str(socket_type),
+                       "addr": socket.bind_address,
+                       "port": socket.port})
             return socket
         except zmq.ZMQError as e:
             errmsg = _LE("Failed binding to port %(port)d: %(e)s")\

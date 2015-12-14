@@ -22,8 +22,27 @@ def get_tcp_direct_address(host):
 
 
 def get_tcp_random_address(conf):
-    return "tcp://*"
+    return "tcp://%s" % conf.rpc_zmq_bind_address
 
 
 def get_broker_address(conf):
     return "ipc://%s/zmq-broker" % conf.rpc_zmq_ipc_dir
+
+
+def prefix_str(key, listener_type):
+    return listener_type + "_" + key
+
+
+def target_to_key(target, listener_type):
+
+    def prefix(key):
+        return prefix_str(key, listener_type)
+
+    if target.topic and target.server:
+        attributes = ['topic', 'server']
+        key = ".".join(getattr(target, attr) for attr in attributes)
+        return prefix(key)
+    if target.topic:
+        return prefix(target.topic)
+    if target.server:
+        return prefix(target.server)

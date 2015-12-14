@@ -21,6 +21,7 @@ import testtools
 import oslo_messaging
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._i18n import _
 from oslo_messaging.tests import utils as test_utils
 
@@ -51,7 +52,8 @@ class TestServerListener(object):
     def _run(self):
         try:
             message = self.listener.poll()
-            if message is not None:
+            if message:
+                message = message[0]
                 message.acknowledge()
                 self._received.set()
                 self.message = message
@@ -89,6 +91,33 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
 
         self.addCleanup(stopRpc(self.__dict__))
 
+
+class ZmqTestPortsRange(ZmqBaseTestCase):
+
+    @testtools.skipIf(zmq is None, "zmq not available")
+    def setUp(self):
+        super(ZmqTestPortsRange, self).setUp()
+
+        # Set config values
+        kwargs = {'rpc_zmq_min_port': 5555,
+                  'rpc_zmq_max_port': 5560}
+        self.config(**kwargs)
+
+    def test_ports_range(self):
+        listeners = []
+
+        for i in range(10):
+            try:
+                target = oslo_messaging.Target(topic='testtopic_'+str(i))
+                new_listener = self.driver.listen(target)
+                listeners.append(new_listener)
+            except zmq_socket.ZmqPortRangeExceededException:
+                pass
+
+        self.assertLessEqual(len(listeners), 5)
+
+        for l in listeners:
+            l.cleanup()
 
 class TestConfZmqDriverLoad(test_utils.BaseTestCase):
 
@@ -196,6 +225,7 @@ class TestZmqBasics(ZmqBaseTestCase):
 
 class TestPoller(test_utils.BaseTestCase):
 
+    @testtools.skipIf(zmq is None, "zmq not available")
     def setUp(self):
         super(TestPoller, self).setUp()
         self.poller = zmq_async.get_poller()

@@ -18,7 +18,7 @@ from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LI, _LW
+from oslo_messaging._i18n import _LW
 
 LOG = logging.getLogger(__name__)
 
@@ -29,14 +29,13 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
 
     def __init__(self, conf, matchmaker):
         super(DealerPublisher, self).__init__(conf, matchmaker, zmq.DEALER)
-        self.ack_receiver = AcknowledgementReceiver()
 
     def send_request(self, request):
 
-        if request.msg_type == zmq_names.CALL_TYPE:
-            raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
+        self._check_request_pattern(request)
 
-        dealer_socket, hosts = self._check_hosts_connections(request.target)
+        dealer_socket = self._check_hosts_connections(
+            request.target, zmq_names.socket_type_str(zmq.ROUTER))
 
         if not dealer_socket.connections:
             # NOTE(ozamiatin): Here we can provide
@@ -47,29 +46,31 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
                         % request.msg_type)
             return
 
-        self.ack_receiver.track_socket(dealer_socket.handle)
-
         if request.msg_type in zmq_names.MULTISEND_TYPES:
             for _ in range(dealer_socket.connections_count()):
                 self._send_request(dealer_socket, request)
         else:
             self._send_request(dealer_socket, request)
 
+    def _check_request_pattern(self, request):
+        if request.msg_type == zmq_names.CALL_TYPE:
+            raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
+
     def _send_request(self, socket, request):
 
         socket.send(b'', zmq.SNDMORE)
         socket.send_pyobj(request)
 
-        LOG.info(_LI("Sending message %(message)s to a target %(target)s")
-                 % {"message": request.message,
-                    "target": request.target})
+        LOG.debug("Sending message_id %(message)s to a target %(target)s"
+                  % {"message": request.message_id,
+                     "target": request.target})
 
     def cleanup(self):
-        self.ack_receiver.cleanup()
         super(DealerPublisher, self).cleanup()
 
 
 class DealerPublisherLight(zmq_publisher_base.PublisherBase):
+    """Used when publishing to proxy. """
 
     def __init__(self, conf, address):
         super(DealerPublisherLight, self).__init__(conf)
@@ -81,7 +82,10 @@ class DealerPublisherLight(zmq_publisher_base.PublisherBase):
         if request.msg_type == zmq_names.CALL_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
+        envelope = request.create_envelope()
+
         self.socket.send(b'', zmq.SNDMORE)
+        self.socket.send_pyobj(envelope, zmq.SNDMORE)
         self.socket.send_pyobj(request)
 
     def cleanup(self):
@@ -107,8 +111,7 @@ class AcknowledgementReceiver(object):
 
     def poll_for_acknowledgements(self):
         ack_message, socket = self.poller.poll()
-        LOG.info(_LI("Message %s acknowledged")
-                 % ack_message[zmq_names.FIELD_ID])
+        LOG.debug("Message %s acknowledged" % ack_message[zmq_names.FIELD_ID])
 
     def cleanup(self):
         self.thread.stop()

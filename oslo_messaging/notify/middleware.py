@@ -22,7 +22,6 @@ import sys
 import traceback as tb
 
 from oslo_config import cfg
-from oslo_context import context
 from oslo_middleware import base
 import six
 import webob.dec
@@ -59,7 +58,8 @@ class RequestNotifier(base.Middleware):
 
     def __init__(self, app, **conf):
         self.notifier = notify.Notifier(
-            oslo_messaging.get_transport(cfg.CONF, conf.get('url')),
+            oslo_messaging.get_notification_transport(cfg.CONF,
+                                                      conf.get('url')),
             publisher_id=conf.get('publisher_id',
                                   os.path.basename(sys.argv[0])))
         self.service_name = conf.get('service_name')
@@ -84,7 +84,7 @@ class RequestNotifier(base.Middleware):
             'request': self.environ_to_dict(request.environ),
         }
 
-        self.notifier.info(context.get_admin_context(),
+        self.notifier.info({},
                            'http.request',
                            payload)
 
@@ -107,7 +107,7 @@ class RequestNotifier(base.Middleware):
                 'traceback': tb.format_tb(traceback)
             }
 
-        self.notifier.info(context.get_admin_context(),
+        self.notifier.info({},
                            'http.response',
                            payload)
 

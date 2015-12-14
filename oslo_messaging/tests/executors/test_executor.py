@@ -44,7 +44,7 @@ try:
 except ImportError:
     impl_eventlet = None
 from oslo_messaging._executors import impl_thread
-from oslo_messaging import _utils as utils
+from oslo_messaging import dispatcher as dispatcher_base
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -81,6 +81,12 @@ class TestExecutor(test_utils.BaseTestCase):
             aioeventlet_class = None
         is_aioeventlet = (self.executor == aioeventlet_class)
 
+        if impl_blocking is not None:
+            blocking_class = impl_blocking.BlockingExecutor
+        else:
+            blocking_class = None
+        is_blocking = (self.executor == blocking_class)
+
         if is_aioeventlet:
             policy = aioeventlet.EventLoopPolicy()
             trollius.set_event_loop_policy(policy)
@@ -110,8 +116,15 @@ class TestExecutor(test_utils.BaseTestCase):
 
             endpoint = mock.MagicMock(return_value=simple_coroutine('result'))
             event = eventlet.event.Event()
-        else:
+        elif is_blocking:
+            def run_executor(executor):
+                executor.start()
+                executor.execute()
+                executor.wait()
 
+            endpoint = mock.MagicMock(return_value='result')
+            event = None
+        else:
             def run_executor(executor):
                 executor.start()
                 executor.wait()
@@ -119,10 +132,13 @@ class TestExecutor(test_utils.BaseTestCase):
             endpoint = mock.MagicMock(return_value='result')
             event = None
 
-        class Dispatcher(object):
+        class Dispatcher(dispatcher_base.DispatcherBase):
             def __init__(self, endpoint):
                 self.endpoint = endpoint
                 self.result = "not set"
+
+            def _listen(self, transport):
+                pass
 
             def callback(self, incoming, executor_callback):
                 if executor_callback is None:
@@ -138,9 +154,8 @@ class TestExecutor(test_utils.BaseTestCase):
                 return result
 
             def __call__(self, incoming, executor_callback=None):
-                return utils.DispatcherExecutorContext(incoming,
-                                                       self.callback,
-                                                       executor_callback)
+                return dispatcher_base.DispatcherExecutorContext(
+                    incoming[0], self.callback, executor_callback)
 
         return Dispatcher(endpoint), endpoint, event, run_executor
 
@@ -150,7 +165,7 @@ class TestExecutor(test_utils.BaseTestCase):
         executor = self.executor(self.conf, listener, dispatcher)
         incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
 
-        def fake_poll(timeout=None):
+        def fake_poll(timeout=None, prefetch_size=1):
             time.sleep(0.1)
             if listener.poll.call_count == 10:
                 if event is not None:
@@ -178,9 +193,9 @@ class TestExecutor(test_utils.BaseTestCase):
         executor = self.executor(self.conf, listener, dispatcher)
         incoming_message = mock.MagicMock(ctxt={}, message={'payload': 'data'})
 
-        def fake_poll(timeout=None):
+        def fake_poll(timeout=None, prefetch_size=1):
             if listener.poll.call_count == 1:
-                return incoming_message
+                return [incoming_message]
             if event is not None:
                 event.wait()
             executor.stop()
