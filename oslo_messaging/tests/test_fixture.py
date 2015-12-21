@@ -76,7 +76,6 @@ class TestConfFixture(test_utils.BaseTestCase):
 
         self.assertEqual([],
                          conf.oslo_messaging_notifications.driver)
-        self.assertEqual(None,
-                         conf.oslo_messaging_notifications.transport_url)
+        self.assertIsNone(conf.oslo_messaging_notifications.transport_url)
         self.assertEqual(['notifications'],
                          conf.oslo_messaging_notifications.topics)

@@ -84,7 +84,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
                          n['priority'])
         self.assertEqual('logrecord', n['event_type'])
         self.assertEqual(str(timeutils.utcnow()), n['timestamp'])
-        self.assertEqual(None, n['publisher_id'])
+        self.assertIsNone(n['publisher_id'])
         self.assertEqual(
             {'process': os.getpid(),
              'funcName': None,
@@ -134,7 +134,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
                          n['priority'])
         self.assertEqual('logrecord', n['event_type'])
         self.assertEqual(str(timeutils.utcnow()), n['timestamp'])
-        self.assertEqual(None, n['publisher_id'])
+        self.assertIsNone(n['publisher_id'])
         pathname = __file__
         if pathname.endswith(('.pyc', '.pyo')):
             pathname = pathname[:-1]
