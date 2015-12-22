@@ -14,7 +14,7 @@
 
 import logging
 
-from oslo_messaging._i18n import _, _LE
+from oslo_messaging._i18n import _
 from oslo_utils import importutils
 
 LOG = logging.getLogger(__name__)
@@ -32,8 +32,6 @@ def import_zmq(zmq_concurrency='eventlet'):
     imported_zmq = importutils.try_import(ZMQ_MODULES[zmq_concurrency],
                                           default=None)
 
-    if imported_zmq is None:
-        LOG.error(_LE("ZeroMQ not found!"))
     return imported_zmq
 
 
