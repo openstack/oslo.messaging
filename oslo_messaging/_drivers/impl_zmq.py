@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import os
 import socket
 import threading
@@ -29,7 +28,6 @@ from oslo_messaging._executors import impl_pooledexecutor
 from oslo_messaging._i18n import _LE
 
 
-LOG = logging.getLogger(__name__)
 RPCException = rpc_common.RPCException
 
 zmq_opts = [

@@ -13,13 +13,10 @@
 #    under the License.
 
 import abc
-import logging
 
 import six
 
 from oslo_messaging._drivers.zmq_driver import zmq_async
-
-LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)
