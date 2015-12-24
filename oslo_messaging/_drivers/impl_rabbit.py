@@ -128,6 +128,10 @@ rabbit_opts = [
                deprecated_group='DEFAULT',
                help='How long to backoff for between retries when connecting '
                     'to RabbitMQ.'),
+    cfg.IntOpt('rabbit_interval_max',
+               default=30,
+               help='Maximum interval of RabbitMQ connection retries. '
+                    'Default is 30 seconds.'),
     cfg.IntOpt('rabbit_max_retries',
                default=0,
                deprecated_group='DEFAULT',
@@ -362,6 +366,7 @@ class Connection(object):
         self.max_retries = driver_conf.rabbit_max_retries
         self.interval_start = driver_conf.rabbit_retry_interval
         self.interval_stepping = driver_conf.rabbit_retry_backoff
+        self.interval_max = driver_conf.rabbit_interval_max
 
         self.login_method = driver_conf.rabbit_login_method
         self.fake_rabbit = driver_conf.fake_rabbit
@@ -391,9 +396,6 @@ class Connection(object):
         # Try forever?
         if self.max_retries <= 0:
             self.max_retries = None
-
-        # max retry-interval = 30 seconds
-        self.interval_max = 30
 
         if url.virtual_host is not None:
             virtual_host = url.virtual_host
@@ -685,8 +687,7 @@ class Connection(object):
                 interval_start=self.interval_start or 1,
                 interval_step=self.interval_stepping,
                 interval_max=self.interval_max,
-                on_revive=on_reconnection,
-            )
+                on_revive=on_reconnection)
             ret, channel = autoretry_method()
             self._set_current_channel(channel)
             return ret
