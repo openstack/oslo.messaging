@@ -36,6 +36,7 @@ from six import moves
 
 from oslo_messaging._drivers.protocols.amqp import eventloop
 from oslo_messaging._drivers.protocols.amqp import opts
+from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
 from oslo_messaging import transport
 
@@ -90,8 +91,8 @@ class Replies(pyngus.ReceiverEventHandler):
         # reply is placed on reply_queue
         self._correlation[request.id] = reply_queue
         request.reply_to = self._receiver.source_address
-        LOG.debug("Reply for msg id=%s expected on link %s",
-                  request.id, request.reply_to)
+        LOG.debug("Reply for msg id=%(id)s expected on link %(reply_to)s",
+                  {'id': request.id, 'reply_to': request.reply_to})
         return request.id
 
     def cancel_response(self, msg_id):
@@ -121,7 +122,7 @@ class Replies(pyngus.ReceiverEventHandler):
         # TODO(kgiusti) Unclear if this error will ever occur (as opposed to
         # the Connection failing instead).  Log for now, possibly implement a
         # recovery strategy if necessary.
-        LOG.error("Reply subscription closed by peer: %s",
+        LOG.error(_LE("Reply subscription closed by peer: %s"),
                   (pn_condition or "no error given"))
 
     def message_received(self, receiver, message, handle):
@@ -141,8 +142,8 @@ class Replies(pyngus.ReceiverEventHandler):
             del self._correlation[key]
             receiver.message_accepted(handle)
         else:
-            LOG.warn("Can't find receiver for response msg id=%s, dropping!",
-                     key)
+            LOG.warn(_LW("Can't find receiver for response msg id=%s, "
+                         "dropping!"), key)
             receiver.message_modified(handle, True, True, None)
 
     def _update_credit(self):
@@ -194,12 +195,12 @@ class Server(pyngus.ReceiverEventHandler):
         """This is a Pyngus callback, invoked by Pyngus when the peer of this
         receiver link has initiated closing the connection.
         """
-        text = "Server subscription %(addr)s closed by peer: %(err_msg)s"
         vals = {
             "addr": receiver.source_address or receiver.target_address,
             "err_msg": pn_condition or "no error given"
         }
-        LOG.error(text % vals)
+        LOG.error(_LE("Server subscription %(addr)s closed "
+                      "by peer: %(err_msg)s"), vals)
 
     def message_received(self, receiver, message, handle):
         """This is a Pyngus callback, invoked by Pyngus when a new message
@@ -348,7 +349,8 @@ class Controller(pyngus.ConnectionEventHandler):
         will include the reply message (if successful).
         """
         address = self._resolve(target)
-        LOG.debug("Sending request for %s to %s", target, address)
+        LOG.debug("Sending request for %(target)s to %(address)s",
+                  {'target': target, 'address': address})
         if reply_expected:
             msg_id = self._replies.prepare_for_response(request, result_queue)
 
@@ -399,7 +401,8 @@ class Controller(pyngus.ConnectionEventHandler):
         self._subscribe(target, addresses, in_queue)
 
     def _subscribe(self, target, addresses, in_queue):
-        LOG.debug("Subscribing to %s (%s)", target, addresses)
+        LOG.debug("Subscribing to %(target)s (%(addresses)s)",
+                  {'target': target, 'addresses': addresses})
         self._servers[target] = Server(addresses, in_queue)
         self._servers[target].attach(self._socket_connection.connection)
 
@@ -500,7 +503,7 @@ class Controller(pyngus.ConnectionEventHandler):
             try:
                 self._tasks.get(False).execute(self)
             except Exception as e:
-                LOG.exception("Error processing task: %s", e)
+                LOG.exception(_LE("Error processing task: %s"), e)
             count += 1
 
         # if we hit _max_task_batch, resume task processing later:
@@ -532,7 +535,7 @@ class Controller(pyngus.ConnectionEventHandler):
         """Called when the driver destroys the controller, this method attempts
         to cleanly close the AMQP connection to the peer.
         """
-        LOG.info("Shutting down AMQP connection")
+        LOG.info(_LI("Shutting down AMQP connection"))
         self._closing = True
         if self._socket_connection.connection.active:
             # try a clean shutdown
@@ -547,8 +550,9 @@ class Controller(pyngus.ConnectionEventHandler):
         """Invoked when the Replies reply link has become active.  At this
         point, we are ready to send/receive messages (via Task processing).
         """
-        LOG.info("Messaging is active (%s:%i)", self.hosts.current.hostname,
-                 self.hosts.current.port)
+        LOG.info(_LI("Messaging is active (%(hostname)s:%(port)s)"),
+                 {'hostname': self.hosts.current.hostname,
+                  'port': self.hosts.current.port})
         self._schedule_task_processing()
 
     # callback from eventloop on socket error
@@ -576,8 +580,9 @@ class Controller(pyngus.ConnectionEventHandler):
         the peer is up.  At this point, the driver will activate all subscriber
         links (server) and the reply link.
         """
-        LOG.debug("Connection active (%s:%i), subscribing...",
-                  self.hosts.current.hostname, self.hosts.current.port)
+        LOG.debug("Connection active (%(hostname)s:%(port)s), subscribing...",
+                  {'hostname': self.hosts.current.hostname,
+                   'port': self.hosts.current.port})
         for s in self._servers.values():
             s.attach(self._socket_connection.connection)
         self._replies = Replies(self._socket_connection.connection,
@@ -603,7 +608,7 @@ class Controller(pyngus.ConnectionEventHandler):
             # connection. Acknowledge the close, and try to reconnect/failover
             # later once the connection has closed (connection_closed is
             # called).
-            LOG.info("Connection closed by peer: %s",
+            LOG.info(_LI("Connection closed by peer: %s"),
                      reason or "no reason given")
             self._socket_connection.connection.close()
 
@@ -614,9 +619,11 @@ class Controller(pyngus.ConnectionEventHandler):
         """
         if outcome == proton.SASL.OK:
             return
-        LOG.error("AUTHENTICATION FAILURE: Cannot connect to %s:%s as user %s",
-                  self.hosts.current.hostname, self.hosts.current.port,
-                  self.hosts.current.username)
+        LOG.error(_LE("AUTHENTICATION FAILURE: Cannot connect to "
+                      "%(hostname)s:%(port)s as user %(username)s"),
+                  {'hostname': self.hosts.current.hostname,
+                   'port': self.hosts.current.port,
+                   'username': self.hosts.current.username})
         # connection failure will be handled later
 
     def _complete_shutdown(self):
@@ -625,7 +632,7 @@ class Controller(pyngus.ConnectionEventHandler):
         """
         self._socket_connection.close()
         self.processor.shutdown()
-        LOG.info("Messaging has shutdown")
+        LOG.info(_LI("Messaging has shutdown"))
 
     def _handle_connection_loss(self):
         """The connection to the messaging service has been lost.  Try to
@@ -641,7 +648,7 @@ class Controller(pyngus.ConnectionEventHandler):
             if not self._reconnecting:
                 self._reconnecting = True
                 self._replies = None
-                LOG.info("delaying reconnect attempt for %d seconds",
+                LOG.info(_LI("delaying reconnect attempt for %d seconds"),
                          self._delay)
                 self.processor.schedule(lambda: self._do_reconnect(),
                                         self._delay)
@@ -660,5 +667,6 @@ class Controller(pyngus.ConnectionEventHandler):
             self._senders = {}
             self._socket_connection.reset()
             host = self.hosts.next()
-            LOG.info("Reconnecting to: %s:%i", host.hostname, host.port)
+            LOG.info(_LI("Reconnecting to: %(hostname):%(port)"),
+                     {'hostname': host.hostname, 'port': host.port})
             self._socket_connection.connect(host)

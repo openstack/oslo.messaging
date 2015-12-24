@@ -42,8 +42,8 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
             # a queue for keeping messages to send them later
             # when some listener appears. However such approach
             # being more reliable will consume additional memory.
-            LOG.warning(_LW("Request %s was dropped because no connection")
-                        % request.msg_type)
+            LOG.warning(_LW("Request %s was dropped because no connection"),
+                        request.msg_type)
             return
 
         if request.msg_type in zmq_names.MULTISEND_TYPES:
@@ -61,9 +61,8 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
         socket.send(b'', zmq.SNDMORE)
         socket.send_pyobj(request)
 
-        LOG.debug("Sending message_id %(message)s to a target %(target)s"
-                  % {"message": request.message_id,
-                     "target": request.target})
+        LOG.debug("Sending message_id %(message)s to a target %(target)s",
+                  {"message": request.message_id, "target": request.target})
 
     def cleanup(self):
         super(DealerPublisher, self).cleanup()
@@ -90,10 +89,10 @@ class DealerPublisherLight(zmq_publisher_base.PublisherBase):
         self.socket.send_pyobj(request)
 
         LOG.debug("->[proxy:%(addr)s] Sending message_id %(message)s to "
-                  "a target %(target)s"
-                  % {"message": request.message_id,
-                     "target": request.target,
-                     "addr": self.address})
+                  "a target %(target)s",
+                  {"message": request.message_id,
+                   "target": request.target,
+                   "addr": self.address})
 
     def cleanup(self):
         self.socket.setsockopt(zmq.LINGER, 0)
@@ -118,7 +117,7 @@ class AcknowledgementReceiver(object):
 
     def poll_for_acknowledgements(self):
         ack_message, socket = self.poller.poll()
-        LOG.debug("Message %s acknowledged" % ack_message[zmq_names.FIELD_ID])
+        LOG.debug("Message %s acknowledged", ack_message[zmq_names.FIELD_ID])
 
     def cleanup(self):
         self.thread.stop()

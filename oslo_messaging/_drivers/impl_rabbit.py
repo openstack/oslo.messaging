@@ -402,15 +402,15 @@ class Connection(object):
 
         self._url = ''
         if self.fake_rabbit:
-            LOG.warn("Deprecated: fake_rabbit option is deprecated, set "
-                     "rpc_backend to kombu+memory or use the fake "
-                     "driver instead.")
+            LOG.warn(_LW("Deprecated: fake_rabbit option is deprecated, set "
+                         "rpc_backend to kombu+memory or use the fake "
+                         "driver instead."))
             self._url = 'memory://%s/' % virtual_host
         elif url.hosts:
             if url.transport.startswith('kombu+'):
                 LOG.warn(_LW('Selecting the kombu transport through the '
                              'transport url (%s) is a experimental feature '
-                             'and this is not yet supported.') % url.transport)
+                             'and this is not yet supported.'), url.transport)
             if len(url.hosts) > 1:
                 random.shuffle(url.hosts)
             for host in url.hosts:
@@ -600,10 +600,10 @@ class Connection(object):
 
         current_pid = os.getpid()
         if self._initial_pid != current_pid:
-            LOG.warn("Process forked after connection established! "
-                     "This can result in unpredictable behavior. "
-                     "See: http://docs.openstack.org/developer/"
-                     "oslo_messaging/transport.html")
+            LOG.warn(_LW("Process forked after connection established! "
+                         "This can result in unpredictable behavior. "
+                         "See: http://docs.openstack.org/developer/"
+                         "oslo_messaging/transport.html"))
             self._initial_pid = current_pid
 
         if retry is None:

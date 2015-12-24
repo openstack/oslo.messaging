@@ -77,9 +77,8 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
             self.socket.setsockopt(zmq.SUBSCRIBE, topic_filter)
             self.subscriptions.add(topic_filter)
 
-        LOG.debug("[%(host)s] Subscribing to topic %(filter)s"
-                  % {"host": self.id,
-                     "filter": topic_filter})
+        LOG.debug("[%(host)s] Subscribing to topic %(filter)s",
+                  {"host": self.id, "filter": topic_filter})
 
     def on_publishers(self, publishers):
         with self._socket_lock:
@@ -87,17 +86,18 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
                 self.socket.connect(zmq_address.get_tcp_direct_address(host))
 
             self.poller.register(self.socket, self.receive_message)
-        LOG.debug("[%s] SUB consumer connected to publishers %s"
-                  % (self.id, publishers))
+        LOG.debug("[%s] SUB consumer connected to publishers %s",
+                  (self.id, publishers))
 
     def listen(self, target):
-        LOG.debug("Listen to target %s" % target)
+        LOG.debug("Listen to target %s", target)
         with self._socket_lock:
             self._subscribe_on_target(target)
 
     def _receive_request(self, socket):
         topic_filter = socket.recv()
-        LOG.debug("[%s] Received %s topic" % (self.id, topic_filter))
+        LOG.debug("[%(id)s] Received %(topict_filter)s topic",
+                  {'id': self.id, 'topic_filter': topic_filter})
         assert topic_filter in self.subscriptions
         request = socket.recv_pyobj()
         return request
@@ -107,18 +107,18 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
             request = self._receive_request(socket)
             if not request:
                 return None
-            LOG.debug("Received %(type)s, %(id)s, %(target)s"
-                      % {"type": request.msg_type,
-                         "id": request.message_id,
-                         "target": request.target})
+            LOG.debug("Received %(type)s, %(id)s, %(target)s",
+                      {"type": request.msg_type,
+                       "id": request.message_id,
+                       "target": request.target})
 
             if request.msg_type not in zmq_names.MULTISEND_TYPES:
-                LOG.error(_LE("Unknown message type: %s") % request.msg_type)
+                LOG.error(_LE("Unknown message type: %s"), request.msg_type)
             else:
                 return SubIncomingMessage(self.server, request, socket,
                                           self.poller)
         except zmq.ZMQError as e:
-            LOG.error(_LE("Receiving message failed: %s") % str(e))
+            LOG.error(_LE("Receiving message failed: %s"), str(e))
 
 
 class MatchmakerPoller(object):

@@ -58,7 +58,7 @@ class DealerCallPublisher(zmq_publisher_base.PublisherBase):
         finally:
             self.reply_waiter.untrack_id(request.message_id)
 
-        LOG.debug("Received reply %s" % reply)
+        LOG.debug("Received reply %s", reply)
         if reply[zmq_names.FIELD_FAILURE]:
             raise rpc_common.deserialize_remote_exception(
                 reply[zmq_names.FIELD_FAILURE],
@@ -86,9 +86,8 @@ class RequestSender(zmq_publisher_base.PublisherMultisend):
         socket.send(b'', zmq.SNDMORE)
         socket.send_pyobj(request)
 
-        LOG.debug("Sending message_id %(message)s to a target %(target)s"
-                  % {"message": request.message_id,
-                     "target": request.target})
+        LOG.debug("Sending message_id %(message)s to a target %(target)s",
+                  {"message": request.message_id, "target": request.target})
 
     def _check_hosts_connections(self, target, listener_type):
         if str(target) in self.outbound_sockets:
@@ -144,10 +143,10 @@ class RequestSenderLight(RequestSender):
 
     def _do_send_request(self, socket, request):
         LOG.debug("Sending %(type)s message_id %(message)s"
-                  " to a target %(target)s"
-                  % {"type": request.msg_type,
-                     "message": request.message_id,
-                     "target": request.target})
+                  " to a target %(target)s",
+                  {"type": request.msg_type,
+                   "message": request.message_id,
+                   "target": request.target})
 
         envelope = request.create_envelope()
 
@@ -182,7 +181,7 @@ class ReplyWaiter(object):
             empty = socket.recv()
             assert empty == b'', "Empty expected!"
             reply = socket.recv_pyobj()
-            LOG.debug("Received reply %s" % reply)
+            LOG.debug("Received reply %s", reply)
             return reply
 
         self.poller.register(socket, recv_method=_receive_method)
@@ -196,4 +195,4 @@ class ReplyWaiter(object):
             if call_future:
                 call_future.set_result(reply)
             else:
-                LOG.warning(_LW("Received timed out reply: %s") % reply_id)
+                LOG.warning(_LW("Received timed out reply: %s"), reply_id)

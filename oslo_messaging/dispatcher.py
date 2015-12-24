@@ -16,6 +16,9 @@ import logging
 
 import six
 
+from oslo_messaging._i18n import _
+
+
 __all__ = [
     "DispatcherBase",
     "DispatcherExecutorContext"
@@ -58,7 +61,7 @@ class DispatcherExecutorContext(object):
             self._result = self._dispatch(self._incoming,
                                           self._executor_callback)
         except Exception:
-            msg = 'The dispatcher method must catches all exceptions'
+            msg = _('The dispatcher method must catches all exceptions')
             LOG.exception(msg)
             raise RuntimeError(msg)
 

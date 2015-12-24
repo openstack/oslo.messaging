@@ -91,10 +91,10 @@ class PublisherBase(object):
         :type request: zmq_request.Request
         """
         LOG.debug("Sending %(type)s message_id %(message)s to a target "
-                  "%(target)s"
-                  % {"type": request.msg_type,
-                     "message": request.message_id,
-                     "target": request.target})
+                  "%(target)s",
+                  {"type": request.msg_type,
+                   "message": request.message_id,
+                   "target": request.target})
         socket.send_pyobj(request)
 
     def cleanup(self):
@@ -137,10 +137,8 @@ class PublisherMultisend(PublisherBase):
     def _connect_to_address(self, socket, address, target):
         stype = zmq_names.socket_type_str(self.socket_type)
         try:
-            LOG.info(_LI("Connecting %(stype)s to %(address)s for %(target)s")
-                     % {"stype": stype,
-                        "address": address,
-                        "target": target})
+            LOG.info(_LI("Connecting %(stype)s to %(address)s for %(target)s"),
+                     {"stype": stype, "address": address, "target": target})
 
             if six.PY3:
                 socket.setsockopt_string(zmq.IDENTITY, str(uuid.uuid1()))
@@ -151,8 +149,8 @@ class PublisherMultisend(PublisherBase):
         except zmq.ZMQError as e:
             errmsg = _LE("Failed connecting %(stype) to %(address)s: %(e)s")\
                 % (stype, address, e)
-            LOG.error(_LE("Failed connecting %(stype) to %(address)s: %(e)s")
-                      % (stype, address, e))
+            LOG.error(_LE("Failed connecting %(stype) to %(address)s: %(e)s"),
+                      (stype, address, e))
             raise rpc_common.RPCException(errmsg)
 
     def _connect_to_host(self, socket, host, target):

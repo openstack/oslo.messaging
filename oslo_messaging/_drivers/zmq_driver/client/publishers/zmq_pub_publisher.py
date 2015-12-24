@@ -53,7 +53,7 @@ class PubPublisherProxy(zmq_publisher_base.PublisherBase):
 
         self.sync_channel = SyncChannel(conf, matchmaker, self.zmq_context)
 
-        LOG.info(_LI("[PUB:%(pub)s, PULL:%(pull)s] Run PUB publisher") %
+        LOG.info(_LI("[PUB:%(pub)s, PULL:%(pull)s] Run PUB publisher"),
                  {"pub": self.host,
                   "pull": self.sync_channel.sync_host})
 
@@ -75,10 +75,10 @@ class PubPublisherProxy(zmq_publisher_base.PublisherBase):
         self.socket.send(multipart_message[zmq_names.MULTIPART_IDX_BODY])
 
         LOG.debug("Publishing message [%(topic)s] %(message_id)s to "
-                  "a target %(target)s "
-                  % {"message_id": message_id,
-                     "target": target,
-                     "topic": topic_filter})
+                  "a target %(target)s ",
+                  {"message_id": message_id,
+                   "target": target,
+                   "topic": topic_filter})
 
     def cleanup(self):
         self.matchmaker.unregister_publisher(
@@ -114,10 +114,10 @@ class SyncChannel(object):
                                                      self.sync_socket.port)
 
     def is_ready(self):
-        LOG.debug("[%s] Waiting for ready from first subscriber" %
+        LOG.debug("[%s] Waiting for ready from first subscriber",
                   self.sync_host)
         if self._ready is None:
             self._ready = self.poller.poll()
-            LOG.debug("[%s] Received ready from first subscriber" %
+            LOG.debug("[%s] Received ready from first subscriber",
                       self.sync_host)
         return self._ready is not None

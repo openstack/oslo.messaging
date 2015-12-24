@@ -28,6 +28,7 @@ from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
 from oslo_messaging._i18n import _LW
 
@@ -64,7 +65,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
         unique_id = msg[rpc_amqp.UNIQUE_ID]
 
         LOG.debug("sending reply msg_id: %(msg_id)s "
-                  "reply queue: %(reply_q)s" % {
+                  "reply queue: %(reply_q)s", {
                       'msg_id': self.msg_id,
                       'unique_id': unique_id,
                       'reply_q': self.reply_q})
@@ -99,7 +100,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
                 if timer.check_return() > 0:
                     LOG.debug(("The reply %(msg_id)s cannot be sent  "
                                "%(reply_q)s reply queue don't exist, "
-                               "retrying...") % {
+                               "retrying..."), {
                                    'msg_id': self.msg_id,
                                    'reply_q': self.reply_q})
                     time.sleep(0.25)
@@ -107,7 +108,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
                     self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
                     LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
                                  "%(reply_q)s reply queue don't exist after "
-                                 "%(duration)s sec abandoning...") % {
+                                 "%(duration)s sec abandoning..."), {
                                      'msg_id': self.msg_id,
                                      'reply_q': self.reply_q,
                                      'duration': duration})
@@ -192,7 +193,7 @@ class AMQPListener(base.Listener):
 
         unique_id = self.msg_id_cache.check_duplicate_message(message)
 
-        LOG.debug("received message msg_id: %(msg_id)s reply to %(queue)s" % {
+        LOG.debug("received message msg_id: %(msg_id)s reply to %(queue)s", {
             'queue': ctxt.reply_q, 'msg_id': ctxt.msg_id})
 
         self.incoming.append(AMQPIncomingMessage(self,
@@ -250,10 +251,11 @@ class ReplyWaiters(object):
     def add(self, msg_id):
         self._queues[msg_id] = moves.queue.Queue()
         if len(self._queues) > self._wrn_threshold:
-            LOG.warn('Number of call queues is greater than warning '
-                     'threshold: %d. There could be a leak. Increasing'
-                     ' threshold to: %d', self._wrn_threshold,
-                     self._wrn_threshold * 2)
+            LOG.warn(_LW('Number of call queues is greater than warning '
+                         'threshold: %(old_threshold)s. There could be a '
+                         'leak. Increasing threshold to: %(threshold)s'),
+                     {'old_threshold': self._wrn_threshold,
+                      'threshold': self._wrn_threshold * 2})
             self._wrn_threshold *= 2
 
     def remove(self, msg_id):
@@ -286,14 +288,14 @@ class ReplyWaiter(object):
             try:
                 self.conn.consume()
             except Exception:
-                LOG.exception("Failed to process incoming message, "
-                              "retrying...")
+                LOG.exception(_LE("Failed to process incoming message, "
+                              "retrying..."))
 
     def __call__(self, message):
         message.acknowledge()
         incoming_msg_id = message.pop('_msg_id', None)
         if message.get('ending'):
-            LOG.debug("received reply msg_id: %s" % incoming_msg_id)
+            LOG.debug("received reply msg_id: %s", incoming_msg_id)
         self.waiters.put(incoming_msg_id, message)
 
     def listen(self, msg_id):

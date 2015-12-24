@@ -21,6 +21,7 @@ from oslo_messaging._drivers.zmq_driver.server.consumers\
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_sub_consumer
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._i18n import _LI
 
 LOG = logging.getLogger(__name__)
 
@@ -53,8 +54,9 @@ class ZmqServer(base.Listener):
         return message
 
     def stop(self):
-        consumer = self.router_consumer
-        LOG.info("Stop server %s:%d" % (consumer.address, consumer.port))
+        consumer = self.rpc_consumer
+        LOG.info(_LI("Stop server %(address)s:%(port)s"),
+                 {'address': consumer.address, 'port': consumer.port})
 
     def cleanup(self):
         self.poller.close()

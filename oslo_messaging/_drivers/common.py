@@ -85,7 +85,8 @@ class RPCException(Exception):
             except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_LE('Exception in string format operation'))
+                LOG.exception(_LE('Exception in string format operation, '
+                                  'kwargs are:'))
                 for name, value in six.iteritems(kwargs):
                     LOG.error("%s: %s", name, value)
                 # at least get the core message out if something happened
@@ -411,7 +412,7 @@ class ConnectionContext(Connection):
                 try:
                     self.connection.reset()
                 except Exception:
-                    LOG.exception("Fail to reset the connection, drop it")
+                    LOG.exception(_LE("Fail to reset the connection, drop it"))
                     try:
                         self.connection.close()
                     except Exception:

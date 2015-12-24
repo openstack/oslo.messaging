@@ -58,8 +58,8 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
             self._redirect_reply(message)
 
     def _redirect_in_request(self, multipart_message):
-        LOG.debug("-> Redirecting request %s to TCP publisher"
-                  % multipart_message)
+        LOG.debug("-> Redirecting request %s to TCP publisher",
+                  multipart_message)
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
         if self.conf.use_pub_sub and \
                 envelope[zmq_names.FIELD_MSG_TYPE] \
@@ -69,13 +69,13 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
             self.direct_publisher.send_request(multipart_message)
 
     def _redirect_reply(self, reply):
-        LOG.debug("Reply proxy %s" % reply)
+        LOG.debug("Reply proxy %s", reply)
         if reply[zmq_names.IDX_REPLY_TYPE] == zmq_names.ACK_TYPE:
-            LOG.debug("Acknowledge dropped %s" % reply)
+            LOG.debug("Acknowledge dropped %s", reply)
             return
 
-        LOG.debug("<- Redirecting reply to ROUTER: reply: %s"
-                  % reply[zmq_names.IDX_REPLY_BODY:])
+        LOG.debug("<- Redirecting reply to ROUTER: reply: %s",
+                  reply[zmq_names.IDX_REPLY_BODY:])
 
         self.router_socket.send_multipart(reply[zmq_names.IDX_REPLY_BODY:])
 

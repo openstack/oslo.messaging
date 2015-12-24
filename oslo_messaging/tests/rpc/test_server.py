@@ -744,7 +744,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # DEFAULT_LOG_AFTER
 
         log_event = threading.Event()
-        mock_log.warn.side_effect = lambda _: log_event.set()
+        mock_log.warn.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
         thread = eventlet.spawn(self.server.stop)
@@ -760,7 +760,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # the number of seconds passed to log_after
 
         log_event = threading.Event()
-        mock_log.warn.side_effect = lambda _: log_event.set()
+        mock_log.warn.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
         thread = eventlet.spawn(self.server.stop, log_after=1)
@@ -776,7 +776,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # specified an absolute timeout
 
         log_event = threading.Event()
-        mock_log.warn.side_effect = lambda _: log_event.set()
+        mock_log.warn.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
         thread = eventlet.spawn(self.server.stop, log_after=1, timeout=2)

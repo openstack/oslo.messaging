@@ -39,8 +39,8 @@ class PushPublisher(zmq_publisher_base.PublisherMultisend):
             request.target, zmq_names.socket_type_str(zmq.PULL))
 
         if not push_socket.connections:
-            LOG.warning(_LW("Request %s was dropped because no connection")
-                        % request.msg_type)
+            LOG.warning(_LW("Request %s was dropped because no connection"),
+                        request.msg_type)
             return
 
         if request.msg_type in zmq_names.MULTISEND_TYPES:
@@ -53,6 +53,5 @@ class PushPublisher(zmq_publisher_base.PublisherMultisend):
 
         super(PushPublisher, self)._send_request(socket, request)
 
-        LOG.debug("Publishing message %(message)s to a target %(target)s"
-                  % {"message": request.message,
-                     "target": request.target})
+        LOG.debug("Publishing message %(message)s to a target %(target)s",
+                  {"message": request.message, "target": request.target})

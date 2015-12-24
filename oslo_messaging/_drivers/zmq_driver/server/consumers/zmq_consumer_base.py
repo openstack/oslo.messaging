@@ -74,8 +74,8 @@ class SingleSocketConsumer(ConsumerBase):
         except zmq.ZMQError as e:
             errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
                 % (self.port, e)
-            LOG.error(_LE("Failed binding to port %(port)d: %(e)s")
-                      % (self.port, e))
+            LOG.error(_LE("Failed binding to port %(port)d: %(e)s"),
+                      (self.port, e))
             raise rpc_common.RPCException(errmsg)
 
     @property

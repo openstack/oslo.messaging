@@ -17,6 +17,7 @@ import threading
 import time
 
 from oslo_messaging._drivers.protocols.amqp import controller
+from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
 from six import moves
@@ -61,7 +62,8 @@ class SendTask(controller.Task):
             controller.request(self._target, self._request,
                                self._results_queue, self._wait_for_reply)
         else:
-            LOG.warn("Send request to %s aborted: TTL expired.", self._target)
+            LOG.warn(_LW("Send request to %s aborted: TTL expired."),
+                     self._target)
 
 
 class ListenTask(controller.Task):

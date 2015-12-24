@@ -36,6 +36,7 @@ import uuid
 import pyngus
 from six import moves
 
+from oslo_messaging._i18n import _LE, _LI, _LW
 LOG = logging.getLogger(__name__)
 
 
@@ -100,7 +101,7 @@ class _SocketConnection(object):
         if not addr:
             key = "%s:%i" % (host.hostname, host.port)
             error = "Invalid peer address '%s'" % key
-            LOG.error(error)
+            LOG.error(_LE("Invalid peer address '%s'"), key)
             self._handler.socket_error(error)
             return
         my_socket = socket.socket(addr[0][0], addr[0][1], addr[0][2])
@@ -111,7 +112,7 @@ class _SocketConnection(object):
         except socket.error as e:
             if e.errno != errno.EINPROGRESS:
                 error = "Socket connect failure '%s'" % str(e)
-                LOG.error(error)
+                LOG.error(_LE("Socket connect failure '%s'"), str(e))
                 self._handler.socket_error(error)
                 return
         self.socket = my_socket
@@ -316,7 +317,7 @@ class Thread(threading.Thread):
                 results = select.select(readfds, writefds, [], timeout)
             except select.error as serror:
                 if serror[0] == errno.EINTR:
-                    LOG.warning("ignoring interrupt from select(): %s",
+                    LOG.warning(_LW("ignoring interrupt from select(): %s"),
                                 str(serror))
                     continue
                 raise  # assuming fatal...
@@ -342,6 +343,6 @@ class Thread(threading.Thread):
 
             self._schedule.process()  # run any deferred requests
 
-        LOG.info("eventloop thread exiting, container=%s",
+        LOG.info(_LI("eventloop thread exiting, container=%s"),
                  self._container.name)
         self._container.destroy()
