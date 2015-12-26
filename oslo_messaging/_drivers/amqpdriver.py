@@ -168,9 +168,9 @@ class ObsoleteReplyQueuesCache(object):
         self._no_reply_log(reply_q, msg_id)
 
     def _no_reply_log(self, reply_q, msg_id):
-        LOG.warn(_LW("%(reply_queue)s doesn't exists, drop reply to "
-                     "%(msg_id)s"), {'reply_queue': reply_q,
-                                     'msg_id': msg_id})
+        LOG.warning(_LW("%(reply_queue)s doesn't exists, drop reply to "
+                        "%(msg_id)s"), {'reply_queue': reply_q,
+                                        'msg_id': msg_id})
 
 
 class AMQPListener(base.Listener):
@@ -251,11 +251,11 @@ class ReplyWaiters(object):
     def add(self, msg_id):
         self._queues[msg_id] = moves.queue.Queue()
         if len(self._queues) > self._wrn_threshold:
-            LOG.warn(_LW('Number of call queues is greater than warning '
-                         'threshold: %(old_threshold)s. There could be a '
-                         'leak. Increasing threshold to: %(threshold)s'),
-                     {'old_threshold': self._wrn_threshold,
-                      'threshold': self._wrn_threshold * 2})
+            LOG.warning(_LW('Number of call queues is greater than warning '
+                            'threshold: %(old_threshold)s. There could be a '
+                            'leak. Increasing threshold to: %(threshold)s'),
+                        {'old_threshold': self._wrn_threshold,
+                         'threshold': self._wrn_threshold * 2})
             self._wrn_threshold *= 2
 
     def remove(self, msg_id):

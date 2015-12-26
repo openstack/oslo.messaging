@@ -433,15 +433,16 @@ class Connection(object):
 
         self._url = ''
         if self.fake_rabbit:
-            LOG.warn(_LW("Deprecated: fake_rabbit option is deprecated, set "
-                         "rpc_backend to kombu+memory or use the fake "
-                         "driver instead."))
+            LOG.warning(_LW("Deprecated: fake_rabbit option is deprecated, "
+                            "set rpc_backend to kombu+memory or use the fake "
+                            "driver instead."))
             self._url = 'memory://%s/' % virtual_host
         elif url.hosts:
             if url.transport.startswith('kombu+'):
-                LOG.warn(_LW('Selecting the kombu transport through the '
-                             'transport url (%s) is a experimental feature '
-                             'and this is not yet supported.'), url.transport)
+                LOG.warning(_LW('Selecting the kombu transport through the '
+                                'transport url (%s) is a experimental feature '
+                                'and this is not yet supported.'),
+                            url.transport)
             if len(url.hosts) > 1:
                 random.shuffle(url.hosts)
             for host in url.hosts:
@@ -631,10 +632,10 @@ class Connection(object):
 
         current_pid = os.getpid()
         if self._initial_pid != current_pid:
-            LOG.warn(_LW("Process forked after connection established! "
-                         "This can result in unpredictable behavior. "
-                         "See: http://docs.openstack.org/developer/"
-                         "oslo.messaging/transport.html"))
+            LOG.warning(_LW("Process forked after connection established! "
+                            "This can result in unpredictable behavior. "
+                            "See: http://docs.openstack.org/developer/"
+                            "oslo.messaging/transport.html"))
             self._initial_pid = current_pid
 
         if retry is None:
@@ -780,8 +781,8 @@ class Connection(object):
         if self.connection.supports_heartbeats:
             return True
         elif not self._heartbeat_support_log_emitted:
-            LOG.warn(_LW("Heartbeat support requested but it is not supported "
-                         "by the kombu driver or the broker"))
+            LOG.warning(_LW("Heartbeat support requested but it is not "
+                            "supported by the kombu driver or the broker"))
             self._heartbeat_support_log_emitted = True
         return False
 

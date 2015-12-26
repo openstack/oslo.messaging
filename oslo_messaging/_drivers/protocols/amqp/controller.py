@@ -142,8 +142,8 @@ class Replies(pyngus.ReceiverEventHandler):
             del self._correlation[key]
             receiver.message_accepted(handle)
         else:
-            LOG.warn(_LW("Can't find receiver for response msg id=%s, "
-                         "dropping!"), key)
+            LOG.warning(_LW("Can't find receiver for response msg id=%s, "
+                            "dropping!"), key)
             receiver.message_modified(handle, True, True, None)
 
     def _update_credit(self):

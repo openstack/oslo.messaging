@@ -62,8 +62,8 @@ class SendTask(controller.Task):
             controller.request(self._target, self._request,
                                self._results_queue, self._wait_for_reply)
         else:
-            LOG.warn(_LW("Send request to %s aborted: TTL expired."),
-                     self._target)
+            LOG.warning(_LW("Send request to %s aborted: TTL expired."),
+                        self._target)
 
 
 class ListenTask(controller.Task):
