@@ -974,6 +974,7 @@ class Connection(object):
         """Publish a message."""
         producer = kombu.messaging.Producer(exchange=exchange,
                                             channel=self.channel,
+                                            auto_declare=not exchange.passive,
                                             routing_key=routing_key)
 
         expiration = None
