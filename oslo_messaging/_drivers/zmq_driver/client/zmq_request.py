@@ -134,8 +134,3 @@ class NotificationRequest(Request):
     def __init__(self, *args, **kwargs):
         self.version = kwargs.pop("version")
         super(NotificationRequest, self).__init__(*args, **kwargs)
-
-
-class NotificationFanoutRequest(NotificationRequest):
-
-    msg_type = zmq_names.NOTIFY_FANOUT_TYPE

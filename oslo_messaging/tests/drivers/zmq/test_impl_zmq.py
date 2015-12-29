@@ -29,7 +29,6 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-
 class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
 
     @testtools.skipIf(zmq is None, "zmq not available")
@@ -56,6 +55,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
 
         for l in listeners:
             l.cleanup()
+
 
 class TestConfZmqDriverLoad(test_utils.BaseTestCase):
 
