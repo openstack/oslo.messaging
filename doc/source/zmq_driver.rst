@@ -90,7 +90,7 @@ Enabling (mandatory)
 
 To enable the driver, in the section [DEFAULT] of the conf file,
 the 'rpc_backend' flag must be set to 'zmq' and the 'rpc_zmq_host' flag
-must be set to the hostname of the current node.
+must be set to the hostname of the current node. ::
 
         [DEFAULT]
         rpc_backend = zmq
@@ -113,14 +113,16 @@ RedisMatchMaker: loads the hash table from a remote Redis server, supports
 dynamic host/topic registrations, host expiration, and hooks for consuming
 applications to acknowledge or neg-acknowledge topic.host service availability.
 
-To set the MatchMaker class, use option 'rpc_zmq_matchmaker' in [DEFAULT].
+To set the MatchMaker class, use option 'rpc_zmq_matchmaker' in [DEFAULT]. ::
 
         rpc_zmq_matchmaker = dummy
-        or
+
+or::
+
         rpc_zmq_matchmaker = redis
 
 To specify the Redis server for RedisMatchMaker, use options in
-[matchmaker_redis] of each project.
+[matchmaker_redis] of each project. ::
 
         [matchmaker_redis]
         host = 127.0.0.1
