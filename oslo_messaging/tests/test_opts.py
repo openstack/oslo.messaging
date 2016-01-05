@@ -32,12 +32,13 @@ class OptsTestCase(test_utils.BaseTestCase):
         super(OptsTestCase, self).setUp()
 
     def _test_list_opts(self, result):
-        self.assertEqual(4, len(result))
+        self.assertEqual(5, len(result))
 
         groups = [g for (g, l) in result]
         self.assertIn(None, groups)
         self.assertIn('matchmaker_redis', groups)
         self.assertIn('oslo_messaging_amqp', groups)
+        self.assertIn('oslo_messaging_notifications', groups)
         self.assertIn('oslo_messaging_rabbit', groups)
 
         opt_names = [o.name for (g, l) in result for o in l]
