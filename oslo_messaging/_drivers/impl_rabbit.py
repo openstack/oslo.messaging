@@ -1091,7 +1091,8 @@ class Connection(object):
             auto_delete=self.amqp_auto_delete)
 
         self._ensure_publishing(self._publish, exchange, msg,
-                                routing_key=topic, retry=retry)
+                                routing_key=topic, timeout=timeout,
+                                retry=retry)
 
     def fanout_send(self, topic, msg, retry=None):
         """Send a 'fanout' message."""
