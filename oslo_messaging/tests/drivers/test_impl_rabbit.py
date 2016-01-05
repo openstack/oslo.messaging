@@ -180,7 +180,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
                           timeout=1)
-        fake_publish.assert_called_with('msg', expiration=1000)
+        fake_publish.assert_called_with('msg', expiration=1)
 
     @mock.patch('kombu.messaging.Producer.publish')
     def test_send_no_timeout(self, fake_publish):

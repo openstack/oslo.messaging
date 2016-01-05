@@ -976,12 +976,6 @@ class Connection(object):
                                             channel=self.channel,
                                             routing_key=routing_key)
 
-        expiration = None
-        if timeout:
-            # AMQP TTL is in milliseconds when set in the property.
-            # Details: http://www.rabbitmq.com/ttl.html#per-message-ttl
-            expiration = int(timeout * 1000)
-
         # NOTE(sileht): no need to wait more, caller expects
         # a answer before timeout is reached
         transport_timeout = timeout
@@ -1001,7 +995,7 @@ class Connection(object):
         LOG.trace('Connection._publish: sending message %(msg)s to'
                   ' %(who)s with routing key %(key)s', log_info)
         with self._transport_socket_timeout(transport_timeout):
-            producer.publish(msg, expiration=expiration)
+            producer.publish(msg, expiration=timeout)
 
     # List of notification queue declared on the channel to avoid
     # unnecessary redeclaration. This list is resetted each time
