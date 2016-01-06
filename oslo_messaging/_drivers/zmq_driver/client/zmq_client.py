@@ -34,6 +34,10 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
             zmq_dealer_publisher.DealerPublisherLight(
                 conf, zmq_address.get_broker_address(conf))
 
+        fanout_publisher = zmq_dealer_publisher.DealerPublisherLight(
+            conf, zmq_address.get_broker_address(conf)) \
+            if conf.use_pub_sub else default_publisher
+
         super(ZmqClient, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
@@ -44,10 +48,9 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
                 # Here use DealerPublisherLight for sending request to proxy
                 # which finally uses PubPublisher to send fanout in case of
                 # 'use_pub_sub' option configured.
-                zmq_names.CAST_FANOUT_TYPE:
-                    zmq_dealer_publisher.DealerPublisherLight(
-                        conf, zmq_address.get_broker_address(conf))
-                    if conf.use_pub_sub else default_publisher,
+                zmq_names.CAST_FANOUT_TYPE: fanout_publisher,
+
+                zmq_names.NOTIFY_TYPE: fanout_publisher,
 
                 "default": default_publisher
             }

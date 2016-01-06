@@ -42,8 +42,8 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
 
         self.matchmaker = matchmaker
         reply_receiver = zmq_dealer_publisher_proxy.ReplyReceiver(self.poller)
-        self.publisher = zmq_dealer_publisher_proxy.DealerPublisherProxy(
-            conf, matchmaker, reply_receiver)
+        self.direct_publisher = zmq_dealer_publisher_proxy \
+            .DealerPublisherProxy(conf, matchmaker, reply_receiver)
         self.pub_publisher = zmq_pub_publisher.PubPublisherProxy(
             conf, matchmaker)
 
@@ -62,11 +62,11 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
                   % multipart_message)
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
         if self.conf.use_pub_sub and \
-            envelope[zmq_names.FIELD_MSG_TYPE] \
-                == zmq_names.CAST_FANOUT_TYPE:
+                envelope[zmq_names.FIELD_MSG_TYPE] \
+                in zmq_names.MULTISEND_TYPES:
             self.pub_publisher.send_request(multipart_message)
         else:
-            self.publisher.send_request(multipart_message)
+            self.direct_publisher.send_request(multipart_message)
 
     def _redirect_reply(self, reply):
         LOG.debug("Reply proxy %s" % reply)

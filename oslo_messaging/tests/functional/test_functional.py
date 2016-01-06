@@ -254,6 +254,9 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     def test_multiple_servers(self):
         if self.url.startswith("amqp:"):
             self.skipTest("QPID-6307")
+        if self.url.startswith("zmq:"):
+            self.skipTest("ZeroMQ-PUB-SUB")
+        
         listener_a = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['test-topic']))
 

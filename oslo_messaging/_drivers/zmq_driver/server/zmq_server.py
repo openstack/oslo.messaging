@@ -33,15 +33,16 @@ class ZmqServer(base.Listener):
         super(ZmqServer, self).__init__(driver)
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller()
-        self.rpc_consumer = zmq_router_consumer.RouterConsumerBroker(
+        self.router_consumer = zmq_router_consumer.RouterConsumerBroker(
             conf, self.poller, self) if conf.direct_over_proxy else \
             zmq_router_consumer.RouterConsumer(
                 conf, self.poller, self)
-        self.notify_consumer = self.rpc_consumer
         self.sub_consumer = zmq_sub_consumer.SubConsumer(
             conf, self.poller, self) if conf.use_pub_sub else None
+        self.notify_consumer = self.sub_consumer if conf.use_pub_sub \
+            else self.router_consumer
 
-        self.consumers = [self.rpc_consumer]
+        self.consumers = [self.router_consumer]
         if self.sub_consumer:
             self.consumers.append(self.sub_consumer)
 
@@ -52,7 +53,7 @@ class ZmqServer(base.Listener):
         return message
 
     def stop(self):
-        consumer = self.rpc_consumer
+        consumer = self.router_consumer
         LOG.info("Stop server %s:%d" % (consumer.address, consumer.port))
 
     def cleanup(self):
@@ -61,19 +62,14 @@ class ZmqServer(base.Listener):
             consumer.cleanup()
 
     def listen(self, target):
-        consumer = self.rpc_consumer
+        consumer = self.router_consumer
         consumer.listen(target)
 
         if self.sub_consumer:
             self.sub_consumer.listen(target)
 
     def listen_notification(self, targets_and_priorities):
-
         consumer = self.notify_consumer
-
-        LOG.info("Listen for notifications on %s:%d"
-                 % (consumer.address, consumer.port))
-
         for target, priority in targets_and_priorities:
             t = copy.deepcopy(target)
             t.topic = target.topic + '.' + priority
