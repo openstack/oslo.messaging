@@ -65,13 +65,13 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
 
     def _check_listener(self, listener):
         listener._received.wait(timeout=5)
-        self.assertEqual(True, listener._received.isSet())
+        self.assertTrue(listener._received.isSet())
         method = listener.message.message[u'method']
         self.assertEqual(u'hello-world', method)
 
     def _check_listener_negative(self, listener):
         listener._received.wait(timeout=1)
-        self.assertEqual(False, listener._received.isSet())
+        self.assertFalse(listener._received.isSet())
 
     def test_single_listener(self):
         target = oslo_messaging.Target(topic='testtopic', fanout=True)

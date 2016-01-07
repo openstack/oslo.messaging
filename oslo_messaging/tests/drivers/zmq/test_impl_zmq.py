@@ -104,7 +104,7 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
         self.listener._received.wait()
 
         self.assertIsNone(result)
-        self.assertEqual(True, self.listener._received.isSet())
+        self.assertTrue(self.listener._received.isSet())
         method = self.listener.message.message[u'method']
         self.assertEqual(u'hello-world', method)
 
@@ -121,7 +121,7 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
         self.listener._received.wait()
 
         self.assertIsNone(result)
-        self.assertEqual(True, self.listener._received.isSet())
+        self.assertTrue(self.listener._received.isSet())
         method = self.listener.message.message[u'method']
         self.assertEqual(u'hello-world', method)
 

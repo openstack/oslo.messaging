@@ -279,7 +279,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
         self.assertIsNone(client.call({}, 'ping', arg=None))
         self.assertEqual(0, client.call({}, 'ping', arg=0))
-        self.assertEqual(False, client.call({}, 'ping', arg=False))
+        self.assertFalse(client.call({}, 'ping', arg=False))
         self.assertEqual([], client.call({}, 'ping', arg=[]))
         self.assertEqual({}, client.call({}, 'ping', arg={}))
         self.assertEqual('dsdsfoo', client.call({}, 'ping', arg='foo'))
@@ -299,7 +299,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         direct = client.prepare(server='testserver')
         self.assertIsNone(direct.call({}, 'ping', arg=None))
         self.assertEqual(0, client.call({}, 'ping', arg=0))
-        self.assertEqual(False, client.call({}, 'ping', arg=False))
+        self.assertFalse(client.call({}, 'ping', arg=False))
         self.assertEqual([], client.call({}, 'ping', arg=[]))
         self.assertEqual({}, client.call({}, 'ping', arg={}))
         self.assertEqual('dsdsfoo', direct.call({}, 'ping', arg='foo'))
