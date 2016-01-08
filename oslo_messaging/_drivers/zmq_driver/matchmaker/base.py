@@ -75,8 +75,10 @@ class MatchMakerBase(object):
        """
 
     @abc.abstractmethod
-    def register(self, target, hostname, listener_type):
+    def register(self, target, hostname, listener_type, expire=-1):
         """Register target on nameserver.
+        If record already exists and has expiration timeout it will be
+        updated. Existing records without timeout will stay untouched
 
        :param target: the target for host
        :type target: Target
@@ -84,6 +86,8 @@ class MatchMakerBase(object):
        :type hostname: String
        :param listener_type: Listener socket type ROUTER, SUB etc.
        :type listener_type: String
+       :param expire: Record expiration timeout
+       :type expire: int
        """
 
     @abc.abstractmethod
@@ -127,7 +131,7 @@ class DummyMatchMaker(MatchMakerBase):
     def get_publishers(self):
         return list(self._publishers)
 
-    def register(self, target, hostname, listener_type):
+    def register(self, target, hostname, listener_type, expire=-1):
         key = zmq_address.target_to_key(target, listener_type)
         if hostname not in self._cache[key]:
             self._cache[key].append(hostname)

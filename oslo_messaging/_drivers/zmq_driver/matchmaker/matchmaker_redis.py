@@ -70,22 +70,25 @@ class RedisMatchMaker(base.MatchMakerBase):
     def _get_hosts_by_key(self, key):
         return self._redis.lrange(key, 0, -1)
 
-    def register(self, target, hostname, listener_type):
+    def register(self, target, hostname, listener_type, expire=-1):
+
+        def register_key(key):
+            if hostname not in self._get_hosts_by_key(key):
+                self._redis.lpush(key, hostname)
+            if expire > 0:
+                self._redis.expire(key, expire)
 
         if target.topic and target.server:
             key = zmq_address.target_to_key(target, listener_type)
-            if hostname not in self._get_hosts_by_key(key):
-                self._redis.lpush(key, hostname)
+            register_key(key)
 
         if target.topic:
             key = zmq_address.prefix_str(target.topic, listener_type)
-            if hostname not in self._get_hosts_by_key(key):
-                self._redis.lpush(key, hostname)
+            register_key(key)
 
         if target.server:
             key = zmq_address.prefix_str(target.server, listener_type)
-            if hostname not in self._get_hosts_by_key(key):
-                self._redis.lpush(key, hostname)
+            register_key(key)
 
     def unregister(self, target, hostname, listener_type):
         key = zmq_address.target_to_key(target, listener_type)
