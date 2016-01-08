@@ -36,7 +36,6 @@ _global_opt_lists = [
     impl_zmq.zmq_opts,
     matchmaker_redis.matchmaker_redis_opts,
     impl_pooledexecutor._pool_opts,
-    notifier._notifier_opts,
     client._client_opts,
     transport._transport_opts,
 ]
@@ -45,6 +44,7 @@ _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
     ('matchmaker_redis', matchmaker_redis.matchmaker_redis_opts),
     ('oslo_messaging_amqp', amqp_opts.amqp1_opts),
+    ('oslo_messaging_notifications', notifier._notifier_opts),
     ('oslo_messaging_rabbit', list(itertools.chain(amqp.amqp_opts,
                                                    impl_rabbit.rabbit_opts))),
 ]
