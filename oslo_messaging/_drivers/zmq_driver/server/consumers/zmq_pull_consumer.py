@@ -47,7 +47,7 @@ class PullConsumer(zmq_consumer_base.SingleSocketConsumer):
         super(PullConsumer, self).__init__(conf, poller, server, zmq.PULL)
 
     def listen(self, target):
-        LOG.info(_LI("Listen to target %s") % str(target))
+        LOG.info(_LI("Listen to target %s"), str(target))
         #  Do nothing here because we have a single socket
 
     def receive_message(self, socket):
@@ -56,14 +56,13 @@ class PullConsumer(zmq_consumer_base.SingleSocketConsumer):
             assert msg_type is not None, 'Bad format: msg type expected'
             context = socket.recv_pyobj()
             message = socket.recv_pyobj()
-            LOG.debug("Received %(msg_type)s message %(msg)s"
-                      % {"msg_type": msg_type,
-                         "msg": str(message)})
+            LOG.debug("Received %(msg_type)s message %(msg)s",
+                      {"msg_type": msg_type, "msg": str(message)})
 
             if msg_type in (zmq_names.CAST_TYPES + zmq_names.NOTIFY_TYPES):
                 return PullIncomingMessage(self.server, context, message)
             else:
-                LOG.error(_LE("Unknown message type: %s") % msg_type)
+                LOG.error(_LE("Unknown message type: %s"), msg_type)
 
         except zmq.ZMQError as e:
-            LOG.error(_LE("Receiving message failed: %s") % str(e))
+            LOG.error(_LE("Receiving message failed: %s"), str(e))

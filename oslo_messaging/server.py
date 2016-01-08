@@ -34,6 +34,7 @@ from oslo_utils import timeutils
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
+from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
@@ -111,7 +112,7 @@ class _OrderedTask(object):
 
         while condition():
             if log_timer is not None and log_timer.expired():
-                LOG.warn('Possible hang: %s' % msg)
+                LOG.warn(_LW('Possible hang: %s'), msg)
                 LOG.debug(''.join(traceback.format_stack()))
                 # Only log once. After than we wait indefinitely without
                 # logging.
@@ -345,11 +346,11 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         """
         # Warn that restarting will be deprecated
         if self._started:
-            LOG.warn('Restarting a MessageHandlingServer is inherently racy. '
-                     'It is deprecated, and will become a noop in a future '
-                     'release of oslo.messaging. If you need to restart '
-                     'MessageHandlingServer you should instantiate a new '
-                     'object.')
+            LOG.warn(_LW('Restarting a MessageHandlingServer is inherently '
+                         'racy. It is deprecated, and will become a noop in '
+                         'a future release of oslo.messaging. If you need to '
+                         'restart MessageHandlingServer you should '
+                         'instantiate a new object.'))
         self._started = True
 
         try:

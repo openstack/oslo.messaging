@@ -31,6 +31,7 @@ from six import moves
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
+from oslo_messaging._i18n import _LI, _LW
 from oslo_messaging import target as messaging_target
 
 
@@ -137,7 +138,7 @@ class ProtonDriver(base.BaseDriver):
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=[]):
         # TODO(kgiusti) Remove once driver fully stabilizes:
-        LOG.warning("Support for the 'amqp' transport is EXPERIMENTAL.")
+        LOG.warning(_LW("Support for the 'amqp' transport is EXPERIMENTAL."))
         if proton is None or hasattr(controller, "fake_controller"):
             raise NotImplementedError("Proton AMQP C libraries not installed")
 
@@ -167,7 +168,8 @@ class ProtonDriver(base.BaseDriver):
 
             if old_pid != self._pid:
                 if self._ctrl is not None:
-                    LOG.warning("Process forked after connection established!")
+                    LOG.warning(_LW("Process forked after connection "
+                                    "established!"))
                     self._ctrl.shutdown(wait=False)
                 # Create a Controller that connects to the messaging service:
                 self._ctrl = controller.Controller(self._hosts,
@@ -244,4 +246,4 @@ class ProtonDriver(base.BaseDriver):
         if self._ctrl:
             self._ctrl.shutdown()
             self._ctrl = None
-        LOG.info("AMQP 1.0 messaging driver shutdown")
+        LOG.info(_LI("AMQP 1.0 messaging driver shutdown"))

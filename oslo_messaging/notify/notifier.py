@@ -24,6 +24,7 @@ from oslo_utils import timeutils
 import six
 from stevedore import named
 
+from oslo_messaging._i18n import _LE
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import transport as msg_transport
 
@@ -225,8 +226,8 @@ class Notifier(object):
             try:
                 ext.obj.notify(ctxt, msg, priority, retry or self.retry)
             except Exception as e:
-                _LOG.exception("Problem '%(e)s' attempting to send to "
-                               "notification system. Payload=%(payload)s",
+                _LOG.exception(_LE("Problem '%(e)s' attempting to send to "
+                                   "notification system. Payload=%(payload)s"),
                                dict(e=e, payload=payload))
 
         if self._driver_mgr.extensions:

@@ -35,7 +35,7 @@ class DealerPublisherProxy(zmq_dealer_publisher.DealerPublisher):
 
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
 
-        LOG.debug("Envelope: %s" % envelope)
+        LOG.debug("Envelope: %s", envelope)
 
         target = envelope[zmq_names.FIELD_TARGET]
         dealer_socket = self._check_hosts_connections(
@@ -46,8 +46,8 @@ class DealerPublisherProxy(zmq_dealer_publisher.DealerPublisher):
             # a queue for keeping messages to send them later
             # when some listener appears. However such approach
             # being more reliable will consume additional memory.
-            LOG.warning(_LW("Request %s was dropped because no connection")
-                        % envelope[zmq_names.FIELD_MSG_TYPE])
+            LOG.warning(_LW("Request %s was dropped because no connection"),
+                        envelope[zmq_names.FIELD_MSG_TYPE])
             return
 
         self.reply_receiver.track_socket(dealer_socket.handle)

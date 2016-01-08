@@ -19,6 +19,7 @@ import logging
 
 import six
 
+from oslo_messaging._i18n import _LE, _LW
 from oslo_messaging import dispatcher
 from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
@@ -74,7 +75,7 @@ class _NotificationDispatcherBase(dispatcher.DispatcherBase):
                 else:
                     m.acknowledge()
             except Exception:
-                LOG.error("Fail to ack/requeue message", exc_info=True)
+                LOG.error(_LE("Fail to ack/requeue message"), exc_info=True)
 
     def _dispatch_and_handle_error(self, incoming, executor_callback):
         """Dispatch a notification message to the appropriate endpoint method.
@@ -85,7 +86,7 @@ class _NotificationDispatcherBase(dispatcher.DispatcherBase):
         try:
             return self._dispatch(incoming, executor_callback)
         except Exception:
-            LOG.error('Exception during message handling', exc_info=True)
+            LOG.error(_LE('Exception during message handling'), exc_info=True)
 
     def _dispatch(self, incoming, executor_callback=None):
         """Dispatch notification messages to the appropriate endpoint method.
@@ -101,7 +102,7 @@ class _NotificationDispatcherBase(dispatcher.DispatcherBase):
             raw_messages = list(raw_messages)
             messages = list(messages)
             if priority not in PRIORITIES:
-                LOG.warning('Unknown priority "%s"', priority)
+                LOG.warning(_LW('Unknown priority "%s"'), priority)
                 continue
             for screen, callback in self._callbacks_by_priority.get(priority,
                                                                     []):

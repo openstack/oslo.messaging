@@ -21,7 +21,7 @@ from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LE
+from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
 
@@ -57,11 +57,12 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         self.targets = []
         self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
                                                 self.port)
-        LOG.info("[%s] Run ROUTER consumer" % self.host)
+        LOG.info(_LI("[%s] Run ROUTER consumer"), self.host)
 
     def listen(self, target):
 
-        LOG.info("[%s] Listen to target %s" % (self.host, target))
+        LOG.info(_LI("[%(host)s] Listen to target %(target)s"),
+                 {'host': self.host, 'target': target})
 
         self.targets.append(target)
         self.matchmaker.register(target, self.host,
@@ -83,11 +84,11 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
     def receive_message(self, socket):
         try:
             request, reply_id = self._receive_request(socket)
-            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s"
-                      % {"host": self.host,
-                         "type": request.msg_type,
-                         "id": request.message_id,
-                         "target": request.target})
+            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s",
+                      {"host": self.host,
+                       "type": request.msg_type,
+                       "id": request.message_id,
+                       "target": request.target})
 
             if request.msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(
@@ -97,10 +98,10 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
                     self.server, request.context, request.message, socket,
                     reply_id, request.message_id, self.poller)
             else:
-                LOG.error(_LE("Unknown message type: %s") % request.msg_type)
+                LOG.error(_LE("Unknown message type: %s"), request.msg_type)
 
         except zmq.ZMQError as e:
-            LOG.error(_LE("Receiving message failed: %s") % str(e))
+            LOG.error(_LE("Receiving message failed: %s"), str(e))
 
 
 class RouterConsumerBroker(RouterConsumer):
