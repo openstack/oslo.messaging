@@ -221,7 +221,7 @@ class TestCallTimeout(test_utils.BaseTestCase):
         ('all_none',
          dict(confval=None, ctor=None, prepare=_notset, expect=None)),
         ('confval',
-         dict(confval=21.1, ctor=None, prepare=_notset, expect=21.1)),
+         dict(confval=21, ctor=None, prepare=_notset, expect=21)),
         ('ctor',
          dict(confval=None, ctor=21.1, prepare=_notset, expect=21.1)),
         ('ctor_zero',
