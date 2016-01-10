@@ -689,6 +689,7 @@ class Connection(object):
                 errback=on_error,
                 interval_start=self.interval_start or 1,
                 interval_step=self.interval_stepping,
+                interval_max=self.interval_max,
                 on_revive=on_reconnection,
             )
             ret, channel = autoretry_method()
