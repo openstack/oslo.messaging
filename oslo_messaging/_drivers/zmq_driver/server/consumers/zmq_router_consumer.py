@@ -13,6 +13,8 @@
 #    under the License.
 
 import logging
+import threading
+import time
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
@@ -54,25 +56,19 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
     def __init__(self, conf, poller, server):
         super(RouterConsumer, self).__init__(conf, poller, server, zmq.ROUTER)
         self.matchmaker = server.matchmaker
-        self.targets = []
         self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
                                                 self.port)
+        self.targets = TargetsManager(conf, self.matchmaker, self.host)
         LOG.info(_LI("[%s] Run ROUTER consumer"), self.host)
 
     def listen(self, target):
-
         LOG.info(_LI("[%(host)s] Listen to target %(target)s"),
                  {'host': self.host, 'target': target})
-
-        self.targets.append(target)
-        self.matchmaker.register(target, self.host,
-                                 zmq_names.socket_type_str(zmq.ROUTER))
+        self.targets.listen(target)
 
     def cleanup(self):
         super(RouterConsumer, self).cleanup()
-        for target in self.targets:
-            self.matchmaker.unregister(target, self.host,
-                                       zmq_names.socket_type_str(zmq.ROUTER))
+        self.targets.cleanup()
 
     def _receive_request(self, socket):
         reply_id = socket.recv()
@@ -119,3 +115,39 @@ class RouterConsumerBroker(RouterConsumer):
         if zmq_names.FIELD_REPLY_ID in envelope:
             request.proxy_reply_id = envelope[zmq_names.FIELD_REPLY_ID]
         return request, reply_id
+
+
+class TargetsManager(object):
+
+    def __init__(self, conf, matchmaker, host):
+        self.targets = []
+        self.conf = conf
+        self.matchmaker = matchmaker
+        self.host = host
+        self.targets_lock = threading.Lock()
+        self.updater = zmq_async.get_executor(method=self._update_targets) \
+            if conf.zmq_target_expire > 0 else None
+        if self.updater:
+            self.updater.execute()
+
+    def _update_targets(self):
+        with self.targets_lock:
+            for target in self.targets:
+                self.matchmaker.register(
+                    target, self.host, zmq_names.socket_type_str(zmq.ROUTER))
+
+        # Update target-records once per half expiration time
+        time.sleep(self.conf.zmq_target_expire / 2)
+
+    def listen(self, target):
+        with self.targets_lock:
+            self.targets.append(target)
+            self.matchmaker.register(target, self.host,
+                                     zmq_names.socket_type_str(zmq.ROUTER))
+
+    def cleanup(self):
+        if self.updater:
+            self.updater.stop()
+        for target in self.targets:
+            self.matchmaker.unregister(target, self.host,
+                                       zmq_names.socket_type_str(zmq.ROUTER))
