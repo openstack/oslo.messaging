@@ -143,7 +143,7 @@ class PikaPoller(object):
                     LOG.exception("Unexpected error during closing connection")
             self._connection = None
 
-        for i in xrange(len(self._message_queue) - 1, -1, -1):
+        for i in six.moves.range(len(self._message_queue) - 1, -1, -1):
             message = self._message_queue[i]
             if message.need_ack():
                 del self._message_queue[i]
