@@ -32,17 +32,8 @@ More detail regarding ZeroMQ library is available from the `specification`_.
 Abstract
 ========
 
-In Folsom, OpenStack introduced an optional messaging system using ZeroMQ.
-For some deployments, especially for those super-large scenarios, it may be
-desirable to use a broker-less RPC mechanism to scale out.
-
-The original deployment guide only supports Nova in `folsom`_.
-
-.. _folsom: http://ewindisch.github.io/nova
-
-Currently, ZeroMQ is one of the RPC backend drivers in oslo.messaging. In the
-Juno release, as almost all the core projects in OpenStack have switched to
-oslo_messaging, ZeroMQ can be the only RPC driver across the OpenStack cluster.
+Currently, ZeroMQ is one of the RPC backend drivers in oslo.messaging. ZeroMQ
+can be the only RPC driver across the OpenStack cluster.
 This document provides deployment information for this driver in oslo_messaging.
 
 Other than AMQP-based drivers, like RabbitMQ, ZeroMQ doesn't have
@@ -129,6 +120,11 @@ To specify the Redis server for RedisMatchMaker, use options in
         port = 6379
         password = None
 
+In order to cleanup redis storage from expired records (e.g. target listener
+goes down) TTL may be applied for keys. Configure 'zmq_target_expire' option
+which is 120 (seconds) by default. The option is related not specifically to
+redis so it is also defined in [DEFAULT] section. If option value is <= 0
+then keys don't expire and live forever in the storage.
 
 MatchMaker Data Source (mandatory)
 ----------------------------------
@@ -149,12 +145,21 @@ Each machine running OpenStack services, or sending RPC messages, may run the
 'oslo-messaging-zmq-broker' daemon. This is needed to avoid blocking
 if a listener (server) appears after the sender (client).
 
-Running the local broker (proxy) or not is defined by the option 'zmq_use_broker'
-(True by default). This option can be set in [DEFAULT] section.
+Fanout-based patterns like CAST+Fanout and notifications always use proxy
+as they act over PUB/SUB, 'use_pub_sub' - defaults to True. If not using
+PUB/SUB (use_pub_sub = False) then fanout will be emulated over direct
+DEALER/ROUTER unicast which is possible but less efficient and therefore
+is not recommended.
+
+Running direct RPC methods like CALL and CAST over a proxy is controlled by
+the option 'direct_over_proxy' which is True by default.
+
+These options can be set in [DEFAULT] section.
 
 For example::
 
-        zmq_use_broker = False
+        use_pub_sub = True
+        direct_over_proxy = False
 
 
 In case of using the broker all publishers (clients) talk to servers over
