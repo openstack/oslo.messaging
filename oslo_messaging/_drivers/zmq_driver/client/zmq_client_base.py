@@ -65,13 +65,6 @@ class ZmqClientBase(object):
                 retry=retry)) as request:
             self.notify_publisher.send_request(request)
 
-    def send_notify_fanout(self, target, context, message, version,
-                           retry=None):
-        with contextlib.closing(zmq_request.NotificationFanoutRequest(
-                target, context, message, version=version,
-                retry=retry)) as request:
-            self.notify_publisher.send_request(request)
-
     def cleanup(self):
         cleaned = set()
         for publisher in self.publishers.values():

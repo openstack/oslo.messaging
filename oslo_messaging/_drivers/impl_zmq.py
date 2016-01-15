@@ -174,12 +174,6 @@ class ZmqDriver(base.BaseDriver):
             self.conf.rpc_zmq_matchmaker,
         ).driver(self.conf)
 
-        self.server = LazyDriverItem(
-            zmq_server.ZmqServer, self, self.conf, self.matchmaker)
-
-        self.notify_server = LazyDriverItem(
-            zmq_server.ZmqServer, self, self.conf, self.matchmaker)
-
         self.client = LazyDriverItem(
             zmq_client.ZmqClient, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
@@ -238,10 +232,7 @@ class ZmqDriver(base.BaseDriver):
         :type retry: int
         """
         client = self.notifier.get()
-        if target.fanout:
-            client.send_notify_fanout(target, ctxt, message, version, retry)
-        else:
-            client.send_notify(target, ctxt, message, version, retry)
+        client.send_notify(target, ctxt, message, version, retry)
 
     def listen(self, target):
         """Listen to a specified target on a server side
@@ -261,7 +252,7 @@ class ZmqDriver(base.BaseDriver):
         :param pool: Not used for zmq implementation
         :type pool: object
         """
-        server = self.notify_server.get()
+        server = zmq_server.ZmqServer(self, self.conf, self.matchmaker)
         server.listen_notification(targets_and_priorities)
         return server
 
@@ -269,6 +260,4 @@ class ZmqDriver(base.BaseDriver):
         """Cleanup all driver's connections finally
         """
         self.client.cleanup()
-        self.server.cleanup()
-        self.notify_server.cleanup()
         self.notifier.cleanup()
