@@ -25,17 +25,18 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class DealerPublisher(zmq_publisher_base.PublisherMultisend):
+class DealerPublisher(zmq_publisher_base.PublisherBase):
 
     def __init__(self, conf, matchmaker):
-        super(DealerPublisher, self).__init__(conf, matchmaker, zmq.DEALER)
+        sockets_manager = zmq_publisher_base.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+        super(DealerPublisher, self).__init__(sockets_manager)
 
     def send_request(self, request):
 
         self._check_request_pattern(request)
 
-        dealer_socket = self._check_hosts_connections(
-            request.target, zmq_names.socket_type_str(zmq.ROUTER))
+        dealer_socket = self.outbound_sockets.get_socket(request.target)
 
         if not dealer_socket.connections:
             # NOTE(ozamiatin): Here we can provide
@@ -68,11 +69,13 @@ class DealerPublisher(zmq_publisher_base.PublisherMultisend):
         super(DealerPublisher, self).cleanup()
 
 
-class DealerPublisherLight(zmq_publisher_base.PublisherBase):
+class DealerPublisherLight(object):
     """Used when publishing to proxy. """
 
     def __init__(self, conf, address):
-        super(DealerPublisherLight, self).__init__(conf)
+        super(DealerPublisherLight, self).__init__()
+        self.conf = conf
+        self.zmq_context = zmq.Context()
         self.socket = self.zmq_context.socket(zmq.DEALER)
         self.address = address
         self.socket.connect(address)

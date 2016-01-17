@@ -56,26 +56,31 @@ matchmaker_redis_opts = [
 ]
 
 _PUBLISHERS_KEY = "PUBLISHERS"
+_RETRY_METHODS = ("get_hosts", "get_publishers")
 
 
 def retry_if_connection_error(ex):
         return isinstance(ex, redis.ConnectionError)
 
 
+def retry_if_empty(hosts):
+    return not hosts
+
+
 def apply_retrying(obj, cfg):
     for attr_name, attr in inspect.getmembers(obj):
         if not (inspect.ismethod(attr) or inspect.isfunction(attr)):
             continue
-        if attr_name.startswith("_"):
-            continue
-        setattr(
-            obj,
-            attr_name,
-            retry(
-                wait_fixed=cfg.matchmaker_redis.wait_timeout,
-                stop_max_delay=cfg.matchmaker_redis.check_timeout,
-                retry_on_exception=retry_if_connection_error
-            )(attr))
+        if attr_name in _RETRY_METHODS:
+            setattr(
+                obj,
+                attr_name,
+                retry(
+                    wait_fixed=cfg.matchmaker_redis.wait_timeout,
+                    stop_max_delay=cfg.matchmaker_redis.check_timeout,
+                    retry_on_exception=retry_if_connection_error,
+                    retry_on_result=retry_if_empty
+                )(attr))
 
 
 class RedisMatchMaker(base.MatchMakerBase):
@@ -150,6 +155,7 @@ class RedisMatchMaker(base.MatchMakerBase):
         self._redis.lrem(key, 0, hostname)
 
     def get_hosts(self, target, listener_type):
+        LOG.debug("[Redis] get_hosts for target %s", target)
         hosts = []
         key = zmq_address.target_to_key(target, listener_type)
         hosts.extend(self._get_hosts_by_key(key))

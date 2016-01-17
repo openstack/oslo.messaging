@@ -25,7 +25,7 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class PushPublisher(zmq_publisher_base.PublisherMultisend):
+class PushPublisher(zmq_publisher_base.PublisherBase):
 
     def __init__(self, conf, matchmaker):
         super(PushPublisher, self).__init__(conf, matchmaker, zmq.PUSH)

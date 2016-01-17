@@ -72,7 +72,7 @@ zmq_opts = [
                help='Expiration timeout in seconds of a name service record '
                     'about existing target ( < 0 means no timeout).'),
 
-    cfg.BoolOpt('direct_over_proxy', default=True,
+    cfg.BoolOpt('direct_over_proxy', default=False,
                 help='Configures zmq-messaging to use proxy with '
                      'non PUB/SUB patterns.'),
 
@@ -117,11 +117,10 @@ class LazyDriverItem(object):
         if self.item is not None and os.getpid() == self.process_id:
             return self.item
 
-        self._lock.acquire()
-        if self.item is None or os.getpid() != self.process_id:
-            self.process_id = os.getpid()
-            self.item = self.item_class(*self.args, **self.kwargs)
-        self._lock.release()
+        with self._lock:
+            if self.item is None or os.getpid() != self.process_id:
+                self.process_id = os.getpid()
+                self.item = self.item_class(*self.args, **self.kwargs)
         return self.item
 
     def cleanup(self):

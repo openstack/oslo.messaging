@@ -14,7 +14,7 @@
 
 import abc
 import logging
-import uuid
+import time
 
 import six
 
@@ -23,7 +23,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
@@ -57,7 +57,7 @@ class PublisherBase(object):
     Publisher can send request objects from zmq_request.
     """
 
-    def __init__(self, conf):
+    def __init__(self, sockets_manager):
 
         """Construct publisher
 
@@ -67,10 +67,9 @@ class PublisherBase(object):
         :param conf: configuration object
         :type conf: oslo_config.CONF
         """
-
-        self.conf = conf
-        self.zmq_context = zmq.Context()
-        self.outbound_sockets = {}
+        self.outbound_sockets = sockets_manager
+        self.conf = sockets_manager.conf
+        self.matchmaker = sockets_manager.matchmaker
         super(PublisherBase, self).__init__()
 
     @abc.abstractmethod
@@ -99,60 +98,51 @@ class PublisherBase(object):
 
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""
-        for socket in self.outbound_sockets.values():
-            socket.setsockopt(zmq.LINGER, 0)
-            socket.close()
+        self.outbound_sockets.cleanup()
 
 
-class PublisherMultisend(PublisherBase):
+class SocketsManager(object):
 
-    def __init__(self, conf, matchmaker, socket_type):
-
-        """Construct publisher multi-send
-
-        Base class for fanout-sending publishers.
-
-        :param conf: configuration object
-        :type conf: oslo_config.CONF
-        :param matchmaker: Name Service interface object
-        :type matchmaker: matchmaker.MatchMakerBase
-        """
-        super(PublisherMultisend, self).__init__(conf)
-        self.socket_type = socket_type
+    def __init__(self, conf, matchmaker, listener_type, socket_type):
+        self.conf = conf
         self.matchmaker = matchmaker
+        self.listener_type = listener_type
+        self.socket_type = socket_type
+        self.zmq_context = zmq.Context()
+        self.outbound_sockets = {}
 
-    def _check_hosts_connections(self, target, listener_type):
-        #  TODO(ozamiatin): Place for significant optimization
-        #  Matchmaker cache should be implemented
-        if str(target) in self.outbound_sockets:
-            socket = self.outbound_sockets[str(target)]
-        else:
-            hosts = self.matchmaker.get_hosts(target, listener_type)
-            socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
-            self.outbound_sockets[str(target)] = socket
-            for host in hosts:
-                self._connect_to_host(socket, host, target)
+    def _track_socket(self, socket, target):
+        self.outbound_sockets[str(target)] = (socket, time.time())
+
+    def _get_hosts_and_connect(self, socket, target):
+        hosts = self.matchmaker.get_hosts(
+            target, zmq_names.socket_type_str(self.listener_type))
+        for host in hosts:
+            socket.connect_to_host(host)
+        self._track_socket(socket, target)
+
+    def _check_for_new_hosts(self, target):
+        socket, tm = self.outbound_sockets[str(target)]
+        if 0 <= self.conf.zmq_target_expire <= time.time() - tm:
+            self._get_hosts_and_connect(socket, target)
         return socket
 
-    def _connect_to_address(self, socket, address, target):
-        stype = zmq_names.socket_type_str(self.socket_type)
-        try:
-            LOG.info(_LI("Connecting %(stype)s to %(address)s for %(target)s"),
-                     {"stype": stype, "address": address, "target": target})
+    def get_socket(self, target):
+        if str(target) in self.outbound_sockets:
+            socket = self._check_for_new_hosts(target)
+        else:
+            socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
+            self._get_hosts_and_connect(socket, target)
+        return socket
 
-            if six.PY3:
-                socket.setsockopt_string(zmq.IDENTITY, str(uuid.uuid1()))
-            else:
-                socket.handle.identity = str(uuid.uuid1())
+    def get_socket_to_broker(self, target):
+        socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
+        self._track_socket(socket, target)
+        address = zmq_address.get_broker_address(self.conf)
+        socket.connect_to_address(address)
+        return socket
 
-            socket.connect(address)
-        except zmq.ZMQError as e:
-            errmsg = _LE("Failed connecting %(stype) to %(address)s: %(e)s")\
-                % (stype, address, e)
-            LOG.error(_LE("Failed connecting %(stype) to %(address)s: %(e)s"),
-                      (stype, address, e))
-            raise rpc_common.RPCException(errmsg)
-
-    def _connect_to_host(self, socket, host, target):
-        address = zmq_address.get_tcp_direct_address(host)
-        self._connect_to_address(socket, address, target)
+    def cleanup(self):
+        for socket, tm in self.outbound_sockets.values():
+            socket.setsockopt(zmq.LINGER, 0)
+            socket.close()
