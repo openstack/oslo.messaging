@@ -230,6 +230,7 @@ def rpc_server(transport, target, wait_before_answer, executor, show_stats,
     endpoints = [RpcEndpoint(wait_before_answer, show_stats)]
     server = rpc.get_rpc_server(transport, target, endpoints,
                                 executor=executor)
+    LOG.debug("starting RPC server for target %s", target)
     server.start()
     if duration:
         start_t = time.time()
@@ -249,6 +250,7 @@ def spawn_rpc_clients(threads, transport, targets,
     targets = itertools.cycle(targets)
     for i in range(0, threads):
         target = targets.next()
+        LOG.debug("starting RPC client for target %s", target)
         p.spawn_n(send_msg, i, transport, target, *args, **kwargs)
     p.waitall()
 
