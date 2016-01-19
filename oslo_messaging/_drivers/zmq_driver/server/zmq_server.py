@@ -54,7 +54,7 @@ class ZmqServer(base.Listener):
         return message
 
     def stop(self):
-        consumer = self.rpc_consumer
+        consumer = self.router_consumer
         LOG.info(_LI("Stop server %(address)s:%(port)s"),
                  {'address': consumer.address, 'port': consumer.port})
 
