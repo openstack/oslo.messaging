@@ -39,6 +39,9 @@ def batch_poll_helper(func):
     """
     def wrapper(in_self, timeout=None, prefetch_size=1):
         incomings = []
+        driver_prefetch = in_self.driver.prefetch_size
+        if driver_prefetch > 0:
+            prefetch_size = min(prefetch_size, driver_prefetch)
         watch = timeutils.StopWatch(duration=timeout)
         with watch:
             for __ in compat_range(prefetch_size):
@@ -109,6 +112,7 @@ class Listener(object):
 
 @six.add_metaclass(abc.ABCMeta)
 class BaseDriver(object):
+    prefetch_size = 0
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=None):
