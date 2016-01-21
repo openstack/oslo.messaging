@@ -14,7 +14,6 @@
 import abc
 import collections
 import logging
-import retrying
 
 import six
 
@@ -52,20 +51,6 @@ class MatchMakerBase(object):
                         host for back-chatter in "host:port" format
        :type hostname: tuple
        """
-
-    def get_publishers_retrying(self):
-        """Retry until at least one publisher appears"""
-
-        def retry_if_empty(publishers):
-            return not publishers
-
-        _retry = retrying.retry(retry_on_result=retry_if_empty)
-
-        @_retry
-        def _get_publishers():
-            return self.get_publishers()
-
-        return _get_publishers()
 
     @abc.abstractmethod
     def get_publishers(self):

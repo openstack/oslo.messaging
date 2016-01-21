@@ -27,7 +27,7 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class PubPublisherProxy(zmq_publisher_base.PublisherBase):
+class PubPublisherProxy(object):
     """PUB/SUB based request publisher
 
         The publisher intended to be used for Fanout and Notify
@@ -42,7 +42,9 @@ class PubPublisherProxy(zmq_publisher_base.PublisherBase):
     """
 
     def __init__(self, conf, matchmaker):
-        super(PubPublisherProxy, self).__init__(conf)
+        super(PubPublisherProxy, self).__init__()
+        self.conf = conf
+        self.zmq_context = zmq.Context()
         self.matchmaker = matchmaker
 
         self.socket = zmq_socket.ZmqRandomPortSocket(

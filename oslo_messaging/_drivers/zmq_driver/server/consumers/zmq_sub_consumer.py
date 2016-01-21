@@ -87,7 +87,7 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
 
             self.poller.register(self.socket, self.receive_message)
         LOG.debug("[%s] SUB consumer connected to publishers %s",
-                  (self.id, publishers))
+                  self.id, publishers)
 
     def listen(self, target):
         LOG.debug("Listen to target %s", target)
@@ -96,7 +96,7 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
 
     def _receive_request(self, socket):
         topic_filter = socket.recv()
-        LOG.debug("[%(id)s] Received %(topict_filter)s topic",
+        LOG.debug("[%(id)s] Received %(topic_filter)s topic",
                   {'id': self.id, 'topic_filter': topic_filter})
         assert topic_filter in self.subscriptions
         request = socket.recv_pyobj()
@@ -135,7 +135,7 @@ class MatchmakerPoller(object):
         self.executor.execute()
 
     def _poll_for_publishers(self):
-        publishers = self.matchmaker.get_publishers_retrying()
+        publishers = self.matchmaker.get_publishers()
         if publishers:
             self.on_result(publishers)
             self.executor.done()
