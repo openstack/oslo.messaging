@@ -20,6 +20,7 @@ import itertools
 import logging
 import os
 import random
+import six
 import string
 import sys
 import threading
@@ -274,7 +275,7 @@ def send_msg(c_id, transport, target, wait_after_msg, timeout, is_cast,
             client.send_msg()
     else:
         LOG.debug("Sending %d messages using client %d", messages_count, c_id)
-        for _ in xrange(0, messages_count):
+        for _ in six.moves.range(0, messages_count):
             client.send_msg()
         LOG.debug("Client %d has sent %d messages", c_id, messages_count)
 
