@@ -311,6 +311,13 @@ class PikaEngine(object):
         :return: New connection
         """
 
+        connection_params = pika.ConnectionParameters(
+            heartbeat_interval=(
+                self._heartbeat_interval if for_listening else None
+            ),
+            **self._connection_host_param_list[host_index]
+        )
+
         with self._connection_lock:
             cur_time = time.time()
 
@@ -333,19 +340,17 @@ class PikaEngine(object):
                 )
 
             try:
-                base_host_params = self._connection_host_param_list[host_index]
-
                 connection = pika.BlockingConnection(
-                    parameters=pika.ConnectionParameters(
-                        heartbeat_interval=(
-                            self._heartbeat_interval
-                            if for_listening else None
-                        ),
-                        **base_host_params
-                    ),
+                    parameters=connection_params,
                     _impl_class=(_create_select_poller_connection_impl
                                  if self._force_select_poller_use else None)
                 )
+
+                # It is needed for pika_pool library which expects that
+                # connections has params attribute defined in BaseConnection
+                # but BlockingConnection is not derived from BaseConnection
+                # and doesn't have it
+                connection.params = connection_params
 
                 self._set_tcp_user_timeout(connection._impl.socket)
 
