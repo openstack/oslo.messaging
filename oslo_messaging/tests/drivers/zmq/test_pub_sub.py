@@ -117,4 +117,3 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
 
         self._check_listener(self.listeners[0])
         self._check_listener(self.listeners[1])
-

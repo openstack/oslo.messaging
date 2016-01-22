@@ -181,7 +181,8 @@ class TestExecutor(test_utils.BaseTestCase):
         self.assertTrue(executor.wait())
 
     def test_dead_wait(self):
-        dispatcher, _endpoint, _event, _run_executor = self._create_dispatcher()
+        (dispatcher, _endpoint, _event,
+            _run_executor) = self._create_dispatcher()
         listener = mock.Mock(spec=['poll', 'stop'])
         executor = self.executor(self.conf, listener, dispatcher)
         executor.stop()

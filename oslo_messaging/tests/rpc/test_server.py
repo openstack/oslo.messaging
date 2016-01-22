@@ -99,7 +99,6 @@ class ServerSetupMixin(object):
         client.cast({}, 'stop')
         server.wait()
 
-
     def _setup_client(self, transport, topic='testtopic'):
         return oslo_messaging.RPCClient(transport,
                                         oslo_messaging.Target(topic=topic),
@@ -532,6 +531,7 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
 
 TestMultipleServers.generate_scenarios()
 
+
 class TestServerLocking(test_utils.BaseTestCase):
     def setUp(self):
         super(TestServerLocking, self).setUp(conf=cfg.ConfigOpts())
@@ -543,6 +543,7 @@ class TestServerLocking(test_utils.BaseTestCase):
             return method
 
         executors = []
+
         class FakeExecutor(object):
             def __init__(self, *args, **kwargs):
                 self._lock = threading.Lock()
@@ -554,6 +555,7 @@ class TestServerLocking(test_utils.BaseTestCase):
             stop = _logmethod('stop')
             wait = _logmethod('wait')
             execute = _logmethod('execute')
+
         self.executors = executors
 
         self.server = oslo_messaging.MessageHandlingServer(mock.Mock(),
@@ -605,6 +607,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         done_event = threading.Event()
 
         runner = [None]
+
         class SteppingFakeExecutor(self.server._executor_cls):
             def start(self):
                 # Tell the test which thread won the race
@@ -616,6 +619,7 @@ class TestServerLocking(test_utils.BaseTestCase):
                 done_event.set()
 
                 finish_event.wait()
+
         self.server._executor_cls = SteppingFakeExecutor
 
         start1 = eventlet.spawn(self.server.start)
@@ -684,12 +688,14 @@ class TestServerLocking(test_utils.BaseTestCase):
         start_state = self.server._states['start']
         old_wait_for_completion = start_state.wait_for_completion
         waited = [False]
+
         def new_wait_for_completion(*args, **kwargs):
             if not waited[0]:
                 waited[0] = True
                 complete_waiting_callback.set()
                 complete_event.wait()
             old_wait_for_completion(*args, **kwargs)
+
         start_state.wait_for_completion = new_wait_for_completion
 
         # thread1 will wait for start to complete until we signal it
