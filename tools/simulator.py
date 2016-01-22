@@ -446,7 +446,7 @@ def main():
         with open('./oslo_res_%s.txt' % args.server, 'a+') as f:
             f.write(log_msg + '\n')
 
-        LOG.info("calls finished, wait %d seconds" % args.exit_wait)
+        LOG.info("calls finished, wait %d seconds", args.exit_wait)
         time.sleep(args.exit_wait)
 
 
