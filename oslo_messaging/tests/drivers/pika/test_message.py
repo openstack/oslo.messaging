@@ -16,10 +16,10 @@ import time
 import unittest
 
 from concurrent import futures
-from mock import mock, patch
+from mock import mock
+from mock import patch
 from oslo_serialization import jsonutils
 import pika
-from pika import spec
 
 import oslo_messaging
 from oslo_messaging._drivers.pika_driver import pika_engine

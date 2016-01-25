@@ -18,8 +18,8 @@ import multiprocessing
 import os
 import sys
 import time
-import uuid
 import threading
+import uuid
 
 from oslo_config import cfg
 
@@ -58,7 +58,7 @@ class QueueHandler(logging.Handler):
             ei = record.exc_info
             if ei:
                 # just to get traceback text into record.exc_text
-                dummy = self.format(record)
+                dummy = self.format(record)  # noqa
                 record.exc_info = None  # not needed any more
             self.queue.put_nowait(record)
         except (KeyboardInterrupt, SystemExit):

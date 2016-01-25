@@ -203,8 +203,7 @@ class TestKafkaListener(test_utils.BaseTestCase):
     def test_create_listener(self, fake_consumer, fake_ensure_connection):
         fake_target = oslo_messaging.Target(topic='fake_topic')
         fake_targets_and_priorities = [(fake_target, 'info')]
-        listener = self.driver.listen_for_notifications(
-            fake_targets_and_priorities)
+        self.driver.listen_for_notifications(fake_targets_and_priorities)
         self.assertEqual(1, len(fake_consumer.mock_calls))
 
     @mock.patch.object(kafka_driver.Connection, '_ensure_connection')

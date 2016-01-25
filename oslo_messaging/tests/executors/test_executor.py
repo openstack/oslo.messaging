@@ -14,8 +14,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
 import threading
+import time
 
 # eventlet 0.16 with monkey patching does not work yet on Python 3,
 # so make aioeventlet, eventlet and trollius import optional

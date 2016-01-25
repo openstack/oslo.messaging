@@ -16,18 +16,12 @@ import pickle
 import time
 
 import contextlib
-import fixtures
-import testtools
-
 
 import oslo_messaging
-from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_socket
-from oslo_messaging._drivers.zmq_driver.client import zmq_request
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_pub_publisher
-from oslo_messaging.tests import utils as test_utils
+from oslo_messaging._drivers.zmq_driver.client import zmq_request
 from oslo_messaging.tests.drivers.zmq import zmq_common
 
 

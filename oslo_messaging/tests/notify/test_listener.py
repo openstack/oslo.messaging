@@ -14,7 +14,6 @@
 #    under the License.
 
 import threading
-import time
 
 from oslo_config import cfg
 import testscenarios

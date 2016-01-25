@@ -24,7 +24,7 @@ class TestDeprecationWarning(test_utils.BaseTestCase):
         # Tests that we get a deprecation warning when loading a messaging
         # driver out of oslo_messaging.notify._impl_messaging.
         from oslo_messaging.notify import _impl_messaging as messaging
-        driver = messaging.MessagingV2Driver(
+        driver = messaging.MessagingV2Driver(  # noqa
             conf={}, topics=['notifications'], transport='rpc')
         # Make sure we got a deprecation warning by loading from the alias
         self.assertEqual(1, mock_warn.call_count)
