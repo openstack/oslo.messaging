@@ -141,7 +141,7 @@ class Server(object):
                                                      self.log_queue,
                                                      self.ready))
         self.process.start()
-        LOG.debug("Server process started: pid: %d" % self.process.pid)
+        LOG.debug("Server process started: pid: %d", self.process.pid)
 
     def _run_server(self, conf, url, log_queue, ready):
         server_configurer(log_queue)
@@ -161,8 +161,8 @@ class Server(object):
             LOG.debug("Waiting for the stop signal ...")
             time.sleep(1)
         self.rpc_server.stop()
-        LOG.debug("Leaving process T:%s Pid:%d" % (str(target),
-                                                   os.getpid()))
+        LOG.debug("Leaving process T:%s Pid:%d", (str(target),
+                                                  os.getpid()))
 
     def cleanup(self):
         LOG.debug("Stopping server")
@@ -217,7 +217,7 @@ class MutliprocTestCase(utils.SkipIfNoTransportURL):
 
     def spawn_server(self, name, wait_for_server=False, topic=None):
         srv = Server(self.conf, self.log_queue, self.url, name, topic)
-        LOG.debug("[SPAWN] %s (starting)..." % srv.name)
+        LOG.debug("[SPAWN] %s (starting)...", srv.name)
         srv.start()
         if wait_for_server:
             while not srv.ready.value:
