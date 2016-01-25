@@ -138,28 +138,24 @@ stored in Redis is that the key is a base topic and the corresponding values are
 hostname arrays to be sent to.
 
 
-Proxy to avoid blocking (optional)
-----------------------------------
+Proxy for fanout publishing
+---------------------------
 
-Each machine running OpenStack services, or sending RPC messages, may run the
-'oslo-messaging-zmq-broker' daemon. This is needed to avoid blocking
-if a listener (server) appears after the sender (client).
+Each machine running OpenStack services, or sending RPC messages, should run
+the 'oslo-messaging-zmq-broker' daemon.
 
 Fanout-based patterns like CAST+Fanout and notifications always use proxy
 as they act over PUB/SUB, 'use_pub_sub' - defaults to True. If not using
 PUB/SUB (use_pub_sub = False) then fanout will be emulated over direct
 DEALER/ROUTER unicast which is possible but less efficient and therefore
-is not recommended.
+is not recommended. In a case of direct DEALER/ROUTER unicast proxy is not
+needed.
 
-Running direct RPC methods like CALL and CAST over a proxy is controlled by
-the option 'direct_over_proxy' which is True by default.
-
-These options can be set in [DEFAULT] section.
+This option can be set in [DEFAULT] section.
 
 For example::
 
         use_pub_sub = True
-        direct_over_proxy = False
 
 
 In case of using the broker all publishers (clients) talk to servers over

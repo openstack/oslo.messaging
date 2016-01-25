@@ -100,23 +100,6 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
             LOG.error(_LE("Receiving message failed: %s"), str(e))
 
 
-class RouterConsumerBroker(RouterConsumer):
-
-    def __init__(self, conf, poller, server):
-        super(RouterConsumerBroker, self).__init__(conf, poller, server)
-
-    def _receive_request(self, socket):
-        reply_id = socket.recv()
-        empty = socket.recv()
-        assert empty == b'', 'Bad format: empty delimiter expected'
-        envelope = socket.recv_pyobj()
-        request = socket.recv_pyobj()
-
-        if zmq_names.FIELD_REPLY_ID in envelope:
-            request.proxy_reply_id = envelope[zmq_names.FIELD_REPLY_ID]
-        return request, reply_id
-
-
 class TargetsManager(object):
 
     def __init__(self, conf, matchmaker, host):

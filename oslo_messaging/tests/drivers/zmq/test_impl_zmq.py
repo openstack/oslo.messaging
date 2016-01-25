@@ -145,7 +145,7 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
 
         message = {'method': 'hello-world', 'tx_id': 1}
         context = {}
-        target.topic = target.topic + '.info'
+        target.topic += '.info'
         self.driver.send_notification(target, context, message, '3.0')
         self.listener._received.wait(5)
         self.assertTrue(self.listener._received.isSet())

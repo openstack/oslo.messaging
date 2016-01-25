@@ -34,10 +34,8 @@ class ZmqServer(base.Listener):
         super(ZmqServer, self).__init__(driver)
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller()
-        self.router_consumer = zmq_router_consumer.RouterConsumerBroker(
-            conf, self.poller, self) if conf.direct_over_proxy else \
-            zmq_router_consumer.RouterConsumer(
-                conf, self.poller, self)
+        self.router_consumer = zmq_router_consumer.RouterConsumer(
+            conf, self.poller, self)
         self.sub_consumer = zmq_sub_consumer.SubConsumer(
             conf, self.poller, self) if conf.use_pub_sub else None
         self.notify_consumer = self.sub_consumer if conf.use_pub_sub \

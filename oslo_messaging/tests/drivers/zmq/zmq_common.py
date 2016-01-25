@@ -78,7 +78,6 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
                   'rpc_response_timeout': 5,
                   'rpc_zmq_ipc_dir': self.internal_ipc_dir,
                   'use_pub_sub': False,
-                  'direct_over_proxy': False,
                   'rpc_zmq_matchmaker': 'dummy'}
         self.config(**kwargs)
 

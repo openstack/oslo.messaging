@@ -43,9 +43,7 @@ class DealerCallPublisher(object):
         self.conf = conf
         self.matchmaker = matchmaker
         self.reply_waiter = ReplyWaiter(conf)
-        self.sender = RequestSender(conf, matchmaker, self.reply_waiter) \
-            if not conf.direct_over_proxy else \
-            RequestSenderLight(conf, matchmaker, self.reply_waiter)
+        self.sender = RequestSender(conf, matchmaker, self.reply_waiter)
 
     def send_request(self, request):
         reply_future = self.sender.send_request(request)
@@ -111,39 +109,6 @@ class RequestSender(zmq_publisher_base.PublisherBase):
     def cleanup(self):
         self.executor.stop()
         super(RequestSender, self).cleanup()
-
-
-class RequestSenderLight(RequestSender):
-    """This class used with proxy.
-
-        Simplified address matching because there is only
-        one proxy IPC address.
-    """
-
-    def __init__(self, conf, matchmaker, reply_waiter):
-        if not conf.direct_over_proxy:
-            raise rpc_common.RPCException("RequestSenderLight needs a proxy!")
-
-        super(RequestSenderLight, self).__init__(
-            conf, matchmaker, reply_waiter)
-
-        self.socket = None
-
-    def _connect_socket(self, target):
-        return self.outbound_sockets.get_socket_to_broker(target)
-
-    def _do_send_request(self, socket, request):
-        LOG.debug("Sending %(type)s message_id %(message)s"
-                  " to a target %(target)s",
-                  {"type": request.msg_type,
-                   "message": request.message_id,
-                   "target": request.target})
-
-        envelope = request.create_envelope()
-
-        socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(envelope, zmq.SNDMORE)
-        socket.send_pyobj(request)
 
 
 class ReplyWaiter(object):
