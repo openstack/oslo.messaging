@@ -62,7 +62,7 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
 
         message.acknowledge()
 
-        self.assertEqual(1,  self._channel.basic_ack.call_count)
+        self.assertEqual(1, self._channel.basic_ack.call_count)
         self.assertEqual({"delivery_tag": self._delivery_tag},
                          self._channel.basic_ack.call_args[1])
 
@@ -74,7 +74,7 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
 
         message.acknowledge()
 
-        self.assertEqual(0,  self._channel.basic_ack.call_count)
+        self.assertEqual(0, self._channel.basic_ack.call_count)
 
     def test_message_requeue(self):
         message = pika_drv_msg.PikaIncomingMessage(
@@ -574,14 +574,13 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
 
-    @patch("traceback.format_exception", new=lambda x,y,z:z)
+    @patch("traceback.format_exception", new=lambda x, y, z: z)
     @patch("oslo_serialization.jsonutils.dumps",
            new=functools.partial(jsonutils.dumps, sort_keys=True))
     def test_failure_message_send(self):
         failure_info = (oslo_messaging.MessagingException,
                         oslo_messaging.MessagingException("Error message"),
                         ['It is a trace'])
-
 
         message = pika_drv_msg.RpcReplyPikaOutgoingMessage(
             self._pika_engine, self._msg_id, failure_info=failure_info

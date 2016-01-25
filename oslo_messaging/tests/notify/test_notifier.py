@@ -329,7 +329,6 @@ class TestLogNotifier(test_utils.BaseTestCase):
         json_str = jsonutils.dumps(message)
         mask_str = strutils.mask_password(json_str)
 
-
         with mock.patch.object(logging, 'getLogger') as gl:
             gl.return_value = logger
             driver.notify(None, message, 'info', 0)

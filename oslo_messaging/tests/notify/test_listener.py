@@ -252,7 +252,6 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
         endpoint.info.assert_has_calls([mock.call(messages * 5)])
 
-
     def test_one_topic(self):
         transport = msg_notifier.get_notification_transport(
             self.conf, url='fake:')

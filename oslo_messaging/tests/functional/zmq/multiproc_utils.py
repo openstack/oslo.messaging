@@ -57,7 +57,8 @@ class QueueHandler(logging.Handler):
         try:
             ei = record.exc_info
             if ei:
-                dummy = self.format(record) # just to get traceback text into record.exc_text
+                # just to get traceback text into record.exc_text
+                dummy = self.format(record)
                 record.exc_info = None  # not needed any more
             self.queue.put_nowait(record)
         except (KeyboardInterrupt, SystemExit):
@@ -148,8 +149,7 @@ class Server(object):
         LOG.debug("Starting RPC server")
 
         transport = oslo_messaging.get_transport(conf, url=url)
-        target = oslo_messaging.Target(topic=self.topic,
-                                            server=self.name)
+        target = oslo_messaging.Target(topic=self.topic, server=self.name)
         self.rpc_server = oslo_messaging.get_rpc_server(
             transport=transport, target=target,
             endpoints=[ReplyServerEndpoint()],
@@ -221,7 +221,8 @@ class MutliprocTestCase(utils.SkipIfNoTransportURL):
         srv.start()
         if wait_for_server:
             while not srv.ready.value:
-                LOG.debug("[SPAWN] %s (waiting for server ready)..." % srv.name)
+                LOG.debug("[SPAWN] %s (waiting for server ready)...",
+                          srv.name)
                 time.sleep(1)
         LOG.debug("[SPAWN] Server %s:%d started.", srv.name, srv.process.pid)
         self.spawned.append(srv)

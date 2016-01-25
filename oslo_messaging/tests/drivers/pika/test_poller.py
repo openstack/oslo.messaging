@@ -107,17 +107,17 @@ class PikaPollerTestCase(unittest.TestCase):
 
         res2 = poller.poll(prefetch_size=n)
 
-        self.assertEqual(len(res2), n-1)
+        self.assertEqual(len(res2), n - 1)
         self.assertEqual(incoming_message_class_mock.call_count, n)
 
         self.assertEqual(
             self._poller_connection_mock.process_data_events.call_count, 1)
 
-        for i in range(n-1):
+        for i in range(n - 1):
             self.assertEqual(res2[i], incoming_message_class_mock.return_value)
             self.assertEqual(
-                incoming_message_class_mock.call_args_list[i+1][0],
-                (self._pika_engine, None) + params[i+1][1:]
+                incoming_message_class_mock.call_args_list[i + 1][0],
+                (self._pika_engine, None) + params[i + 1][1:]
             )
 
         self.assertTrue(self._pika_engine.create_connection.called)
