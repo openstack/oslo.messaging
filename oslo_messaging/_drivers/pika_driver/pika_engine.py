@@ -119,6 +119,16 @@ class PikaEngine(object):
             conf.oslo_messaging_pika.rpc_listener_prefetch_count
         )
 
+        self.default_rpc_retry_attempts = (
+            conf.oslo_messaging_pika.default_rpc_retry_attempts
+        )
+
+        self.rpc_retry_delay = (
+            conf.oslo_messaging_pika.rpc_retry_delay
+        )
+        if self.rpc_retry_delay < 0:
+            raise ValueError("rpc_retry_delay should be non-negative integer")
+
         self.rpc_reply_listener_prefetch_count = (
             conf.oslo_messaging_pika.rpc_listener_prefetch_count
         )
@@ -126,13 +136,10 @@ class PikaEngine(object):
         self.rpc_reply_retry_attempts = (
             conf.oslo_messaging_pika.rpc_reply_retry_attempts
         )
-        if self.rpc_reply_retry_attempts is None:
-            raise ValueError("rpc_reply_retry_attempts should be integer")
         self.rpc_reply_retry_delay = (
             conf.oslo_messaging_pika.rpc_reply_retry_delay
         )
-        if (self.rpc_reply_retry_delay is None or
-                self.rpc_reply_retry_delay < 0):
+        if self.rpc_reply_retry_delay < 0:
             raise ValueError("rpc_reply_retry_delay should be non-negative "
                              "integer")
 
@@ -151,17 +158,9 @@ class PikaEngine(object):
             conf.oslo_messaging_pika.notification_persistence
         )
 
-        self.default_rpc_retry_attempts = (
-            conf.oslo_messaging_pika.default_rpc_retry_attempts
+        self.notification_listener_prefetch_count = (
+            conf.oslo_messaging_pika.notification_listener_prefetch_count
         )
-        if self.default_rpc_retry_attempts is None:
-            raise ValueError("default_rpc_retry_attempts should be an integer")
-        self.rpc_retry_delay = (
-            conf.oslo_messaging_pika.rpc_retry_delay
-        )
-        if (self.rpc_retry_delay is None or
-                self.rpc_retry_delay < 0):
-            raise ValueError("rpc_retry_delay should be non-negative integer")
 
         self.default_notification_retry_attempts = (
             conf.oslo_messaging_pika.default_notification_retry_attempts

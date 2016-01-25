@@ -416,8 +416,8 @@ class NotificationPikaPollerTestCase(unittest.TestCase):
     def test_declare_notification_queue_bindings_default_queue(
             self, pika_incoming_message_mock):
         poller = pika_poller.NotificationPikaPoller(
-            self._pika_engine, self._target_and_priorities, None,
-            self._prefetch_count,
+            self._pika_engine, self._target_and_priorities,
+            self._prefetch_count, None
         )
         self._poller_connection_mock.process_data_events.side_effect = (
             lambda time_limit: poller._on_message_with_ack_callback(
@@ -479,7 +479,7 @@ class NotificationPikaPollerTestCase(unittest.TestCase):
             self, pika_incoming_message_mock):
         poller = pika_poller.NotificationPikaPoller(
             self._pika_engine, self._target_and_priorities,
-            "custom_queue_name", self._prefetch_count
+            self._prefetch_count, "custom_queue_name"
         )
         self._poller_connection_mock.process_data_events.side_effect = (
             lambda time_limit: poller._on_message_with_ack_callback(

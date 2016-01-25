@@ -75,6 +75,11 @@ notification_opts = [
                default="${control_exchange}_notification",
                help="Exchange name for for sending notifications"),
     cfg.IntOpt(
+        'notification_listener_prefetch_count', default=100,
+        help="Max number of not acknowledged message which RabbitMQ can send "
+             "to notification listener."
+    ),
+    cfg.IntOpt(
         'default_notification_retry_attempts', default=-1,
         help="Reconnecting retry count in case of connectivity problem during "
              "sending notification, -1 means infinite retry."
@@ -91,19 +96,18 @@ rpc_opts = [
                help="Time to live for rpc queues without consumers in "
                     "seconds."),
     cfg.StrOpt('default_rpc_exchange', default="${control_exchange}_rpc",
-               help="Exchange name for for sending RPC messages"),
+               help="Exchange name for sending RPC messages"),
     cfg.StrOpt('rpc_reply_exchange', default="${control_exchange}_rpc_reply",
-               help="Exchange name for for receiving RPC replies"),
+               help="Exchange name for receiving RPC replies"),
     cfg.IntOpt(
-        'rpc_listener_prefetch_count', default=10,
+        'rpc_listener_prefetch_count', default=100,
         help="Max number of not acknowledged message which RabbitMQ can send "
-             "to rpc listener. Works only if rpc_listener_ack == True"
+             "to rpc listener."
     ),
     cfg.IntOpt(
-        'rpc_reply_listener_prefetch_count', default=10,
+        'rpc_reply_listener_prefetch_count', default=100,
         help="Max number of not acknowledged message which RabbitMQ can send "
-             "to rpc reply listener. Works only if rpc_reply_listener_ack == "
-             "True"
+             "to rpc reply listener."
     ),
     cfg.IntOpt(
         'rpc_reply_retry_attempts', default=-1,
@@ -267,7 +271,11 @@ class PikaDriver(object):
 
     def listen_for_notifications(self, targets_and_priorities, pool):
         listener = pika_drv_poller.NotificationPikaPoller(
-            self._pika_engine, targets_and_priorities, pool
+            self._pika_engine, targets_and_priorities,
+            prefetch_count=(
+                self._pika_engine.notification_listener_prefetch_count
+            ),
+            queue_name=pool
         )
         listener.start()
         return listener
