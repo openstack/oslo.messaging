@@ -279,7 +279,7 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
 
         self.assertEqual(message.msg_id, 123456789)
         self.assertIsNone(message.failure)
-        self.assertEquals(message.result, "all fine")
+        self.assertEqual(message.result, "all fine")
 
     def test_negative_reply_message_body_parsing(self):
 
@@ -299,7 +299,7 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
 
         self.assertEqual(message.msg_id, 123456789)
         self.assertIsNone(message.result)
-        self.assertEquals(
+        self.assertEqual(
             str(message.failure),
             'Error message\n'
             'TRACE HERE'
@@ -525,7 +525,7 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertTrue(expiration * 1000 - float(props.expiration) < 100)
         self.assertEqual(props.headers, {'version': '1.0'})
         self.assertEqual(props.correlation_id, message.msg_id)
-        self.assertEquals(props.reply_to, reply_queue_name)
+        self.assertEqual(props.reply_to, reply_queue_name)
         self.assertTrue(props.message_id)
 
 

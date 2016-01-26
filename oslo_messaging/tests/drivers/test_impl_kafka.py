@@ -101,7 +101,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
         with mock.patch.object(
                 kafka_driver.Connection, 'notify_send') as fake_send:
             self.driver.send_notification(target, {}, {}, None)
-            self.assertEquals(1, len(fake_send.mock_calls))
+            self.assertEqual(1, len(fake_send.mock_calls))
 
     def test_listen(self):
         target = oslo_messaging.Target(topic="topic_test")
