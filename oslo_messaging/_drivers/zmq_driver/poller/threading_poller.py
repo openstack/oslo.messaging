@@ -85,13 +85,14 @@ class ThreadingExecutor(zmq_poller.Executor):
             self._method()
 
     def execute(self):
+        self.thread.daemon = True
         self.thread.start()
 
     def stop(self):
         self._stop.set()
 
     def wait(self):
-        self.thread.join()
+        pass
 
     def done(self):
         self._stop.set()
