@@ -30,9 +30,7 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
 
         default_publisher = zmq_dealer_publisher.DealerPublisher(
-            conf, matchmaker) if not conf.direct_over_proxy else \
-            zmq_dealer_publisher.DealerPublisherLight(
-                conf, zmq_address.get_broker_address(conf))
+            conf, matchmaker)
 
         fanout_publisher = zmq_dealer_publisher.DealerPublisherLight(
             conf, zmq_address.get_broker_address(conf)) \

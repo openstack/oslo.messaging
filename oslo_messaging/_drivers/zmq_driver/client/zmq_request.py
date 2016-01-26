@@ -68,7 +68,6 @@ class Request(object):
                 "retry must be an integer, not {0}".format(type(retry)))
 
         self.message_id = str(uuid.uuid1())
-        self.proxy_reply_id = None
 
     def create_envelope(self):
         return {'msg_type': self.msg_type,

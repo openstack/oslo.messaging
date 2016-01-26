@@ -15,14 +15,12 @@
 import logging
 
 from oslo_messaging._drivers.zmq_driver.broker import zmq_base_proxy
-from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
-    import zmq_dealer_publisher_proxy
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_pub_publisher
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LI
+from oslo_messaging._i18n import _LE, _LI
 
 zmq = zmq_async.import_zmq(zmq_concurrency='native')
 LOG = logging.getLogger(__name__)
@@ -41,9 +39,6 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
         LOG.info(_LI("Polling at universal proxy"))
 
         self.matchmaker = matchmaker
-        reply_receiver = zmq_dealer_publisher_proxy.ReplyReceiver(self.poller)
-        self.direct_publisher = zmq_dealer_publisher_proxy \
-            .DealerPublisherProxy(conf, matchmaker, reply_receiver)
         self.pub_publisher = zmq_pub_publisher.PubPublisherProxy(
             conf, matchmaker)
 
@@ -54,8 +49,6 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
 
         if socket == self.router_socket:
             self._redirect_in_request(message)
-        else:
-            self._redirect_reply(message)
 
     def _redirect_in_request(self, multipart_message):
         LOG.debug("-> Redirecting request %s to TCP publisher",
@@ -65,19 +58,6 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
                 envelope[zmq_names.FIELD_MSG_TYPE] \
                 in zmq_names.MULTISEND_TYPES:
             self.pub_publisher.send_request(multipart_message)
-        else:
-            self.direct_publisher.send_request(multipart_message)
-
-    def _redirect_reply(self, reply):
-        LOG.debug("Reply proxy %s", reply)
-        if reply[zmq_names.IDX_REPLY_TYPE] == zmq_names.ACK_TYPE:
-            LOG.debug("Acknowledge dropped %s", reply)
-            return
-
-        LOG.debug("<- Redirecting reply to ROUTER: reply: %s",
-                  reply[zmq_names.IDX_REPLY_BODY:])
-
-        self.router_socket.send_multipart(reply[zmq_names.IDX_REPLY_BODY:])
 
     def _receive_in_request(self, socket):
         reply_id = socket.recv()
@@ -85,8 +65,9 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
         empty = socket.recv()
         assert empty == b'', "Empty delimiter expected"
         envelope = socket.recv_pyobj()
-        if envelope[zmq_names.FIELD_MSG_TYPE] == zmq_names.CALL_TYPE:
-            envelope[zmq_names.FIELD_REPLY_ID] = reply_id
+        if envelope[zmq_names.FIELD_MSG_TYPE] not in zmq_names.MULTISEND_TYPES:
+            LOG.error(_LE("Message type %s is not supported by proxy"),
+                      envelope[zmq_names.FIELD_MSG_TYPE])
         payload = socket.recv_multipart()
         payload.insert(0, envelope)
         return payload
