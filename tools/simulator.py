@@ -333,12 +333,15 @@ def main():
     parser.add_argument('-d', '--debug', dest='debug', type=bool,
                         default=False,
                         help="Turn on DEBUG logging level instead of WARN")
-    parser.add_argument('-tp', '--topics', dest='topics', nargs="+",
-                        default=["profiler_topic"],
+    parser.add_argument('-tp', '--topic', dest='topic',
+                        default="profiler_topic",
                         help="Topics to publish/receive messages to/from.")
     parser.add_argument('-s', '--server', dest='server',
                         default="profiler_server",
-                        help="Server to publish/receive messages to/from.")
+                        help="Servers to publish/receive messages to/from.")
+    parser.add_argument('-tg', '--targets', dest='targets', nargs="+",
+                        default=["profiler_topic.profiler_server"],
+                        help="Targets to publish/receive messages to/from.")
     parser.add_argument('-l', dest='duration', type=int,
                         help='send messages for certain time')
     parser.add_argument('--config-file', dest='config_file', type=str,
@@ -407,10 +410,9 @@ def main():
     cfg.CONF.project = 'oslo.messaging'
 
     if args.mode == 'rpc-server':
-        target = messaging.Target(topic=args.topics[0], server=args.server)
+        target = messaging.Target(topic=args.topic, server=args.server)
         if args.url.startswith('zmq'):
             cfg.CONF.rpc_zmq_matchmaker = "redis"
-            transport._driver.matchmaker._redis.flushdb()
         rpc_server(transport, target, args.wait_before_answer, args.executor,
                    args.show_stats, args.duration)
     elif args.mode == 'notify-server':
@@ -422,10 +424,10 @@ def main():
                         args.wait_after_msg, args.timeout)
     elif args.mode == 'rpc-client':
         init_msg(args.messages)
-
+        targets = [target.partition('.')[::2] for target in args.targets]
         start = datetime.datetime.now()
-        targets = [messaging.Target(topic=topic, server=args.server) for topic
-                   in args.topics]
+        targets = [messaging.Target(topic=topic, server=server_name) for topic,
+                   server_name in targets]
         spawn_rpc_clients(args.threads, transport, targets,
                           args.wait_after_msg, args.timeout, args.is_cast,
                           args.messages, args.duration)
