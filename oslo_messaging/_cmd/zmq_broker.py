@@ -15,6 +15,7 @@
 import contextlib
 import logging
 import sys
+import time
 
 from oslo_config import cfg
 
@@ -25,8 +26,6 @@ from oslo_messaging._executors import impl_pooledexecutor
 CONF = cfg.CONF
 CONF.register_opts(impl_zmq.zmq_opts)
 CONF.register_opts(impl_pooledexecutor._pool_opts)
-# TODO(ozamiatin): Move this option assignment to an external config file
-# Use efficient zmq poller in real-world deployment
 CONF.rpc_zmq_native = True
 
 
@@ -36,7 +35,9 @@ def main():
 
     with contextlib.closing(zmq_broker.ZmqBroker(CONF)) as reactor:
         reactor.start()
-        reactor.wait()
+
+    while True:
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
