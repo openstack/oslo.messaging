@@ -132,7 +132,8 @@ class Connection(object):
                 self._send(message, topic)
                 message = None
             except Exception:
-                LOG.warn(_LW("Failed to publish a message of topic %s"), topic)
+                LOG.warning(_LW("Failed to publish a message of topic %s"),
+                            topic)
                 current_retry += 1
                 if retry is not None and current_retry >= retry:
                     LOG.exception(_LE("Failed to retry to send data "
@@ -238,10 +239,10 @@ class OsloKafkaMessage(base.IncomingMessage):
         super(OsloKafkaMessage, self).__init__(listener, ctxt, message)
 
     def requeue(self):
-        LOG.warn(_LW("requeue is not supported"))
+        LOG.warning(_LW("requeue is not supported"))
 
     def reply(self, reply=None, failure=None, log_failure=True):
-        LOG.warn(_LW("reply is not supported"))
+        LOG.warning(_LW("reply is not supported"))
 
 
 class KafkaListener(base.Listener):

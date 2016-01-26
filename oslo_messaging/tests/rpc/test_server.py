@@ -750,14 +750,14 @@ class TestServerLocking(test_utils.BaseTestCase):
         # DEFAULT_LOG_AFTER
 
         log_event = threading.Event()
-        mock_log.warn.side_effect = lambda _, __: log_event.set()
+        mock_log.warning.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
         thread = eventlet.spawn(self.server.stop)
         log_event.wait()
 
         # Redundant given that we already waited, but it's nice to assert
-        self.assertTrue(mock_log.warn.called)
+        self.assertTrue(mock_log.warning.called)
         thread.kill()
 
     @mock.patch.object(server_module, 'LOG')
@@ -766,14 +766,14 @@ class TestServerLocking(test_utils.BaseTestCase):
         # the number of seconds passed to log_after
 
         log_event = threading.Event()
-        mock_log.warn.side_effect = lambda _, __: log_event.set()
+        mock_log.warning.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
         thread = eventlet.spawn(self.server.stop, log_after=1)
         log_event.wait()
 
         # Redundant given that we already waited, but it's nice to assert
-        self.assertTrue(mock_log.warn.called)
+        self.assertTrue(mock_log.warning.called)
         thread.kill()
 
     @mock.patch.object(server_module, 'LOG')
@@ -782,14 +782,14 @@ class TestServerLocking(test_utils.BaseTestCase):
         # specified an absolute timeout
 
         log_event = threading.Event()
-        mock_log.warn.side_effect = lambda _, __: log_event.set()
+        mock_log.warning.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
         thread = eventlet.spawn(self.server.stop, log_after=1, timeout=2)
         log_event.wait()
 
         # Redundant given that we already waited, but it's nice to assert
-        self.assertTrue(mock_log.warn.called)
+        self.assertTrue(mock_log.warning.called)
         thread.kill()
 
     def test_timeout_wait(self):
@@ -835,4 +835,4 @@ class TestServerLocking(test_utils.BaseTestCase):
                           self.server.stop, log_after=0, timeout=2)
 
         # We timed out. Ensure we didn't log anything.
-        self.assertFalse(mock_log.warn.called)
+        self.assertFalse(mock_log.warning.called)
