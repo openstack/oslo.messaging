@@ -13,15 +13,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
-
 from eventlet.green import threading as greenthreading
 import futurist
 
 from oslo_messaging._executors import impl_pooledexecutor
 from oslo_utils import eventletutils
-
-LOG = logging.getLogger(__name__)
 
 
 class EventletExecutor(impl_pooledexecutor.PooledExecutor):

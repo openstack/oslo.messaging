@@ -12,14 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import threading
 
 import eventlet
 
 from oslo_messaging._drivers.zmq_driver import zmq_poller
-
-LOG = logging.getLogger(__name__)
 
 
 class GreenPoller(zmq_poller.ZmqPoller):

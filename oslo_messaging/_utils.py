@@ -13,10 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import threading
-
-LOG = logging.getLogger(__name__)
 
 
 def version_is_compatible(imp_version, version):

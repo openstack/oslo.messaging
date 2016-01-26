@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
-
 import fixtures
 import testtools
 
@@ -24,7 +22,6 @@ from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging.tests import utils as test_utils
 from oslo_messaging.tests.drivers.zmq import zmq_common
 
-LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 

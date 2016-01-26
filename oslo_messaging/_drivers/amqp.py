@@ -24,7 +24,6 @@ uses AMQP, but is deprecated and predates this code.
 """
 
 import collections
-import logging
 import uuid
 
 from oslo_config import cfg
@@ -51,7 +50,6 @@ amqp_opts = [
 ]
 
 UNIQUE_ID = '_unique_id'
-LOG = logging.getLogger(__name__)
 
 
 class RpcContext(rpc_common.CommonRpcContext):

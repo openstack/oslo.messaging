@@ -12,12 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
-
 from oslo_messaging._i18n import _
 from oslo_utils import importutils
 
-LOG = logging.getLogger(__name__)
 
 # Map zmq_concurrency config option names to the actual module name.
 ZMQ_MODULES = {

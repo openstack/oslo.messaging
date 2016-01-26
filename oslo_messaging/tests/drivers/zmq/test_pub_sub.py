@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import pickle
 import time
 
@@ -31,7 +30,6 @@ from oslo_messaging._drivers.zmq_driver.client.publishers \
 from oslo_messaging.tests import utils as test_utils
 from oslo_messaging.tests.drivers.zmq import zmq_common
 
-LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
