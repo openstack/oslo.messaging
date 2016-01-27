@@ -137,6 +137,10 @@ rabbit_opts = [
                 help='Use HA queues in RabbitMQ (x-ha-policy: all). '
                      'If you change this option, you must wipe the '
                      'RabbitMQ database.'),
+    cfg.IntOpt('rabbit_qos_prefetch_count',
+               default=0,
+               help='Specifies the number of messages to prefetch. Setting to '
+                    'zero allows unlimited messages.'),
     cfg.IntOpt('heartbeat_timeout_threshold',
                default=60,
                help="Number of seconds after which the Rabbit broker is "
@@ -381,6 +385,7 @@ class Connection(object):
         self.rabbit_userid = driver_conf.rabbit_userid
         self.rabbit_password = driver_conf.rabbit_password
         self.rabbit_ha_queues = driver_conf.rabbit_ha_queues
+        self.rabbit_qos_prefetch_count = driver_conf.rabbit_qos_prefetch_count
         self.heartbeat_timeout_threshold = \
             driver_conf.heartbeat_timeout_threshold
         self.heartbeat_rate = driver_conf.heartbeat_rate
@@ -590,6 +595,7 @@ class Connection(object):
         # the kombu underlying connection works
         self._set_current_channel(None)
         self.ensure(method=lambda: self.connection.connection)
+        self._set_qos(self.channel)
 
     def ensure(self, method, retry=None,
                recoverable_error_callback=None, error_callback=None,
@@ -658,6 +664,7 @@ class Connection(object):
             a new channel, we use it the reconfigure our consumers.
             """
             self._set_current_channel(new_channel)
+            self._set_qos(new_channel)
             for consumer in self._consumers:
                 consumer.declare(self)
 
@@ -726,6 +733,13 @@ class Connection(object):
             self.PUBLISHER_DECLARED_QUEUES.pop(self.channel, None)
             self.connection.maybe_close_channel(self.channel)
         self.channel = new_channel
+
+    def _set_qos(self, channel):
+        """Set QoS prefetch count on the channel"""
+        if self.rabbit_qos_prefetch_count != 0:
+            channel.basic_qos(0,
+                              self.rabbit_qos_prefetch_count,
+                              False)
 
     def close(self):
         """Close/release this connection."""
