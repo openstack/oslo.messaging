@@ -353,8 +353,8 @@ class NotificationPikaPoller(PikaPoller):
     """PikaPoller implementation for polling Notification messages. Overrides
     base functionality according to Notification specific
     """
-    def __init__(self, pika_engine, targets_and_priorities,
-                 queue_name=None, prefetch_count=100):
+    def __init__(self, pika_engine, targets_and_priorities, prefetch_count,
+                 queue_name=None):
         """Adds targets_and_priorities and queue_name parameter
         for declaring exchanges and queues used for notification delivery
 
@@ -362,10 +362,10 @@ class NotificationPikaPoller(PikaPoller):
             shared driver functionality
         :param targets_and_priorities: list of (target, priority), defines
             default queue names for corresponding notification types
-        :param queue: String, alternative queue name used for this poller
-            instead of default queue name
         :param prefetch_count: Integer, maximum count of unacknowledged
             messages which RabbitMQ broker sends to this consumer
+        :param queue: String, alternative queue name used for this poller
+            instead of default queue name
         """
         self._targets_and_priorities = targets_and_priorities
         self._queue_name = queue_name
