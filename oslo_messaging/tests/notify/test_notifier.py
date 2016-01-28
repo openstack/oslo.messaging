@@ -29,8 +29,8 @@ import yaml
 
 import oslo_messaging
 from oslo_messaging.notify import _impl_log
-from oslo_messaging.notify import messaging
 from oslo_messaging.notify import _impl_test
+from oslo_messaging.notify import messaging
 from oslo_messaging.notify import notifier as msg_notifier
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
