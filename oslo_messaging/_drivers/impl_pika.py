@@ -16,6 +16,7 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_messaging._drivers import base
 from oslo_messaging import exceptions
 import pika_pool
 import retrying
@@ -134,7 +135,7 @@ rpc_opts = [
 ]
 
 
-class PikaDriver(object):
+class PikaDriver(base.BaseDriver):
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
         opt_group = cfg.OptGroup(name='oslo_messaging_pika',
@@ -145,14 +146,14 @@ class PikaDriver(object):
         conf.register_opts(rpc_opts, group=opt_group)
         conf.register_opts(notification_opts, group=opt_group)
 
-        self.conf = conf
-
         self._pika_engine = pika_drv_engine.PikaEngine(
             conf, url, default_exchange, allowed_remote_exmods
         )
         self._reply_listener = pika_drv_lstnr.RpcReplyPikaListener(
             self._pika_engine
         )
+        super(PikaDriver, self).__init__(conf, url, default_exchange,
+                                         allowed_remote_exmods)
 
     def require_features(self, requeue=False):
         pass
