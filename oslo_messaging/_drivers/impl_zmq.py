@@ -70,7 +70,7 @@ zmq_opts = [
                help='Expiration timeout in seconds of a name service record '
                     'about existing target ( < 0 means no timeout).'),
 
-    cfg.BoolOpt('use_pub_sub', default=False,
+    cfg.BoolOpt('use_pub_sub', default=True,
                 help='Use PUB/SUB pattern for fanout methods. '
                      'PUB/SUB always uses proxy.'),
 
