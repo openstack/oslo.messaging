@@ -49,7 +49,6 @@ class ConsumerBase(object):
     def cleanup(self):
         for socket in self.sockets:
             if not socket.handle.closed:
-                socket.setsockopt(zmq.LINGER, 0)
                 socket.close()
         self.sockets = []
 

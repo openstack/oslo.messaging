@@ -131,12 +131,14 @@ class SocketsManager(object):
         if str(target) in self.outbound_sockets:
             socket = self._check_for_new_hosts(target)
         else:
-            socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
+            socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                          self.socket_type)
             self._get_hosts_and_connect(socket, target)
         return socket
 
     def get_socket_to_broker(self, target):
-        socket = zmq_socket.ZmqSocket(self.zmq_context, self.socket_type)
+        socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                      self.socket_type)
         self._track_socket(socket, target)
         address = zmq_address.get_broker_address(self.conf)
         socket.connect_to_address(address)
@@ -144,5 +146,4 @@ class SocketsManager(object):
 
     def cleanup(self):
         for socket, tm in self.outbound_sockets.values():
-            socket.setsockopt(zmq.LINGER, 0)
             socket.close()

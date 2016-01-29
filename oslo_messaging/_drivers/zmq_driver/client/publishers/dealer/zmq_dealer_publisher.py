@@ -98,7 +98,6 @@ class DealerPublisherLight(object):
                    "addr": self.address})
 
     def cleanup(self):
-        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.close()
 
 

@@ -59,7 +59,7 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         self.subscriptions = set()
         self.targets = []
         self._socket_lock = threading.Lock()
-        self.socket = zmq_socket.ZmqSocket(self.context, zmq.SUB)
+        self.socket = zmq_socket.ZmqSocket(self.conf, self.context, zmq.SUB)
         self.sockets.append(self.socket)
         self.id = uuid.uuid4()
         self.publishers_poller = MatchmakerPoller(
@@ -143,8 +143,8 @@ class MatchmakerPoller(object):
 
 class BackChatter(object):
 
-    def __init__(self, context):
-        self.socket = zmq_socket.ZmqSocket(context, zmq.PUSH)
+    def __init__(self, conf, context):
+        self.socket = zmq_socket.ZmqSocket(conf, context, zmq.PUSH)
 
     def connect(self, address):
         self.socket.connect(address)
@@ -154,5 +154,4 @@ class BackChatter(object):
             self.socket.send(zmq_names.ACK_TYPE)
 
     def close(self):
-        self.socket.setsockopt(zmq.LINGER, 5)
         self.socket.close()
