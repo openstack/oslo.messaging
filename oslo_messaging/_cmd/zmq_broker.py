@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
 import logging
 import sys
 import time
@@ -33,8 +32,8 @@ def main():
     CONF(sys.argv[1:], project='oslo')
     logging.basicConfig(level=logging.DEBUG)
 
-    with contextlib.closing(zmq_broker.ZmqBroker(CONF)) as reactor:
-        reactor.start()
+    reactor = zmq_broker.ZmqBroker(CONF)
+    reactor.start()
 
     while True:
         time.sleep(1)
