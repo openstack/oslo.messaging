@@ -806,7 +806,17 @@ class Connection(object):
         # or the producer.send return only when the system socket
         # timeout if reach. kombu doesn't allow use to customise this
         # timeout so for py-amqp we tweak ourself
-        sock = getattr(self.connection.transport, 'sock', None)
+        # NOTE(dmitryme): Current approach works with amqp==1.4.9 and
+        # kombu==3.0.33. Once the commit below is released, we should
+        # try to set the socket timeout in the constructor:
+        # https://github.com/celery/py-amqp/pull/64
+        try:
+            sock = self.channel.connection.sock
+        except AttributeError as e:
+            # Level is set to debug because otherwise we would spam the logs
+            LOG.debug('Failed to get socket attribute: %s' % str(e))
+            sock = None
+
         if sock:
             orig_timeout = sock.gettimeout()
             sock.settimeout(timeout)
