@@ -233,10 +233,10 @@ class Connection(object):
             fetch_message_max_bytes=self.fetch_messages_max_bytes)
 
 
-class OsloKafkaMessage(base.IncomingMessage):
+class OsloKafkaMessage(base.RpcIncomingMessage):
 
-    def __init__(self, listener, ctxt, message):
-        super(OsloKafkaMessage, self).__init__(listener, ctxt, message)
+    def __init__(self, ctxt, message):
+        super(OsloKafkaMessage, self).__init__(ctxt, message)
 
     def requeue(self):
         LOG.warning(_LW("requeue is not supported"))
@@ -247,8 +247,8 @@ class OsloKafkaMessage(base.IncomingMessage):
 
 class KafkaListener(base.Listener):
 
-    def __init__(self, driver, conn):
-        super(KafkaListener, self).__init__(driver)
+    def __init__(self, conn):
+        super(KafkaListener, self).__init__()
         self._stopped = threading.Event()
         self.conn = conn
         self.incoming_queue = []
@@ -264,8 +264,7 @@ class KafkaListener(base.Listener):
                     message = msg.value
                     message = jsonutils.loads(message)
                     self.incoming_queue.append(OsloKafkaMessage(
-                        listener=self, ctxt=message['context'],
-                        message=message['message']))
+                        ctxt=message['context'], message=message['message']))
             except driver_common.Timeout:
                 return None
 
@@ -358,7 +357,7 @@ class KafkaDriver(base.BaseDriver):
 
         conn.declare_topic_consumer(topics, pool)
 
-        listener = KafkaListener(self, conn)
+        listener = KafkaListener(conn)
         return listener
 
     def _get_connection(self, purpose):

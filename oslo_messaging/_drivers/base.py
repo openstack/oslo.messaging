@@ -39,7 +39,7 @@ def batch_poll_helper(func):
     """
     def wrapper(in_self, timeout=None, prefetch_size=1):
         incomings = []
-        driver_prefetch = in_self.driver.prefetch_size
+        driver_prefetch = in_self.prefetch_size
         if driver_prefetch > 0:
             prefetch_size = min(prefetch_size, driver_prefetch)
         watch = timeutils.StopWatch(duration=timeout)
@@ -62,15 +62,9 @@ class TransportDriverError(exceptions.MessagingException):
 @six.add_metaclass(abc.ABCMeta)
 class IncomingMessage(object):
 
-    def __init__(self, listener, ctxt, message):
-        self.conf = listener.conf
-        self.listener = listener
+    def __init__(self, ctxt, message):
         self.ctxt = ctxt
         self.message = message
-
-    @abc.abstractmethod
-    def reply(self, reply=None, failure=None, log_failure=True):
-        "Send a reply or failure back to the client."
 
     def acknowledge(self):
         "Acknowledge the message."
@@ -81,11 +75,17 @@ class IncomingMessage(object):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class Listener(object):
+class RpcIncomingMessage(IncomingMessage):
 
-    def __init__(self, driver):
-        self.conf = driver.conf
-        self.driver = driver
+    @abc.abstractmethod
+    def reply(self, reply=None, failure=None, log_failure=True):
+        "Send a reply or failure back to the client."
+
+
+@six.add_metaclass(abc.ABCMeta)
+class Listener(object):
+    def __init__(self, prefetch_size=-1):
+        self.prefetch_size = prefetch_size
 
     @abc.abstractmethod
     def poll(self, timeout=None, prefetch_size=1):

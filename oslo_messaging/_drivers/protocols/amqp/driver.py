@@ -89,9 +89,10 @@ def unmarshal_request(message):
     return (msg, data.get("context"))
 
 
-class ProtonIncomingMessage(base.IncomingMessage):
+class ProtonIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, listener, ctxt, request, message):
-        super(ProtonIncomingMessage, self).__init__(listener, ctxt, request)
+        super(ProtonIncomingMessage, self).__init__(ctxt, request)
+        self.listener = listener
         self._reply_to = message.reply_to
         self._correlation_id = message.id
 
@@ -115,7 +116,8 @@ class ProtonIncomingMessage(base.IncomingMessage):
 
 class ProtonListener(base.Listener):
     def __init__(self, driver):
-        super(ProtonListener, self).__init__(driver)
+        super(ProtonListener, self).__init__(driver.prefetch_size)
+        self.driver = driver
         self.incoming = moves.queue.Queue()
 
     @base.batch_poll_helper

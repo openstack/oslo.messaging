@@ -35,18 +35,16 @@ from oslo_messaging._i18n import _LW
 LOG = logging.getLogger(__name__)
 
 
-class AMQPIncomingMessage(base.IncomingMessage):
+class AMQPIncomingMessage(base.RpcIncomingMessage):
 
     def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q,
                  obsolete_reply_queues):
-        super(AMQPIncomingMessage, self).__init__(listener, ctxt,
-                                                  dict(message))
+        super(AMQPIncomingMessage, self).__init__(ctxt, message)
+        self.listener = listener
 
         self.unique_id = unique_id
         self.msg_id = msg_id
         self.reply_q = reply_q
-        self.acknowledge_callback = message.acknowledge
-        self.requeue_callback = message.requeue
         self._obsolete_reply_queues = obsolete_reply_queues
 
     def _send_reply(self, conn, reply=None, failure=None, log_failure=True):
@@ -115,7 +113,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
                     return
 
     def acknowledge(self):
-        self.acknowledge_callback()
+        self.message.acknowledge()
         self.listener.msg_id_cache.add(self.unique_id)
 
     def requeue(self):
@@ -125,7 +123,7 @@ class AMQPIncomingMessage(base.IncomingMessage):
         # msg_id_cache, the message will be reconsumed, the only difference is
         # the message stay at the beginning of the queue instead of moving to
         # the end.
-        self.requeue_callback()
+        self.message.requeue()
 
 
 class ObsoleteReplyQueuesCache(object):
@@ -176,7 +174,8 @@ class ObsoleteReplyQueuesCache(object):
 class AMQPListener(base.Listener):
 
     def __init__(self, driver, conn):
-        super(AMQPListener, self).__init__(driver)
+        super(AMQPListener, self).__init__(driver.prefetch_size)
+        self.driver = driver
         self.conn = conn
         self.msg_id_cache = rpc_amqp._MsgIdCache()
         self.incoming = []
@@ -184,7 +183,7 @@ class AMQPListener(base.Listener):
         self._obsolete_reply_queues = ObsoleteReplyQueuesCache()
 
     def __call__(self, message):
-        ctxt = rpc_amqp.unpack_context(self.conf, message)
+        ctxt = rpc_amqp.unpack_context(message)
 
         # FIXME(sileht): Don't log the message until strutils is more
         # efficient, (rpc_amqp.unpack_context already log the context)

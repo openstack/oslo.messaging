@@ -30,11 +30,11 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class RouterIncomingMessage(base.IncomingMessage):
+class RouterIncomingMessage(base.RpcIncomingMessage):
 
-    def __init__(self, listener, context, message, socket, reply_id, msg_id,
+    def __init__(self, context, message, socket, reply_id, msg_id,
                  poller):
-        super(RouterIncomingMessage, self).__init__(listener, context, message)
+        super(RouterIncomingMessage, self).__init__(context, message)
         self.socket = socket
         self.reply_id = reply_id
         self.msg_id = msg_id
@@ -88,11 +88,11 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
             if request.msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(
-                    self.server, socket, reply_id, request, self.poller)
+                    socket, reply_id, request, self.poller)
             elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
                 return RouterIncomingMessage(
-                    self.server, request.context, request.message, socket,
-                    reply_id, request.message_id, self.poller)
+                    request.context, request.message, socket, reply_id,
+                    request.message_id, self.poller)
             else:
                 LOG.error(_LE("Unknown message type: %s"), request.msg_type)
 

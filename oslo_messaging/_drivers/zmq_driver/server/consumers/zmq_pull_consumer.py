@@ -26,10 +26,10 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class PullIncomingMessage(base.IncomingMessage):
+class PullIncomingMessage(base.RpcIncomingMessage):
 
-    def __init__(self, listener, context, message):
-        super(PullIncomingMessage, self).__init__(listener, context, message)
+    def __init__(self, context, message):
+        super(PullIncomingMessage, self).__init__(context, message)
 
     def reply(self, reply=None, failure=None, log_failure=True):
         """Reply is not needed for non-call messages."""
@@ -60,7 +60,7 @@ class PullConsumer(zmq_consumer_base.SingleSocketConsumer):
                       {"msg_type": msg_type, "msg": str(message)})
 
             if msg_type in (zmq_names.CAST_TYPES + zmq_names.NOTIFY_TYPES):
-                return PullIncomingMessage(self.server, context, message)
+                return PullIncomingMessage(context, message)
             else:
                 LOG.error(_LE("Unknown message type: %s"), msg_type)
 

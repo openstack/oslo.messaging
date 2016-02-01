@@ -32,17 +32,17 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class SubIncomingMessage(base.IncomingMessage):
+class SubIncomingMessage(base.RpcIncomingMessage):
 
-    def __init__(self, listener, request, socket, poller):
+    def __init__(self, request, socket, poller):
         super(SubIncomingMessage, self).__init__(
-            listener, request.context, request.message)
+            request.context, request.message)
         self.socket = socket
         self.msg_id = request.message_id
         poller.resume_polling(socket)
 
     def reply(self, reply=None, failure=None, log_failure=True):
-        """Reply is not needed for non-call messages"""
+        """Reply is not needed for non-call messages."""
 
     def acknowledge(self):
         LOG.debug("Not sending acknowledge for %s", self.msg_id)
@@ -115,8 +115,7 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
             if request.msg_type not in zmq_names.MULTISEND_TYPES:
                 LOG.error(_LE("Unknown message type: %s"), request.msg_type)
             else:
-                return SubIncomingMessage(self.server, request, socket,
-                                          self.poller)
+                return SubIncomingMessage(request, socket, self.poller)
         except zmq.ZMQError as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
 
