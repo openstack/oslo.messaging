@@ -19,8 +19,8 @@ import oslo_messaging
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_socket
-from oslo_messaging.tests import utils as test_utils
 from oslo_messaging.tests.drivers.zmq import zmq_common
+from oslo_messaging.tests import utils as test_utils
 
 
 zmq = zmq_async.import_zmq()
@@ -42,7 +42,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
 
         for i in range(10):
             try:
-                target = oslo_messaging.Target(topic='testtopic_'+str(i))
+                target = oslo_messaging.Target(topic='testtopic_' + str(i))
                 new_listener = self.driver.listen(target)
                 listeners.append(new_listener)
             except zmq_socket.ZmqPortRangeExceededException:

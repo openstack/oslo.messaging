@@ -20,7 +20,7 @@ import testtools
 
 import oslo_messaging
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._i18n import _
+from oslo_messaging._i18n import _LE
 from oslo_messaging.tests import utils as test_utils
 
 LOG = logging.getLogger(__name__)
@@ -57,7 +57,7 @@ class TestServerListener(object):
                 self.message = message
                 message.reply(reply=True)
         except Exception:
-            LOG.exception(_("Unexpected exception occurred."))
+            LOG.exception(_LE("Unexpected exception occurred."))
 
     def stop(self):
         self.executor.stop()

@@ -14,7 +14,6 @@
 #    under the License.
 
 import eventlet
-import time
 import threading
 
 from oslo_config import cfg
@@ -137,8 +136,11 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         serializer = object()
 
         class MagicMockIgnoreArgs(mock.MagicMock):
-            '''A MagicMock which can never misinterpret the arguments passed to
-            it during construction.'''
+            '''MagicMock ignores arguments.
+
+            A MagicMock which can never misinterpret the arguments passed to
+            it during construction.
+            '''
 
             def __init__(self, *args, **kwargs):
                 super(MagicMockIgnoreArgs, self).__init__()
@@ -565,7 +567,7 @@ class TestServerLocking(test_utils.BaseTestCase):
     def test_start_stop_wait(self):
         # Test a simple execution of start, stop, wait in order
 
-        thread = eventlet.spawn(self.server.start)
+        eventlet.spawn(self.server.start)
         self.server.stop()
         self.server.wait()
 
@@ -579,15 +581,15 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Test that if we call wait, stop, start, these will be correctly
         # reordered
 
-        wait = eventlet.spawn(self.server.wait)
+        eventlet.spawn(self.server.wait)
         # This is non-deterministic, but there's not a great deal we can do
         # about that
         eventlet.sleep(0)
 
-        stop = eventlet.spawn(self.server.stop)
+        eventlet.spawn(self.server.stop)
         eventlet.sleep(0)
 
-        start = eventlet.spawn(self.server.start)
+        eventlet.spawn(self.server.start)
 
         self.server.wait()
 
