@@ -104,9 +104,13 @@ class PooledExecutor(base.ExecutorBase):
             if not was_submitted:
                 break
 
-    def start(self):
+    def start(self, override_pool_size=None):
         if self._executor is None:
+            if override_pool_size is not None and int(override_pool_size) < 1:
+                raise ValueError('The thread pool size should be a positive '
+                                 'value.')
             self._executor = self._executor_cls(
+                override_pool_size if override_pool_size else
                 self.conf.executor_thread_pool_size)
         self._tombstone.clear()
         if self._poller is None or not self._poller.is_alive():
