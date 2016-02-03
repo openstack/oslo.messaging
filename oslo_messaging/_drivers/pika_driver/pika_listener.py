@@ -77,7 +77,7 @@ class RpcReplyPikaListener(object):
                     )
                 )
 
-                self._reply_poller.start(timeout=expiration_time - time.time())
+                self._reply_poller.start()
 
             # start reply poller job thread if needed
             if self._poller_thread is None:

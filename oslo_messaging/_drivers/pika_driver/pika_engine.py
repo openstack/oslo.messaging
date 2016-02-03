@@ -101,14 +101,10 @@ class PikaEngine(object):
 
         # processing rpc options
         self.default_rpc_exchange = (
-            conf.oslo_messaging_pika.default_rpc_exchange if
-            conf.oslo_messaging_pika.default_rpc_exchange else
-            default_exchange
+            conf.oslo_messaging_pika.default_rpc_exchange
         )
         self.rpc_reply_exchange = (
-            conf.oslo_messaging_pika.rpc_reply_exchange if
-            conf.oslo_messaging_pika.rpc_reply_exchange else
-            default_exchange
+            conf.oslo_messaging_pika.rpc_reply_exchange
         )
 
         self.allowed_remote_exmods = [_EXCEPTIONS_MODULE]
@@ -149,9 +145,7 @@ class PikaEngine(object):
 
         # processing notification options
         self.default_notification_exchange = (
-            conf.oslo_messaging_pika.default_notification_exchange if
-            conf.oslo_messaging_pika.default_notification_exchange else
-            default_exchange
+            conf.oslo_messaging_pika.default_notification_exchange
         )
 
         self.notification_persistence = (
