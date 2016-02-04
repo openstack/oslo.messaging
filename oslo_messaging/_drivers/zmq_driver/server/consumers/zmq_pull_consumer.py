@@ -17,6 +17,7 @@ import logging
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_consumer_base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE, _LI
@@ -45,19 +46,33 @@ class PullConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
         super(PullConsumer, self).__init__(conf, poller, server, zmq.PULL)
+        self.matchmaker = server.matchmaker
+        self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
+                                                self.port)
+        self.targets = zmq_consumer_base.TargetsManager(
+            conf, self.matchmaker, self.host, zmq.PULL)
+        LOG.info(_LI("[%s] Run PULL consumer"), self.host)
 
     def listen(self, target):
         LOG.info(_LI("Listen to target %s"), str(target))
-        #  Do nothing here because we have a single socket
+        self.targets.listen(target)
+
+    def cleanup(self):
+        super(PullConsumer, self).cleanup()
+        self.targets.cleanup()
 
     def receive_message(self, socket):
         try:
-            msg_type = socket.recv_string()
+            request = socket.recv_pyobj()
+            msg_type = request.msg_type
             assert msg_type is not None, 'Bad format: msg type expected'
-            context = socket.recv_pyobj()
-            message = socket.recv_pyobj()
-            LOG.debug("Received %(msg_type)s message %(msg)s",
-                      {"msg_type": msg_type, "msg": str(message)})
+            context = request.context
+            message = request.message
+            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s",
+                      {"host": self.host,
+                       "type": request.msg_type,
+                       "id": request.message_id,
+                       "target": request.target})
 
             if msg_type in (zmq_names.CAST_TYPES + zmq_names.NOTIFY_TYPES):
                 return PullIncomingMessage(self.server, context, message)
