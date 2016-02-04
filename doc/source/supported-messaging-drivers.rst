@@ -27,7 +27,7 @@ Testing
   of python oslo.messaging currently gates on.
 
 * Must have integration testing including at least 3 popular oslo.messaging
-  dependents, preferrably at the minimum a devstack-gate job with Nova,
+  dependents, preferably at the minimum a devstack-gate job with Nova,
   Cinder, and Neutron.
 
 * All testing above must be voting in the gate of oslo.messaging.
@@ -41,7 +41,7 @@ Documentation
 Support
 ~~~~~~~
 
-* Must have at least two individuals from the community commited to
+* Must have at least two individuals from the community committed to
   triaging and fixing bugs, and responding to test failures in a timely
   manner.
 

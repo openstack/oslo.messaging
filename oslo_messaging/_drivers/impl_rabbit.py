@@ -815,7 +815,7 @@ class Connection(object):
             sock.settimeout(orig_timeout)
 
     def _heartbeat_check(self):
-        # NOTE(sileht): we are suposed to send at least one heartbeat
+        # NOTE(sileht): we are supposed to send at least one heartbeat
         # every heartbeat_timeout_threshold, so no need to way more
         with self._transport_socket_timeout(
                 self.heartbeat_timeout_threshold):
