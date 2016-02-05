@@ -85,7 +85,6 @@ class PubPublisherProxy(object):
     def cleanup(self):
         self.matchmaker.unregister_publisher(
             (self.host, self.sync_channel.sync_host))
-        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.close()
 
 
