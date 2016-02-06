@@ -12,7 +12,7 @@ mox3<0.8.0,>=0.7.0
 python-subunit>=0.0.18
 testrepository>=0.0.18
 testscenarios>=0.4
-testtools!=1.2.0,>=0.9.36
+testtools!=1.2.0,<2.0.0,>=0.9.36
 oslotest<1.6.0,>=1.5.1 # Apache-2.0
 
 # for test_qpid
