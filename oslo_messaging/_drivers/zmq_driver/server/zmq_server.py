@@ -17,6 +17,8 @@ import logging
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
+    import zmq_pull_consumer
+from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_router_consumer
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_sub_consumer
@@ -36,12 +38,14 @@ class ZmqServer(base.Listener):
         self.poller = zmq_async.get_poller()
         self.router_consumer = zmq_router_consumer.RouterConsumer(
             conf, self.poller, self)
+        self.pull_consumer = zmq_pull_consumer.PullConsumer(
+            conf, self.poller, self)
         self.sub_consumer = zmq_sub_consumer.SubConsumer(
             conf, self.poller, self) if conf.use_pub_sub else None
         self.notify_consumer = self.sub_consumer if conf.use_pub_sub \
             else self.router_consumer
 
-        self.consumers = [self.router_consumer]
+        self.consumers = [self.router_consumer, self.pull_consumer]
         if self.sub_consumer:
             self.consumers.append(self.sub_consumer)
 
@@ -62,9 +66,8 @@ class ZmqServer(base.Listener):
             consumer.cleanup()
 
     def listen(self, target):
-        consumer = self.router_consumer
-        consumer.listen(target)
-
+        self.router_consumer.listen(target)
+        self.pull_consumer.listen(target)
         if self.sub_consumer:
             self.sub_consumer.listen(target)
 

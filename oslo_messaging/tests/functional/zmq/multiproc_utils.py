@@ -157,8 +157,7 @@ class Server(object):
             LOG.debug("Waiting for the stop signal ...")
             time.sleep(1)
         self.rpc_server.stop()
-        LOG.debug("Leaving process T:%s Pid:%d", (str(target),
-                                                  os.getpid()))
+        LOG.debug("Leaving process T:%s Pid:%d", str(target), os.getpid())
 
     def cleanup(self):
         LOG.debug("Stopping server")

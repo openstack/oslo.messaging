@@ -28,15 +28,16 @@ zmq = zmq_async.import_zmq()
 class PushPublisher(zmq_publisher_base.PublisherBase):
 
     def __init__(self, conf, matchmaker):
-        super(PushPublisher, self).__init__(conf, matchmaker, zmq.PUSH)
+        sockets_manager = zmq_publisher_base.SocketsManager(
+            conf, matchmaker, zmq.PULL, zmq.PUSH)
+        super(PushPublisher, self).__init__(sockets_manager)
 
     def send_request(self, request):
 
         if request.msg_type == zmq_names.CALL_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        push_socket = self._check_hosts_connections(
-            request.target, zmq_names.socket_type_str(zmq.PULL))
+        push_socket = self.outbound_sockets.get_socket(request.target)
 
         if not push_socket.connections:
             LOG.warning(_LW("Request %s was dropped because no connection"),
@@ -48,10 +49,3 @@ class PushPublisher(zmq_publisher_base.PublisherBase):
                 self._send_request(push_socket, request)
         else:
             self._send_request(push_socket, request)
-
-    def _send_request(self, socket, request):
-
-        super(PushPublisher, self)._send_request(socket, request)
-
-        LOG.debug("Publishing message %(message)s to a target %(target)s",
-                  {"message": request.message, "target": request.target})
