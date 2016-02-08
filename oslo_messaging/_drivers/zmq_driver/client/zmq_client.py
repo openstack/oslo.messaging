@@ -20,7 +20,6 @@ from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_push_publisher
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
-from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -35,8 +34,7 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
             conf, matchmaker)
 
         fanout_publisher = zmq_dealer_publisher.DealerPublisherLight(
-            conf, zmq_address.get_broker_address(conf)) \
-            if conf.use_pub_sub else default_publisher
+            conf, matchmaker) if conf.use_pub_sub else default_publisher
 
         super(ZmqClient, self).__init__(
             conf, matchmaker, allowed_remote_exmods,

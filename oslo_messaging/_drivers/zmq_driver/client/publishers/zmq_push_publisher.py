@@ -18,34 +18,35 @@ from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LW
 
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
-class PushPublisher(zmq_publisher_base.PublisherBase):
+class PushPublisher(object):
 
     def __init__(self, conf, matchmaker):
+        super(PushPublisher, self).__init__()
         sockets_manager = zmq_publisher_base.SocketsManager(
             conf, matchmaker, zmq.PULL, zmq.PUSH)
-        super(PushPublisher, self).__init__(sockets_manager)
+
+        def _do_send_request(push_socket, request):
+            push_socket.send_pyobj(request)
+
+            LOG.debug("Sending message_id %(message)s to a target %(target)s",
+                      {"message": request.message_id,
+                       "target": request.target})
+
+        self.sender = zmq_publisher_base.QueuedSender(
+            sockets_manager, _do_send_request)
 
     def send_request(self, request):
 
-        if request.msg_type == zmq_names.CALL_TYPE:
+        if request.msg_type != zmq_names.CAST_TYPE:
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
 
-        push_socket = self.outbound_sockets.get_socket(request.target)
+        self.sender.send_request(request)
 
-        if not push_socket.connections:
-            LOG.warning(_LW("Request %s was dropped because no connection"),
-                        request.msg_type)
-            return
-
-        if request.msg_type in zmq_names.MULTISEND_TYPES:
-            for _ in range(push_socket.connections_count()):
-                self._send_request(push_socket, request)
-        else:
-            self._send_request(push_socket, request)
+    def cleanup(self):
+        self.sender.cleanup()
