@@ -34,7 +34,6 @@ from oslo_messaging import transport
 _global_opt_lists = [
     drivers_base.base_opts,
     impl_zmq.zmq_opts,
-    matchmaker_redis.matchmaker_redis_opts,
     impl_pooledexecutor._pool_opts,
     client._client_opts,
     transport._transport_opts,
