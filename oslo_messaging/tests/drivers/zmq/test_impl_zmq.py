@@ -75,7 +75,9 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
         self.assertRaises(
             KeyError,
             self.driver.send,
-            target, {}, {'tx_id': 1}, wait_for_reply=True)
+            target, {}, {'tx_id': 1},
+            wait_for_reply=True,
+            timeout=60)
 
     def test_send_receive_topic(self):
         """Call() with topic."""
@@ -85,7 +87,8 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
         result = self.driver.send(
             target, {},
             {'method': 'hello-world', 'tx_id': 1},
-            wait_for_reply=True)
+            wait_for_reply=True,
+            timeout=60)
         self.assertTrue(result)
 
     def test_send_noreply(self):
@@ -130,7 +133,8 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
         message = {'method': 'hello-world', 'tx_id': 1}
         context = {}
         result = self.driver.send(target, context, message,
-                                  wait_for_reply=True)
+                                  wait_for_reply=True,
+                                  timeout=60)
         self.assertTrue(result)
 
     def test_send_receive_notification(self):

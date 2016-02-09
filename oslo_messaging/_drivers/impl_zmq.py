@@ -202,13 +202,12 @@ class ZmqDriver(base.BaseDriver):
         :type retry: int
         """
         client = self.client.get()
-        timeout = timeout or self.conf.rpc_response_timeout
         if wait_for_reply:
             return client.send_call(target, ctxt, message, timeout, retry)
         elif target.fanout:
-            client.send_fanout(target, ctxt, message, timeout, retry)
+            client.send_fanout(target, ctxt, message, retry)
         else:
-            client.send_cast(target, ctxt, message, timeout, retry)
+            client.send_cast(target, ctxt, message, retry)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
         """Send notification to server
