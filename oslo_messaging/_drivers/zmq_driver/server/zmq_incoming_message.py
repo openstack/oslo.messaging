@@ -26,10 +26,10 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class ZmqIncomingRequest(base.IncomingMessage):
+class ZmqIncomingRequest(base.RpcIncomingMessage):
 
-    def __init__(self, listener, socket, rep_id, request, poller):
-        super(ZmqIncomingRequest, self).__init__(listener, request.context,
+    def __init__(self, socket, rep_id, request, poller):
+        super(ZmqIncomingRequest, self).__init__(request.context,
                                                  request.message)
         self.reply_socket = socket
         self.reply_id = rep_id

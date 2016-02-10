@@ -30,6 +30,7 @@ import six
 
 
 import oslo_messaging
+from oslo_messaging._drivers import base
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging import _utils as utils
 from oslo_messaging import exceptions
@@ -67,7 +68,7 @@ class RemoteExceptionMixin(object):
         return self._str_msgs
 
 
-class PikaIncomingMessage(object):
+class PikaIncomingMessage(base.IncomingMessage):
     """Driver friendly adapter for received message. Extract message
     information from RabbitMQ message and provide access to it
     """
@@ -123,8 +124,8 @@ class PikaIncomingMessage(object):
             if key.startswith('_$_'):
                 value = message_dict.pop(key)
                 context_dict[key[3:]] = value
-        self.message = message_dict
-        self.ctxt = context_dict
+
+        super(PikaIncomingMessage, self).__init__(context_dict, message_dict)
 
     def need_ack(self):
         return self._channel is not None
@@ -147,7 +148,7 @@ class PikaIncomingMessage(object):
                                             requeue=True)
 
 
-class RpcPikaIncomingMessage(PikaIncomingMessage):
+class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
     """PikaIncomingMessage implementation for RPC messages. It expects
     extra RPC related fields in message body (msg_id and reply_q). Also 'reply'
     method added to allow consumer to send RPC reply back to the RPC client

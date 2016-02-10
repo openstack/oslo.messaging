@@ -33,7 +33,9 @@ zmq = zmq_async.import_zmq()
 class ZmqServer(base.Listener):
 
     def __init__(self, driver, conf, matchmaker=None):
-        super(ZmqServer, self).__init__(driver)
+        super(ZmqServer, self).__init__()
+        self.driver = driver
+        self.conf = conf
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller()
         self.router_consumer = zmq_router_consumer.RouterConsumer(

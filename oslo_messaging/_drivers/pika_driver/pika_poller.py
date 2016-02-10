@@ -19,13 +19,14 @@ from oslo_log import log as logging
 import pika_pool
 import six
 
+from oslo_messaging._drivers import base
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 
 LOG = logging.getLogger(__name__)
 
 
-class PikaPoller(object):
+class PikaPoller(base.Listener):
     """Provides user friendly functionality for RabbitMQ message consuming,
     handles low level connectivity problems and restore connection if some
     connectivity related problem detected

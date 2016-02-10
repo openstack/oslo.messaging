@@ -24,9 +24,9 @@ import oslo_messaging
 from oslo_messaging._drivers import base
 
 
-class FakeIncomingMessage(base.IncomingMessage):
-    def __init__(self, listener, ctxt, message, reply_q, requeue):
-        super(FakeIncomingMessage, self).__init__(listener, ctxt, message)
+class FakeIncomingMessage(base.RpcIncomingMessage):
+    def __init__(self, ctxt, message, reply_q, requeue):
+        super(FakeIncomingMessage, self).__init__(ctxt, message)
         self.requeue_callback = requeue
         self._reply_q = reply_q
 
@@ -41,8 +41,8 @@ class FakeIncomingMessage(base.IncomingMessage):
 
 class FakeListener(base.Listener):
 
-    def __init__(self, driver, exchange_manager, targets, pool=None):
-        super(FakeListener, self).__init__(driver)
+    def __init__(self, exchange_manager, targets, pool=None):
+        super(FakeListener, self).__init__()
         self._exchange_manager = exchange_manager
         self._targets = targets
         self._pool = pool
@@ -66,8 +66,8 @@ class FakeListener(base.Listener):
                 (ctxt, message, reply_q, requeue) = exchange.poll(target,
                                                                   self._pool)
                 if message is not None:
-                    message = FakeIncomingMessage(self, ctxt, message,
-                                                  reply_q, requeue)
+                    message = FakeIncomingMessage(ctxt, message, reply_q,
+                                                  requeue)
                     return message
             if deadline is not None:
                 pause = deadline - time.time()
@@ -224,7 +224,7 @@ class FakeDriver(base.BaseDriver):
 
     def listen(self, target):
         exchange = target.exchange or self._default_exchange
-        listener = FakeListener(self, self._exchange_manager,
+        listener = FakeListener(self._exchange_manager,
                                 [oslo_messaging.Target(
                                     topic=target.topic,
                                     server=target.server,
@@ -240,7 +240,7 @@ class FakeDriver(base.BaseDriver):
                 topic='%s.%s' % (target.topic, priority),
                 exchange=target.exchange)
             for target, priority in targets_and_priorities]
-        listener = FakeListener(self, self._exchange_manager, targets, pool)
+        listener = FakeListener(self._exchange_manager, targets, pool)
 
         return listener
 

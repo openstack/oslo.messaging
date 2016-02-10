@@ -16,16 +16,16 @@ import time
 
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_messaging._drivers import base
-from oslo_messaging import exceptions
 import pika_pool
 import retrying
 
+from oslo_messaging._drivers import base
 from oslo_messaging._drivers.pika_driver import pika_engine as pika_drv_engine
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_listener as pika_drv_lstnr
 from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
+from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
 
