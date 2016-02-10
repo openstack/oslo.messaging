@@ -92,7 +92,7 @@ class DispatcherBase(object):
     def _listen(self, transport):
         """Initiate the driver Listener
 
-        Usualy the driver Listener is start with the transport helper methods:
+        Usually the driver Listener is start with the transport helper methods:
 
         * transport._listen()
         * transport._listen_for_notifications()
