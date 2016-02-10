@@ -181,7 +181,9 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
                           timeout=1)
-        fake_publish.assert_called_with('msg', expiration=1)
+        fake_publish.assert_called_with(
+            'msg', expiration=1,
+            compression=self.conf.oslo_messaging_rabbit.kombu_compression)
 
     @mock.patch('kombu.messaging.Producer.publish')
     def test_send_no_timeout(self, fake_publish):
@@ -191,7 +193,9 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
                 driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key')
-        fake_publish.assert_called_with('msg', expiration=None)
+        fake_publish.assert_called_with(
+            'msg', expiration=None,
+            compression=self.conf.oslo_messaging_rabbit.kombu_compression)
 
     def test_declared_queue_publisher(self):
         transport = oslo_messaging.get_transport(self.conf,
@@ -687,11 +691,17 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
                              '_context_project': 'snarkybunch'})),
     ]
 
+    _compression = [
+        ('gzip_compression', dict(compression='gzip')),
+        ('without_compression', dict(compression=None))
+    ]
+
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._msg,
                                                          cls._context,
-                                                         cls._target)
+                                                         cls._target,
+                                                         cls._compression)
 
     def setUp(self):
         super(TestRequestWireFormat, self).setUp()
@@ -704,7 +714,7 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
         return self.uuids[-1]
 
     def test_request_wire_format(self):
-
+        self.conf.oslo_messaging_rabbit.kombu_compression = self.compression
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
@@ -827,13 +837,20 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
               expected_ctxt={'user': 'mark', 'project': 'snarkybunch'})),
     ]
 
+    _compression = [
+        ('gzip_compression', dict(compression='gzip')),
+        ('without_compression', dict(compression=None))
+    ]
+
     @classmethod
     def generate_scenarios(cls):
         cls.scenarios = testscenarios.multiply_scenarios(cls._msg,
                                                          cls._context,
-                                                         cls._target)
+                                                         cls._target,
+                                                         cls._compression)
 
     def test_reply_wire_format(self):
+        self.conf.oslo_messaging_rabbit.kombu_compression = self.compression
 
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
