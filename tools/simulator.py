@@ -54,7 +54,7 @@ Usage example:
 def init_random_generator():
     data = []
     with open('./messages_length.yaml') as m_file:
-        content = yaml.load(m_file)
+        content = yaml.safe_load(m_file)
         data += [int(n) for n in content[
             'test_data']['string_lengths'].split(', ')]
 
