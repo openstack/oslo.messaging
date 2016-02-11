@@ -136,10 +136,9 @@ class SocketsManager(object):
             self._get_hosts_and_connect(socket, target)
         return socket
 
-    def get_socket_to_broker(self, target):
+    def get_socket_to_broker(self):
         socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
                                       self.socket_type)
-        self._track_socket(socket, target)
         address = zmq_address.get_broker_address(self.conf)
         socket.connect_to_address(address)
         return socket
@@ -147,3 +146,32 @@ class SocketsManager(object):
     def cleanup(self):
         for socket, tm in self.outbound_sockets.values():
             socket.close()
+
+
+class QueuedSender(PublisherBase):
+
+    def __init__(self, sockets_manager, _do_send_request):
+        super(QueuedSender, self).__init__(sockets_manager)
+        self._do_send_request = _do_send_request
+        self.queue, self.empty_except = zmq_async.get_queue()
+        self.executor = zmq_async.get_executor(self.run_loop)
+        self.executor.execute()
+
+    def send_request(self, request):
+        self.queue.put(request)
+
+    def _connect_socket(self, target):
+        return self.outbound_sockets.get_socket(target)
+
+    def run_loop(self):
+        try:
+            request = self.queue.get(timeout=self.conf.rpc_poll_timeout)
+        except self.empty_except:
+            return
+
+        socket = self._connect_socket(request.target)
+        self._do_send_request(socket, request)
+
+    def cleanup(self):
+        self.executor.stop()
+        super(QueuedSender, self).cleanup()

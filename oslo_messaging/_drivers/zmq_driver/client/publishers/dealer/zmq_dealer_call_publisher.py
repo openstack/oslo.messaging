@@ -43,7 +43,20 @@ class DealerCallPublisher(object):
         self.conf = conf
         self.matchmaker = matchmaker
         self.reply_waiter = ReplyWaiter(conf)
-        self.sender = RequestSender(conf, matchmaker, self.reply_waiter)
+        sockets_manager = zmq_publisher_base.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+
+        def _do_send_request(socket, request):
+            #  DEALER socket specific envelope empty delimiter
+            socket.send(b'', zmq.SNDMORE)
+            socket.send_pyobj(request)
+
+            LOG.debug("Sent message_id %(message)s to a target %(target)s",
+                      {"message": request.message_id,
+                       "target": request.target})
+
+        self.sender = CallSender(sockets_manager, _do_send_request,
+                                 self.reply_waiter)
 
     def send_request(self, request):
         reply_future = self.sender.send_request(request)
@@ -68,16 +81,12 @@ class DealerCallPublisher(object):
         self.sender.cleanup()
 
 
-class RequestSender(zmq_publisher_base.PublisherBase):
+class CallSender(zmq_publisher_base.QueuedSender):
 
-    def __init__(self, conf, matchmaker, reply_waiter):
-        sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
-        super(RequestSender, self).__init__(sockets_manager)
+    def __init__(self, sockets_manager, _do_send_request, reply_waiter):
+        super(CallSender, self).__init__(sockets_manager, _do_send_request)
+        assert reply_waiter, "Valid ReplyWaiter expected!"
         self.reply_waiter = reply_waiter
-        self.queue, self.empty_except = zmq_async.get_queue()
-        self.executor = zmq_async.get_executor(self.run_loop)
-        self.executor.execute()
 
     def send_request(self, request):
         reply_future = futurist.Future()
@@ -85,30 +94,10 @@ class RequestSender(zmq_publisher_base.PublisherBase):
         self.queue.put(request)
         return reply_future
 
-    def _do_send_request(self, socket, request):
-        socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(request)
-
-        LOG.debug("Sending message_id %(message)s to a target %(target)s",
-                  {"message": request.message_id, "target": request.target})
-
     def _connect_socket(self, target):
-        return self.outbound_sockets.get_socket(target)
-
-    def run_loop(self):
-        try:
-            request = self.queue.get(timeout=self.conf.rpc_poll_timeout)
-        except self.empty_except:
-            return
-
-        socket = self._connect_socket(request.target)
-
-        self._do_send_request(socket, request)
+        socket = self.outbound_sockets.get_socket(target)
         self.reply_waiter.poll_socket(socket)
-
-    def cleanup(self):
-        self.executor.stop()
-        super(RequestSender, self).cleanup()
+        return socket
 
 
 class ReplyWaiter(object):
