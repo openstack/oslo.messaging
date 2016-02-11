@@ -36,6 +36,12 @@ class ZmqSocket(object):
         self.context = context
         self.socket_type = socket_type
         self.handle = context.socket(socket_type)
+
+        self.close_linger = -1
+        if self.conf.rpc_cast_timeout > 0:
+            self.close_linger = self.conf.rpc_cast_timeout * 1000
+        self.handle.setsockopt(zmq.LINGER, self.close_linger)
+
         self.connections = set()
 
     def type_name(self):
@@ -86,7 +92,6 @@ class ZmqSocket(object):
         return self.handle.recv_multipart(*args, **kwargs)
 
     def close(self, *args, **kwargs):
-        self.handle.setsockopt(zmq.LINGER, self.conf.rpc_cast_timeout * 1000)
         self.handle.close(*args, **kwargs)
 
     def connect_to_address(self, address):
