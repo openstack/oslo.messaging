@@ -548,7 +548,7 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
         else:
             self._do_send(
                 exchange=exchange, routing_key=queue, msg_dict=msg_dict,
-                msg_props=msg_props, confirm=True, mandatory=True,
+                msg_props=msg_props, confirm=True, mandatory=not target.fanout,
                 persistent=False, expiration_time=expiration_time,
                 retrier=retrier
             )
