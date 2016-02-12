@@ -489,6 +489,7 @@ class Connection(object):
         self._new_consumers = []
         self._consume_loop_stopped = False
         self.channel = None
+        self.purpose = purpose
 
         # NOTE(sileht): if purpose is PURPOSE_LISTEN
         # we don't need the lock because we don't
@@ -626,7 +627,6 @@ class Connection(object):
         # the kombu underlying connection works
         self._set_current_channel(None)
         self.ensure(method=lambda: self.connection.connection)
-        self._set_qos(self.channel)
 
     def ensure(self, method, retry=None,
                recoverable_error_callback=None, error_callback=None,
@@ -695,7 +695,6 @@ class Connection(object):
             a new channel, we use it the reconfigure our consumers.
             """
             self._set_current_channel(new_channel)
-            self._set_qos(new_channel)
             for consumer in self._consumers:
                 consumer.declare(self)
 
@@ -759,14 +758,22 @@ class Connection(object):
 
         NOTE(sileht): Must be called within the connection lock
         """
-        if self.channel is not None and new_channel != self.channel:
+        if new_channel == self.channel:
+            return
+
+        if self.channel is not None:
             self.PUBLISHER_DECLARED_QUEUES.pop(self.channel, None)
             self.connection.maybe_close_channel(self.channel)
+
         self.channel = new_channel
+
+        if (new_channel is not None and
+           self.purpose == rpc_common.PURPOSE_LISTEN):
+            self._set_qos(new_channel)
 
     def _set_qos(self, channel):
         """Set QoS prefetch count on the channel"""
-        if self.rabbit_qos_prefetch_count != 0:
+        if self.rabbit_qos_prefetch_count > 0:
             channel.basic_qos(0,
                               self.rabbit_qos_prefetch_count,
                               False)
