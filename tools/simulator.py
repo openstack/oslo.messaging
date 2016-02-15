@@ -363,7 +363,7 @@ def main():
                         help='number of call per threads')
     client.add_argument('-w', dest='wait_after_msg', type=int, default=-1,
                         help='sleep time between two messages')
-    client.add_argument('-t', dest='timeout', type=int, default=3,
+    client.add_argument('--timeout', dest='timeout', type=int, default=3,
                         help='client timeout')
 
     server = subparsers.add_parser('rpc-server')
@@ -381,13 +381,15 @@ def main():
                         help='number of call per threads')
     client.add_argument('-w', dest='wait_after_msg', type=int, default=-1,
                         help='sleep time between two messages')
-    client.add_argument('-t', dest='timeout', type=int, default=3,
+    client.add_argument('--timeout', dest='timeout', type=int, default=3,
                         help='client timeout')
     client.add_argument('--exit-wait', dest='exit_wait', type=int, default=0,
                         help='Keep connections open N seconds after calls '
                         'have been done')
     client.add_argument('--is-cast', dest='is_cast', type=bool, default=False,
                         help='Use `call` or `cast` RPC methods')
+    client.add_argument('--is-fanout', dest='is_fanout', type=bool,
+                        default=False, help='fanout=True for CAST messages')
 
     args = parser.parse_args()
 
@@ -401,8 +403,6 @@ def main():
     else:
         transport = messaging.get_notification_transport(cfg.CONF,
                                                          url=args.url)
-        cfg.CONF.oslo_messaging_notifications.topics = "notif"
-        cfg.CONF.oslo_messaging_notifications.driver = "messaging"
 
     # oslo.config defaults
     cfg.CONF.heartbeat_interval = 5
@@ -426,8 +426,9 @@ def main():
         init_msg(args.messages)
         targets = [target.partition('.')[::2] for target in args.targets]
         start = datetime.datetime.now()
-        targets = [messaging.Target(topic=topic, server=server_name) for topic,
-                   server_name in targets]
+        targets = [messaging.Target(
+            topic=topic, server=server_name, fanout=args.is_fanout) for
+            topic, server_name in targets]
         spawn_rpc_clients(args.threads, transport, targets,
                           args.wait_after_msg, args.timeout, args.is_cast,
                           args.messages, args.duration)
