@@ -109,6 +109,31 @@ class TestHeartbeat(test_utils.BaseTestCase):
             'trying to reconnect: %s')
 
 
+class TestRabbitQos(test_utils.BaseTestCase):
+
+    def connection_with(self, prefetch, purpose):
+        self.config(rabbit_qos_prefetch_count=prefetch,
+                    group="oslo_messaging_rabbit")
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        transport._driver._get_connection(purpose)
+
+    @mock.patch('kombu.transport.memory.Channel.basic_qos')
+    def test_qos_sent_on_listen_connection(self, fake_basic_qos):
+        self.connection_with(prefetch=1, purpose=driver_common.PURPOSE_LISTEN)
+        fake_basic_qos.assert_called_once_with(0, 1, False)
+
+    @mock.patch('kombu.transport.memory.Channel.basic_qos')
+    def test_qos_not_sent_when_cfg_zero(self, fake_basic_qos):
+        self.connection_with(prefetch=0, purpose=driver_common.PURPOSE_LISTEN)
+        fake_basic_qos.assert_not_called()
+
+    @mock.patch('kombu.transport.memory.Channel.basic_qos')
+    def test_qos_not_sent_on_send_connection(self, fake_basic_qos):
+        self.connection_with(prefetch=1, purpose=driver_common.PURPOSE_SEND)
+        fake_basic_qos.assert_not_called()
+
+
 class TestRabbitDriverLoad(test_utils.BaseTestCase):
 
     scenarios = [
