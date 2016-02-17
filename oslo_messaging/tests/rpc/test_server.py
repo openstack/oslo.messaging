@@ -553,7 +553,10 @@ class TestServerLocking(test_utils.BaseTestCase):
                 self.listener = mock.MagicMock()
                 executors.append(self)
 
-            start = _logmethod('start')
+            def start(self, override_pool_size=None):
+                with self._lock:
+                    self._calls.append('start')
+
             stop = _logmethod('stop')
             wait = _logmethod('wait')
             execute = _logmethod('execute')
@@ -611,7 +614,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         runner = [None]
 
         class SteppingFakeExecutor(self.server._executor_cls):
-            def start(self):
+            def start(self, override_pool_size=None):
                 # Tell the test which thread won the race
                 runner[0] = eventlet.getcurrent()
                 running_event.set()
