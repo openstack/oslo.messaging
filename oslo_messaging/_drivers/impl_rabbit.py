@@ -30,6 +30,8 @@ import kombu.messaging
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import netutils
+from oslo_utils import versionutils
+import pkg_resources
 import six
 from six.moves.urllib import parse
 
@@ -997,6 +999,18 @@ class Connection(object):
         with self._connection_lock:
             self.ensure(method, retry=retry, error_callback=_error_callback)
 
+    def _get_expiration(self, timeout):
+        # NOTE(gcb) kombu accept TTL as seconds instead of millisecond since
+        # version 3.0.25, so do conversion according to kombu version.
+        # TODO(gcb) remove this workaround when all supported branches
+        # with requirement kombu >=3.0.25
+        if timeout is not None:
+            kombu_version = pkg_resources.get_distribution('kombu').version
+            if not versionutils.is_compatible('3.0.25', kombu_version):
+                timeout = int(timeout * 1000)
+
+        return timeout
+
     def _publish(self, exchange, msg, routing_key=None, timeout=None):
         """Publish a message."""
         producer = kombu.messaging.Producer(exchange=exchange,
@@ -1022,7 +1036,7 @@ class Connection(object):
         LOG.trace('Connection._publish: sending message %(msg)s to'
                   ' %(who)s with routing key %(key)s', log_info)
         with self._transport_socket_timeout(transport_timeout):
-            producer.publish(msg, expiration=timeout)
+            producer.publish(msg, expiration=self._get_expiration(timeout))
 
     # List of notification queue declared on the channel to avoid
     # unnecessary redeclaration. This list is resetted each time
