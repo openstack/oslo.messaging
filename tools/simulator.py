@@ -315,7 +315,9 @@ def notifier(_id, transport, messages, wait_after_msg, timeout):
 
 def _setup_logging(is_debug):
     log_level = logging.DEBUG if is_debug else logging.INFO
-    logging.basicConfig(stream=sys.stdout, level=log_level)
+    logging.basicConfig(
+        stream=sys.stdout, level=log_level,
+        format="%(asctime)-15s %(levelname)s %(name)s %(message)s")
     logging.getLogger().handlers[0].addFilter(LoggingNoParsingFilter())
     for i in ['kombu', 'amqp', 'stevedore', 'qpid.messaging'
               'oslo.messaging._drivers.amqp', ]:
