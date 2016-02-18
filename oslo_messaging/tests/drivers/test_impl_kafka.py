@@ -284,4 +284,4 @@ class TestWithRealKafkaBroker(test_utils.BaseTestCase):
         deadline = time.time() + 3
         received_message = listener.poll(timeout=3)
         self.assertEqual(0, int(deadline - time.time()))
-        self.assertIsNone(received_message)
+        self.assertEqual([], received_message)
