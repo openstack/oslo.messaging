@@ -24,7 +24,9 @@ import kombu
 import kombu.transport.memory
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import versionutils
 from oslotest import mockpatch
+import pkg_resources
 import testscenarios
 
 import oslo_messaging
@@ -204,7 +206,16 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             conn = pool_conn.connection
             conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
                           timeout=1)
-        fake_publish.assert_called_with('msg', expiration=1)
+
+        # NOTE(gcb) kombu accept TTL as seconds instead of millisecond since
+        # version 3.0.25, so do conversion according to kombu version.
+        # TODO(gcb) remove this workaround when all supported branches
+        # with requirement kombu >=3.0.25
+        kombu_version = pkg_resources.get_distribution('kombu').version
+        if versionutils.is_compatible('3.0.25', kombu_version):
+            fake_publish.assert_called_with('msg', expiration=1)
+        else:
+            fake_publish.assert_called_with('msg', expiration=1000)
 
     @mock.patch('kombu.messaging.Producer.publish')
     def test_send_no_timeout(self, fake_publish):
