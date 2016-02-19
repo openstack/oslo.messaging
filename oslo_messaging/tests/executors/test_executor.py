@@ -17,27 +17,9 @@
 import threading
 import time
 
-# eventlet 0.16 with monkey patching does not work yet on Python 3,
-# so make aioeventlet, eventlet and trollius import optional
-try:
-    import aioeventlet
-except ImportError:
-    aioeventlet = None
-try:
-    import eventlet
-except ImportError:
-    eventlet = None
+from six.moves import mock
 import testscenarios
-try:
-    import trollius
-except ImportError:
-    pass
 
-
-try:
-    from oslo_messaging._executors import impl_aioeventlet
-except ImportError:
-    impl_aioeventlet = None
 from oslo_messaging._executors import impl_blocking
 try:
     from oslo_messaging._executors import impl_eventlet
@@ -46,7 +28,6 @@ except ImportError:
 from oslo_messaging._executors import impl_thread
 from oslo_messaging import dispatcher as dispatcher_base
 from oslo_messaging.tests import utils as test_utils
-from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
@@ -61,10 +42,6 @@ class TestExecutor(test_utils.BaseTestCase):
         if impl_eventlet is not None:
             impl.append(
                 ('eventlet', dict(executor=impl_eventlet.EventletExecutor)))
-        if impl_aioeventlet is not None:
-            impl.append(
-                ('aioeventlet',
-                 dict(executor=impl_aioeventlet.AsyncioEventletExecutor)))
         cls.scenarios = testscenarios.multiply_scenarios(impl)
 
     @staticmethod
@@ -75,48 +52,13 @@ class TestExecutor(test_utils.BaseTestCase):
         return thread
 
     def _create_dispatcher(self):
-        if impl_aioeventlet is not None:
-            aioeventlet_class = impl_aioeventlet.AsyncioEventletExecutor
-        else:
-            aioeventlet_class = None
-        is_aioeventlet = (self.executor == aioeventlet_class)
-
         if impl_blocking is not None:
             blocking_class = impl_blocking.BlockingExecutor
         else:
             blocking_class = None
         is_blocking = (self.executor == blocking_class)
 
-        if is_aioeventlet:
-            policy = aioeventlet.EventLoopPolicy()
-            trollius.set_event_loop_policy(policy)
-            self.addCleanup(trollius.set_event_loop_policy, None)
-
-            def run_loop(loop):
-                loop.run_forever()
-                loop.close()
-                trollius.set_event_loop(None)
-
-            def run_executor(executor):
-                # create an event loop in the executor thread
-                loop = trollius.new_event_loop()
-                trollius.set_event_loop(loop)
-                eventlet.spawn(run_loop, loop)
-
-                # run the executor
-                executor.start()
-                executor.wait()
-
-                # stop the event loop: run_loop() will close it
-                loop.stop()
-
-            @trollius.coroutine
-            def simple_coroutine(value):
-                raise trollius.Return(value)
-
-            endpoint = mock.MagicMock(return_value=simple_coroutine('result'))
-            event = eventlet.event.Event()
-        elif is_blocking:
+        if is_blocking:
             def run_executor(executor):
                 executor.start()
                 executor.execute()
@@ -148,8 +90,6 @@ class TestExecutor(test_utils.BaseTestCase):
                     result = executor_callback(self.endpoint,
                                                incoming.ctxt,
                                                incoming.message)
-                if is_aioeventlet:
-                    event.send()
                 self.result = result
                 return result
 
