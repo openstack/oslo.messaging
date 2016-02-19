@@ -23,7 +23,7 @@ cachetools>=1.0.0 # MIT License
 # FIXME(markmc): remove this when the drivers no longer
 # import eventlet
 
-eventlet>=0.18.2 # MIT
+eventlet!=0.18.3,>=0.18.2 # MIT
 greenlet>=0.3.2 # MIT
 
 WebOb>=1.2.3 # MIT
