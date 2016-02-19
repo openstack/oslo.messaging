@@ -20,9 +20,6 @@ import six
 @six.add_metaclass(abc.ABCMeta)
 class ExecutorBase(object):
 
-    # Executor can override how we run the application callback
-    _executor_callback = None
-
     def __init__(self, conf, listener, dispatcher):
         self.conf = conf
         self.listener = listener

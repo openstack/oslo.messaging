@@ -99,7 +99,7 @@ class PooledExecutor(base.ExecutorBase):
 
             if not incoming:
                 continue
-            callback = self.dispatcher(incoming, self._executor_callback)
+            callback = self.dispatcher(incoming)
             was_submitted = self._do_submit(callback)
             if not was_submitted:
                 break

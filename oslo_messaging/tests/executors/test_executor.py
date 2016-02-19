@@ -82,20 +82,15 @@ class TestExecutor(test_utils.BaseTestCase):
             def _listen(self, transport):
                 pass
 
-            def callback(self, incoming, executor_callback):
-                if executor_callback is None:
-                    result = self.endpoint(incoming.ctxt,
-                                           incoming.message)
-                else:
-                    result = executor_callback(self.endpoint,
-                                               incoming.ctxt,
-                                               incoming.message)
+            def callback(self, incoming):
+                result = self.endpoint(incoming.ctxt,
+                                       incoming.message)
                 self.result = result
                 return result
 
-            def __call__(self, incoming, executor_callback=None):
+            def __call__(self, incoming):
                 return dispatcher_base.DispatcherExecutorContext(
-                    incoming[0], self.callback, executor_callback)
+                    incoming[0], self.callback)
 
         return Dispatcher(endpoint), endpoint, event, run_executor
 

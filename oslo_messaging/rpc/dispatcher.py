@@ -118,29 +118,24 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         endpoint_version = target.version or '1.0'
         return utils.version_is_compatible(endpoint_version, version)
 
-    def _do_dispatch(self, endpoint, method, ctxt, args, executor_callback):
+    def _do_dispatch(self, endpoint, method, ctxt, args):
         ctxt = self.serializer.deserialize_context(ctxt)
         new_args = dict()
         for argname, arg in six.iteritems(args):
             new_args[argname] = self.serializer.deserialize_entity(ctxt, arg)
         func = getattr(endpoint, method)
-        if executor_callback:
-            result = executor_callback(func, ctxt, **new_args)
-        else:
-            result = func(ctxt, **new_args)
+        result = func(ctxt, **new_args)
         return self.serializer.serialize_entity(ctxt, result)
 
-    def __call__(self, incoming, executor_callback=None):
+    def __call__(self, incoming):
         incoming[0].acknowledge()
         return dispatcher.DispatcherExecutorContext(
-            incoming[0], self._dispatch_and_reply,
-            executor_callback=executor_callback)
+            incoming[0], self._dispatch_and_reply)
 
-    def _dispatch_and_reply(self, incoming, executor_callback):
+    def _dispatch_and_reply(self, incoming):
         try:
             incoming.reply(self._dispatch(incoming.ctxt,
-                                          incoming.message,
-                                          executor_callback))
+                                          incoming.message))
         except ExpectedException as e:
             LOG.debug(u'Expected exception during message handling (%s)',
                       e.exc_info[1])
@@ -158,7 +153,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             # exc_info.
             del exc_info
 
-    def _dispatch(self, ctxt, message, executor_callback=None):
+    def _dispatch(self, ctxt, message):
         """Dispatch an RPC message to the appropriate endpoint method.
 
         :param ctxt: the request context
@@ -185,8 +180,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             if hasattr(endpoint, method):
                 localcontext._set_local_context(ctxt)
                 try:
-                    return self._do_dispatch(endpoint, method, ctxt, args,
-                                             executor_callback)
+                    return self._do_dispatch(endpoint, method, ctxt, args)
                 finally:
                     localcontext._clear_local_context()
 
