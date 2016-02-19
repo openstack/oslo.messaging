@@ -26,7 +26,7 @@ class ExecutorBase(object):
         self.dispatcher = dispatcher
 
     @abc.abstractmethod
-    def start(self):
+    def start(self, override_pool_size=None):
         """Start polling for incoming messages."""
 
     @abc.abstractmethod

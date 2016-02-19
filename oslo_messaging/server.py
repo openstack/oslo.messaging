@@ -330,7 +330,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         super(MessageHandlingServer, self).__init__()
 
     @ordered(reset_after='stop')
-    def start(self):
+    def start(self, override_pool_size=None):
         """Start handling incoming messages.
 
         This method causes the server to begin polling the transport for
@@ -358,7 +358,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
         executor = self._executor_cls(self.conf, listener, self.dispatcher)
-        executor.start()
+        executor.start(override_pool_size=override_pool_size)
         self._executor_obj = executor
 
         if self.executor == 'blocking':
