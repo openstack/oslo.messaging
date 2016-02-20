@@ -24,8 +24,8 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client import zmq_client
 from oslo_messaging._drivers.zmq_driver.server import zmq_server
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._executors import impl_pooledexecutor
 from oslo_messaging._i18n import _LE
+from oslo_messaging import server
 
 
 RPCException = rpc_common.RPCException
@@ -160,7 +160,7 @@ class ZmqDriver(base.BaseDriver):
             raise ImportError(_LE("ZeroMQ is not available!"))
 
         conf.register_opts(zmq_opts)
-        conf.register_opts(impl_pooledexecutor._pool_opts)
+        conf.register_opts(server._pool_opts)
         conf.register_opts(base.base_opts)
         self.conf = conf
         self.allowed_remote_exmods = allowed_remote_exmods

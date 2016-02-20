@@ -20,6 +20,7 @@ messaging protocol.  The driver sends messages and creates subscriptions via
 'tasks' that are performed on its behalf via the controller module.
 """
 
+import collections
 import logging
 import os
 import threading
@@ -27,7 +28,7 @@ import time
 
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
-from six import moves
+from oslo_utils import timeutils
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
@@ -114,18 +115,49 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         pass
 
 
+class Queue(object):
+    def __init__(self):
+        self._queue = collections.deque()
+        self._lock = threading.Lock()
+        self._pop_wake_condition = threading.Condition(self._lock)
+        self._started = True
+
+    def put(self, item):
+        with self._lock:
+            self._queue.appendleft(item)
+            self._pop_wake_condition.notify()
+
+    def pop(self, timeout):
+        with timeutils.StopWatch(timeout) as stop_watcher:
+            with self._lock:
+                while len(self._queue) == 0:
+                    if stop_watcher.expired() or not self._started:
+                        return None
+                    self._pop_wake_condition.wait(
+                        stop_watcher.leftover(return_none=True)
+                    )
+                return self._queue.pop()
+
+    def stop(self):
+        with self._lock:
+            self._started = False
+            self._pop_wake_condition.notify_all()
+
+
 class ProtonListener(base.Listener):
     def __init__(self, driver):
         super(ProtonListener, self).__init__(driver.prefetch_size)
         self.driver = driver
-        self.incoming = moves.queue.Queue()
+        self.incoming = Queue()
+
+    def stop(self):
+        self.incoming.stop()
 
     @base.batch_poll_helper
     def poll(self, timeout=None):
-        try:
-            message = self.incoming.get(True, timeout)
-        except moves.queue.Empty:
-            return
+        message = self.incoming.pop(timeout)
+        if message is None:
+            return None
         request, ctxt = unmarshal_request(message)
         LOG.debug("Returning incoming message")
         return ProtonIncomingMessage(self, ctxt, request, message)

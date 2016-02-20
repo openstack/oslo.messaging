@@ -29,7 +29,10 @@ import logging
 import threading
 import traceback
 
+from oslo_config import cfg
 from oslo_service import service
+from oslo_utils import eventletutils
+from oslo_utils import excutils
 from oslo_utils import timeutils
 from stevedore import driver
 
@@ -42,6 +45,14 @@ LOG = logging.getLogger(__name__)
 # The default number of seconds of waiting after which we will emit a log
 # message
 DEFAULT_LOG_AFTER = 30
+
+
+_pool_opts = [
+    cfg.IntOpt('executor_thread_pool_size',
+               default=64,
+               deprecated_name="rpc_thread_pool_size",
+               help='Size of executor thread pool.'),
+]
 
 
 class MessagingServerError(exceptions.MessagingException):
@@ -311,23 +322,32 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         :type executor: str
         """
         self.conf = transport.conf
+        self.conf.register_opts(_pool_opts)
 
         self.transport = transport
         self.dispatcher = dispatcher
-        self.executor = executor
+        self.executor_type = executor
+
+        self.listener = None
 
         try:
             mgr = driver.DriverManager('oslo.messaging.executors',
-                                       self.executor)
+                                       self.executor_type)
         except RuntimeError as ex:
-            raise ExecutorLoadFailure(self.executor, ex)
+            raise ExecutorLoadFailure(self.executor_type, ex)
 
         self._executor_cls = mgr.driver
-        self._executor_obj = None
+
+        self._work_executor = None
+        self._poll_executor = None
 
         self._started = False
 
         super(MessageHandlingServer, self).__init__()
+
+    def _submit_work(self, callback):
+        fut = self._work_executor.submit(callback.run)
+        fut.add_done_callback(lambda f: callback.done())
 
     @ordered(reset_after='stop')
     def start(self, override_pool_size=None):
@@ -354,18 +374,28 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         self._started = True
 
         try:
-            listener = self.dispatcher._listen(self.transport)
+            self.listener = self.dispatcher._listen(self.transport)
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
-        executor = self._executor_cls(self.conf, listener, self.dispatcher)
-        executor.start(override_pool_size=override_pool_size)
-        self._executor_obj = executor
 
-        if self.executor == 'blocking':
-            # N.B. This will be executed unlocked and unordered, so
-            # we can't rely on the value of self._executor_obj when this runs.
-            # We explicitly pass the local variable.
-            return lambda: executor.execute()
+        executor_opts = {}
+
+        if self.executor_type == "threading":
+            executor_opts["max_workers"] = (
+                override_pool_size or self.conf.executor_thread_pool_size
+            )
+        elif self.executor_type == "eventlet":
+            eventletutils.warn_eventlet_not_patched(
+                expected_patched_modules=['thread'],
+                what="the 'oslo.messaging eventlet executor'")
+            executor_opts["max_workers"] = (
+                override_pool_size or self.conf.executor_thread_pool_size
+            )
+
+        self._work_executor = self._executor_cls(**executor_opts)
+        self._poll_executor = self._executor_cls(**executor_opts)
+
+        return lambda: self._poll_executor.submit(self._runner)
 
     @ordered(after='start')
     def stop(self):
@@ -376,7 +406,30 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         some messages, and underlying driver resources associated to this
         server are still in use. See 'wait' for more details.
         """
-        self._executor_obj.stop()
+        self.listener.stop()
+        self._started = False
+
+    @excutils.forever_retry_uncaught_exceptions
+    def _runner(self):
+        while self._started:
+            incoming = self.listener.poll(
+                timeout=self.dispatcher.batch_timeout,
+                prefetch_size=self.dispatcher.batch_size)
+
+            if incoming:
+                self._submit_work(self.dispatcher(incoming))
+
+        # listener is stopped but we need to process all already consumed
+        # messages
+        while True:
+            incoming = self.listener.poll(
+                timeout=self.dispatcher.batch_timeout,
+                prefetch_size=self.dispatcher.batch_size)
+
+            if incoming:
+                self._submit_work(self.dispatcher(incoming))
+            else:
+                return
 
     @ordered(after='stop')
     def wait(self):
@@ -389,12 +442,11 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         Once it's finished, the underlying driver resources associated to this
         server are released (like closing useless network connections).
         """
-        try:
-            self._executor_obj.wait()
-        finally:
-            # Close listener connection after processing all messages
-            self._executor_obj.listener.cleanup()
-            self._executor_obj = None
+        self._poll_executor.shutdown(wait=True)
+        self._work_executor.shutdown(wait=True)
+
+        # Close listener connection after processing all messages
+        self.listener.cleanup()
 
     def reset(self):
         """Reset service.

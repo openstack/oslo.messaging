@@ -17,7 +17,7 @@ import testtools
 
 import mock
 
-from oslo_messaging._executors import impl_thread
+from oslo_messaging import server
 try:
     from oslo_messaging import opts
 except ImportError:
@@ -59,6 +59,8 @@ class OptsTestCase(test_utils.BaseTestCase):
         self._test_list_opts(result)
 
     def test_defaults(self):
-        impl_thread.ThreadExecutor(self.conf, mock.Mock(), mock.Mock())
+        transport = mock.Mock()
+        transport.conf = self.conf
+        server.MessageHandlingServer(transport, mock.Mock())
         opts.set_defaults(self.conf, executor_thread_pool_size=100)
         self.assertEqual(100, self.conf.executor_thread_pool_size)

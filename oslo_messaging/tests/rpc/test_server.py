@@ -127,7 +127,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIsInstance(server.dispatcher, oslo_messaging.RPCDispatcher)
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
-        self.assertEqual('blocking', server.executor)
+        self.assertEqual('blocking', server.executor_type)
 
     def test_server_wait_method(self):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
@@ -136,11 +136,11 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         serializer = object()
 
         class MagicMockIgnoreArgs(mock.MagicMock):
-            '''MagicMock ignores arguments.
+            """MagicMock ignores arguments.
 
             A MagicMock which can never misinterpret the arguments passed to
             it during construction.
-            '''
+            """
 
             def __init__(self, *args, **kwargs):
                 super(MagicMockIgnoreArgs, self).__init__()
@@ -149,15 +149,16 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
                                                serializer=serializer)
         # Mocking executor
         server._executor_cls = MagicMockIgnoreArgs
+        server.listener = MagicMockIgnoreArgs()
+        server.dispatcher = MagicMockIgnoreArgs()
         # Here assigning executor's listener object to listener variable
         # before calling wait method, because in wait method we are
         # setting executor to None.
         server.start()
-        listener = server._executor_obj.listener
+        listener = server.listener
         server.stop()
         # call server wait method
         server.wait()
-        self.assertIsNone(server._executor_obj)
         self.assertEqual(1, listener.cleanup.call_count)
 
     def test_no_target_server(self):
@@ -539,7 +540,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         super(TestServerLocking, self).setUp(conf=cfg.ConfigOpts())
 
         def _logmethod(name):
-            def method(self):
+            def method(self, *args, **kwargs):
                 with self._lock:
                     self._calls.append(name)
             return method
@@ -553,13 +554,8 @@ class TestServerLocking(test_utils.BaseTestCase):
                 self.listener = mock.MagicMock()
                 executors.append(self)
 
-            def start(self, override_pool_size=None):
-                with self._lock:
-                    self._calls.append('start')
-
-            stop = _logmethod('stop')
-            wait = _logmethod('wait')
-            execute = _logmethod('execute')
+            submit = _logmethod('submit')
+            shutdown = _logmethod('shutdown')
 
         self.executors = executors
 
@@ -574,11 +570,10 @@ class TestServerLocking(test_utils.BaseTestCase):
         self.server.stop()
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 1)
-        executor = self.executors[0]
-        self.assertEqual(executor._calls,
-                         ['start', 'execute', 'stop', 'wait'])
-        self.assertTrue(executor.listener.cleanup.called)
+        self.assertEqual(len(self.executors), 2)
+        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
+        self.assertTrue(self.server.listener.cleanup.called)
 
     def test_reversed_order(self):
         # Test that if we call wait, stop, start, these will be correctly
@@ -596,10 +591,9 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 1)
-        executor = self.executors[0]
-        self.assertEqual(executor._calls,
-                         ['start', 'execute', 'stop', 'wait'])
+        self.assertEqual(len(self.executors), 2)
+        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
 
     def test_wait_for_running_task(self):
         # Test that if 2 threads call a method simultaneously, both will wait,
@@ -611,16 +605,16 @@ class TestServerLocking(test_utils.BaseTestCase):
         running_event = threading.Event()
         done_event = threading.Event()
 
-        runner = [None]
+        _runner = [None]
 
         class SteppingFakeExecutor(self.server._executor_cls):
-            def start(self, override_pool_size=None):
+            def __init__(self, *args, **kwargs):
                 # Tell the test which thread won the race
-                runner[0] = eventlet.getcurrent()
+                _runner[0] = eventlet.getcurrent()
                 running_event.set()
 
                 start_event.wait()
-                super(SteppingFakeExecutor, self).start()
+                super(SteppingFakeExecutor, self).__init__(*args, **kwargs)
                 done_event.set()
 
                 finish_event.wait()
@@ -632,7 +626,7 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # Wait until one of the threads starts running
         running_event.wait()
-        runner = runner[0]
+        runner = _runner[0]
         waiter = start2 if runner == start1 else start2
 
         waiter_finished = threading.Event()
@@ -640,18 +634,16 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # At this point, runner is running start(), and waiter() is waiting for
         # it to complete. runner has not yet logged anything.
-        self.assertEqual(1, len(self.executors))
-        executor = self.executors[0]
-
-        self.assertEqual(executor._calls, [])
+        self.assertEqual(0, len(self.executors))
         self.assertFalse(waiter_finished.is_set())
 
         # Let the runner log the call
         start_event.set()
         done_event.wait()
 
-        # We haven't signalled completion yet, so execute shouldn't have run
-        self.assertEqual(executor._calls, ['start'])
+        # We haven't signalled completion yet, so submit shouldn't have run
+        self.assertEqual(1, len(self.executors))
+        self.assertEqual(self.executors[0]._calls, [])
         self.assertFalse(waiter_finished.is_set())
 
         # Let the runner complete
@@ -662,7 +654,9 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Check that both threads have finished, start was only called once,
         # and execute ran
         self.assertTrue(waiter_finished.is_set())
-        self.assertEqual(executor._calls, ['start', 'execute'])
+        self.assertEqual(2, len(self.executors))
+        self.assertEqual(self.executors[0]._calls, [])
+        self.assertEqual(self.executors[1]._calls, ['submit'])
 
     def test_start_stop_wait_stop_wait(self):
         # Test that we behave correctly when calling stop/wait more than once.
@@ -674,11 +668,10 @@ class TestServerLocking(test_utils.BaseTestCase):
         self.server.stop()
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 1)
-        executor = self.executors[0]
-        self.assertEqual(executor._calls,
-                         ['start', 'execute', 'stop', 'wait'])
-        self.assertTrue(executor.listener.cleanup.called)
+        self.assertEqual(len(self.executors), 2)
+        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
+        self.assertTrue(self.server.listener.cleanup.called)
 
     def test_state_wrapping(self):
         # Test that we behave correctly if a thread waits, and the server state
@@ -712,8 +705,9 @@ class TestServerLocking(test_utils.BaseTestCase):
         complete_waiting_callback.wait()
 
         # The server should have started, but stop should not have been called
-        self.assertEqual(1, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['start', 'execute'])
+        self.assertEqual(2, len(self.executors))
+        self.assertEqual(self.executors[0]._calls, [])
+        self.assertEqual(self.executors[1]._calls, ['submit'])
         self.assertFalse(thread1_finished.is_set())
 
         self.server.stop()
@@ -721,19 +715,20 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # We should have gone through all the states, and thread1 should still
         # be waiting
-        self.assertEqual(1, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['start', 'execute',
-                                                    'stop', 'wait'])
+        self.assertEqual(2, len(self.executors))
+        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
         self.assertFalse(thread1_finished.is_set())
 
         # Start again
         self.server.start()
 
-        # We should now record 2 executors
-        self.assertEqual(2, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['start', 'execute',
-                                                    'stop', 'wait'])
-        self.assertEqual(self.executors[1]._calls, ['start', 'execute'])
+        # We should now record 4 executors (2 for each server)
+        self.assertEqual(4, len(self.executors))
+        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
+        self.assertEqual(self.executors[2]._calls, [])
+        self.assertEqual(self.executors[3]._calls, ['submit'])
         self.assertFalse(thread1_finished.is_set())
 
         # Allow thread1 to complete
@@ -742,10 +737,11 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # thread1 should now have finished, and stop should not have been
         # called again on either the first or second executor
-        self.assertEqual(2, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['start', 'execute',
-                                                    'stop', 'wait'])
-        self.assertEqual(self.executors[1]._calls, ['start', 'execute'])
+        self.assertEqual(4, len(self.executors))
+        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
+        self.assertEqual(self.executors[2]._calls, [])
+        self.assertEqual(self.executors[3]._calls, ['submit'])
         self.assertTrue(thread1_finished.is_set())
 
     @mock.patch.object(server_module, 'DEFAULT_LOG_AFTER', 1)
@@ -810,24 +806,24 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # Start the server, which will also instantiate an executor
         self.server.start()
-
-        stop_called = threading.Event()
+        self.server.stop()
+        shutdown_called = threading.Event()
 
         # Patch the executor's stop method to be very slow
-        def slow_stop():
-            stop_called.set()
+        def slow_shutdown(wait):
+            shutdown_called.set()
             eventlet.sleep(10)
-        self.executors[0].stop = slow_stop
+        self.executors[0].shutdown = slow_shutdown
 
-        # Call stop in a new thread
-        thread = eventlet.spawn(self.server.stop)
+        # Call wait in a new thread
+        thread = eventlet.spawn(self.server.wait)
 
         # Wait until the thread is in the slow stop method
-        stop_called.wait()
+        shutdown_called.wait()
 
-        # Call stop again in the main thread with a timeout
+        # Call wait again in the main thread with a timeout
         self.assertRaises(server_module.TaskTimeout,
-                          self.server.stop, timeout=1)
+                          self.server.wait, timeout=1)
         thread.kill()
 
     @mock.patch.object(server_module, 'LOG')
