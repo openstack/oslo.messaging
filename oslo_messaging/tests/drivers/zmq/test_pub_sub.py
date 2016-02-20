@@ -51,7 +51,7 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         time.sleep(1)
         with contextlib.closing(zmq_request.FanoutRequest(
                 target, context={}, message={'method': 'hello-world'},
-                timeout=0, retry=None)) as request:
+                retry=None)) as request:
             self.publisher.send_request([request.create_envelope(),
                                          pickle.dumps(request)])
 
