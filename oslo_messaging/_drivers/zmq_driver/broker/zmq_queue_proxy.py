@@ -54,9 +54,7 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
         LOG.debug("-> Redirecting request %s to TCP publisher",
                   multipart_message)
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        if self.conf.use_pub_sub and \
-                envelope[zmq_names.FIELD_MSG_TYPE] \
-                in zmq_names.MULTISEND_TYPES:
+        if self.conf.use_pub_sub and envelope.is_mult_send:
             self.pub_publisher.send_request(multipart_message)
 
     def _receive_in_request(self, socket):
@@ -65,9 +63,9 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
         empty = socket.recv()
         assert empty == b'', "Empty delimiter expected"
         envelope = socket.recv_pyobj()
-        if envelope[zmq_names.FIELD_MSG_TYPE] not in zmq_names.MULTISEND_TYPES:
+        if not envelope.is_mult_send:
             LOG.error(_LE("Message type %s is not supported by proxy"),
-                      envelope[zmq_names.FIELD_MSG_TYPE])
+                      envelope.msg_type)
         payload = socket.recv_multipart()
         payload.insert(0, envelope)
         return payload
