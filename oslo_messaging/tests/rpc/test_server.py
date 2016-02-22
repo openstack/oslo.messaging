@@ -455,9 +455,9 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
             return scenario
 
         for f in [filter_fanout_call, filter_same_topic_and_server]:
-            cls.scenarios = filter(f, cls.scenarios)
+            cls.scenarios = [i for i in cls.scenarios if f(i)]
         for m in [fanout_to_servers, single_topic_multi_endpoints]:
-            cls.scenarios = map(m, cls.scenarios)
+            cls.scenarios = [m(i) for i in cls.scenarios]
 
     def __init__(self, *args):
         super(TestMultipleServers, self).__init__(*args)
