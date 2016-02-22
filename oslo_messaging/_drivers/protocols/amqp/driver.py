@@ -56,7 +56,7 @@ def marshal_response(reply=None, failure=None):
         data = {"failure": failure}
     else:
         data = {"response": reply}
-    msg.body = jsonutils.dumps(data)
+    msg.body = jsonutils.dump_as_bytes(data)
     return msg
 
 
@@ -80,7 +80,7 @@ def marshal_request(request, context, envelope):
         "request": request,
         "context": context
     }
-    msg.body = jsonutils.dumps(data)
+    msg.body = jsonutils.dump_as_bytes(data)
     return msg
 
 

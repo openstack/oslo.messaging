@@ -919,7 +919,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
             '_reply_q': 'reply_' + uuid.uuid4().hex,
         })
 
-        msg['oslo.message'] = jsonutils.dumps(msg['oslo.message'])
+        msg['oslo.message'] = jsonutils.dump_as_bytes(msg['oslo.message'])
 
         producer.publish(msg)
 
