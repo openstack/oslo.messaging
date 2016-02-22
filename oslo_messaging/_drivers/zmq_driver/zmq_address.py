@@ -46,8 +46,6 @@ def target_to_key(target, listener_type):
         return prefix(key)
     if target.topic:
         return prefix(target.topic)
-    if target.server:
-        return prefix(target.server)
 
 
 def target_to_subscribe_filter(target):

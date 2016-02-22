@@ -114,11 +114,11 @@ class RedisMatchMaker(base.MatchMakerBase):
     def register_publisher(self, hostname):
         host_str = ",".join(hostname)
         if host_str not in self._get_hosts_by_key(_PUBLISHERS_KEY):
-            self._redis.lpush(_PUBLISHERS_KEY, host_str)
+            self._redis.sadd(_PUBLISHERS_KEY, host_str)
 
     def unregister_publisher(self, hostname):
         host_str = ",".join(hostname)
-        self._redis.lrem(_PUBLISHERS_KEY, 0, host_str)
+        self._redis.srem(_PUBLISHERS_KEY, host_str)
 
     def get_publishers(self):
         hosts = []
@@ -128,13 +128,12 @@ class RedisMatchMaker(base.MatchMakerBase):
         return hosts
 
     def _get_hosts_by_key(self, key):
-        return self._redis.lrange(key, 0, -1)
+        return self._redis.smembers(key)
 
     def register(self, target, hostname, listener_type, expire=-1):
 
         def register_key(key):
-            if hostname not in self._get_hosts_by_key(key):
-                self._redis.lpush(key, hostname)
+            self._redis.sadd(key, hostname)
             if expire > 0:
                 self._redis.expire(key, expire)
 
@@ -146,17 +145,18 @@ class RedisMatchMaker(base.MatchMakerBase):
             key = zmq_address.prefix_str(target.topic, listener_type)
             register_key(key)
 
-        if target.server:
-            key = zmq_address.prefix_str(target.server, listener_type)
-            register_key(key)
-
     def unregister(self, target, hostname, listener_type):
         key = zmq_address.target_to_key(target, listener_type)
-        self._redis.lrem(key, 0, hostname)
+        self._redis.srem(key, hostname)
 
     def get_hosts(self, target, listener_type):
         LOG.debug("[Redis] get_hosts for target %s", target)
         hosts = []
         key = zmq_address.target_to_key(target, listener_type)
         hosts.extend(self._get_hosts_by_key(key))
+
+        if not hosts and target.topic and target.server:
+            key = zmq_address.prefix_str(target.topic, listener_type)
+            hosts.extend(self._get_hosts_by_key(key))
+
         return hosts
