@@ -110,14 +110,12 @@ class ReplyWaiter(object):
         self._lock = threading.Lock()
 
     def track_reply(self, reply_future, message_id):
-        self._lock.acquire()
-        self.replies[message_id] = reply_future
-        self._lock.release()
+        with self._lock:
+            self.replies[message_id] = reply_future
 
     def untrack_id(self, message_id):
-        self._lock.acquire()
-        self.replies.pop(message_id)
-        self._lock.release()
+        with self._lock:
+            self.replies.pop(message_id)
 
     def poll_socket(self, socket):
 

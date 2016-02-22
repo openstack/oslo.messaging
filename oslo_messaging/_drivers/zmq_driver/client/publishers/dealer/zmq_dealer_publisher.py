@@ -54,9 +54,6 @@ class DealerPublisher(zmq_publisher_base.QueuedSender):
             raise zmq_publisher_base.UnsupportedSendPattern(request.msg_type)
         super(DealerPublisher, self).send_request(request)
 
-    def cleanup(self):
-        super(DealerPublisher, self).cleanup()
-
 
 class DealerPublisherLight(zmq_publisher_base.QueuedSender):
     """Used when publishing to proxy. """
@@ -91,3 +88,4 @@ class DealerPublisherLight(zmq_publisher_base.QueuedSender):
 
     def cleanup(self):
         self.socket.close()
+        super(DealerPublisherLight, self).cleanup()

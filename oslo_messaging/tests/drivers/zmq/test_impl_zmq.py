@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import fixtures
 import testtools
 
 import oslo_messaging
@@ -150,57 +149,3 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
         self.driver.send_notification(target, context, message, '3.0')
         self.listener._received.wait(5)
         self.assertTrue(self.listener._received.isSet())
-
-
-class TestPoller(test_utils.BaseTestCase):
-
-    @testtools.skipIf(zmq is None, "zmq not available")
-    def setUp(self):
-        super(TestPoller, self).setUp()
-        self.poller = zmq_async.get_poller()
-        self.ctx = zmq.Context()
-        self.internal_ipc_dir = self.useFixture(fixtures.TempDir()).path
-        self.ADDR_REQ = "ipc://%s/request1" % self.internal_ipc_dir
-
-    def test_poll_blocking(self):
-
-        rep = self.ctx.socket(zmq.REP)
-        rep.bind(self.ADDR_REQ)
-
-        reply_poller = zmq_async.get_reply_poller()
-        reply_poller.register(rep)
-
-        def listener():
-            incoming, socket = reply_poller.poll()
-            self.assertEqual(b'Hello', incoming[0])
-            socket.send_string('Reply')
-            reply_poller.resume_polling(socket)
-
-        executor = zmq_async.get_executor(listener)
-        executor.execute()
-
-        req1 = self.ctx.socket(zmq.REQ)
-        req1.connect(self.ADDR_REQ)
-
-        req2 = self.ctx.socket(zmq.REQ)
-        req2.connect(self.ADDR_REQ)
-
-        req1.send_string('Hello')
-        req2.send_string('Hello')
-
-        reply = req1.recv_string()
-        self.assertEqual('Reply', reply)
-
-        reply = req2.recv_string()
-        self.assertEqual('Reply', reply)
-
-    def test_poll_timeout(self):
-        rep = self.ctx.socket(zmq.REP)
-        rep.bind(self.ADDR_REQ)
-
-        reply_poller = zmq_async.get_reply_poller()
-        reply_poller.register(rep)
-
-        incoming, socket = reply_poller.poll(1)
-        self.assertIsNone(incoming)
-        self.assertIsNone(socket)

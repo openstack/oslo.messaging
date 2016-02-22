@@ -14,12 +14,12 @@
 
 import abc
 import logging
-import threading
 import time
 
 import six
 
 from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
@@ -41,10 +41,6 @@ class ConsumerBase(object):
         self.context = zmq.Context()
 
     @abc.abstractmethod
-    def listen(self, target):
-        """Associate new sockets with targets here"""
-
-    @abc.abstractmethod
     def receive_message(self, target):
         """Method for poller - receiving message routine"""
 
@@ -59,18 +55,26 @@ class SingleSocketConsumer(ConsumerBase):
 
     def __init__(self, conf, poller, server, socket_type):
         super(SingleSocketConsumer, self).__init__(conf, poller, server)
+        self.matchmaker = server.matchmaker
+        self.target = server.target
+        self.socket_type = socket_type
+        self.host = None
         self.socket = self.subscribe_socket(socket_type)
+        self.target_updater = TargetUpdater(conf, self.matchmaker, self.target,
+                                            self.host, socket_type)
 
     def subscribe_socket(self, socket_type):
         try:
             socket = zmq_socket.ZmqRandomPortSocket(
                 self.conf, self.context, socket_type)
             self.sockets.append(socket)
-            self.poller.register(socket, self.receive_message)
             LOG.debug("Run %(stype)s consumer on %(addr)s:%(port)d",
                       {"stype": zmq_names.socket_type_str(socket_type),
                        "addr": socket.bind_address,
                        "port": socket.port})
+            self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
+                                                    socket.port)
+            self.poller.register(socket, self.receive_message)
             return socket
         except zmq.ZMQError as e:
             errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
@@ -87,42 +91,30 @@ class SingleSocketConsumer(ConsumerBase):
     def port(self):
         return self.socket.port
 
+    def cleanup(self):
+        self.target_updater.cleanup()
+        super(SingleSocketConsumer, self).cleanup()
 
-class TargetsManager(object):
 
-    def __init__(self, conf, matchmaker, host, socket_type):
-        self.targets = []
+class TargetUpdater(object):
+    """This entity performs periodic async updates
+    to the matchmaker.
+    """
+
+    def __init__(self, conf, matchmaker, target, host, socket_type):
         self.conf = conf
         self.matchmaker = matchmaker
+        self.target = target
         self.host = host
         self.socket_type = socket_type
-        self.targets_lock = threading.Lock()
-        self.updater = zmq_async.get_executor(method=self._update_targets) \
-            if conf.zmq_target_expire > 0 else None
-        if self.updater:
-            self.updater.execute()
+        self.executor = zmq_async.get_executor(method=self._update_target)
+        self.executor.execute()
 
-    def _update_targets(self):
-        with self.targets_lock:
-            for target in self.targets:
-                self.matchmaker.register(
-                    target, self.host,
-                    zmq_names.socket_type_str(self.socket_type))
-
-        # Update target-records once per half expiration time
+    def _update_target(self):
+        self.matchmaker.register(
+            self.target, self.host,
+            zmq_names.socket_type_str(self.socket_type))
         time.sleep(self.conf.zmq_target_expire / 2)
 
-    def listen(self, target):
-        with self.targets_lock:
-            self.targets.append(target)
-            self.matchmaker.register(
-                target, self.host,
-                zmq_names.socket_type_str(self.socket_type))
-
     def cleanup(self):
-        if self.updater:
-            self.updater.stop()
-        for target in self.targets:
-            self.matchmaker.unregister(
-                target, self.host,
-                zmq_names.socket_type_str(self.socket_type))
+        self.executor.stop()
