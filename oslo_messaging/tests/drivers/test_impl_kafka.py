@@ -11,10 +11,10 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-import json
 import kafka
 from kafka.common import KafkaError
 import mock
+from oslo_serialization import jsonutils
 import testscenarios
 from testtools.testcase import unittest
 import time
@@ -145,9 +145,9 @@ class TestKafkaConnection(test_utils.BaseTestCase):
 
         conn.consumer = mock.MagicMock()
         conn.consumer.fetch_messages = mock.MagicMock(
-            return_value=iter([json.dumps(fake_message)]))
+            return_value=iter([jsonutils.dumps(fake_message)]))
 
-        self.assertEqual(fake_message, json.loads(conn.consume()[0]))
+        self.assertEqual(fake_message, jsonutils.loads(conn.consume()[0]))
         self.assertEqual(1, len(conn.consumer.fetch_messages.mock_calls))
 
     @mock.patch.object(kafka_driver.Connection, '_ensure_connection')
