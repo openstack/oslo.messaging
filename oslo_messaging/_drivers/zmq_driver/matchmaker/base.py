@@ -23,8 +23,9 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 class MatchMakerBase(object):
 
     def __init__(self, conf, *args, **kwargs):
-        super(MatchMakerBase, self).__init__(*args, **kwargs)
+        super(MatchMakerBase, self).__init__()
         self.conf = conf
+        self.url = kwargs.get('url')
 
     @abc.abstractmethod
     def register_publisher(self, hostname):

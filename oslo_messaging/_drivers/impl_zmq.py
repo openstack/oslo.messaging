@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import os
 import socket
 import threading
@@ -29,6 +30,10 @@ from oslo_messaging import server
 
 
 RPCException = rpc_common.RPCException
+_MATCHMAKER_BACKENDS = ('redis', 'dummy')
+_MATCHMAKER_DEFAULT = 'redis'
+LOG = logging.getLogger(__name__)
+
 
 zmq_opts = [
     cfg.StrOpt('rpc_zmq_bind_address', default='*',
@@ -37,7 +42,8 @@ zmq_opts = [
                     'The "host" option should point or resolve to this '
                     'address.'),
 
-    cfg.StrOpt('rpc_zmq_matchmaker', default='redis',
+    cfg.StrOpt('rpc_zmq_matchmaker', default=_MATCHMAKER_DEFAULT,
+               choices=_MATCHMAKER_BACKENDS,
                help='MatchMaker driver.'),
 
     cfg.StrOpt('rpc_zmq_concurrency', default='eventlet',
@@ -167,8 +173,8 @@ class ZmqDriver(base.BaseDriver):
 
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
-            self.conf.rpc_zmq_matchmaker,
-        ).driver(self.conf)
+            self.get_matchmaker_backend(url),
+        ).driver(self.conf, url=url)
 
         self.client = LazyDriverItem(
             zmq_client.ZmqClient, self.conf, self.matchmaker,
@@ -180,6 +186,19 @@ class ZmqDriver(base.BaseDriver):
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)
+
+    def get_matchmaker_backend(self, url):
+        zmq_transport, p, matchmaker_backend = url.transport.partition('+')
+        assert zmq_transport == 'zmq', "Needs to be zmq for this transport!"
+        if not matchmaker_backend:
+            return self.conf.rpc_zmq_matchmaker
+        elif matchmaker_backend not in _MATCHMAKER_BACKENDS:
+            raise rpc_common.RPCException(
+                _LE("Incorrect matchmaker backend name %(backend_name)s!"
+                    "Available names are: %(available_names)s") %
+                {"backend_name": matchmaker_backend,
+                 "available_names": _MATCHMAKER_BACKENDS})
+        return matchmaker_backend
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):

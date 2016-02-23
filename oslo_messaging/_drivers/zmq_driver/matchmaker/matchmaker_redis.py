@@ -89,18 +89,18 @@ class RedisMatchMaker(base.MatchMakerBase):
         super(RedisMatchMaker, self).__init__(conf, *args, **kwargs)
         self.conf.register_opts(matchmaker_redis_opts, "matchmaker_redis")
 
-        if not self.conf.matchmaker_redis.sentinel_hosts:
+        self.sentinel_hosts = self._extract_sentinel_options()
+        if not self.sentinel_hosts:
+            self.standalone_redis = self._extract_standalone_redis_options()
             self._redis = redis.StrictRedis(
-                host=self.conf.matchmaker_redis.host,
-                port=self.conf.matchmaker_redis.port,
-                password=self.conf.matchmaker_redis.password,
+                host=self.standalone_redis["host"],
+                port=self.standalone_redis["port"],
+                password=self.standalone_redis["password"]
             )
         else:
             socket_timeout = self.conf.matchmaker_redis.socket_timeout / 1000.
-            s = self.conf.matchmaker_redis.sentinel_hosts
-            sentinel_hosts = [tuple(i.split(":")) for i in s]
             sentinel = redis.sentinel.Sentinel(
-                sentinels=sentinel_hosts,
+                sentinels=self.sentinel_hosts,
                 socket_timeout=socket_timeout
             )
 
@@ -108,8 +108,26 @@ class RedisMatchMaker(base.MatchMakerBase):
                 self.conf.matchmaker_redis.sentinel_group_name,
                 socket_timeout=socket_timeout
             )
-
         apply_retrying(self, self.conf)
+
+    def _extract_sentinel_options(self):
+        if self.url and self.url.hosts:
+            if len(self.url.hosts) > 1:
+                return [(host.hostname, host.port) for host in self.url.hosts]
+        elif self.conf.matchmaker_redis.sentinel_hosts:
+            s = self.conf.matchmaker_redis.sentinel_hosts
+            return [tuple(i.split(":")) for i in s]
+
+    def _extract_standalone_redis_options(self):
+        if self.url and self.url.hosts:
+            redis_host = self.url.hosts[0]
+            return {"host": redis_host.hostname,
+                    "port": redis_host.port,
+                    "password": redis_host.password}
+        else:
+            return {"host": self.conf.matchmaker_redis.host,
+                    "port": self.conf.matchmaker_redis.port,
+                    "password": self.conf.matchmaker_redis.password}
 
     def register_publisher(self, hostname):
         host_str = ",".join(hostname)
