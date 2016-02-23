@@ -146,7 +146,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertIsInstance(listener.dispatcher,
                               dispatcher.NotificationDispatcher)
         self.assertIs(listener.dispatcher.endpoints, endpoints)
-        self.assertEqual('blocking', listener.executor)
+        self.assertEqual('blocking', listener.executor_type)
 
     def test_no_target_topic(self):
         transport = msg_notifier.get_notification_transport(

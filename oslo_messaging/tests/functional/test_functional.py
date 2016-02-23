@@ -320,7 +320,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         # order between events with different categories is not guaranteed
         received = {}
         for expected in events:
-            e = listener.events.get(timeout=0.5)
+            e = listener.events.get(timeout=1)
             received[e[0]] = e
 
         for expected in events:

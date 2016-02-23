@@ -20,11 +20,11 @@ from oslo_config import cfg
 
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver.broker import zmq_broker
-from oslo_messaging._executors import impl_pooledexecutor
+from oslo_messaging import server
 
 CONF = cfg.CONF
 CONF.register_opts(impl_zmq.zmq_opts)
-CONF.register_opts(impl_pooledexecutor._pool_opts)
+CONF.register_opts(server._pool_opts)
 CONF.rpc_zmq_native = True
 
 
