@@ -121,9 +121,9 @@ class NotifyEndpoint(Monitor):
         return messaging.NotificationResult.HANDLED
 
 
-def notify_server(transport, show_stats):
+def notify_server(transport, topic, show_stats):
     endpoints = [NotifyEndpoint(show_stats)]
-    target = messaging.Target(topic='n-t1')
+    target = messaging.Target(topic=topic)
     server = notify.get_notification_listener(transport, [target],
                                               endpoints, executor='eventlet')
     server.start()
@@ -152,9 +152,9 @@ class BatchNotifyEndpoint(Monitor):
         return messaging.NotificationResult.HANDLED
 
 
-def batch_notify_server(transport, show_stats):
+def batch_notify_server(transport, topic, show_stats):
     endpoints = [BatchNotifyEndpoint(show_stats)]
-    target = messaging.Target(topic='n-t1')
+    target = messaging.Target(topic=topic)
     server = notify.get_batch_notification_listener(
         transport, [target],
         endpoints, executor='eventlet',
@@ -298,8 +298,10 @@ def _rpc_cast(client, msg):
         LOG.debug("SENT: %s", msg)
 
 
-def notifier(_id, transport, messages, wait_after_msg, timeout):
-    n1 = notify.Notifier(transport, topic="n-t1").prepare(
+def notifier(_id, topic, transport, messages, wait_after_msg, timeout):
+    n1 = notify.Notifier(transport,
+                         driver='messaging',
+                         topic=topic).prepare(
         publisher_id='publisher-%d' % _id)
     msg = 0
     for i in range(0, messages):
@@ -418,12 +420,12 @@ def main():
         rpc_server(transport, target, args.wait_before_answer, args.executor,
                    args.show_stats, args.duration)
     elif args.mode == 'notify-server':
-        notify_server(transport, args.show_stats)
+        notify_server(transport, args.topic, args.show_stats)
     elif args.mode == 'batch-notify-server':
-        batch_notify_server(transport, args.show_stats)
+        batch_notify_server(transport, args.topic, args.show_stats)
     elif args.mode == 'notify-client':
-        threads_spawner(args.threads, notifier, transport, args.messages,
-                        args.wait_after_msg, args.timeout)
+        threads_spawner(args.threads, notifier, args.topic, transport,
+                        args.messages, args.wait_after_msg, args.timeout)
     elif args.mode == 'rpc-client':
         init_msg(args.messages)
         targets = [target.partition('.')[::2] for target in args.targets]
