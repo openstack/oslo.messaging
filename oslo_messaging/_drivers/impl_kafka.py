@@ -228,8 +228,7 @@ class Connection(object):
     def declare_topic_consumer(self, topics, group=None):
         self.consumer = kafka.KafkaConsumer(
             *topics, group_id=group,
-            metadata_broker_list=["%s:%s" % (self.host, str(self.port))],
-            # auto_commit_enable=self.auto_commit,
+            bootstrap_servers=["%s:%s" % (self.host, str(self.port))],
             fetch_message_max_bytes=self.fetch_messages_max_bytes)
 
 
@@ -262,6 +261,7 @@ class KafkaListener(base.Listener):
                 messages = self.conn.consume(timeout=timeout)
                 for msg in messages:
                     message = msg.value
+                    LOG.debug('poll got message : %s', message)
                     message = jsonutils.loads(message)
                     self.incoming_queue.append(OsloKafkaMessage(
                         ctxt=message['context'], message=message['message']))
