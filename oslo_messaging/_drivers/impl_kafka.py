@@ -144,11 +144,9 @@ class Connection(object):
         self.producer.send_messages(topic, message)
 
     def consume(self, timeout=None):
-        """recieve messages as many as max_fetch_messages.
+        """Receive up to 'max_fetch_messages' messages.
 
-        In this functions, there are no while loop to subscribe.
-        This would be helpful when we wants to control the velocity of
-        subscription.
+        :param timeout: poll timeout in seconds
         """
         duration = (self.consumer_timeout if timeout is None else timeout)
         timer = driver_common.DecayingTimer(duration=duration)

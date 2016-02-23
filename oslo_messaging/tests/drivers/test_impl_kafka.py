@@ -238,7 +238,7 @@ class TestWithRealKafkaBroker(test_utils.BaseTestCase):
 
     @unittest.skipUnless(
         _is_kafka_service_running(), "Kafka service is not available")
-    def test_send_and_recieve_message(self):
+    def test_send_and_receive_message(self):
         target = oslo_messaging.Target(
             topic="fake_topic", exchange='fake_exchange')
         targets_and_priorities = [(target, 'fake_info')]
@@ -256,7 +256,7 @@ class TestWithRealKafkaBroker(test_utils.BaseTestCase):
 
     @unittest.skipUnless(
         _is_kafka_service_running(), "Kafka service is not available")
-    def test_send_and_recieve_message_without_exchange(self):
+    def test_send_and_receive_message_without_exchange(self):
         target = oslo_messaging.Target(topic="fake_no_exchange_topic")
         targets_and_priorities = [(target, 'fake_info')]
 
@@ -273,7 +273,7 @@ class TestWithRealKafkaBroker(test_utils.BaseTestCase):
 
     @unittest.skipUnless(
         _is_kafka_service_running(), "Kafka service is not available")
-    def test_recieve_message_from_empty_topic_with_timeout(self):
+    def test_receive_message_from_empty_topic_with_timeout(self):
         target = oslo_messaging.Target(
             topic="fake_empty_topic", exchange='fake_empty_exchange')
         targets_and_priorities = [(target, 'fake_info')]
