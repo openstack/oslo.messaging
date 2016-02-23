@@ -83,14 +83,12 @@ class PikaPollerTestCase(unittest.TestCase):
         for i in range(n):
             params.append((object(), object(), object(), object()))
 
-        index = [0]
-
         def f(time_limit):
-            for i in range(10):
-                poller._on_message_no_ack_callback(
-                    *params[index[0]]
-                )
-                index[0] += 1
+            if poller._started:
+                for k in range(n):
+                    poller._on_message_no_ack_callback(
+                        *params[k]
+                    )
 
         self._poller_connection_mock.process_data_events.side_effect = f
 
@@ -111,7 +109,7 @@ class PikaPollerTestCase(unittest.TestCase):
         self.assertEqual(incoming_message_class_mock.call_count, n)
 
         self.assertEqual(
-            self._poller_connection_mock.process_data_events.call_count, 1)
+            self._poller_connection_mock.process_data_events.call_count, 2)
 
         for i in range(n - 1):
             self.assertEqual(res2[i], incoming_message_class_mock.return_value)
