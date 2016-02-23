@@ -195,7 +195,10 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
 
         def on_exception(ex):
             if isinstance(ex, pika_drv_exc.ConnectionException):
-                LOG.warn(str(ex))
+                LOG.warn(
+                    "Connectivity related problem during reply sending. %s",
+                    ex
+                )
                 return True
             else:
                 return False
@@ -216,15 +219,12 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
                 retrier=retrier
             )
             LOG.debug(
-                "Message [id:'{}'] replied to '{}'.".format(
-                    self.msg_id, self.reply_q
-                )
+                "Message [id:'%s'] replied to '%s'.", self.msg_id, self.reply_q
             )
         except Exception:
             LOG.exception(
-                "Message [id:'{}'] wasn't replied to : {}".format(
-                    self.msg_id, self.reply_q
-                )
+                "Message [id:'%s'] wasn't replied to : %s", self.msg_id,
+                self.reply_q
             )
 
 
@@ -277,8 +277,8 @@ class RpcReplyPikaIncomingMessage(PikaIncomingMessage):
                     res_exc = ex_type(module_name, class_name, message, trace)
                 except ImportError as e:
                     LOG.warn(
-                        "Can not deserialize remote exception [module:{}, "
-                        "class:{}]. {}".format(module_name, class_name, str(e))
+                        "Can not deserialize remote exception [module:%s, "
+                        "class:%s]. %s", module_name, class_name, e
                     )
 
             # if we have not processed failure yet, use RemoteError class
@@ -449,10 +449,9 @@ class PikaOutgoingMessage(object):
                                        encoding=self._content_encoding)
 
         LOG.debug(
-            "Sending message:[body:{}; properties: {}] to target: "
-            "[exchange:{}; routing_key:{}]".format(
-                body, msg_props, exchange, routing_key
-            )
+            "Sending message:[body:%s; properties: %s] to target: "
+            "[exchange:%s; routing_key:%s]", body, msg_props, exchange,
+            routing_key
         )
 
         publish = (self._publish if retrier is None else

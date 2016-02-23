@@ -270,9 +270,9 @@ class PikaEngine(object):
                     pika_next_connection_num, for_listening
                 )
             except pika_pool.Connection.connectivity_errors as e:
-                LOG.warn(str(e))
+                LOG.warn("Can't establish connection to host. %s", e)
             except pika_drv_exc.HostConnectionNotAllowedException as e:
-                LOG.warn(str(e))
+                LOG.warn("Connection to host is not Allowed. %s", e)
 
             connection_attempts -= 1
             pika_next_connection_num += 1

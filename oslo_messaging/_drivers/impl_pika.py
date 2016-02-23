@@ -168,7 +168,7 @@ class PikaDriver(base.BaseDriver):
         def on_exception(ex):
             if isinstance(ex, (pika_drv_exc.ConnectionException,
                                exceptions.MessageDeliveryFailure)):
-                LOG.warn(str(ex))
+                LOG.warn("Problem during message sending. %s", ex)
                 return True
             else:
                 return False
@@ -229,15 +229,16 @@ class PikaDriver(base.BaseDriver):
         def on_exception(ex):
             if isinstance(ex, (pika_drv_exc.ExchangeNotFoundException,
                                pika_drv_exc.RoutingException)):
-                LOG.warn(str(ex))
+                LOG.warn("Problem during sending notification. %", ex)
                 try:
                     self._declare_notification_queue_binding(target)
                 except pika_drv_exc.ConnectionException as e:
-                    LOG.warn(str(e))
+                    LOG.warn("Problem during declaring notification queue "
+                             "binding. %", e)
                 return True
             elif isinstance(ex, (pika_drv_exc.ConnectionException,
                                  pika_drv_exc.MessageRejectedException)):
-                LOG.warn(str(ex))
+                LOG.warn("Problem during sending notification. %", ex)
                 return True
             else:
                 return False
