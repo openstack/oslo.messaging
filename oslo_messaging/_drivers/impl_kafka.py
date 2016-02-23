@@ -35,8 +35,8 @@ kafka_opts = [
     cfg.StrOpt('kafka_default_host', default='localhost',
                help='Default Kafka broker Host'),
 
-    cfg.IntOpt('kafka_default_port', default=9092,
-               help='Default Kafka broker Port'),
+    cfg.PortOpt('kafka_default_port', default=9092,
+                help='Default Kafka broker Port'),
 
     cfg.IntOpt('kafka_max_fetch_bytes', default=1024 * 1024,
                help='Max fetch bytes of Kafka consumer'),
