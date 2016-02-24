@@ -21,6 +21,7 @@ import time
 import uuid
 
 import cachetools
+from oslo_utils import timeutils
 from six import moves
 
 import oslo_messaging
@@ -46,6 +47,8 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         self.msg_id = msg_id
         self.reply_q = reply_q
         self._obsolete_reply_queues = obsolete_reply_queues
+        self.stopwatch = timeutils.StopWatch()
+        self.stopwatch.start()
 
     def _send_reply(self, conn, reply=None, failure=None, log_failure=True):
         if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
@@ -63,10 +66,12 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         unique_id = msg[rpc_amqp.UNIQUE_ID]
 
         LOG.debug("sending reply msg_id: %(msg_id)s "
-                  "reply queue: %(reply_q)s", {
+                  "reply queue: %(reply_q)s "
+                  "time elapsed: %(elapsed)ss", {
                       'msg_id': self.msg_id,
                       'unique_id': unique_id,
-                      'reply_q': self.reply_q})
+                      'reply_q': self.reply_q,
+                      'elapsed': self.stopwatch.elapsed()})
         conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None, log_failure=True):
