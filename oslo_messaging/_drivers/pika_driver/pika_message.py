@@ -495,11 +495,12 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
         self.msg_id = None
         self.reply_q = None
 
-    def send(self, target, reply_listener=None, expiration_time=None,
-             retrier=None):
+    def send(self, exchange, routing_key, reply_listener=None,
+             expiration_time=None, retrier=None):
         """Send RPC message with configured retrying
 
-        :param target: Target, oslo.messaging target which defines RPC service
+        :param exchange: String, RabbitMQ exchange name for message sending
+        :param routing_key: String, RabbitMQ routing key for message routing
         :param reply_listener: RpcReplyPikaListener, listener for waiting
             reply. If None - return immediately without reply waiting
         :param expiration_time: Float, expiration time in seconds
@@ -507,15 +508,6 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
         :param retrier: retrying.Retrier, configured retrier object for sending
             message, if None no retrying is performed
         """
-
-        exchange = self._pika_engine.get_rpc_exchange_name(
-            target.exchange, target.topic, target.fanout, retrier is None
-        )
-
-        queue = "" if target.fanout else self._pika_engine.get_rpc_queue_name(
-            target.topic, target.server, retrier is None
-        )
-
         msg_dict, msg_props = self._prepare_message_to_send()
 
         if reply_listener:
@@ -531,7 +523,7 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
             future = reply_listener.register_reply_waiter(msg_id=self.msg_id)
 
             self._do_send(
-                exchange=exchange, routing_key=queue, msg_dict=msg_dict,
+                exchange=exchange, routing_key=routing_key, msg_dict=msg_dict,
                 msg_props=msg_props, confirm=True, mandatory=True,
                 persistent=False, expiration_time=expiration_time,
                 retrier=retrier
@@ -546,8 +538,8 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
                 raise e
         else:
             self._do_send(
-                exchange=exchange, routing_key=queue, msg_dict=msg_dict,
-                msg_props=msg_props, confirm=True, mandatory=not target.fanout,
+                exchange=exchange, routing_key=routing_key, msg_dict=msg_dict,
+                msg_props=msg_props, confirm=True, mandatory=True,
                 persistent=False, expiration_time=expiration_time,
                 retrier=retrier
             )
