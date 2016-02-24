@@ -266,6 +266,31 @@ class TestSerializer(test_utils.BaseTestCase):
                          _impl_test.NOTIFICATIONS)
 
 
+class TestNotifierTopics(test_utils.BaseTestCase):
+
+    def test_topics_from_config(self):
+        self.config(driver=['log'],
+                    group='oslo_messaging_notifications')
+        self.config(topics=['topic1', 'topic2'],
+                    group='oslo_messaging_notifications')
+        transport = _FakeTransport(self.conf)
+
+        notifier = oslo_messaging.Notifier(transport, 'test.localhost')
+        self.assertEqual(['topic1', 'topic2'], notifier._topics)
+
+    def test_topics_from_kwargs(self):
+        self.config(driver=['log'],
+                    group='oslo_messaging_notifications')
+        transport = _FakeTransport(self.conf)
+
+        notifier = oslo_messaging.Notifier(transport, 'test.localhost',
+                                           topic='topic1')
+        self.assertEqual(['topic1'], notifier._topics)
+        notifier = oslo_messaging.Notifier(transport, 'test.localhost',
+                                           topics=['topic1', 'topic2'])
+        self.assertEqual(['topic1', 'topic2'], notifier._topics)
+
+
 class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
