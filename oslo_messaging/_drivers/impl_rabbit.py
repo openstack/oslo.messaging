@@ -147,9 +147,15 @@ rabbit_opts = [
     cfg.BoolOpt('rabbit_ha_queues',
                 default=False,
                 deprecated_group='DEFAULT',
-                help='Use HA queues in RabbitMQ (x-ha-policy: all). '
-                     'If you change this option, you must wipe the '
-                     'RabbitMQ database.'),
+                help='Try to use HA queues in RabbitMQ (x-ha-policy: all). '
+                'If you change this option, you must wipe the RabbitMQ '
+                'database. In RabbitMQ 3.0, queue mirroring is no longer '
+                'controlled by the x-ha-policy argument when declaring a '
+                'queue. If you just want to make sure that all queues (except '
+                ' those with auto-generated names) are mirrored across all '
+                'nodes, run: '
+                """\"rabbitmqctl set_policy HA '^(?!amq\.).*' """
+                """'{"ha-mode": "all"}' \""""),
     cfg.IntOpt('rabbit_transient_queues_ttl',
                min=1,
                default=600,
@@ -185,13 +191,17 @@ LOG = logging.getLogger(__name__)
 def _get_queue_arguments(rabbit_ha_queues, rabbit_queue_ttl):
     """Construct the arguments for declaring a queue.
 
-    If the rabbit_ha_queues option is set, we declare a mirrored queue
+    If the rabbit_ha_queues option is set, we try to declare a mirrored queue
     as described here:
 
       http://www.rabbitmq.com/ha.html
 
     Setting x-ha-policy to all means that the queue will be mirrored
-    to all nodes in the cluster.
+    to all nodes in the cluster. In RabbitMQ 3.0, queue mirroring is
+    no longer controlled by the x-ha-policy argument when declaring a
+    queue. If you just want to make sure that all queues (except those
+    with auto-generated names) are mirrored across all nodes, run:
+      rabbitmqctl set_policy HA '^(?!amq\.).*' '{"ha-mode": "all"}'
 
     If the rabbit_queue_ttl option is > 0, then the queue is
     declared with the "Queue TTL" value as described here:
