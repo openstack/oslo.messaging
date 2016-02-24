@@ -295,13 +295,13 @@ class RpcServicePikaPoller(PikaPoller):
         """
         queue_expiration = self._pika_engine.rpc_queue_expiration
 
+        exchange = self._pika_engine.get_rpc_exchange_name(
+            self._target.exchange
+        )
+
         queues_to_consume = []
 
         for no_ack in [True, False]:
-            exchange = self._pika_engine.get_rpc_exchange_name(
-                self._target.exchange, self._target.topic, False, no_ack
-            )
-
             queue = self._pika_engine.get_rpc_queue_name(
                 self._target.topic, None, no_ack
             )
@@ -323,19 +323,17 @@ class RpcServicePikaPoller(PikaPoller):
                     queue=server_queue, routing_key=server_queue,
                     exchange_type='direct', queue_expiration=queue_expiration
                 )
+                all_servers_routing_key = self._pika_engine.get_rpc_queue_name(
+                    self._target.topic, "all_servers", no_ack
+                )
+                self._pika_engine.declare_queue_binding_by_channel(
+                    channel=self._channel, exchange=exchange, durable=False,
+                    queue=server_queue, routing_key=all_servers_routing_key,
+                    exchange_type='direct', queue_expiration=queue_expiration
+                )
                 queues_to_consume.append(
                     {"queue_name": server_queue, "no_ack": no_ack,
                      "consumer_tag": None}
-                )
-
-                fanout_exchange = self._pika_engine.get_rpc_exchange_name(
-                    self._target.exchange, self._target.topic, True, no_ack
-                )
-
-                self._pika_engine.declare_queue_binding_by_channel(
-                    channel=self._channel, exchange=fanout_exchange,
-                    queue=server_queue, routing_key="", exchange_type='fanout',
-                    queue_expiration=queue_expiration, durable=False
                 )
 
         return queues_to_consume
