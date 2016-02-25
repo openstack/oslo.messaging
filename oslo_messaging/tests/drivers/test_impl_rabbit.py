@@ -260,21 +260,22 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
                     conn._publish_and_creates_default_queue,
                     exchange, {}, routing_key='foobar')
 
-            # Ensure the exchange does not exists
-            self.assertRaises(exc, try_send, e_passive)
-            # Create it
-            try_send(e_active)
-            # Ensure it creates it
-            try_send(e_passive)
-
-            with mock.patch('kombu.messaging.Producer', side_effect=exc):
-                # Should reset the cache and ensures the exchange does
-                # not exists
+            with mock.patch('kombu.transport.virtual.Channel.close'):
+                # Ensure the exchange does not exists
                 self.assertRaises(exc, try_send, e_passive)
-            # Recreate it
-            try_send(e_active)
-            # Ensure it have been recreated
-            try_send(e_passive)
+                # Create it
+                try_send(e_active)
+                # Ensure it creates it
+                try_send(e_passive)
+
+                with mock.patch('kombu.messaging.Producer', side_effect=exc):
+                    # Should reset the cache and ensures the exchange does
+                    # not exists
+                    self.assertRaises(exc, try_send, e_passive)
+                # Recreate it
+                try_send(e_active)
+                # Ensure it have been recreated
+                try_send(e_passive)
 
 
 class TestRabbitConsume(test_utils.BaseTestCase):
