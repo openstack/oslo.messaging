@@ -667,6 +667,6 @@ class Controller(pyngus.ConnectionEventHandler):
             self._senders = {}
             self._socket_connection.reset()
             host = self.hosts.next()
-            LOG.info(_LI("Reconnecting to: %(hostname):%(port)"),
+            LOG.info(_LI("Reconnecting to: %(hostname)s:%(port)s"),
                      {'hostname': host.hostname, 'port': host.port})
             self._socket_connection.connect(host)
