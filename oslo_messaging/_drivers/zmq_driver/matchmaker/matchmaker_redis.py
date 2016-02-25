@@ -131,8 +131,7 @@ class RedisMatchMaker(base.MatchMakerBase):
 
     def register_publisher(self, hostname):
         host_str = ",".join(hostname)
-        if host_str not in self._get_hosts_by_key(_PUBLISHERS_KEY):
-            self._redis.sadd(_PUBLISHERS_KEY, host_str)
+        self._redis.sadd(_PUBLISHERS_KEY, host_str)
 
     def unregister_publisher(self, hostname):
         host_str = ",".join(hostname)
