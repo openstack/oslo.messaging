@@ -234,9 +234,7 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
         )
 
         self._pika_engine.get_rpc_exchange_name.side_effect = (
-            lambda exchange, topic, fanout, no_ack: "_".join(
-                [exchange, topic, str(fanout), str(no_ack)]
-            )
+            lambda exchange: exchange
         )
 
         self._prefetch_count = 123
@@ -277,7 +275,7 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
         declare_queue_binding_by_channel_mock.assert_has_calls((
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
-                exchange="exchange_topic_False_True",
+                exchange="exchange",
                 exchange_type='direct',
                 queue="topic_None_True",
                 queue_expiration=12345,
@@ -285,7 +283,7 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
-                exchange="exchange_topic_False_True",
+                exchange="exchange",
                 exchange_type='direct',
                 queue="topic_server_True",
                 queue_expiration=12345,
@@ -293,15 +291,15 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
-                exchange="exchange_topic_True_True",
-                exchange_type='fanout',
+                exchange="exchange",
+                exchange_type='direct',
                 queue="topic_server_True",
                 queue_expiration=12345,
-                routing_key=''
+                routing_key="topic_all_servers_True"
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
-                exchange="exchange_topic_False_False",
+                exchange="exchange",
                 exchange_type='direct',
                 queue="topic_None_False",
                 queue_expiration=12345,
@@ -309,20 +307,20 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
-                exchange="exchange_topic_False_False",
+                exchange="exchange",
                 exchange_type='direct',
                 queue="topic_server_False",
                 queue_expiration=12345,
-                routing_key="topic_server_False"
+                routing_key='topic_server_False'
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
-                exchange="exchange_topic_True_False",
-                exchange_type='fanout',
+                exchange="exchange",
+                exchange_type='direct',
                 queue="topic_server_False",
                 queue_expiration=12345,
-                routing_key=''
-            ),
+                routing_key='topic_all_servers_False'
+            )
         ))
 
 

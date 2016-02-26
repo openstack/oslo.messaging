@@ -272,7 +272,7 @@ class PikaEngine(object):
             except pika_pool.Connection.connectivity_errors as e:
                 LOG.warn("Can't establish connection to host. %s", e)
             except pika_drv_exc.HostConnectionNotAllowedException as e:
-                LOG.warn("Connection to host is not Allowed. %s", e)
+                LOG.warn("Connection to host is not allowed. %s", e)
 
             connection_attempts -= 1
             pika_next_connection_num += 1
@@ -358,6 +358,28 @@ class PikaEngine(object):
                 ] = cur_time
 
     @staticmethod
+    def declare_exchange_by_channel(channel, exchange, exchange_type, durable):
+        """Declare exchange using already created channel, if they don't exist
+
+        :param channel: Channel for communication with RabbitMQ
+        :param exchange:  String, RabbitMQ exchange name
+        :param exchange_type: String ('direct', 'topic' or 'fanout')
+            exchange type for exchange to be declared
+        :param durable: Boolean, creates durable exchange if true
+        """
+        try:
+            channel.exchange_declare(
+                exchange, exchange_type, auto_delete=True, durable=durable
+            )
+        except pika_pool.Connection.connectivity_errors as e:
+            raise pika_drv_exc.ConnectionException(
+                "Connectivity problem detected during declaring exchange: "
+                "exchange:{}, exchange_type: {}, durable: {}. {}".format(
+                    exchange, exchange_type, durable, str(e)
+                )
+            )
+
+    @staticmethod
     def declare_queue_binding_by_channel(channel, exchange, queue, routing_key,
                                          exchange_type, queue_expiration,
                                          durable):
@@ -397,23 +419,14 @@ class PikaEngine(object):
                 )
             )
 
-    def get_rpc_exchange_name(self, exchange, topic, fanout, no_ack):
+    def get_rpc_exchange_name(self, exchange):
         """Returns RabbitMQ exchange name for given rpc request
 
         :param exchange: String, oslo.messaging target's exchange
-        :param topic: String, oslo.messaging target's topic
-        :param fanout: Boolean, oslo.messaging target's fanout mode
-        :param no_ack: Boolean, use message delivery with acknowledges or not
 
         :return: String, RabbitMQ exchange name
         """
-        exchange = (exchange or self.default_rpc_exchange)
-
-        if fanout:
-            exchange = '{}_fanout_{}_{}'.format(
-                exchange, "no_ack" if no_ack else "with_ack", topic
-            )
-        return exchange
+        return exchange or self.default_rpc_exchange
 
     @staticmethod
     def get_rpc_queue_name(topic, server, no_ack):

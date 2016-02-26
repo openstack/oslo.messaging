@@ -434,8 +434,8 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         expiration_time = time.time() + expiration
 
         message.send(
-            target=oslo_messaging.Target(exchange=self._exchange,
-                                         topic=self._routing_key),
+            exchange=self._exchange,
+            routing_key=self._routing_key,
             reply_listener=None,
             expiration_time=expiration_time,
             retrier=None
@@ -490,8 +490,8 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         reply_listener.get_reply_qname.return_value = reply_queue_name
 
         res = message.send(
-            target=oslo_messaging.Target(exchange=self._exchange,
-                                         topic=self._routing_key),
+            exchange=self._exchange,
+            routing_key=self._routing_key,
             reply_listener=reply_listener,
             expiration_time=expiration_time,
             retrier=None
