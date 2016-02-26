@@ -29,6 +29,7 @@ class RpcReplyPikaListener(object):
     """
 
     def __init__(self, pika_engine):
+        super(RpcReplyPikaListener, self).__init__()
         self._pika_engine = pika_engine
 
         # preparing poller for listening replies
@@ -39,7 +40,6 @@ class RpcReplyPikaListener(object):
 
         self._reply_consumer_initialized = False
         self._reply_consumer_initialization_lock = threading.Lock()
-        self._poller_thread = None
         self._shutdown = False
 
     def get_reply_qname(self):
@@ -66,51 +66,31 @@ class RpcReplyPikaListener(object):
             # initialize reply poller if needed
             if self._reply_poller is None:
                 self._reply_poller = pika_drv_poller.RpcReplyPikaPoller(
-                    pika_engine=self._pika_engine,
-                    exchange=self._pika_engine.rpc_reply_exchange,
-                    queue=self._reply_queue,
-                    prefetch_count=(
-                        self._pika_engine.rpc_reply_listener_prefetch_count
-                    )
+                    self._pika_engine, self._pika_engine.rpc_reply_exchange,
+                    self._reply_queue, 1, None,
+                    self._pika_engine.rpc_reply_listener_prefetch_count
                 )
 
-            self._reply_poller.start()
-
-            # start reply poller job thread if needed
-            if self._poller_thread is None:
-                self._poller_thread = threading.Thread(target=self._poller)
-                self._poller_thread.daemon = True
-
-            if not self._poller_thread.is_alive():
-                self._poller_thread.start()
-
+            self._reply_poller.start(self._on_incoming)
             self._reply_consumer_initialized = True
 
         return self._reply_queue
 
-    def _poller(self):
+    def _on_incoming(self, incoming):
         """Reply polling job. Poll replies in infinite loop and notify
         registered features
         """
-        while True:
+        for message in incoming:
             try:
-                messages = self._reply_poller.poll()
-                if not messages and self._shutdown:
-                    break
-
-                for message in messages:
-                    try:
-                        message.acknowledge()
-                        future = self._reply_waiting_futures.pop(
-                            message.msg_id, None
-                        )
-                        if future is not None:
-                            future.set_result(message)
-                    except Exception:
-                        LOG.exception("Unexpected exception during processing"
-                                      "reply message")
-            except BaseException:
-                LOG.exception("Unexpected exception during reply polling")
+                message.acknowledge()
+                future = self._reply_waiting_futures.pop(
+                    message.msg_id, None
+                )
+                if future is not None:
+                    future.set_result(message)
+            except Exception:
+                LOG.exception("Unexpected exception during processing"
+                              "reply message")
 
     def register_reply_waiter(self, msg_id):
         """Register reply waiter. Should be called before message sending to
@@ -139,10 +119,5 @@ class RpcReplyPikaListener(object):
             self._reply_poller.stop()
             self._reply_poller.cleanup()
             self._reply_poller = None
-
-        if self._poller_thread:
-            if self._poller_thread.is_alive():
-                self._poller_thread.join()
-            self._poller_thread = None
 
         self._reply_queue = None

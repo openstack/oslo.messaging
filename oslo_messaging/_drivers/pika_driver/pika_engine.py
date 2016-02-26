@@ -11,7 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
+import os
 import random
 import socket
 import threading
@@ -19,38 +19,18 @@ import time
 
 from oslo_log import log as logging
 import pika
-from pika.adapters import select_connection
 from pika import credentials as pika_credentials
 
 import pika_pool
-
 import uuid
 
 from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
+from oslo_messaging._drivers.pika_driver import pika_connection
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 LOG = logging.getLogger(__name__)
 
-
-def _create_select_poller_connection_impl(
-        parameters, on_open_callback, on_open_error_callback,
-        on_close_callback, stop_ioloop_on_close):
-    """Used for disabling autochoise of poller ('select', 'poll', 'epool', etc)
-    inside default 'SelectConnection.__init__(...)' logic. It is necessary to
-    force 'select' poller usage if eventlet is monkeypatched because eventlet
-    patches only 'select' system call
-
-    Method signature is copied form 'SelectConnection.__init__(...)', because
-    it is used as replacement of 'SelectConnection' class to create instances
-    """
-    return select_connection.SelectConnection(
-        parameters=parameters,
-        on_open_callback=on_open_callback,
-        on_open_error_callback=on_open_error_callback,
-        on_close_callback=on_close_callback,
-        stop_ioloop_on_close=stop_ioloop_on_close,
-        custom_ioloop=select_connection.SelectPoller()
-    )
+_PID = None
 
 
 class _PooledConnectionWithConfirmations(pika_pool.Connection):
@@ -83,10 +63,6 @@ class PikaEngine(object):
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
         self.conf = conf
-
-        self._force_select_poller_use = (
-            pika_drv_cmns.is_eventlet_monkey_patched('select')
-        )
 
         # processing rpc options
         self.default_rpc_exchange = (
@@ -168,7 +144,7 @@ class PikaEngine(object):
         )
 
         # initializing connection parameters for configured RabbitMQ hosts
-        common_pika_params = {
+        self._common_pika_params = {
             'virtual_host': url.virtual_host,
             'channel_max': self.conf.oslo_messaging_pika.channel_max,
             'frame_max': self.conf.oslo_messaging_pika.frame_max,
@@ -177,31 +153,18 @@ class PikaEngine(object):
             'socket_timeout': self.conf.oslo_messaging_pika.socket_timeout,
         }
 
-        self._connection_lock = threading.Lock()
+        self._connection_lock = threading.RLock()
+        self._pid = None
 
-        self._connection_host_param_list = []
-        self._connection_host_status_list = []
+        self._connection_host_status = {}
 
         if not url.hosts:
             raise ValueError("You should provide at least one RabbitMQ host")
 
-        for transport_host in url.hosts:
-            pika_params = common_pika_params.copy()
-            pika_params.update(
-                host=transport_host.hostname,
-                port=transport_host.port,
-                credentials=pika_credentials.PlainCredentials(
-                    transport_host.username, transport_host.password
-                ),
-            )
-            self._connection_host_param_list.append(pika_params)
-            self._connection_host_status_list.append({
-                self.HOST_CONNECTION_LAST_TRY_TIME: 0,
-                self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME: 0
-            })
+        self._host_list = url.hosts
 
-        self._next_connection_host_num = random.randint(
-            0, len(self._connection_host_param_list) - 1
+        self._cur_connection_host_num = random.randint(
+            0, len(self._host_list) - 1
         )
 
         # initializing 2 connection pools: 1st for connections without
@@ -228,49 +191,37 @@ class PikaEngine(object):
             _PooledConnectionWithConfirmations
         )
 
-    def _next_connection_num(self):
-        """Used for creating connections to different RabbitMQ nodes in
-        round robin order
-
-        :return: next host number to create connection to
-        """
-        with self._connection_lock:
-            cur_num = self._next_connection_host_num
-            self._next_connection_host_num += 1
-            self._next_connection_host_num %= len(
-                self._connection_host_param_list
-            )
-        return cur_num
-
     def create_connection(self, for_listening=False):
         """Create and return connection to any available host.
 
         :return: created connection
         :raise: ConnectionException if all hosts are not reachable
         """
-        host_count = len(self._connection_host_param_list)
-        connection_attempts = host_count
 
-        pika_next_connection_num = self._next_connection_num()
+        with self._connection_lock:
+            self._init_if_needed()
 
-        while connection_attempts > 0:
-            try:
-                return self.create_host_connection(
-                    pika_next_connection_num, for_listening
-                )
-            except pika_pool.Connection.connectivity_errors as e:
-                LOG.warning("Can't establish connection to host. %s", e)
-            except pika_drv_exc.HostConnectionNotAllowedException as e:
-                LOG.warning("Connection to host is not allowed. %s", e)
+            host_count = len(self._host_list)
+            connection_attempts = host_count
 
-            connection_attempts -= 1
-            pika_next_connection_num += 1
-            pika_next_connection_num %= host_count
+            while connection_attempts > 0:
+                self._cur_connection_host_num += 1
+                self._cur_connection_host_num %= host_count
+                try:
+                    return self.create_host_connection(
+                        self._cur_connection_host_num, for_listening
+                    )
+                except pika_pool.Connection.connectivity_errors as e:
+                    LOG.warning("Can't establish connection to host. %s", e)
+                except pika_drv_exc.HostConnectionNotAllowedException as e:
+                    LOG.warning("Connection to host is not allowed. %s", e)
 
-        raise pika_drv_exc.EstablishConnectionException(
-            "Can not establish connection to any configured RabbitMQ host: " +
-            str(self._connection_host_param_list)
-        )
+                connection_attempts -= 1
+
+            raise pika_drv_exc.EstablishConnectionException(
+                "Can not establish connection to any configured RabbitMQ "
+                "host: " + str(self._host_list)
+            )
 
     def _set_tcp_user_timeout(self, s):
         if not self._tcp_user_timeout:
@@ -285,28 +236,64 @@ class PikaEngine(object):
                 "Whoops, this kernel doesn't seem to support TCP_USER_TIMEOUT."
             )
 
+    def _init_if_needed(self):
+        global _PID
+
+        cur_pid = os.getpid()
+
+        if _PID != cur_pid:
+            if _PID:
+                LOG.warning("New pid is detected. Old: %s, new: %s. "
+                            "Cleaning up...", _PID, cur_pid)
+            # Note(dukhlov): we need to force select poller usage in case when
+            # 'thread' module is monkey patched becase current eventlet
+            # implementation does not support patching of poll/epoll/kqueue
+            if pika_drv_cmns.is_eventlet_monkey_patched("thread"):
+                from pika.adapters import select_connection
+                select_connection.SELECT_TYPE = "select"
+
+            _PID = cur_pid
+
     def create_host_connection(self, host_index, for_listening=False):
         """Create new connection to host #host_index
+
         :param host_index: Integer, number of host for connection establishing
         :param for_listening: Boolean, creates connection for listening
-            (enable heartbeats) if True
+            if True
         :return: New connection
         """
-
-        connection_params = pika.ConnectionParameters(
-            heartbeat_interval=(
-                self._heartbeat_interval if for_listening else None
-            ),
-            **self._connection_host_param_list[host_index]
-        )
-
         with self._connection_lock:
+            self._init_if_needed()
+
+            host = self._host_list[host_index]
+
+            connection_params = pika.ConnectionParameters(
+                host=host.hostname,
+                port=host.port,
+                credentials=pika_credentials.PlainCredentials(
+                    host.username, host.password
+                ),
+                heartbeat_interval=(
+                    self._heartbeat_interval if for_listening else None
+                ),
+                **self._common_pika_params
+            )
+
             cur_time = time.time()
 
-            last_success_time = self._connection_host_status_list[host_index][
+            host_connection_status = self._connection_host_status.get(host)
+
+            if host_connection_status is None:
+                host_connection_status = {
+                    self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME: 0,
+                    self.HOST_CONNECTION_LAST_TRY_TIME: 0
+                }
+                self._connection_host_status[host] = host_connection_status
+
+            last_success_time = host_connection_status[
                 self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME
             ]
-            last_time = self._connection_host_status_list[host_index][
+            last_time = host_connection_status[
                 self.HOST_CONNECTION_LAST_TRY_TIME
             ]
 
@@ -322,27 +309,25 @@ class PikaEngine(object):
                 )
 
             try:
-                connection = pika.BlockingConnection(
-                    parameters=connection_params,
-                    _impl_class=(_create_select_poller_connection_impl
-                                 if self._force_select_poller_use else None)
-                )
-
-                # It is needed for pika_pool library which expects that
-                # connections has params attribute defined in BaseConnection
-                # but BlockingConnection is not derived from BaseConnection
-                # and doesn't have it
-                connection.params = connection_params
+                if for_listening:
+                    connection = pika_connection.ThreadSafePikaConnection(
+                        params=connection_params
+                    )
+                else:
+                    connection = pika.BlockingConnection(
+                        parameters=connection_params
+                    )
+                    connection.params = connection_params
 
                 self._set_tcp_user_timeout(connection._impl.socket)
 
-                self._connection_host_status_list[host_index][
+                self._connection_host_status[host][
                     self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME
                 ] = cur_time
 
                 return connection
             finally:
-                self._connection_host_status_list[host_index][
+                self._connection_host_status[host][
                     self.HOST_CONNECTION_LAST_TRY_TIME
                 ] = cur_time
 
