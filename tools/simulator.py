@@ -274,10 +274,12 @@ def send_msg(c_id, transport, target, wait_after_msg, timeout, is_cast,
         with timeutils.StopWatch(duration) as stop_watch:
             while not stop_watch.expired():
                 client.send_msg()
+                eventlet.sleep()
     else:
         LOG.debug("Sending %d messages using client %d", messages_count, c_id)
         for _ in six.moves.range(0, messages_count):
             client.send_msg()
+            eventlet.sleep()
         LOG.debug("Client %d has sent %d messages", c_id, messages_count)
 
 
