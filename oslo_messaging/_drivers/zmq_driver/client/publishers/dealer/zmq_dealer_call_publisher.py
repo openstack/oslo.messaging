@@ -23,7 +23,6 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_publisher_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LW
 
 LOG = logging.getLogger(__name__)
@@ -69,12 +68,12 @@ class DealerCallPublisher(object):
             self.reply_waiter.untrack_id(request.message_id)
 
         LOG.debug("Received reply %s", reply)
-        if reply[zmq_names.FIELD_FAILURE]:
+        if reply.failure:
             raise rpc_common.deserialize_remote_exception(
-                reply[zmq_names.FIELD_FAILURE],
+                reply.failure,
                 request.allowed_remote_exmods)
         else:
-            return reply[zmq_names.FIELD_REPLY]
+            return reply.reply_body
 
     def cleanup(self):
         self.reply_waiter.cleanup()
@@ -135,12 +134,12 @@ class ReplyWaiter(object):
         reply, socket = self.poller.poll(
             timeout=self.conf.rpc_poll_timeout)
         if reply is not None:
-            reply_id = reply[zmq_names.FIELD_MSG_ID]
-            call_future = self.replies.get(reply_id)
+            call_future = self.replies.get(reply.message_id)
             if call_future:
                 call_future.set_result(reply)
             else:
-                LOG.warning(_LW("Received timed out reply: %s"), reply_id)
+                LOG.warning(_LW("Received timed out reply: %s"),
+                            reply.message_id)
 
     def cleanup(self):
         self.poller.close()

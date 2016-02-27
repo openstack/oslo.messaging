@@ -65,21 +65,18 @@ class PubPublisherProxy(object):
     def send_request(self, multipart_message):
 
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        msg_type = envelope[zmq_names.FIELD_MSG_TYPE]
-        target = envelope[zmq_names.FIELD_TARGET]
-        message_id = envelope[zmq_names.FIELD_MSG_ID]
-        if msg_type not in zmq_names.MULTISEND_TYPES:
-            raise zmq_publisher_base.UnsupportedSendPattern(msg_type)
+        if not envelope.is_mult_send:
+            raise zmq_publisher_base.UnsupportedSendPattern(envelope.msg_type)
 
-        topic_filter = zmq_address.target_to_subscribe_filter(target)
+        topic_filter = envelope.topic_filter
 
         self.socket.send(topic_filter, zmq.SNDMORE)
         self.socket.send(multipart_message[zmq_names.MULTIPART_IDX_BODY])
 
         LOG.debug("Publishing message [%(topic)s] %(message_id)s to "
                   "a target %(target)s ",
-                  {"message_id": message_id,
-                   "target": target,
+                  {"message_id": envelope.message_id,
+                   "target": envelope.target,
                    "topic": topic_filter})
 
     def cleanup(self):
