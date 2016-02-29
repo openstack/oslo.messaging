@@ -84,7 +84,7 @@ zmq_opts = [
                      'PUB/SUB always uses proxy.'),
 
     cfg.PortOpt('rpc_zmq_min_port',
-                default=49152,
+                default=49153,
                 help='Minimal port number for random ports range.'),
 
     cfg.IntOpt('rpc_zmq_max_port',
