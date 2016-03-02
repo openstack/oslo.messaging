@@ -40,6 +40,8 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
 
         self.publisher = zmq_pub_publisher.PubPublisherProxy(
             self.conf, self.driver.matchmaker)
+        self.driver.matchmaker.register_publisher(
+            (self.publisher.host, ""))
 
         self.listeners = []
         for i in range(self.LISTENERS_COUNT):

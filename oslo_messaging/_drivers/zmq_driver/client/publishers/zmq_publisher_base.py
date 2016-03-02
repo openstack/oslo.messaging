@@ -19,7 +19,6 @@ import time
 import six
 
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
@@ -114,9 +113,15 @@ class SocketsManager(object):
     def _track_socket(self, socket, target):
         self.outbound_sockets[str(target)] = (socket, time.time())
 
-    def _get_hosts_and_connect(self, socket, target):
-        hosts = self.matchmaker.get_hosts(
+    def get_hosts(self, target):
+        return self.matchmaker.get_hosts(
             target, zmq_names.socket_type_str(self.listener_type))
+
+    def _get_hosts_and_connect(self, socket, target):
+        hosts = self.get_hosts(target)
+        self._connect_to_hosts(socket, target, hosts)
+
+    def _connect_to_hosts(self, socket, target, hosts):
         for host in hosts:
             socket.connect_to_host(host)
         self._track_socket(socket, target)
@@ -136,11 +141,29 @@ class SocketsManager(object):
             self._get_hosts_and_connect(socket, target)
         return socket
 
-    def get_socket_to_broker(self):
+    def get_socket_to_hosts(self, target, hosts):
+        if str(target) in self.outbound_sockets:
+            socket = self._check_for_new_hosts(target)
+        else:
+            socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                          self.socket_type)
+            self._connect_to_hosts(socket, target, hosts)
+        return socket
+
+    def get_socket_to_publishers(self):
         socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
                                       self.socket_type)
-        address = zmq_address.get_broker_address(self.conf)
-        socket.connect_to_address(address)
+        publishers = self.matchmaker.get_publishers()
+        for pub_address, router_address in publishers:
+            socket.connect_to_host(router_address)
+        return socket
+
+    def get_socket_to_routers(self):
+        socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                      self.socket_type)
+        routers = self.matchmaker.get_routers()
+        for router_address in routers:
+            socket.connect_to_host(router_address)
         return socket
 
     def cleanup(self):

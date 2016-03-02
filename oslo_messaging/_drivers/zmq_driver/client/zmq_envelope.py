@@ -18,11 +18,22 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 
 class Envelope(object):
 
-    def __init__(self, msg_type=None, message_id=None, target=None, **kwargs):
+    def __init__(self, msg_type=None, message_id=None, target=None,
+                 target_hosts=None, **kwargs):
         self._msg_type = msg_type
         self._message_id = message_id
         self._target = target
+        self._target_hosts = target_hosts
+        self._reply_id = None
         self._kwargs = kwargs
+
+    @property
+    def reply_id(self):
+        return self._reply_id
+
+    @reply_id.setter
+    def reply_id(self, value):
+        self._reply_id = value
 
     @property
     def msg_type(self):
@@ -37,12 +48,19 @@ class Envelope(object):
         return self._target
 
     @property
+    def target_hosts(self):
+        return self._target_hosts
+
+    @property
     def is_mult_send(self):
         return self._msg_type in zmq_names.MULTISEND_TYPES
 
     @property
     def topic_filter(self):
         return zmq_address.target_to_subscribe_filter(self._target)
+
+    def has(self, key):
+        return key in self._kwargs
 
     def set(self, key, value):
         self._kwargs[key] = value

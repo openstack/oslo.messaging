@@ -57,6 +57,33 @@ class MatchMakerBase(object):
        """
 
     @abc.abstractmethod
+    def register_router(self, hostname):
+        """Register router on the nameserver.
+
+        This works for ROUTER proxy only
+
+       :param hostname: host for the topic in "host:port" format
+       :type hostname: string
+       """
+
+    @abc.abstractmethod
+    def unregister_router(self, hostname):
+        """Unregister router on the nameserver.
+
+        This works for ROUTER proxy only
+
+       :param hostname: host for the topic in "host:port" format
+       :type hostname: string
+       """
+
+    @abc.abstractmethod
+    def get_routers(self):
+        """Get all router-hosts from nameserver.
+
+       :returns: a list of strings "hostname:port" hosts
+       """
+
+    @abc.abstractmethod
     def register(self, target, hostname, listener_type, expire=-1):
         """Register target on nameserver.
         If record already exists and has expiration timeout it will be
@@ -101,6 +128,7 @@ class DummyMatchMaker(MatchMakerBase):
 
         self._cache = collections.defaultdict(list)
         self._publishers = set()
+        self._routers = set()
 
     def register_publisher(self, hostname):
         if hostname not in self._publishers:
@@ -112,6 +140,17 @@ class DummyMatchMaker(MatchMakerBase):
 
     def get_publishers(self):
         return list(self._publishers)
+
+    def register_router(self, hostname):
+        if hostname not in self._routers:
+            self._routers.add(hostname)
+
+    def unregister_router(self, hostname):
+        if hostname in self._routers:
+            self._routers.remove(hostname)
+
+    def get_routers(self):
+        return list(self._routers)
 
     def register(self, target, hostname, listener_type, expire=-1):
         key = zmq_address.target_to_key(target, listener_type)

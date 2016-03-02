@@ -134,7 +134,6 @@ class ZmqRandomPortSocket(ZmqSocket):
                 min_port=conf.rpc_zmq_min_port,
                 max_port=conf.rpc_zmq_max_port,
                 max_tries=conf.rpc_zmq_bind_port_retries)
-            self.connected = True
         except zmq.ZMQBindError:
             LOG.error(_LE("Random ports range exceeded!"))
             raise ZmqPortRangeExceededException()
