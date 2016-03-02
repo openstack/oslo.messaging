@@ -522,6 +522,10 @@ class Connection(object):
             failover_strategy=self.kombu_failover_strategy,
             transport_options={
                 'confirm_publish': True,
+                'client_properties': {'capabilities': {
+                    'authentication_failure_close': True,
+                    'connection.blocked': True,
+                    'consumer_cancel_notify': True}},
                 'on_blocked': self._on_connection_blocked,
                 'on_unblocked': self._on_connection_unblocked,
             },
