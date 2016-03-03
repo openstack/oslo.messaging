@@ -14,7 +14,6 @@
 
 import random
 import socket
-import sys
 import threading
 import time
 
@@ -22,29 +21,15 @@ from oslo_log import log as logging
 import pika
 from pika.adapters import select_connection
 from pika import credentials as pika_credentials
+
 import pika_pool
-import six
 
 import uuid
 
+from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 LOG = logging.getLogger(__name__)
-
-_EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
-
-
-def _is_eventlet_monkey_patched(module):
-    """Determines safely is eventlet patching for module enabled or not
-
-    :param module: String, module name
-    :return Bool, True if module is pathed, False otherwise
-    """
-
-    if 'eventlet.patcher' not in sys.modules:
-        return False
-    import eventlet.patcher
-    return eventlet.patcher.is_monkey_patched(module)
 
 
 def _create_select_poller_connection_impl(
@@ -99,7 +84,9 @@ class PikaEngine(object):
                  allowed_remote_exmods=None):
         self.conf = conf
 
-        self._force_select_poller_use = _is_eventlet_monkey_patched('select')
+        self._force_select_poller_use = (
+            pika_drv_cmns.is_eventlet_monkey_patched('select')
+        )
 
         # processing rpc options
         self.default_rpc_exchange = (
@@ -109,7 +96,7 @@ class PikaEngine(object):
             conf.oslo_messaging_pika.rpc_reply_exchange
         )
 
-        self.allowed_remote_exmods = [_EXCEPTIONS_MODULE]
+        self.allowed_remote_exmods = [pika_drv_cmns.EXCEPTIONS_MODULE]
         if allowed_remote_exmods:
             self.allowed_remote_exmods.extend(allowed_remote_exmods)
 
@@ -359,8 +346,8 @@ class PikaEngine(object):
                     self.HOST_CONNECTION_LAST_TRY_TIME
                 ] = cur_time
 
-    @staticmethod
-    def declare_exchange_by_channel(channel, exchange, exchange_type, durable):
+    def declare_exchange_by_channel(self, channel, exchange, exchange_type,
+                                    durable):
         """Declare exchange using already created channel, if they don't exist
 
         :param channel: Channel for communication with RabbitMQ
@@ -373,7 +360,7 @@ class PikaEngine(object):
             channel.exchange_declare(
                 exchange, exchange_type, auto_delete=True, durable=durable
             )
-        except pika_pool.Connection.connectivity_errors as e:
+        except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS as e:
             raise pika_drv_exc.ConnectionException(
                 "Connectivity problem detected during declaring exchange: "
                 "exchange:{}, exchange_type: {}, durable: {}. {}".format(
@@ -381,10 +368,9 @@ class PikaEngine(object):
                 )
             )
 
-    @staticmethod
-    def declare_queue_binding_by_channel(channel, exchange, queue, routing_key,
-                                         exchange_type, queue_expiration,
-                                         durable):
+    def declare_queue_binding_by_channel(self, channel, exchange, queue,
+                                         routing_key, exchange_type,
+                                         queue_expiration, durable):
         """Declare exchange, queue and bind them using already created
         channel, if they don't exist
 
@@ -410,7 +396,7 @@ class PikaEngine(object):
             channel.queue_declare(queue, durable=durable, arguments=arguments)
 
             channel.queue_bind(queue, exchange, routing_key)
-        except pika_pool.Connection.connectivity_errors as e:
+        except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS as e:
             raise pika_drv_exc.ConnectionException(
                 "Connectivity problem detected during declaring queue "
                 "binding: exchange:{}, queue: {}, routing_key: {}, "

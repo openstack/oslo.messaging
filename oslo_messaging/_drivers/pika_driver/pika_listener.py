@@ -13,13 +13,11 @@
 #    under the License.
 
 import threading
-import time
 import uuid
 
 from concurrent import futures
 from oslo_log import log as logging
 
-from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
 
 LOG = logging.getLogger(__name__)
@@ -97,15 +95,7 @@ class RpcReplyPikaListener(object):
         """
         while self._reply_poller:
             try:
-                try:
-                    messages = self._reply_poller.poll()
-                except pika_drv_exc.EstablishConnectionException:
-                    LOG.exception("Problem during establishing connection for "
-                                  "reply polling")
-                    time.sleep(
-                        self._pika_engine.host_connection_reconnect_delay
-                    )
-                    continue
+                messages = self._reply_poller.poll()
 
                 for message in messages:
                     try:

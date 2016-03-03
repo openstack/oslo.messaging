@@ -22,7 +22,7 @@ from oslo_serialization import jsonutils
 import pika
 
 import oslo_messaging
-from oslo_messaging._drivers.pika_driver import pika_engine
+from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
 from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 
 
@@ -252,7 +252,7 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
     def setUp(self):
         self._pika_engine = mock.Mock()
         self._pika_engine.allowed_remote_exmods = [
-            pika_engine._EXCEPTIONS_MODULE, "oslo_messaging.exceptions"
+            pika_drv_cmns.EXCEPTIONS_MODULE, "oslo_messaging.exceptions"
         ]
 
         self._channel = mock.Mock()

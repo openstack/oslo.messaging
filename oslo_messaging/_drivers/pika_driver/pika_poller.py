@@ -13,13 +13,14 @@
 #    under the License.
 
 import threading
+import time
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import pika_pool
 import six
 
 from oslo_messaging._drivers import base
+from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 
@@ -143,21 +144,17 @@ class PikaPoller(base.Listener):
         """Cleanup allocated resources (channel, connection, etc). It is unsafe
         method for internal use only
         """
-        if self._channel:
-            try:
-                self._channel.close()
-            except Exception as ex:
-                if not pika_pool.Connection.is_connection_invalidated(ex):
-                    LOG.exception("Unexpected error during closing channel")
-            self._channel = None
-
         if self._connection:
             try:
                 self._connection.close()
-            except Exception as ex:
-                if not pika_pool.Connection.is_connection_invalidated(ex):
-                    LOG.exception("Unexpected error during closing connection")
-            self._connection = None
+            except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS:
+                # expected errors
+                pass
+            except Exception:
+                LOG.exception("Unexpected error during closing connection")
+            finally:
+                self._channel = None
+                self._connection = None
 
         for i in six.moves.range(len(self._message_queue) - 1, -1, -1):
             message = self._message_queue[i]
@@ -201,15 +198,25 @@ class PikaPoller(base.Listener):
                         else:
                             # consumer is stopped so we don't expect new
                             # messages, just process already sent events
-                            self._connection.process_data_events(
-                                time_limit=0
-                            )
+                            if self._channel is not None:
+                                self._connection.process_data_events(
+                                    time_limit=0
+                                )
                             # and return result if we don't see new messages
                             if last_queue_size == len(self._message_queue):
                                 result = self._message_queue[:prefetch_size]
                                 del self._message_queue[:prefetch_size]
                                 return result
-                    except pika_pool.Connection.connectivity_errors:
+                    except pika_drv_exc.EstablishConnectionException as e:
+                        LOG.warn("Problem during establishing connection for"
+                                 "pika poller %s", e, exc_info=True)
+                        time.sleep(
+                            self._pika_engine.host_connection_reconnect_delay
+                        )
+                    except pika_drv_exc.ConnectionException:
+                        self._cleanup()
+                        raise
+                    except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS:
                         self._cleanup()
                         raise
 
@@ -220,19 +227,24 @@ class PikaPoller(base.Listener):
         with self._lock:
             if self._started:
                 return
-            self._started = True
 
-            self._cleanup()
             try:
                 self._reconnect()
-            except Exception as exc:
+            except pika_drv_exc.EstablishConnectionException as exc:
+                LOG.warn("Can not establishing connection during pika "
+                         "Conecting required during first poll() call. %s",
+                         exc, exc_info=True)
+            except pika_drv_exc.ConnectionException as exc:
                 self._cleanup()
-                if isinstance(exc, pika_pool.Connection.connectivity_errors):
-                    raise pika_drv_exc.ConnectionException(
-                        "Connectivity problem detected during establishing "
-                        "poller's connection. " + str(exc))
-                else:
-                    raise exc
+                LOG.warn("Connectivity problem during pika poller's start(). "
+                         "Reconnecting required during first poll() call. %s",
+                         exc, exc_info=True)
+            except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS as exc:
+                self._cleanup()
+                LOG.warn("Connectivity problem during pika poller's start(). "
+                         "Reconnecting required during first poll() call. %s",
+                         exc, exc_info=True)
+            self._started = True
 
     def stop(self):
         """Stops poller. Should be called when polling is not needed anymore to
@@ -246,15 +258,10 @@ class PikaPoller(base.Listener):
             if self._queues_to_consume and self._channel:
                 try:
                     self._stop_consuming()
-                except Exception as exc:
+                except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS as exc:
                     self._cleanup()
-                    if isinstance(exc,
-                                  pika_pool.Connection.connectivity_errors):
-                        raise pika_drv_exc.ConnectionException(
-                            "Connectivity problem detected during "
-                            "consumer canceling. " + str(exc))
-                    else:
-                        raise exc
+                    LOG.warn("Connectivity problem detected during consumer "
+                             "cancellation. %s", exc, exc_info=True)
             self._started = False
 
     def cleanup(self):

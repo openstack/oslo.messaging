@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import socket
 import time
 import unittest
 
@@ -32,6 +33,18 @@ class PikaPollerTestCase(unittest.TestCase):
             self._poller_connection_mock
         )
         self._prefetch_count = 123
+
+    def test_start_when_connection_unavailable(self):
+        incoming_message_class_mock = mock.Mock()
+        poller = pika_poller.PikaPoller(
+            self._pika_engine, self._prefetch_count,
+            incoming_message_class=incoming_message_class_mock
+        )
+
+        self._pika_engine.create_connection.side_effect = socket.timeout()
+
+        # start() should not raise socket.timeout exception
+        poller.start()
 
     @mock.patch("oslo_messaging._drivers.pika_driver.pika_poller.PikaPoller."
                 "_declare_queue_binding")
