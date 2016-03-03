@@ -50,6 +50,7 @@ Usage example:
  --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-client\
  --exit-wait 15000 -p 64 -m 64"""
 
+MESSAGES_LIMIT = 1000
 DISTRIBUTION_BUCKET_SIZE = 500
 
 
@@ -217,19 +218,19 @@ class RPCClient(object):
             time.sleep(self.wait_after_msg)
 
 
-def init_msg(messages_count):
+def generate_messages(messages_count):
     # Limit the messages amount. Clients will reiterate the array again
-    # if an amount of messages to be sent is bigger than 1000
-    if messages_count > 1000:
-        messages_count = 1000
-    LOG.info("Preparing %d messages", messages_count)
+    # if an amount of messages to be sent is bigger than MESSAGES_LIMIT
+    if messages_count > MESSAGES_LIMIT:
+        messages_count = MESSAGES_LIMIT
+    LOG.info("Generating %d random messages", messages_count)
 
     for i in range(messages_count):
         length = RANDOM_GENERATOR()
         msg = ''.join(random.choice(string.lowercase) for x in range(length)) \
               + ' ' + str(i)
         MESSAGES.append(msg)
-        i += 1
+
     LOG.info("Messages has been prepared")
 
 
@@ -428,6 +429,10 @@ def main():
         transport = messaging.get_notification_transport(cfg.CONF,
                                                          url=args.url)
 
+    if args.mode in ['rpc-client', 'notify-client']:
+        # always generate maximum number of messages for duration-limited tests
+        generate_messages(MESSAGES_LIMIT if args.duration else args.messages)
+
     # oslo.config defaults
     cfg.CONF.heartbeat_interval = 5
     cfg.CONF.prog = os.path.basename(__file__)
@@ -449,7 +454,6 @@ def main():
                              args.messages, args.wait_after_msg, args.timeout,
                              args.duration)
     elif args.mode == 'rpc-client':
-        init_msg(args.messages)
         targets = [target.partition('.')[::2] for target in args.targets]
         start = datetime.datetime.now()
         targets = [messaging.Target(
