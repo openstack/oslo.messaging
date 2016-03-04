@@ -145,13 +145,15 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             # by another exception raise by a log handler during
             # LOG.exception(). So keep a copy and delete it later.
             exc_info = sys.exc_info()
-            LOG.error(_LE('Exception during message handling: %s'), e,
-                      exc_info=exc_info)
-            incoming.reply(failure=exc_info)
-            # NOTE(dhellmann): Remove circular object reference
-            # between the current stack frame and the traceback in
-            # exc_info.
-            del exc_info
+            try:
+                LOG.error(_LE('Exception during message handling: %s'), e,
+                          exc_info=exc_info)
+                incoming.reply(failure=exc_info)
+            finally:
+                # NOTE(dhellmann): Remove circular object reference
+                # between the current stack frame and the traceback in
+                # exc_info.
+                del exc_info
 
     def _dispatch(self, ctxt, message):
         """Dispatch an RPC message to the appropriate endpoint method.
