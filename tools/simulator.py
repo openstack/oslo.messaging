@@ -158,7 +158,7 @@ def batch_notify_server(transport, topic, show_stats, duration):
     server = notify.get_batch_notification_listener(
         transport, [target],
         endpoints, executor='eventlet',
-        batch_size=1000, batch_time=5)
+        batch_size=1000, batch_timeout=5)
     run_server(server, duration=duration)
 
 
