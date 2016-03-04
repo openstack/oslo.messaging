@@ -158,11 +158,12 @@ class Server(pyngus.ReceiverEventHandler):
     from a given target.  Messages arriving on the links are placed on the
     'incoming' queue.
     """
-    def __init__(self, addresses, incoming):
+    def __init__(self, addresses, incoming, subscription_id):
         self._incoming = incoming
         self._addresses = addresses
         self._capacity = 500   # credit per link
         self._receivers = None
+        self._id = subscription_id
 
     def attach(self, connection):
         """Create receiver links over the given connection for all the
@@ -267,7 +268,8 @@ class Controller(pyngus.ConnectionEventHandler):
         self._max_task_batch = 50
         # cache of sending links indexed by address:
         self._senders = {}
-        # Servers (set of receiving links), indexed by target:
+        # Servers indexed by target. Each entry is a map indexed by the
+        # specific ProtonListener's identifier:
         self._servers = {}
 
         opt_group = cfg.OptGroup(name='oslo_messaging_amqp',
@@ -329,8 +331,9 @@ class Controller(pyngus.ConnectionEventHandler):
             self.processor = None
         self._tasks = None
         self._senders = None
-        for server in self._servers.values():
-            server.destroy()
+        for servers in self._servers.values():
+            for server in servers.values():
+                server.destroy()
         self._servers.clear()
         self._socket_connection = None
         if self._replies:
@@ -382,7 +385,7 @@ class Controller(pyngus.ConnectionEventHandler):
         LOG.debug("Sending response to %s", address)
         self._send(address, response)
 
-    def subscribe(self, target, in_queue):
+    def subscribe(self, target, in_queue, subscription_id):
         """Subscribe to messages sent to 'target', place received messages on
         'in_queue'.
         """
@@ -391,20 +394,25 @@ class Controller(pyngus.ConnectionEventHandler):
             self._broadcast_address(target),
             self._group_request_address(target)
         ]
-        self._subscribe(target, addresses, in_queue)
+        self._subscribe(target, addresses, in_queue, subscription_id)
 
-    def subscribe_notifications(self, target, in_queue):
+    def subscribe_notifications(self, target, in_queue, subscription_id):
         """Subscribe for notifications on 'target', place received messages on
         'in_queue'.
         """
         addresses = [self._group_request_address(target)]
-        self._subscribe(target, addresses, in_queue)
+        self._subscribe(target, addresses, in_queue, subscription_id)
 
-    def _subscribe(self, target, addresses, in_queue):
+    def _subscribe(self, target, addresses, in_queue, subscription_id):
         LOG.debug("Subscribing to %(target)s (%(addresses)s)",
                   {'target': target, 'addresses': addresses})
-        self._servers[target] = Server(addresses, in_queue)
-        self._servers[target].attach(self._socket_connection.connection)
+        server = Server(addresses, in_queue, subscription_id)
+        servers = self._servers.get(target)
+        if servers is None:
+            servers = {}
+            self._servers[target] = servers
+        servers[subscription_id] = server
+        server.attach(self._socket_connection.connection)
 
     def _resolve(self, target):
         """Return a link address for a given target."""
@@ -583,8 +591,9 @@ class Controller(pyngus.ConnectionEventHandler):
         LOG.debug("Connection active (%(hostname)s:%(port)s), subscribing...",
                   {'hostname': self.hosts.current.hostname,
                    'port': self.hosts.current.port})
-        for s in self._servers.values():
-            s.attach(self._socket_connection.connection)
+        for servers in self._servers.values():
+            for server in servers.values():
+                server.attach(self._socket_connection.connection)
         self._replies = Replies(self._socket_connection.connection,
                                 lambda: self._reply_link_ready())
         self._delay = 0

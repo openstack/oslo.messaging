@@ -47,6 +47,12 @@ CYRUS_ENABLED = (pyngus and pyngus.VERSION >= (2, 0, 0) and _proton
 LOG = logging.getLogger(__name__)
 
 
+def _wait_until(predicate, timeout):
+    deadline = timeout + time.time()
+    while not predicate() and deadline > time.time():
+        time.sleep(0.1)
+
+
 class _ListenerThread(threading.Thread):
     """Run a blocking listener in a thread."""
     def __init__(self, listener, msg_count):
@@ -55,10 +61,13 @@ class _ListenerThread(threading.Thread):
         self.msg_count = msg_count
         self.messages = moves.queue.Queue()
         self.daemon = True
+        self.started = threading.Event()
         self.start()
+        self.started.wait()
 
     def run(self):
         LOG.debug("Listener started")
+        self.started.set()
         while self.msg_count > 0:
             in_msg = self.listener.poll()[0]
             self.messages.put(in_msg)
@@ -515,12 +524,19 @@ class TestFailover(test_utils.BaseTestCase):
         target = oslo_messaging.Target(topic="my-topic")
         listener = _ListenerThread(driver.listen(target), 2)
 
+        # wait for listener links to come up
+        # 4 == 3 links per listener + 1 for the global reply queue
+        predicate = lambda: self._brokers[0].sender_link_count == 4
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         rc = driver.send(target, {"context": "whatever"},
                          {"method": "echo", "id": "echo-1"},
                          wait_for_reply=True,
                          timeout=30)
         self.assertIsNotNone(rc)
         self.assertEqual(rc.get('correlation-id'), 'echo-1')
+
         # 1 request msg, 1 response:
         self.assertEqual(self._brokers[0].topic_count, 1)
         self.assertEqual(self._brokers[0].direct_count, 1)
@@ -528,33 +544,79 @@ class TestFailover(test_utils.BaseTestCase):
         # fail broker 0 and start broker 1:
         self._brokers[0].stop()
         self._brokers[1].start()
-        deadline = time.time() + 30
-        responded = False
-        sequence = 2
-        while deadline > time.time() and not responded:
-            if not listener.isAlive():
-                # listener may have exited after replying to an old correlation
-                # id: restart new listener
-                listener = _ListenerThread(driver.listen(target), 1)
-            try:
-                rc = driver.send(target, {"context": "whatever"},
-                                 {"method": "echo",
-                                  "id": "echo-%d" % sequence},
-                                 wait_for_reply=True,
-                                 timeout=2)
-                self.assertIsNotNone(rc)
-                self.assertEqual(rc.get('correlation-id'),
-                                 'echo-%d' % sequence)
-                responded = True
-            except oslo_messaging.MessagingTimeout:
-                sequence += 1
 
-        self.assertTrue(responded)
+        # wait for listener links to re-establish
+        # 4 = 3 links per listener + 1 for the global reply queue
+        predicate = lambda: self._brokers[1].sender_link_count == 4
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        rc = driver.send(target,
+                         {"context": "whatever"},
+                         {"method": "echo", "id": "echo-2"},
+                         wait_for_reply=True,
+                         timeout=2)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'echo-2')
+
+        # 1 request msg, 1 response:
+        self.assertEqual(self._brokers[1].topic_count, 1)
+        self.assertEqual(self._brokers[1].direct_count, 1)
+
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
 
         # note: stopping the broker first tests cleaning up driver without a
         # connection active
+        self._brokers[1].stop()
+        driver.cleanup()
+
+    def test_listener_failover(self):
+        """Verify that Listeners are re-established after failover.
+        """
+        self._brokers[0].start()
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+
+        target = oslo_messaging.Target(topic="my-topic")
+        bcast = oslo_messaging.Target(topic="my-topic", fanout=True)
+        listener1 = _ListenerThread(driver.listen(target), 2)
+        listener2 = _ListenerThread(driver.listen(target), 2)
+
+        # wait for 7 sending links to become active on the broker.
+        # 7 = 3 links per Listener + 1 global reply link
+        predicate = lambda: self._brokers[0].sender_link_count == 7
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        driver.send(bcast, {"context": "whatever"},
+                    {"method": "ignore", "id": "echo-1"})
+
+        # 1 message per listener
+        predicate = lambda: self._brokers[0].fanout_sent_count == 2
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        # fail broker 0 and start broker 1:
+        self._brokers[0].stop()
+        self._brokers[1].start()
+
+        # wait again for 7 sending links to re-establish
+        predicate = lambda: self._brokers[1].sender_link_count == 7
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        driver.send(bcast, {"context": "whatever"},
+                    {"method": "ignore", "id": "echo-2"})
+
+        # 1 message per listener
+        predicate = lambda: self._brokers[1].fanout_sent_count == 2
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        listener1.join(timeout=30)
+        listener2.join(timeout=30)
+        self.assertFalse(listener1.isAlive() or listener2.isAlive())
+
         self._brokers[1].stop()
         driver.cleanup()
 
@@ -638,12 +700,16 @@ class FakeBroker(threading.Thread):
 
             # Pyngus ConnectionEventHandler callbacks:
 
+            def connection_active(self, connection):
+                self.server.connection_count += 1
+
             def connection_remote_closed(self, connection, reason):
                 """Peer has closed the connection."""
                 self.connection.close()
 
             def connection_closed(self, connection):
                 """Connection close completed."""
+                self.server.connection_count -= 1
                 self.closed = True  # main loop will destroy
 
             def connection_failed(self, connection, error):
@@ -712,6 +778,7 @@ class FakeBroker(threading.Thread):
             # Pyngus SenderEventHandler callbacks:
 
             def sender_active(self, sender_link):
+                self.server.sender_link_count += 1
                 self.server.add_route(self.link.source_address, self)
                 self.routed = True
 
@@ -720,6 +787,7 @@ class FakeBroker(threading.Thread):
                 self.link.close()
 
             def sender_closed(self, sender_link):
+                self.server.sender_link_count -= 1
                 self.destroy()
 
         class ReceiverLink(pyngus.ReceiverEventHandler):
@@ -746,10 +814,14 @@ class FakeBroker(threading.Thread):
 
             # ReceiverEventHandler callbacks:
 
+            def receiver_active(self, receiver_link):
+                self.server.receiver_link_count += 1
+
             def receiver_remote_closed(self, receiver_link, error):
                 self.link.close()
 
             def receiver_closed(self, receiver_link):
+                self.server.receiver_link_count -= 1
                 self.destroy()
 
             def message_received(self, receiver_link, message, handle):
@@ -795,7 +867,12 @@ class FakeBroker(threading.Thread):
         self.direct_count = 0
         self.topic_count = 0
         self.fanout_count = 0
+        self.fanout_sent_count = 0
         self.dropped_count = 0
+        # counts for active links and connections:
+        self.connection_count = 0
+        self.sender_link_count = 0
+        self.receiver_link_count = 0
 
     def start(self):
         """Start the server."""
@@ -907,6 +984,7 @@ class FakeBroker(threading.Thread):
         if dest.startswith(self._broadcast_prefix):
             self.fanout_count += 1
             for link in self._sources[dest]:
+                self.fanout_sent_count += 1
                 LOG.debug("Broadcast to %s", dest)
                 link.send_message(message)
         elif dest.startswith(self._group_prefix):
