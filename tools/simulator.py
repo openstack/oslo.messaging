@@ -14,6 +14,7 @@ import eventlet
 eventlet.monkey_patch()
 
 import argparse
+import bisect
 import collections
 import datetime
 import itertools
@@ -27,8 +28,6 @@ import threading
 import time
 import yaml
 
-from scipy.stats import rv_discrete
-
 from oslo_config import cfg
 import oslo_messaging as messaging
 from oslo_messaging import notify  # noqa
@@ -36,7 +35,7 @@ from oslo_messaging import rpc  # noqa
 from oslo_utils import timeutils
 
 LOG = logging.getLogger()
-RANDOM_VARIABLE = None
+RANDOM_GENERATOR = None
 CURRENT_PID = None
 RPC_CLIENTS = []
 MESSAGES = []
@@ -51,6 +50,8 @@ Usage example:
  --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-client\
  --exit-wait 15000 -p 64 -m 64"""
 
+DISTRIBUTION_BUCKET_SIZE = 500
+
 
 def init_random_generator():
     data = []
@@ -61,18 +62,26 @@ def init_random_generator():
 
     ranges = collections.defaultdict(int)
     for msg_length in data:
-        range_start = (msg_length / 500) * 500 + 1
+        range_start = ((msg_length / DISTRIBUTION_BUCKET_SIZE) *
+                       DISTRIBUTION_BUCKET_SIZE + 1)
         ranges[range_start] += 1
 
     ranges_start = sorted(ranges.keys())
     total_count = len(data)
-    ranges_dist = []
-    for r in ranges_start:
-        r_dist = float(ranges[r]) / total_count
-        ranges_dist.append(r_dist)
 
-    random_var = rv_discrete(values=(ranges_start, ranges_dist))
-    return random_var
+    accumulated_distribution = []
+    running_total = 0
+    for range_start in ranges_start:
+        norm = float(ranges[range_start]) / total_count
+        running_total += norm
+        accumulated_distribution.append(running_total)
+
+    def weighted_random_choice():
+        r = random.random() * running_total
+        start = ranges_start[bisect.bisect_right(accumulated_distribution, r)]
+        return random.randrange(start, start + DISTRIBUTION_BUCKET_SIZE)
+
+    return weighted_random_choice
 
 
 class LoggingNoParsingFilter(logging.Filter):
@@ -214,10 +223,9 @@ def init_msg(messages_count):
     if messages_count > 1000:
         messages_count = 1000
     LOG.info("Preparing %d messages", messages_count)
-    ranges = RANDOM_VARIABLE.rvs(size=messages_count)
-    i = 0
-    for range_start in ranges:
-        length = random.randint(range_start, range_start + 497)
+
+    for i in range(messages_count):
+        length = RANDOM_GENERATOR()
         msg = ''.join(random.choice(string.lowercase) for x in range(length)) \
               + ' ' + str(i)
         MESSAGES.append(msg)
@@ -472,6 +480,6 @@ def main():
 
 
 if __name__ == '__main__':
-    RANDOM_VARIABLE = init_random_generator()
+    RANDOM_GENERATOR = init_random_generator()
     CURRENT_PID = os.getpid()
     main()
