@@ -214,7 +214,7 @@ class PikaDriver(base.BaseDriver):
         )
 
         if target.fanout:
-            return self.cast_all_servers(
+            return self.cast_all_workers(
                 exchange, target.topic, ctxt, message, expiration_time,
                 retrier
             )
@@ -249,7 +249,7 @@ class PikaDriver(base.BaseDriver):
 
             return reply.result
 
-    def cast_all_servers(self, exchange, topic, ctxt, message, expiration_time,
+    def cast_all_workers(self, exchange, topic, ctxt, message, expiration_time,
                          retrier=None):
         msg = pika_drv_msg.PikaOutgoingMessage(self._pika_engine, message,
                                                ctxt)
@@ -257,7 +257,7 @@ class PikaDriver(base.BaseDriver):
             msg.send(
                 exchange=exchange,
                 routing_key=self._pika_engine.get_rpc_queue_name(
-                    topic, "all_servers", retrier is None
+                    topic, "all_workers", retrier is None
                 ),
                 mandatory=False,
                 expiration_time=expiration_time,

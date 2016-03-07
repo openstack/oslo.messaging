@@ -25,6 +25,8 @@ from pika import credentials as pika_credentials
 import pika_pool
 import six
 
+import uuid
+
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 LOG = logging.getLogger(__name__)
@@ -429,17 +431,21 @@ class PikaEngine(object):
         return exchange or self.default_rpc_exchange
 
     @staticmethod
-    def get_rpc_queue_name(topic, server, no_ack):
+    def get_rpc_queue_name(topic, server, no_ack, worker=False):
         """Returns RabbitMQ queue name for given rpc request
 
         :param topic: String, oslo.messaging target's topic
         :param server: String, oslo.messaging target's server
         :param no_ack: Boolean, use message delivery with acknowledges or not
+        :param worker: Boolean, use queue by single worker only or not
 
-        :return: String, RabbitMQ exchange name
+        :return: String, RabbitMQ queue name
         """
         queue_parts = ["no_ack" if no_ack else "with_ack", topic]
         if server is not None:
             queue_parts.append(server)
+        if worker:
+            queue_parts.append("worker")
+            queue_parts.append(uuid.uuid4().hex)
         queue = '.'.join(queue_parts)
         return queue
