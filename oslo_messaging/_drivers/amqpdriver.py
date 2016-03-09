@@ -78,12 +78,15 @@ class AMQPIncomingMessage(base.IncomingMessage):
         timer = rpc_common.DecayingTimer(duration=duration)
         timer.start()
 
+        first_reply_sent = False
         while True:
             try:
                 with self.listener.driver._get_connection(
                         rpc_amqp.PURPOSE_SEND) as conn:
-                    self._send_reply(conn, reply, failure,
-                                     log_failure=log_failure)
+                    if not first_reply_sent:
+                        self._send_reply(conn, reply, failure,
+                                         log_failure=log_failure)
+                        first_reply_sent = True
                     self._send_reply(conn, ending=True)
                 return
             except rpc_amqp.AMQPDestinationNotFound:
