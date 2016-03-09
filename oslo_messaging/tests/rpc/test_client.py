@@ -513,6 +513,9 @@ class TestCanSendVersion(test_utils.BaseTestCase):
 
         if self.can_send_version is not _notset:
             can_send = client.can_send_version(version=self.can_send_version)
+            call_context_can_send = client.prepare().can_send_version(
+                version=self.can_send_version)
+            self.assertEqual(can_send, call_context_can_send)
         else:
             can_send = client.can_send_version()
 
