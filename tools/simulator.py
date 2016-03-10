@@ -18,6 +18,7 @@ import bisect
 import collections
 import functools
 import itertools
+import json
 import logging
 import os
 import random
@@ -461,7 +462,7 @@ def _notify(notification_client, msg):
     notification_client.info({}, 'compute.start', msg)
 
 
-def show_server_stats(endpoint, args):
+def show_server_stats(endpoint, json_filename):
     LOG.info('=' * 35 + ' summary ' + '=' * 35)
     output = dict(series={}, summary={})
     output['series']['server'] = endpoint.received_messages.get_series()
@@ -469,8 +470,11 @@ def show_server_stats(endpoint, args):
         'server', endpoint.received_messages)
     output['summary'] = stats
 
+    if json_filename:
+        write_json_file(json_filename, output)
 
-def show_client_stats(clients, has_reply=False):
+
+def show_client_stats(clients, json_filename, has_reply=False):
     LOG.info('=' * 35 + ' summary ' + '=' * 35)
     output = dict(series={}, summary={})
 
@@ -490,6 +494,15 @@ def show_client_stats(clients, has_reply=False):
         round_trip_stats = MessageStatsCollector.calc_stats(
             'round-trip', *(cl.round_trip_messages for cl in clients))
         output['summary']['round_trip'] = round_trip_stats
+
+    if json_filename:
+        write_json_file(json_filename, output)
+
+
+def write_json_file(filename, output):
+    with open(filename, 'w') as f:
+        f.write(json.dumps(output))
+        LOG.info('Stats are written into %s', filename)
 
 
 def _setup_logging(is_debug):
@@ -525,6 +538,8 @@ def main():
                         help="Targets to publish/receive messages to/from.")
     parser.add_argument('-l', dest='duration', type=int,
                         help='send messages for certain time')
+    parser.add_argument('-j', '--json', dest='json_filename',
+                        help='File name to store results in JSON format')
     parser.add_argument('--config-file', dest='config_file', type=str,
                         help="Oslo messaging config file")
 
@@ -601,25 +616,25 @@ def main():
 
         endpoint = rpc_server(transport, target, args.wait_before_answer,
                               args.executor, args.duration)
-        show_server_stats(endpoint, args)
+        show_server_stats(endpoint, args.json_filename)
 
     elif args.mode == 'notify-server':
         endpoint = notify_server(transport, args.topic,
                                  args.wait_before_answer, args.duration,
                                  args.requeue)
-        show_server_stats(endpoint, args)
+        show_server_stats(endpoint, args.json_filename)
 
     elif args.mode == 'batch-notify-server':
         endpoint = batch_notify_server(transport, args.topic,
                                        args.wait_before_answer, args.duration,
                                        args.requeue)
-        show_server_stats(endpoint, args)
+        show_server_stats(endpoint, args.json_filename)
 
     elif args.mode == 'notify-client':
         spawn_notify_clients(args.threads, args.topic, transport,
                              args.messages, args.wait_after_msg, args.timeout,
                              args.duration)
-        show_client_stats(CLIENTS)
+        show_client_stats(CLIENTS, args.json_filename)
 
     elif args.mode == 'rpc-client':
         targets = [target.partition('.')[::2] for target in args.targets]
@@ -630,7 +645,7 @@ def main():
                           args.wait_after_msg, args.timeout, args.is_cast,
                           args.messages, args.duration)
 
-        show_client_stats(CLIENTS, not args.is_cast)
+        show_client_stats(CLIENTS, args.json_filename, not args.is_cast)
 
         if args.exit_wait:
             LOG.info("Finished. waiting for %d seconds", args.exit_wait)
