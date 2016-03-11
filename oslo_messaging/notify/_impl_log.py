@@ -40,7 +40,6 @@ class LogDriver(notifier.Driver):
                                               message['event_type']))
         method = getattr(logger, priority.lower(), None)
         if method:
-            # NOTE: The logger needs json formatted string instead of bytes
             method(jsonutils.dumps(strutils.mask_dict_password(message)))
         else:
             warnings.warn('Unable to log message as notify cannot find a '

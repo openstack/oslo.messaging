@@ -293,7 +293,7 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
             'kwargs': self.kwargs,
         }
 
-        serialized = jsonutils.dump_as_bytes(failure)
+        serialized = jsonutils.dumps(failure)
 
         ex = exceptions.deserialize_remote_exception(serialized, self.allowed)
 
