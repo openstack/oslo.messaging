@@ -14,6 +14,7 @@
 #    under the License.
 
 import abc
+import time
 
 from oslo_config import cfg
 from oslo_utils import timeutils
@@ -51,6 +52,7 @@ def batch_poll_helper(func):
                 else:
                     # timeout reached or listener stopped
                     break
+                time.sleep(0)
         return incomings
     return wrapper
 
