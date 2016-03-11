@@ -145,7 +145,7 @@ class TestKafkaConnection(test_utils.BaseTestCase):
 
         conn.consumer = mock.MagicMock()
         conn.consumer.fetch_messages = mock.MagicMock(
-            return_value=iter([jsonutils.dumps(fake_message)]))
+            return_value=iter([jsonutils.dump_as_bytes(fake_message)]))
 
         self.assertEqual(fake_message, jsonutils.loads(conn.consume()[0]))
         self.assertEqual(1, len(conn.consumer.fetch_messages.mock_calls))

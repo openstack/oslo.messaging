@@ -197,13 +197,13 @@ def serialize_remote_exception(failure_info, log_failure=True):
         'kwargs': kwargs
     }
 
-    json_data = jsonutils.dumps(data)
+    json_data = jsonutils.dump_as_bytes(data)
 
     return json_data
 
 
 def deserialize_remote_exception(data, allowed_remote_exmods):
-    failure = jsonutils.loads(six.text_type(data))
+    failure = jsonutils.loads(data)
 
     trace = failure.get('tb', [])
     message = failure.get('message', "") + "\n" + "\n".join(trace)
@@ -284,7 +284,7 @@ def serialize_msg(raw_msg):
     # NOTE(russellb) See the docstring for _RPC_ENVELOPE_VERSION for more
     # information about this format.
     msg = {_VERSION_KEY: _RPC_ENVELOPE_VERSION,
-           _MESSAGE_KEY: jsonutils.dumps(raw_msg)}
+           _MESSAGE_KEY: jsonutils.dump_as_bytes(raw_msg)}
 
     return msg
 
