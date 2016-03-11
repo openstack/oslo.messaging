@@ -126,7 +126,7 @@ class Connection(object):
     def _send_and_retry(self, message, topic, retry):
         current_retry = 0
         if not isinstance(message, str):
-            message = jsonutils.dump_as_bytes(message)
+            message = jsonutils.dumps(message)
         while message is not None:
             try:
                 self._send(message, topic)
