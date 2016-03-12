@@ -195,11 +195,11 @@ class PikaDriver(base.BaseDriver):
                     self._declare_rpc_exchange(exchange,
                                                expiration_time - time.time())
                 except pika_drv_exc.ConnectionException as e:
-                    LOG.warn("Problem during declaring exchange. %", e)
+                    LOG.warning("Problem during declaring exchange. %", e)
                 return True
             elif isinstance(ex, (pika_drv_exc.ConnectionException,
                                  exceptions.MessageDeliveryFailure)):
-                LOG.warn("Problem during message sending. %s", ex)
+                LOG.warning("Problem during message sending. %s", ex)
                 return True
             else:
                 return False
@@ -240,7 +240,7 @@ class PikaDriver(base.BaseDriver):
                 self._declare_rpc_exchange(exchange,
                                            expiration_time - time.time())
             except pika_drv_exc.ConnectionException as e:
-                LOG.warn("Problem during declaring exchange. %", e)
+                LOG.warning("Problem during declaring exchange. %", e)
             raise ex
 
         if reply is not None:
@@ -269,7 +269,7 @@ class PikaDriver(base.BaseDriver):
                     exchange, expiration_time - time.time()
                 )
             except pika_drv_exc.ConnectionException as e:
-                LOG.warn("Problem during declaring exchange. %", e)
+                LOG.warning("Problem during declaring exchange. %", e)
 
     def _declare_notification_queue_binding(self, target, timeout=None):
         if timeout is not None and timeout < 0:
@@ -303,16 +303,16 @@ class PikaDriver(base.BaseDriver):
         def on_exception(ex):
             if isinstance(ex, (pika_drv_exc.ExchangeNotFoundException,
                                pika_drv_exc.RoutingException)):
-                LOG.warn("Problem during sending notification. %", ex)
+                LOG.warning("Problem during sending notification. %", ex)
                 try:
                     self._declare_notification_queue_binding(target)
                 except pika_drv_exc.ConnectionException as e:
-                    LOG.warn("Problem during declaring notification queue "
-                             "binding. %", e)
+                    LOG.warning("Problem during declaring notification queue "
+                                "binding. %", e)
                 return True
             elif isinstance(ex, (pika_drv_exc.ConnectionException,
                                  pika_drv_exc.MessageRejectedException)):
-                LOG.warn("Problem during sending notification. %", ex)
+                LOG.warning("Problem during sending notification. %", ex)
                 return True
             else:
                 return False

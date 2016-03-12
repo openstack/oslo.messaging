@@ -270,9 +270,9 @@ class PikaEngine(object):
                     pika_next_connection_num, for_listening
                 )
             except pika_pool.Connection.connectivity_errors as e:
-                LOG.warn("Can't establish connection to host. %s", e)
+                LOG.warning("Can't establish connection to host. %s", e)
             except pika_drv_exc.HostConnectionNotAllowedException as e:
-                LOG.warn("Connection to host is not allowed. %s", e)
+                LOG.warning("Connection to host is not allowed. %s", e)
 
             connection_attempts -= 1
             pika_next_connection_num += 1
@@ -292,7 +292,7 @@ class PikaEngine(object):
                 int(self._tcp_user_timeout * 1000)
             )
         except socket.error:
-            LOG.warn(
+            LOG.warning(
                 "Whoops, this kernel doesn't seem to support TCP_USER_TIMEOUT."
             )
 

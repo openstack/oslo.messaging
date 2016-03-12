@@ -195,7 +195,7 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
 
         def on_exception(ex):
             if isinstance(ex, pika_drv_exc.ConnectionException):
-                LOG.warn(
+                LOG.warning(
                     "Connectivity related problem during reply sending. %s",
                     ex
                 )
@@ -276,7 +276,7 @@ class RpcReplyPikaIncomingMessage(PikaIncomingMessage):
 
                     res_exc = ex_type(module_name, class_name, message, trace)
                 except ImportError as e:
-                    LOG.warn(
+                    LOG.warning(
                         "Can not deserialize remote exception [module:%s, "
                         "class:%s]. %s", module_name, class_name, e
                     )
