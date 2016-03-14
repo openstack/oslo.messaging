@@ -323,16 +323,24 @@ class RpcServicePikaPoller(PikaPoller):
                     queue=server_queue, routing_key=server_queue,
                     exchange_type='direct', queue_expiration=queue_expiration
                 )
-                all_servers_routing_key = self._pika_engine.get_rpc_queue_name(
-                    self._target.topic, "all_servers", no_ack
+                queues_to_consume.append(
+                    {"queue_name": server_queue, "no_ack": no_ack,
+                     "consumer_tag": None}
+                )
+
+                worker_queue = self._pika_engine.get_rpc_queue_name(
+                    self._target.topic, self._target.server, no_ack, True
+                )
+                all_workers_routing_key = self._pika_engine.get_rpc_queue_name(
+                    self._target.topic, "all_workers", no_ack
                 )
                 self._pika_engine.declare_queue_binding_by_channel(
                     channel=self._channel, exchange=exchange, durable=False,
-                    queue=server_queue, routing_key=all_servers_routing_key,
+                    queue=worker_queue, routing_key=all_workers_routing_key,
                     exchange_type='direct', queue_expiration=queue_expiration
                 )
                 queues_to_consume.append(
-                    {"queue_name": server_queue, "no_ack": no_ack,
+                    {"queue_name": worker_queue, "no_ack": no_ack,
                      "consumer_tag": None}
                 )
 

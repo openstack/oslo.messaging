@@ -228,9 +228,8 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
         )
 
         self._pika_engine.get_rpc_queue_name.side_effect = (
-            lambda topic, server, no_ack: "_".join(
-                [topic, str(server), str(no_ack)]
-            )
+            lambda topic, server, no_ack, worker=False:
+                "_".join([topic, str(server), str(no_ack), str(worker)])
         )
 
         self._pika_engine.get_rpc_exchange_name.side_effect = (
@@ -277,49 +276,49 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
                 channel=self._poller_channel_mock, durable=False,
                 exchange="exchange",
                 exchange_type='direct',
-                queue="topic_None_True",
+                queue="topic_None_True_False",
                 queue_expiration=12345,
-                routing_key="topic_None_True"
+                routing_key="topic_None_True_False"
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
                 exchange="exchange",
                 exchange_type='direct',
-                queue="topic_server_True",
+                queue="topic_server_True_False",
                 queue_expiration=12345,
-                routing_key="topic_server_True"
+                routing_key="topic_server_True_False"
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
                 exchange="exchange",
                 exchange_type='direct',
-                queue="topic_server_True",
+                queue="topic_server_True_True",
                 queue_expiration=12345,
-                routing_key="topic_all_servers_True"
+                routing_key="topic_all_workers_True_False"
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
                 exchange="exchange",
                 exchange_type='direct',
-                queue="topic_None_False",
+                queue="topic_None_False_False",
                 queue_expiration=12345,
-                routing_key="topic_None_False"
+                routing_key="topic_None_False_False"
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
                 exchange="exchange",
                 exchange_type='direct',
-                queue="topic_server_False",
+                queue="topic_server_False_False",
                 queue_expiration=12345,
-                routing_key='topic_server_False'
+                routing_key='topic_server_False_False'
             ),
             mock.call(
                 channel=self._poller_channel_mock, durable=False,
                 exchange="exchange",
                 exchange_type='direct',
-                queue="topic_server_False",
+                queue="topic_server_False_True",
                 queue_expiration=12345,
-                routing_key='topic_all_servers_False'
+                routing_key='topic_all_workers_False_False'
             )
         ))
 
