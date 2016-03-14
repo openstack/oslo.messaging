@@ -158,7 +158,7 @@ rabbit_opts = [
                 """'{"ha-mode": "all"}' \""""),
     cfg.IntOpt('rabbit_transient_queues_ttl',
                min=1,
-               default=600,
+               default=1800,
                help='Positive integer representing duration in seconds for '
                     'queue TTL (x-expires). Queues which are unused for the '
                     'duration of the TTL are automatically deleted. The '
