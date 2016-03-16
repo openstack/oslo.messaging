@@ -25,14 +25,18 @@ functions scheduled by the Controller.
 """
 
 import abc
+import collections
 import logging
 import random
 import threading
+import time
 import uuid
 
 from oslo_config import cfg
 import proton
 import pyngus
+from six import iteritems
+from six import itervalues
 from six import moves
 
 from oslo_messaging._drivers.amqp1_driver import eventloop
@@ -52,55 +56,250 @@ class Task(object):
 
 
 class Sender(pyngus.SenderEventHandler):
-    """A single outgoing link to a given address"""
-    def __init__(self, address):
+    """A link for sending to a particular address on the message bus.  All send
+    and reply tasks that need to send a message to this address share this
+    link.
+    """
+
+    class _SendRequest(object):
+        """Request to send a single message"""
+        def __init__(self, message, result_queue=None, reply_expected=False,
+                     deadline=None, retry=None):
+            self.message = message
+            self.result_queue = result_queue
+            self.reply_expected = reply_expected
+            self.retry = retry
+            self.deadline = deadline
+
+    def __init__(self, address, scheduler, delay, kind="RPC_Caller"):
+        super(Sender, self).__init__()
         self._address = address
         self._link = None
+        self._name = "%s-%s:src=%s:tgt=%s" % (kind, uuid.uuid4().hex,
+                                              address, address)
+        self._scheduler = scheduler
+        self._delay = delay  # for re-connecting
+        # holds all pending _SendRequests
+        self._pending_sends = collections.deque()
+        # holds all messages sent but not yet acked
+        self._unacked = set()
+        self._reply_link = None
+        self._connection = None
 
-    def attach(self, connection):
-        # open a link to the destination
-        sname = "Producer-%s:src=%s:tgt=%s" % (uuid.uuid4().hex,
-                                               self._address,
-                                               self._address)
-        self._link = connection.create_sender(name=sname,
-                                              source_address=self._address,
-                                              target_address=self._address)
-        self._link.open()
+    @property
+    def pending_messages(self):
+        return len(self._pending_sends)
+
+    def attach(self, connection, reply_link):
+        """Open the link. Called by the Controller when the AMQP connection
+        becomes active.
+        """
+        LOG.debug("Sender %s attached", self._address)
+        self._connection = connection
+        self._reply_link = reply_link
+        self._link = self._open_link()
 
     def detach(self):
-        # close the link
+        """Close the link.  Called by the controller when shutting down or in
+        response to a close requested by the remote.  May be re-attached later
+        (after a reset is done)
+        """
+        self._connection = None
+        self._reply_link = None
         if self._link:
             self._link.close()
 
-    def destroy(self):
-        # drop reference to link. The link will be freed when the
-        # connection is destroyed
-        self._link = None
+    def reset(self):
+        """Called by the controller on connection failover. Release all link
+        resources, abort any in-flight messages, and check the retry limit on
+        all pending send requests.
+        """
+        self._connection = None
+        self._reply_link = None
+        if self._link:
+            self._link.destroy()
+            self._link = None
+        self._abort_unacked("Link reset")
+        self._check_retry_limit()
 
-    def send(self, message, callback):
-        # send message out the link, invoke callback when acked
-        self._link.send(message, delivery_callback=callback)
+    def destroy(self):
+        """Destroy the sender and all pending messages.  Called on driver
+        shutdown.
+        """
+        self.reset()
+        self._abort_pending("Link destroyed")
+
+    def send_message(self, message, result_queue=None, reply_expected=False,
+                     deadline=None, retry=None):
+        """Queue a message to be sent out the link.  The status of the send
+        operation will be put on the result_queue."
+        """
+        LOG.debug("sender sending msg to %s", self._address)
+        message.address = self._address
+        send_req = Sender._SendRequest(message, result_queue, reply_expected,
+                                       deadline, retry)
+
+        if not self._can_send:
+            self._pending_sends.append(send_req)
+        elif self._pending_sends:
+            self._pending_sends.append(send_req)
+            self._send_pending()
+        else:
+            self._send(send_req)
+
+    # Pyngus callbacks:
+
+    def sender_active(self, sender_link):
+        LOG.debug("sender %s active", self._address)
+        self._send_pending()
+
+    def credit_granted(self, sender_link):
+        LOG.debug("sender %s credit granted", self._address)
+        self._send_pending()
 
     def sender_remote_closed(self, sender_link, pn_condition):
-        LOG.debug("sender_remote_closed condition=%s", pn_condition)
-        sender_link.close()
+        # The remote has initiated a close.  This could happen when the message
+        # bus is shutting down, or it detected an error
+        LOG.warning(_LW("sender %(addr)s failed due to remote initiated close:"
+                        " condition=%(cond)s"),
+                    {'addr': self._address, 'cond': pn_condition})
+        self._link.close()
+        # sender_closed() will be called once the link completes closing
+
+    def sender_closed(self, sender_link):
+        LOG.debug("sender %s closed", self._address)
+        self._abort_unacked("Sender closed")
+        if self._connection:
+            # still attached, so attempt to restart the link
+            self._check_retry_limit()
+            self._scheduler.schedule(self._reopen_link, self._delay)
 
     def sender_failed(self, sender_link, error):
         """Protocol error occurred."""
-        LOG.error(_LE("Outgoing link to %(addr) failed. error=%(error)"),
-                  {"addr": self._address, "error": error})
+        LOG.warning(_LW("sender %(addr)s failed error=%(error)s"),
+                    {'addr': self._address, 'error': error})
+        self.sender_closed(sender_link)
+
+    def _check_retry_limit(self):
+        # Called on recoverable connection or link failure.  Remove any pending
+        # sends that have exhausted their retry count:
+        expired = set()
+        for pending in self._pending_sends:
+            if pending.retry is not None:
+                pending.retry -= 1
+                if pending.retry <= 0:
+                    expired.add(pending)
+                    if pending.result_queue:
+                        msg = "Message send failed: retries exhausted"
+                        exc = exceptions.MessageDeliveryFailure(msg)
+                        result = {"status": "ERROR", "error": exc}
+                        pending.result_queue.put(result)
+        while expired:
+            self._pending_sends.remove(expired.pop())
+
+    def _abort_unacked(self, error):
+        # fail all messages that have been sent to the message bus and have not
+        # been acked yet
+        while self._unacked:
+            send_req = self._unacked.pop()
+            if send_req.reply_expected and self._reply_link:
+                # only in-flight messages have reply_link entries
+                self._reply_link.cancel_response(send_req.message.id)
+            if send_req.result_queue:
+                msg = "Message send failed: %s"
+                exc = exceptions.MessageDeliveryFailure(msg % error)
+                result = {"status": "ERROR", "error": exc}
+                send_req.result_queue.put(result)
+
+    def _abort_pending(self, error):
+        # fail all messages that have yet to be sent to the message bus
+        while self._pending_sends:
+            pending = self._pending_sends.popleft()
+            if pending.result_queue:
+                msg = "Message send failed: %s"
+                exc = exceptions.MessageDeliveryFailure(msg)
+                result = {"status": "ERROR", "error": exc}
+                pending.result_queue.put(result)
+
+    @property
+    def _can_send(self):
+        return (self._link is not None and
+                self._link.active and
+                self._link.credit > 0)
+
+    def _send(self, send_req):
+        if send_req.deadline and send_req.deadline <= time.time():
+            # simply drop - client has already timed out
+            return
+        if send_req.reply_expected:
+            # add correlation id
+            rl = self._reply_link
+            msg_id = rl.prepare_for_response(send_req.message,
+                                             send_req.result_queue)
+
+        def _callback(link, handle, state, info):
+            # invoked when the message bus acknowledges this message
+            if send_req in self._unacked:
+                self._unacked.remove(send_req)
+                if state == pyngus.SenderLink.ACCEPTED:  # message received
+                    LOG.debug("sender msg sent to %s acked", self._address)
+                    if send_req.result_queue and not send_req.reply_expected:
+                        # can wake up the sender now since we are not going
+                        # to wait for an RPC response
+                        result = {"status": "OK"}
+                        send_req.result_queue.put(result)
+                else:
+                    # nacked:
+                    LOG.debug("sender msg sent to %s NACKED", self._address)
+                    if send_req.reply_expected and self._reply_link:
+                        # no response will be received, so cancel the
+                        # correlation map entry
+                        self._reply_link.cancel_response(msg_id)
+                    if send_req.result_queue:
+                        msg = ("Message send failed:"
+                               " remote disposition: %s, info: %s" % (state,
+                                                                      info))
+                        exc = exceptions.MessageDeliveryFailure(msg)
+                        result = {"status": "ERROR", "error": exc}
+                        send_req.result_queue.put(result)
+
+        self._unacked.add(send_req)
+        self._link.send(send_req.message,
+                        delivery_callback=_callback,
+                        handle=self,
+                        deadline=send_req.deadline)
+        LOG.debug("sender msg sent to %s", self._address)
+
+    def _send_pending(self):
+        # send as many pending messages as there is credit available
+        while self._pending_sends and self._can_send:
+            self._send(self._pending_sends.popleft())
+
+    def _open_link(self):
+        link = self._connection.create_sender(name=self._name,
+                                              source_address=self._address,
+                                              target_address=self._address,
+                                              event_handler=self)
+        link.open()
+        return link
+
+    def _reopen_link(self):
+        if self._connection:
+            if self._link:
+                self._link.destroy()
+            self._link = self._open_link()
 
 
 class Replies(pyngus.ReceiverEventHandler):
-    """This is the receiving link for all reply messages.  Messages are routed
-    to the proper Listener's incoming queue using the correlation-id header in
-    the message.
+    """This is the receiving link for all RPC reply messages.  Messages are
+    routed to the proper incoming queue using the correlation-id header in the
+    message.
     """
-    def __init__(self, connection, on_ready):
+    def __init__(self, connection, on_ready, on_down):
         self._correlation = {}  # map of correlation-id to response queue
-        self._ready = False
         self._on_ready = on_ready
-        rname = "Consumer-%s:src=[dynamic]:tgt=replies" % uuid.uuid4().hex
+        self._on_down = on_down
+        rname = "RPC_Response-%s:src=[dynamic]:tgt=replies" % uuid.uuid4().hex
         self._receiver = connection.create_receiver("replies",
                                                     event_handler=self,
                                                     name=rname)
@@ -116,15 +315,14 @@ class Replies(pyngus.ReceiverEventHandler):
 
     def detach(self):
         # close the link
-        self._receiver.close()
+        if self._receiver:
+            self._receiver.close()
 
     def destroy(self):
-        # drop reference to link. Link will be freed when the connection is
-        # released.
-        self._receiver = None
-
-    def ready(self):
-        return self._ready
+        self._correlation = None
+        if self._receiver:
+            self._receiver.destroy()
+            self._receiver = None
 
     def prepare_for_response(self, request, reply_queue):
         """Apply a unique message identifier to this request message. This will
@@ -142,11 +340,15 @@ class Replies(pyngus.ReceiverEventHandler):
         return request.id
 
     def cancel_response(self, msg_id):
-        """Abort waiting for a response message.  This can be used if the
-        request fails and no reply is expected.
+        """Abort waiting for the response message corresponding to msg_id.
+        This can be used if the request fails and no reply is expected.
         """
         if msg_id in self._correlation:
             del self._correlation[msg_id]
+
+    @property
+    def active(self):
+        return self._receiver and self._receiver.active
 
     # Pyngus ReceiverLink event callbacks:
 
@@ -155,18 +357,14 @@ class Replies(pyngus.ReceiverEventHandler):
         has transitioned to the open state and is able to receive incoming
         messages.
         """
-        self._ready = True
+        LOG.debug("Replies link active src=%s", self._receiver.source_address)
         self._update_credit()
         self._on_ready()
-        LOG.debug("Replies expected on link %s",
-                  self._receiver.source_address)
 
     def receiver_remote_closed(self, receiver, pn_condition):
         """This is a Pyngus callback, invoked by Pyngus when the peer of this
         receiver link has initiated closing the connection.
         """
-        # TODO(kgiusti)  Log for now, possibly implement a recovery strategy if
-        # necessary.
         if pn_condition:
             LOG.error(_LE("Reply subscription closed by peer: %s"),
                       pn_condition)
@@ -174,8 +372,12 @@ class Replies(pyngus.ReceiverEventHandler):
 
     def receiver_failed(self, receiver_link, error):
         """Protocol error occurred."""
-        LOG.error(_LE("Link to reply queue %(addr) failed. error=%(error)"),
-                  {"addr": self._address, "error": error})
+        LOG.error(_LE("Link to reply queue failed. error=%(error)s"),
+                  {"error": error})
+        self._on_down()
+
+    def receiver_closed(self, receiver_link):
+        self._on_down()
 
     def message_received(self, receiver, message, handle):
         """This is a Pyngus callback, invoked by Pyngus when a new message
@@ -210,36 +412,30 @@ class Server(pyngus.ReceiverEventHandler):
     from a given target.  Messages arriving on the links are placed on the
     'incoming' queue.
     """
-    def __init__(self, addresses, incoming, subscription_id):
+    def __init__(self, addresses, incoming, subscription_id, scheduler, delay):
         self._incoming = incoming
         self._addresses = addresses
         self._capacity = 500   # credit per link
         self._receivers = []
         self._id = subscription_id
+        self._scheduler = scheduler
+        self._delay = delay  # for link re-attach
+        self._connection = None
+        self._reopen_scheduled = False
 
     def attach(self, connection):
         """Create receiver links over the given connection for all the
         configured addresses.
         """
+        self._connection = connection
         for a in self._addresses:
-            props = {"snd-settle-mode": "settled"}
-            rname = "Consumer-%s:src=%s:tgt=%s" % (uuid.uuid4().hex, a, a)
-            r = connection.create_receiver(source_address=a,
-                                           target_address=a,
-                                           event_handler=self,
-                                           name=rname,
-                                           properties=props)
-
-            # TODO(kgiusti) Hardcoding credit here is sub-optimal.  A better
-            # approach would monitor for a back-up of inbound messages to be
-            # processed by the consuming application and backpressure the
-            # sender based on configured thresholds.
-            r.add_capacity(self._capacity)
-            r.open()
+            name = "Listener-%s:src=%s:tgt=%s" % (uuid.uuid4().hex, a, a)
+            r = self._open_link(a, name)
             self._receivers.append(r)
 
     def detach(self):
-        # close the links
+        """Attempt a clean shutdown of the links"""
+        self._connection = None
         for receiver in self._receivers:
             receiver.close()
 
@@ -247,16 +443,21 @@ class Server(pyngus.ReceiverEventHandler):
         # destroy the links, but keep the addresses around since we may be
         # failing over.  Since links are destroyed, this cannot be called from
         # any of the following ReceiverLink callbacks.
+        self._connection = None
+        self._reopen_scheduled = False
         for r in self._receivers:
             r.destroy()
         self._receivers = []
 
-    # Pyngus ReceiverLink event callbacks:
+    # Pyngus ReceiverLink event callbacks.  Note that all of the Server's links
+    # share this handler
 
     def receiver_remote_closed(self, receiver, pn_condition):
         """This is a Pyngus callback, invoked by Pyngus when the peer of this
         receiver link has initiated closing the connection.
         """
+        LOG.debug("Server subscription to %s remote detach",
+                  receiver.source_address)
         if pn_condition:
             vals = {
                 "addr": receiver.source_address or receiver.target_address,
@@ -268,8 +469,18 @@ class Server(pyngus.ReceiverEventHandler):
 
     def receiver_failed(self, receiver_link, error):
         """Protocol error occurred."""
-        LOG.error(_LE("Listener link queue %(addr) failed. error=%(error)"),
-                  {"addr": self._address, "error": error})
+        LOG.error(_LE("Listener link queue failed. error=%(error)s"),
+                  {"error": error})
+        self.receiver_closed(receiver_link)
+
+    def receiver_closed(self, receiver_link):
+        LOG.debug("Server subscription to %s closed",
+                  receiver_link.source_address)
+        # If still attached, attempt to re-start link
+        if self._connection and not self._reopen_scheduled:
+            LOG.debug("Server subscription reopen scheduled")
+            self._reopen_scheduled = True
+            self._scheduler.schedule(self._reopen_links, self._delay)
 
     def message_received(self, receiver, message, handle):
         """This is a Pyngus callback, invoked by Pyngus when a new message
@@ -280,6 +491,35 @@ class Server(pyngus.ReceiverEventHandler):
         self._incoming.put(message)
         LOG.debug("message received: %s", message)
         receiver.message_accepted(handle)
+
+    def _open_link(self, address, name):
+        props = {"snd-settle-mode": "settled"}
+        r = self._connection.create_receiver(source_address=address,
+                                             target_address=address,
+                                             event_handler=self,
+                                             name=name,
+                                             properties=props)
+
+        # TODO(kgiusti) Hardcoding credit here is sub-optimal.  A better
+        # approach would monitor for a back-up of inbound messages to be
+        # processed by the consuming application and backpressure the
+        # sender based on configured thresholds.
+        r.add_capacity(self._capacity)
+        r.open()
+        return r
+
+    def _reopen_links(self):
+        # attempt to re-establish any closed links
+        LOG.debug("Server subscription reopening")
+        self._reopen_scheduled = False
+        if self._connection:
+            for i in range(len(self._receivers)):
+                link = self._receivers[i]
+                if link.closed:
+                    addr = link.target_address
+                    name = link.name
+                    link.destroy()
+                    self._receivers[i] = self._open_link(addr, name)
 
 
 class Hosts(object):
@@ -327,14 +567,13 @@ class Controller(pyngus.ConnectionEventHandler):
     def __init__(self, hosts, default_exchange, config):
         self.processor = None
         self._socket_connection = None
-        # queue of Task() objects to execute on the eventloop once the
-        # connection is ready:
+        # queue of drivertask objects to execute on the eventloop thread
         self._tasks = moves.queue.Queue(maxsize=500)
         # limit the number of Task()'s to execute per call to _process_tasks().
         # This allows the eventloop main thread to return to servicing socket
         # I/O in a timely manner
         self._max_task_batch = 50
-        # cache of sending links indexed by address:
+        # cache of Sender links indexed by address:
         self._senders = {}
         # Servers indexed by target. Each entry is a map indexed by the
         # specific ProtonListener's identifier:
@@ -364,19 +603,30 @@ class Controller(pyngus.ConnectionEventHandler):
         self.sasl_config_name = config.oslo_messaging_amqp.sasl_config_name
         self.hosts = Hosts(hosts, config.oslo_messaging_amqp.username,
                            config.oslo_messaging_amqp.password)
+        self.conn_retry_interval = \
+            config.oslo_messaging_amqp.connection_retry_interval
+        self.conn_retry_backoff = \
+            config.oslo_messaging_amqp.connection_retry_backoff
+        self.conn_retry_interval_max = \
+            config.oslo_messaging_amqp.connection_retry_interval_max
+        self.link_retry_delay = config.oslo_messaging_amqp.link_retry_delay
+        self.max_send_retries = config.oslo_messaging_amqp.max_send_retries
+        if self.max_send_retries <= 0:
+            self.max_send_retries = None  # None or 0 == forever, like rabbit
+
         self.separator = "."
         self.fanout_qualifier = "all"
         self.default_exchange = default_exchange
 
-        # can't handle a request until the replies link is active, as
-        # we need the peer assigned address, so need to delay any
-        # processing of task queue until this is done
-        self._replies = None
+        # cannot send an RPC request until the replies link is active, as we
+        # need the peer assigned address, so need to delay sending any RPC
+        # requests until this link is active:
+        self.reply_link = None
         # Set True when the driver is shutting down
         self._closing = False
         # only schedule one outstanding reconnect attempt at a time
         self._reconnecting = False
-        self._delay = 0  # seconds between retries
+        self._delay = 1  # seconds between retries
         # prevent queuing up multiple requests to run _process_tasks()
         self._process_tasks_scheduled = False
         self._process_tasks_lock = threading.Lock()
@@ -391,14 +641,18 @@ class Controller(pyngus.ConnectionEventHandler):
         self._tasks.put(task)
         self._schedule_task_processing()
 
-    def shutdown(self, timeout=None):
+    def shutdown(self, timeout=30):
         """Shutdown the messaging service."""
         LOG.info(_LI("Shutting down the AMQP 1.0 connection"))
         if self.processor:
-            self.processor.wakeup(lambda: self._start_shutdown())
+            self.processor.wakeup(self._start_shutdown)
             LOG.debug("Waiting for eventloop to exit")
             self.processor.join(timeout)
             self._hard_reset()
+            for sender in itervalues(self._senders):
+                sender.destroy()
+            self._senders.clear()
+            self._servers.clear()
             self.processor.destroy()
             self.processor = None
         LOG.debug("Eventloop exited, driver shut down")
@@ -408,44 +662,42 @@ class Controller(pyngus.ConnectionEventHandler):
 
     # methods executed by Tasks created by the driver:
 
-    def request(self, target, request, result_queue, reply_expected=False):
-        """Send a request message to the given target and arrange for a
+    def request(self, target, request, result_queue, reply_expected, deadline,
+                retry):
+        """Send an RPC request message to the given target and arrange for a
         result to be put on the result_queue. If reply_expected, the result
         will include the reply message (if successful).
         """
+        if retry is None or retry < 0:
+            retry = self.max_send_retries
         address = self._resolve(target)
         LOG.debug("Sending request for %(target)s to %(address)s",
                   {'target': target, 'address': address})
-        if reply_expected:
-            msg_id = self._replies.prepare_for_response(request, result_queue)
-
-        def _callback(link, handle, state, info):
-            if state == pyngus.SenderLink.ACCEPTED:  # message received
-                if not reply_expected:
-                    # can wake up the sender now
-                    result = {"status": "OK"}
-                    result_queue.put(result)
-                else:
-                    # we will wake up the sender when the reply message is
-                    # received.  See Replies.message_received()
-                    pass
-            else:  # send failed/rejected/etc
-                msg = "Message send failed: remote disposition: %s, info: %s"
-                exc = exceptions.MessageDeliveryFailure(msg % (state, info))
-                result = {"status": "ERROR", "error": exc}
-                if reply_expected:
-                    # no response will be received, so cancel the correlation
-                    self._replies.cancel_response(msg_id)
-                result_queue.put(result)
-        self._send(address, request, _callback)
+        sender = self._senders.get(address)
+        if not sender:
+            sender = Sender(address, self.processor, self.link_retry_delay)
+            self._senders[address] = sender
+            if self.reply_link and self.reply_link.active:
+                sender.attach(self._socket_connection.connection,
+                              self.reply_link)
+        sender.send_message(request, result_queue, reply_expected,
+                            deadline, retry)
 
     def response(self, address, response):
-        """Send a response message to the client listening on 'address'.
+        """Send an RPC response message to the client listening on 'address'.
         To prevent a misbehaving client from blocking a server indefinitely,
         the message is send asynchronously.
         """
         LOG.debug("Sending response to %s", address)
-        self._send(address, response)
+        sender = self._senders.get(address)
+        if not sender:
+            sender = Sender(address, self.processor, self.link_retry_delay,
+                            kind="RPC_Replier")
+            self._senders[address] = sender
+            if self.reply_link and self.reply_link.active:
+                sender.attach(self._socket_connection.connection,
+                              self.reply_link)
+        sender.send_message(message=response, retry=self.max_send_retries)
 
     def subscribe(self, target, in_queue, subscription_id):
         """Subscribe to messages sent to 'target', place received messages on
@@ -468,13 +720,16 @@ class Controller(pyngus.ConnectionEventHandler):
     def _subscribe(self, target, addresses, in_queue, subscription_id):
         LOG.debug("Subscribing to %(target)s (%(addresses)s)",
                   {'target': target, 'addresses': addresses})
-        server = Server(addresses, in_queue, subscription_id)
+        server = Server(addresses, in_queue, subscription_id,
+                        self.processor,
+                        self.link_retry_delay)
         servers = self._servers.get(target)
         if servers is None:
             servers = {}
             self._servers[target] = servers
         servers[subscription_id] = server
-        server.attach(self._socket_connection.connection)
+        if self._active:
+            server.attach(self._socket_connection.connection)
 
     def _resolve(self, target):
         """Return a link address for a given target."""
@@ -484,25 +739,6 @@ class Controller(pyngus.ConnectionEventHandler):
             return self._server_address(target)
         else:
             return self._group_request_address(target)
-
-    def _sender(self, address):
-        # if we already have a sender for that address, use it
-        # else establish the sender and cache it
-        sender = self._senders.get(address)
-        if sender is None:
-            sender = Sender(address)
-            sender.attach(self._socket_connection.connection)
-            self._senders[address] = sender
-        return sender
-
-    def _send(self, addr, message, callback=None, handle=None):
-        """Send the message out the link addressed by 'addr'.  If a
-        delivery_callback is given it will be invoked when the send has
-        completed (whether successfully or in error).
-        """
-        address = str(addr)
-        message.address = address
-        self._sender(address).send(message, callback)
 
     def _server_address(self, target):
         return self._concatenate([self.server_request_prefix,
@@ -562,8 +798,7 @@ class Controller(pyngus.ConnectionEventHandler):
             self._process_tasks_scheduled = False
         count = 0
         while (not self._tasks.empty() and
-               count < self._max_task_batch and
-               self._can_process_tasks):
+               count < self._max_task_batch):
             try:
                 self._tasks.get(False).execute(self)
             except Exception as e:
@@ -571,7 +806,7 @@ class Controller(pyngus.ConnectionEventHandler):
             count += 1
 
         # if we hit _max_task_batch, resume task processing later:
-        if not self._tasks.empty() and self._can_process_tasks:
+        if not self._tasks.empty():
             self._schedule_task_processing()
 
     def _schedule_task_processing(self):
@@ -586,45 +821,42 @@ class Controller(pyngus.ConnectionEventHandler):
             if not already_scheduled:
                 self.processor.wakeup(lambda: self._process_tasks())
 
-    @property
-    def _can_process_tasks(self):
-        """_process_tasks helper(): indicates that the driver is ready to
-        process Tasks.  In order to process messaging-related tasks, the reply
-        queue link must be active.
-        """
-        return (not self._closing and
-                self._replies and self._replies.ready())
-
     def _start_shutdown(self):
         """Called when the application is closing the transport.
         Attempt to cleanly flush/close all links.
         """
         self._closing = True
-        if (self._socket_connection
-                and self._socket_connection.connection
-                and self._socket_connection.connection.active):
+        if self._active:
             # try a clean shutdown
-            for sender in self._senders.values():
-                sender.detach()
-            for servers in self._servers.values():
-                for server in servers.values():
-                    server.detach()
-            self._replies.detach()
+            self._detach_senders()
+            self._detach_servers()
+            self.reply_link.detach()
             self._socket_connection.connection.close()
         else:
             # don't wait for a close from the remote, may never happen
             self.processor.shutdown()
 
-    # reply link active callback:
+    # reply link callbacks:
 
     def _reply_link_ready(self):
         """Invoked when the Replies reply link has become active.  At this
-        point, we are ready to send/receive messages (via Task processing).
+        point, we are ready to receive messages, so start all pending RPC
+        requests.
         """
         LOG.info(_LI("Messaging is active (%(hostname)s:%(port)s)"),
                  {'hostname': self.hosts.current.hostname,
                   'port': self.hosts.current.port})
-        self._schedule_task_processing()
+        for sender in itervalues(self._senders):
+            sender.attach(self._socket_connection.connection, self.reply_link)
+
+    def _reply_link_down(self):
+        # Treat it as a recoverable failure because the RPC reply address is
+        # now invalid for all in-flight RPC requests.
+        if not self._closing:
+            self._detach_senders()
+            self._detach_servers()
+            self._socket_connection.connection.close()
+            # once closed, _handle_connection_loss() will initiate reconnect
 
     # callback from eventloop on socket error
 
@@ -654,12 +886,13 @@ class Controller(pyngus.ConnectionEventHandler):
         LOG.debug("Connection active (%(hostname)s:%(port)s), subscribing...",
                   {'hostname': self.hosts.current.hostname,
                    'port': self.hosts.current.port})
-        for servers in self._servers.values():
-            for server in servers.values():
+        for servers in itervalues(self._servers):
+            for server in itervalues(servers):
                 server.attach(self._socket_connection.connection)
-        self._replies = Replies(self._socket_connection.connection,
-                                lambda: self._reply_link_ready())
-        self._delay = 0
+        self.reply_link = Replies(self._socket_connection.connection,
+                                  self._reply_link_ready,
+                                  self._reply_link_down)
+        self._delay = 1
 
     def connection_closed(self, connection):
         """This is a Pyngus callback, invoked by Pyngus when the connection has
@@ -680,6 +913,9 @@ class Controller(pyngus.ConnectionEventHandler):
         # later once the connection has closed (connection_closed is called).
         if reason:
             LOG.info(_LI("Connection closed by peer: %s"), reason)
+        self._detach_senders()
+        self._detach_servers()
+        self.reply_link.detach()
         self._socket_connection.connection.close()
 
     def sasl_done(self, connection, pn_sasl, outcome):
@@ -711,18 +947,16 @@ class Controller(pyngus.ConnectionEventHandler):
                 self._reconnecting = True
                 LOG.info(_LI("delaying reconnect attempt for %d seconds"),
                          self._delay)
-                self.processor.schedule(lambda: self._do_reconnect(),
-                                        self._delay)
-                self._delay = (1 if self._delay == 0
-                               else min(self._delay * 2, 60))
+                self.processor.schedule(self._do_reconnect, self._delay)
+                self._delay = min(self._delay * 2, 60)
 
     def _do_reconnect(self):
         """Invoked on connection/socket failure, failover and re-connect to the
         messaging service.
         """
+        self._reconnecting = False
         if not self._closing:
             self._hard_reset()
-            self._reconnecting = False
             host = self.hosts.next()
             LOG.info(_LI("Reconnecting to: %(hostname)s:%(port)s"),
                      {'hostname': host.hostname, 'port': host.port})
@@ -733,16 +967,38 @@ class Controller(pyngus.ConnectionEventHandler):
         # note well: since this method destroys the connection, it cannot be
         # invoked directly from a pyngus callback.  Use processor.schedule() to
         # run this method on the main loop instead.
-        for sender in self._senders.values():
-            sender.destroy()
-        self._senders.clear()
-        for servers in self._servers.values():
-            for server in servers.values():
-                # discard links, but keep servers around to re-attach if
-                # failing over
+        unused = []
+        for key, sender in iteritems(self._senders):
+            # clean up any unused sender links:
+            if sender.pending_messages == 0:
+                unused.append(key)
+            else:
+                sender.reset()
+        for key in unused:
+            self._senders[key].destroy()
+            del self._senders[key]
+        for servers in itervalues(self._servers):
+            for server in itervalues(servers):
                 server.reset()
-        if self._replies:
-            self._replies.destroy()
-            self._replies = None
+        if self.reply_link:
+            self.reply_link.destroy()
+            self.reply_link = None
         if self._socket_connection:
             self._socket_connection.reset()
+
+    def _detach_senders(self):
+        """Close all sender links"""
+        for sender in itervalues(self._senders):
+            sender.detach()
+
+    def _detach_servers(self):
+        """Close all listener links"""
+        for servers in itervalues(self._servers):
+            for server in itervalues(servers):
+                server.detach()
+
+    @property
+    def _active(self):
+        # Is the connection up
+        return (self._socket_connection
+                and self._socket_connection.connection.active)

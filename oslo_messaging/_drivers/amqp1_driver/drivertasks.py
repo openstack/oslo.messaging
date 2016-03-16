@@ -30,13 +30,15 @@ class SendTask(controller.Task):
     reply message.  The caller may block until the remote confirms receipt or
     the reply message has arrived.
     """
-    def __init__(self, target, request, wait_for_reply, deadline):
+    def __init__(self, target, request, wait_for_reply=False, deadline=None,
+                 retry=None):
         super(SendTask, self).__init__()
         self._target = target
         self._request = request
         self._deadline = deadline
         self._wait_for_reply = wait_for_reply
         self._results_queue = moves.queue.Queue()
+        self._retry = retry
 
     def wait(self, timeout):
         """Wait for the send to complete, and, optionally, a reply message from
@@ -60,7 +62,8 @@ class SendTask(controller.Task):
         """Runs on eventloop thread - sends request."""
         if not self._deadline or self._deadline > time.time():
             controller.request(self._target, self._request,
-                               self._results_queue, self._wait_for_reply)
+                               self._results_queue, self._wait_for_reply,
+                               self._deadline, self._retry)
         else:
             LOG.warning(_LW("Send request to %s aborted: TTL expired."),
                         self._target)
@@ -101,7 +104,7 @@ class ReplyTask(controller.Task):
         self._wakeup = threading.Event()
 
     def wait(self):
-        """Wait for the controller to send the message.
+        """Wait for the controller to execute the message send.
         """
         self._wakeup.wait()
 

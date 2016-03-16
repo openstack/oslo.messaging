@@ -96,5 +96,39 @@ amqp1_opts = [
                default='',
                deprecated_group='amqp1',
                secret=True,
-               help='Password for message broker authentication')
+               help='Password for message broker authentication'),
+
+    # Network connection failure retry options
+
+    cfg.IntOpt('connection_retry_interval',
+               default=1,
+               min=1,
+               help='Seconds to pause before attempting to re-connect.'),
+
+    cfg.IntOpt('connection_retry_backoff',
+               default=2,
+               min=0,
+               help='Increase the connection_retry_interval by this many'
+               ' seconds after each unsuccessful failover attempt.'),
+
+    cfg.IntOpt('connection_retry_interval_max',
+               default=30,
+               min=1,
+               help='Maximum limit for connection_retry_interval'
+                    ' + connection_retry_backoff'),
+
+    # Message send retry options
+
+    cfg.IntOpt('max_send_retries',
+               default=0,
+               min=0,
+               help='Maximum attempts to re-send a message that failed due to'
+               ' a recoverable error. Default is 0 (retry forever or until'
+               ' timeout expires).'),
+
+    cfg.IntOpt('link_retry_delay',
+               default=10,
+               min=1,
+               help='Time to pause between re-connecting an AMQP 1.0 link that'
+               ' failed due to a recoverable error.')
 ]

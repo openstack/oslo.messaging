@@ -226,13 +226,30 @@ class ProtonDriver(base.BaseDriver):
 
     @_ensure_connect_called
     def send(self, target, ctxt, message,
-             wait_for_reply=None, timeout=None, envelope=False,
+             wait_for_reply=False, timeout=None, envelope=False,
              retry=None):
-        """Send a message to the given target."""
-        # TODO(kgiusti) need to add support for retry
-        if retry is not None:
-            raise NotImplementedError('"retry" not implemented by '
-                                      'this transport driver')
+        """Send a message to the given target.
+
+        :param target: destination for message
+        :type target: oslo_messaging.Target
+        :param ctxt: message context
+        :type ctxt: dict
+        :param message: message payload
+        :type message: dict
+        :param wait_for_reply: expects a reply message, wait for it
+        :type wait_for_reply: bool
+        :param timeout: raise exception if send does not complete within
+                        timeout seconds. None == no timeout.
+        :type timeout: float
+        :param envelope: Encapsulate message in an envelope
+        :type envelope: bool
+        :param retry: (optional) maximum re-send attempts on recoverable error
+                      None or -1 means to use value of max_send_retries
+                      configuration option
+                      0 means no retry
+                      N means N retries
+        :type retry: int
+"""
         request = marshal_request(message, ctxt, envelope)
         expire = 0
         if timeout:
@@ -241,7 +258,8 @@ class ProtonDriver(base.BaseDriver):
             request.ttl = int(timeout * 1000)
             request.expiry_time = int(expire * 1000)
         LOG.debug("Send to %s", target)
-        task = drivertasks.SendTask(target, request, wait_for_reply, expire)
+        task = drivertasks.SendTask(target, request, wait_for_reply, expire,
+                                    retry)
         self._ctrl.add_task(task)
         # wait for the eventloop to process the command. If the command is
         # an RPC call retrieve the reply message
@@ -259,12 +277,25 @@ class ProtonDriver(base.BaseDriver):
     @_ensure_connect_called
     def send_notification(self, target, ctxt, message, version,
                           retry=None):
-        """Send a notification message to the given target."""
-        # TODO(kgiusti) need to add support for retry
-        if retry is not None:
-            raise NotImplementedError('"retry" not implemented by '
-                                      'this transport driver')
-        return self.send(target, ctxt, message, envelope=(version == 2.0))
+        """Send a notification message to the given target.
+
+        :param target: destination for message
+        :type target: oslo_messaging.Target
+        :param ctxt: message context
+        :type ctxt: dict
+        :param message: message payload
+        :type message: dict
+        :param version: message envelope version
+        :type version: float
+        :param retry: (optional) maximum re-send attempts on recoverable error
+                      None or -1 means to use value of max_send_retries
+                      configuration option
+                      0 means no retry
+                      N means N retries
+        :type retry: int
+        """
+        return self.send(target, ctxt, message, envelope=(version == 2.0),
+                         retry=retry)
 
     @_ensure_connect_called
     def listen(self, target, batch_size, batch_timeout):
@@ -279,6 +310,9 @@ class ProtonDriver(base.BaseDriver):
     @_ensure_connect_called
     def listen_for_notifications(self, targets_and_priorities, pool,
                                  batch_size, batch_timeout):
+        """Construct a Listener for notifications on the given target and
+        priority.
+        """
         LOG.debug("Listen for notifications %s", targets_and_priorities)
         if pool:
             raise NotImplementedError('"pool" not implemented by '

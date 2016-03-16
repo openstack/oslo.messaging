@@ -62,19 +62,22 @@ class _ListenerThread(threading.Thread):
         self.messages = moves.queue.Queue()
         self.daemon = True
         self.started = threading.Event()
+        self._done = False
         self.start()
         self.started.wait()
 
     def run(self):
         LOG.debug("Listener started")
         self.started.set()
-        while self.msg_count > 0:
-            in_msg = self.listener.poll()[0]
-            self.messages.put(in_msg)
-            self.msg_count -= 1
-            if in_msg.message.get('method') == 'echo':
-                in_msg.reply(reply={'correlation-id':
-                                    in_msg.message.get('id')})
+        while not self._done:
+            for in_msg in self.listener.poll(timeout=0.5):
+                self.messages.put(in_msg)
+                self.msg_count -= 1
+                self._done = self.msg_count == 0
+                if in_msg.message.get('method') == 'echo':
+                    in_msg.reply(reply={'correlation-id':
+                                        in_msg.message.get('id')})
+
         LOG.debug("Listener stopped")
 
     def get_messages(self):
@@ -87,6 +90,10 @@ class _ListenerThread(threading.Thread):
         except moves.queue.Empty:
             pass
         return msgs
+
+    def kill(self, timeout=30):
+        self._done = True
+        self.join(timeout)
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
@@ -103,7 +110,7 @@ class TestProtonDriverLoad(test_utils.BaseTestCase):
 
 
 class _AmqpBrokerTestCase(test_utils.BaseTestCase):
-
+    """Creates a single FakeBroker for use by the tests"""
     @testtools.skipUnless(pyngus, "proton modules not present")
     def setUp(self):
         super(_AmqpBrokerTestCase, self).setUp()
@@ -112,14 +119,22 @@ class _AmqpBrokerTestCase(test_utils.BaseTestCase):
                                               self._broker.port)
         self._broker_url = oslo_messaging.TransportURL.parse(
             self.conf, self._broker_addr)
-        self._broker.start()
 
     def tearDown(self):
         super(_AmqpBrokerTestCase, self).tearDown()
-        self._broker.stop()
+        if self._broker:
+            self._broker.stop()
 
 
-class TestAmqpSend(_AmqpBrokerTestCase):
+class _AmqpBrokerTestCaseAuto(_AmqpBrokerTestCase):
+    """Like _AmqpBrokerTestCase, but starts the broker"""
+    @testtools.skipUnless(pyngus, "proton modules not present")
+    def setUp(self):
+        super(_AmqpBrokerTestCaseAuto, self).setUp()
+        self._broker.start()
+
+
+class TestAmqpSend(_AmqpBrokerTestCaseAuto):
     """Test sending and receiving messages."""
 
     def test_driver_unconnected_cleanup(self):
@@ -274,7 +289,7 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver.cleanup()
 
 
-class TestAmqpNotification(_AmqpBrokerTestCase):
+class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
     """Test sending and receiving notifications."""
 
     def test_notification(self):
@@ -669,6 +684,157 @@ class TestFailover(test_utils.BaseTestCase):
         self._brokers[1].stop()
 
 
+@testtools.skipUnless(pyngus, "proton modules not present")
+class TestLinkRecovery(_AmqpBrokerTestCase):
+
+    def _send_retry(self, reject, retries):
+        self._reject = reject
+
+        def on_active(link):
+            if self._reject > 0:
+                link.close()
+                self._reject -= 1
+            else:
+                link.add_capacity(10)
+
+        self._broker.on_receiver_active = on_active
+        self._broker.start()
+        self.config(max_send_retries=retries,
+                    link_retry_delay=1,
+                    group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   1)
+        try:
+            rc = driver.send(target, {"context": "whatever"},
+                             {"method": "echo", "id": "e1"},
+                             wait_for_reply=True)
+            self.assertIsNotNone(rc)
+            self.assertEqual(rc.get('correlation-id'), 'e1')
+        except Exception:
+            listener.kill()
+            driver.cleanup()
+            raise
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        self.assertEqual(listener.messages.get().message.get('method'), "echo")
+        driver.cleanup()
+
+    def test_send_retry_ok(self):
+        # verify sender with retry=3 survives 2 link failures:
+        self._send_retry(reject=2, retries=3)
+
+    def test_send_retry_fail(self):
+        # verify sender fails if retries exhausted
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          self._send_retry,
+                          reject=3,
+                          retries=2)
+
+    def test_listener_recovery(self):
+        # verify a listener recovers if all links fail:
+        self._addrs = {'unicast.test-topic': 2,
+                       'broadcast.test-topic.all': 2,
+                       'exclusive.test-topic.server': 2}
+        self._recovered = threading.Event()
+        self._count = 0
+
+        def _on_active(link):
+            t = link.target_address
+            if t in self._addrs:
+                if self._addrs[t] > 0:
+                    link.close()
+                    self._addrs[t] -= 1
+                else:
+                    self._count += 1
+                    if self._count == len(self._addrs):
+                        self._recovered.set()
+
+        self._broker.on_sender_active = _on_active
+        self._broker.start()
+        self.config(link_retry_delay=1, group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic",
+                                       server="server")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   3)
+        # wait for recovery
+        self.assertTrue(self._recovered.wait(timeout=30))
+        # verify server RPC:
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "e1"},
+                         wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'e1')
+        # verify balanced RPC:
+        target.server = None
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "e2"},
+                         wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'e2')
+        # verify fanout:
+        target.fanout = True
+        driver.send(target, {"context": "whatever"},
+                    {"msg": "value"},
+                    wait_for_reply=False)
+        listener.join(timeout=30)
+        self.assertTrue(self._broker.fanout_count == 1)
+        self.assertFalse(listener.isAlive())
+        self.assertEqual(listener.messages.get().message.get('method'), "echo")
+        driver.cleanup()
+
+    def test_sender_credit_blocked(self):
+        # ensure send requests resume once credit is provided
+        self._blocked_links = set()
+
+        def _on_active(link):
+            # refuse granting credit for the broadcast link
+            if link.source_address.startswith("broadcast"):
+                self._blocked_links.add(link)
+            else:
+                # unblock all link when RPC call is made
+                link.add_capacity(10)
+                for l in self._blocked_links:
+                    l.add_capacity(10)
+
+        self._broker.on_receiver_active = _on_active
+        self._broker.on_credit_exhausted = lambda link: None
+        self._broker.start()
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic", server="server")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   4)
+        target.fanout = True
+        target.server = None
+        # these threads will share the same link
+        for i in range(3):
+            threading.Thread(target=driver.send,
+                             args=(target, {"context": "whatever"},
+                                   {"msg": "n=%d" % i}),
+                             kwargs={'wait_for_reply': False}).start()
+
+        time.sleep(0.5)
+        # this will trigger the release of credit for the previous links
+        target.fanout = False
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "e1"},
+                         wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'e1')
+        listener.join(timeout=30)
+        self.assertTrue(self._broker.fanout_count == 3)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+
 class FakeBroker(threading.Thread):
     """A test AMQP message 'broker'."""
 
@@ -830,6 +996,7 @@ class FakeBroker(threading.Thread):
                 self.server.sender_link_count += 1
                 self.server.add_route(self.link.source_address, self)
                 self.routed = True
+                self.server.on_sender_active(sender_link)
 
             def sender_remote_closed(self, sender_link, error):
                 self.link.close()
@@ -852,7 +1019,6 @@ class FakeBroker(threading.Thread):
                                                 event_handler=self)
                 conn.receiver_links.add(self)
                 self.link.open()
-                self.link.add_capacity(10)
 
             def destroy(self):
                 """Destroy the link."""
@@ -868,6 +1034,7 @@ class FakeBroker(threading.Thread):
 
             def receiver_active(self, receiver_link):
                 self.server.receiver_link_count += 1
+                self.server.on_receiver_active(receiver_link)
 
             def receiver_remote_closed(self, receiver_link, error):
                 self.link.close()
@@ -884,10 +1051,11 @@ class FakeBroker(threading.Thread):
                 if self.server.forward_message(message):
                     self.link.message_accepted(handle)
                 else:
-                    self.link.message_rejected(handle)
+                    # can't forward
+                    self.link.message_released(handle)
 
                 if self.link.capacity < 1:
-                    self.link.add_capacity(10)
+                    self.server.credit_exhausted(self.link)
 
     def __init__(self, server_prefix="exclusive",
                  broadcast_prefix="broadcast",
@@ -929,6 +1097,10 @@ class FakeBroker(threading.Thread):
         self.connection_count = 0
         self.sender_link_count = 0
         self.receiver_link_count = 0
+        # callback hooks
+        self.on_sender_active = lambda link: None
+        self.on_receiver_active = lambda link: link.add_capacity(10)
+        self.on_credit_exhausted = lambda link: link.add_capacity(10)
 
     def start(self):
         """Start the server."""
