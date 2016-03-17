@@ -121,8 +121,7 @@ class _CallContext(object):
         """Check to see if a version is compatible with the version cap."""
         version = self.target.version if version is self._marker else version
         return (not self.version_cap or
-                utils.version_is_compatible(self.version_cap,
-                                            self.target.version))
+                utils.version_is_compatible(self.version_cap, version))
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately. See RPCClient.cast()."""
