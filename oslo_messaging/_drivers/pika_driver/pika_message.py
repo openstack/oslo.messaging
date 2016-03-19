@@ -387,7 +387,7 @@ class PikaOutgoingMessage(object):
             )
         except pika_exceptions.UnroutableError as e:
             raise pika_drv_exc.RoutingException(
-                "Can not deliver message:[body:{}, properties: {}] to any"
+                "Can not deliver message:[body:{}, properties: {}] to any "
                 "queue using target: [exchange:{}, "
                 "routing_key:{}]. {}".format(
                     body, properties, exchange, routing_key, str(e)

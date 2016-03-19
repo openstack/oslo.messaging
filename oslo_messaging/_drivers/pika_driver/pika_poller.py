@@ -94,13 +94,13 @@ class PikaPoller(base.Listener):
             for queue_info in self._queues_to_consume:
                 no_ack = queue_info["no_ack"]
 
-                on_message_no_ack_callback = (
+                on_message_callback = (
                     self._on_message_no_ack_callback if no_ack
                     else self._on_message_with_ack_callback
                 )
 
                 queue_info["consumer_tag"] = self._channel.basic_consume(
-                    on_message_no_ack_callback, queue_info["queue_name"],
+                    on_message_callback, queue_info["queue_name"],
                     no_ack=no_ack
                 )
         except Exception:
@@ -208,8 +208,10 @@ class PikaPoller(base.Listener):
                                 del self._message_queue[:prefetch_size]
                                 return result
                     except pika_drv_exc.EstablishConnectionException as e:
-                        LOG.warn("Problem during establishing connection for"
-                                 "pika poller %s", e, exc_info=True)
+                        LOG.warning(
+                            "Problem during establishing connection for pika "
+                            "poller %s", e, exc_info=True
+                        )
                         time.sleep(
                             self._pika_engine.host_connection_reconnect_delay
                         )
@@ -231,19 +233,25 @@ class PikaPoller(base.Listener):
             try:
                 self._reconnect()
             except pika_drv_exc.EstablishConnectionException as exc:
-                LOG.warn("Can not establishing connection during pika "
-                         "Conecting required during first poll() call. %s",
-                         exc, exc_info=True)
+                LOG.warning(
+                    "Can not establish connection during pika poller's "
+                    "start(). Connecting is required during first poll() "
+                    "call. %s", exc, exc_info=True
+                )
             except pika_drv_exc.ConnectionException as exc:
                 self._cleanup()
-                LOG.warn("Connectivity problem during pika poller's start(). "
-                         "Reconnecting required during first poll() call. %s",
-                         exc, exc_info=True)
+                LOG.warning(
+                    "Connectivity problem during pika poller's start(). "
+                    "Reconnecting required during first poll() call. %s",
+                    exc, exc_info=True
+                )
             except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS as exc:
                 self._cleanup()
-                LOG.warn("Connectivity problem during pika poller's start(). "
-                         "Reconnecting required during first poll() call. %s",
-                         exc, exc_info=True)
+                LOG.warning(
+                    "Connectivity problem during pika poller's start(). "
+                    "Reconnecting required during first poll() call. %s",
+                    exc, exc_info=True
+                )
             self._started = True
 
     def stop(self):
@@ -260,8 +268,10 @@ class PikaPoller(base.Listener):
                     self._stop_consuming()
                 except pika_drv_cmns.PIKA_CONNECTIVITY_ERRORS as exc:
                     self._cleanup()
-                    LOG.warn("Connectivity problem detected during consumer "
-                             "cancellation. %s", exc, exc_info=True)
+                    LOG.warning(
+                        "Connectivity problem detected during consumer "
+                        "cancellation. %s", exc, exc_info=True
+                    )
             self._started = False
 
     def cleanup(self):
