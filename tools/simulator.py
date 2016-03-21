@@ -64,7 +64,7 @@ def init_random_generator():
 
     ranges = collections.defaultdict(int)
     for msg_length in data:
-        range_start = ((msg_length / DISTRIBUTION_BUCKET_SIZE) *
+        range_start = ((msg_length // DISTRIBUTION_BUCKET_SIZE) *
                        DISTRIBUTION_BUCKET_SIZE + 1)
         ranges[range_start] += 1
 
@@ -121,7 +121,7 @@ class MessageStatsCollector(object):
         count = len(self.buffer)
 
         size = 0
-        min_latency = sys.maxint
+        min_latency = sys.maxsize
         max_latency = 0
         sum_latencies = 0
 
@@ -168,10 +168,10 @@ class MessageStatsCollector(object):
     def calc_stats(label, *collectors):
         count = 0
         size = 0
-        min_latency = sys.maxint
+        min_latency = sys.maxsize
         max_latency = 0
         sum_latencies = 0
-        start = sys.maxint
+        start = sys.maxsize
         end = 0
 
         for point in itertools.chain(*(c.get_series() for c in collectors)):
@@ -365,7 +365,8 @@ def generate_messages(messages_count):
 
     for i in range(messages_count):
         length = RANDOM_GENERATOR()
-        msg = ''.join(random.choice(string.lowercase) for x in range(length))
+        msg = ''.join(random.choice(
+                      string.ascii_lowercase) for x in range(length))
         MESSAGES.append(msg)
 
     LOG.info("Messages has been prepared")
@@ -401,7 +402,7 @@ def spawn_rpc_clients(threads, transport, targets, wait_after_msg, timeout,
     p = eventlet.GreenPool(size=threads)
     targets = itertools.cycle(targets)
     for i in range(0, threads):
-        target = targets.next()
+        target = next(targets)
         LOG.debug("starting RPC client for target %s", target)
         client_builder = functools.partial(RPCClient, i, transport, target,
                                            timeout, is_cast, wait_after_msg)
