@@ -25,6 +25,7 @@ import logging
 import os
 import threading
 import time
+import uuid
 
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
@@ -149,6 +150,7 @@ class ProtonListener(base.Listener):
         super(ProtonListener, self).__init__(driver.prefetch_size)
         self.driver = driver
         self.incoming = Queue()
+        self.id = uuid.uuid4().hex
 
     def stop(self):
         self.incoming.stop()

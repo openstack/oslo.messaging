@@ -83,9 +83,12 @@ class ListenTask(controller.Task):
         """
         if self._notifications:
             controller.subscribe_notifications(self._target,
-                                               self._listener.incoming)
+                                               self._listener.incoming,
+                                               self._listener.id)
         else:
-            controller.subscribe(self._target, self._listener.incoming)
+            controller.subscribe(self._target,
+                                 self._listener.incoming,
+                                 self._listener.id)
 
 
 class ReplyTask(controller.Task):
