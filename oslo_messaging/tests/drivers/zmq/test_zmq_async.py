@@ -105,21 +105,21 @@ class TestGetReplyPoller(test_utils.BaseTestCase):
     def test_default_reply_poller_is_HoldReplyPoller(self):
         zmq_async._is_eventlet_zmq_available = lambda: True
 
-        actual = zmq_async.get_reply_poller()
+        actual = zmq_async.get_poller()
 
-        self.assertTrue(isinstance(actual, green_poller.HoldReplyPoller))
+        self.assertTrue(isinstance(actual, green_poller.GreenPoller))
 
     def test_when_eventlet_is_available_then_return_HoldReplyPoller(self):
         zmq_async._is_eventlet_zmq_available = lambda: True
 
-        actual = zmq_async.get_reply_poller('eventlet')
+        actual = zmq_async.get_poller('eventlet')
 
-        self.assertTrue(isinstance(actual, green_poller.HoldReplyPoller))
+        self.assertTrue(isinstance(actual, green_poller.GreenPoller))
 
     def test_when_eventlet_is_unavailable_then_return_ThreadingPoller(self):
         zmq_async._is_eventlet_zmq_available = lambda: False
 
-        actual = zmq_async.get_reply_poller('eventlet')
+        actual = zmq_async.get_poller('eventlet')
 
         self.assertTrue(isinstance(actual, threading_poller.ThreadingPoller))
 
@@ -128,7 +128,7 @@ class TestGetReplyPoller(test_utils.BaseTestCase):
 
         errmsg = 'Invalid zmq_concurrency value: x'
         with self.assertRaisesRegexp(ValueError, errmsg):
-            zmq_async.get_reply_poller(invalid_opt)
+            zmq_async.get_poller(invalid_opt)
 
 
 class TestGetExecutor(test_utils.BaseTestCase):

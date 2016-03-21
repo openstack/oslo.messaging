@@ -46,7 +46,7 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
             self.listeners.append(zmq_common.TestServerListener(self.driver))
 
     def _send_request(self, target):
-        #  Needed only in test env to get listener a chance to connect
+        #  Needed only in test env to give listener a chance to connect
         #  before request fires
         time.sleep(1)
         with contextlib.closing(zmq_request.FanoutRequest(

@@ -44,48 +44,13 @@ class GreenPoller(zmq_poller.ZmqPoller):
         try:
             return self.incoming_queue.get(timeout=timeout)
         except eventlet.queue.Empty:
-            return (None, None)
+            return None, None
 
     def close(self):
         for thread in self.thread_by_socket.values():
             thread.kill()
 
         self.thread_by_socket = {}
-
-
-class HoldReplyPoller(GreenPoller):
-
-    def __init__(self):
-        super(HoldReplyPoller, self).__init__()
-        self.event_by_socket = {}
-        self._is_running = threading.Event()
-
-    def register(self, socket, recv_method=None):
-        super(HoldReplyPoller, self).register(socket, recv_method)
-        self.event_by_socket[socket] = threading.Event()
-
-    def resume_polling(self, socket):
-        pause = self.event_by_socket[socket]
-        pause.set()
-
-    def _socket_receive(self, socket, recv_method=None):
-        pause = self.event_by_socket[socket]
-        while not self._is_running.is_set():
-            pause.clear()
-            if recv_method:
-                incoming = recv_method(socket)
-            else:
-                incoming = socket.recv_multipart()
-            self.incoming_queue.put((incoming, socket))
-            pause.wait()
-
-    def close(self):
-        self._is_running.set()
-        for pause in self.event_by_socket.values():
-            pause.set()
-            eventlet.sleep()
-
-        super(HoldReplyPoller, self).close()
 
 
 class GreenExecutor(zmq_poller.Executor):

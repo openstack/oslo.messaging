@@ -254,9 +254,7 @@ class ZmqDriver(base.BaseDriver):
         :param target: Message destination target
         :type target: oslo_messaging.Target
         """
-        server = zmq_server.ZmqServer(self, self.conf, self.matchmaker)
-        server.listen(target)
-        return server
+        return zmq_server.ZmqServer(self, self.conf, self.matchmaker, target)
 
     def listen_for_notifications(self, targets_and_priorities, pool):
         """Listen to a specified list of targets on a server side
@@ -266,9 +264,8 @@ class ZmqDriver(base.BaseDriver):
         :param pool: Not used for zmq implementation
         :type pool: object
         """
-        server = zmq_server.ZmqServer(self, self.conf, self.matchmaker)
-        server.listen_notification(targets_and_priorities)
-        return server
+        return zmq_server.ZmqNotificationServer(
+            self, self.conf, self.matchmaker, targets_and_priorities)
 
     def cleanup(self):
         """Cleanup all driver's connections finally

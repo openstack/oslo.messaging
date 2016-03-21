@@ -32,27 +32,26 @@ zmq = zmq_async.import_zmq()
 
 class ZmqServer(base.Listener):
 
-    def __init__(self, driver, conf, matchmaker=None):
+    def __init__(self, driver, conf, matchmaker, target, poller=None):
         super(ZmqServer, self).__init__()
         self.driver = driver
         self.conf = conf
         self.matchmaker = matchmaker
-        self.poller = zmq_async.get_poller()
+        self.target = target
+        self.poller = poller or zmq_async.get_poller()
         self.router_consumer = zmq_router_consumer.RouterConsumer(
             conf, self.poller, self)
         self.pull_consumer = zmq_pull_consumer.PullConsumer(
             conf, self.poller, self)
         self.sub_consumer = zmq_sub_consumer.SubConsumer(
             conf, self.poller, self) if conf.use_pub_sub else None
-        self.notify_consumer = self.sub_consumer if conf.use_pub_sub \
-            else self.router_consumer
 
         self.consumers = [self.router_consumer, self.pull_consumer]
         if self.sub_consumer:
             self.consumers.append(self.sub_consumer)
 
     @base.batch_poll_helper
-    def poll(self, timeout=None):
+    def poll(self, timeout=None, prefetch_size=1):
         message, socket = self.poller.poll(
             timeout or self.conf.rpc_poll_timeout)
         return message
@@ -67,15 +66,35 @@ class ZmqServer(base.Listener):
         for consumer in self.consumers:
             consumer.cleanup()
 
-    def listen(self, target):
-        self.router_consumer.listen(target)
-        self.pull_consumer.listen(target)
-        if self.sub_consumer:
-            self.sub_consumer.listen(target)
 
-    def listen_notification(self, targets_and_priorities):
-        consumer = self.notify_consumer
+class ZmqNotificationServer(base.Listener):
+
+    def __init__(self, driver, conf, matchmaker, targets_and_priorities):
+        super(ZmqNotificationServer, self).__init__()
+        self.driver = driver
+        self.conf = conf
+        self.matchmaker = matchmaker
+        self.servers = []
+        self.poller = zmq_async.get_poller()
+        self._listen(targets_and_priorities)
+
+    def _listen(self, targets_and_priorities):
         for target, priority in targets_and_priorities:
             t = copy.deepcopy(target)
             t.topic = target.topic + '.' + priority
-            consumer.listen(t)
+            self.servers.append(ZmqServer(
+                self.driver, self.conf, self.matchmaker, t, self.poller))
+
+    @base.batch_poll_helper
+    def poll(self, timeout=None, prefetch_size=1):
+        message, socket = self.poller.poll(
+            timeout or self.conf.rpc_poll_timeout)
+        return message
+
+    def stop(self):
+        for server in self.servers:
+            server.stop()
+
+    def cleanup(self):
+        for server in self.servers:
+            server.cleanup()
