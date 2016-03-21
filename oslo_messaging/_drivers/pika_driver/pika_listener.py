@@ -40,6 +40,7 @@ class RpcReplyPikaListener(object):
         self._reply_consumer_initialized = False
         self._reply_consumer_initialization_lock = threading.Lock()
         self._poller_thread = None
+        self._shutdown = False
 
     def get_reply_qname(self, expiration_time=None):
         """As result return reply queue name, shared for whole process,
@@ -75,7 +76,7 @@ class RpcReplyPikaListener(object):
                     )
                 )
 
-                self._reply_poller.start()
+            self._reply_poller.start()
 
             # start reply poller job thread if needed
             if self._poller_thread is None:
@@ -93,9 +94,11 @@ class RpcReplyPikaListener(object):
         """Reply polling job. Poll replies in infinite loop and notify
         registered features
         """
-        while self._reply_poller:
+        while True:
             try:
                 messages = self._reply_poller.poll()
+                if not messages and self._shutdown:
+                    break
 
                 for message in messages:
                     try:
@@ -132,6 +135,8 @@ class RpcReplyPikaListener(object):
 
     def cleanup(self):
         """Stop replies consuming and cleanup resources"""
+        self._shutdown = True
+
         if self._reply_poller:
             self._reply_poller.stop()
             self._reply_poller.cleanup()
