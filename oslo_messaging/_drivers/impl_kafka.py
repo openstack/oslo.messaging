@@ -354,9 +354,9 @@ class KafkaDriver(base.BaseDriver):
         :type pool: string
         """
         conn = self._get_connection(purpose=PURPOSE_LISTEN)
-        topics = []
+        topics = set()
         for target, priority in targets_and_priorities:
-            topics.append(target_to_topic(target, priority))
+            topics.add(target_to_topic(target, priority))
 
         conn.declare_topic_consumer(topics, pool)
 

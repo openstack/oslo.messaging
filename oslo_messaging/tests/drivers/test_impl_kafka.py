@@ -208,6 +208,26 @@ class TestKafkaListener(test_utils.BaseTestCase):
 
     @mock.patch.object(kafka_driver.Connection, '_ensure_connection')
     @mock.patch.object(kafka_driver.Connection, 'declare_topic_consumer')
+    def test_converting_targets_to_topics(self, fake_consumer,
+                                          fake_ensure_connection):
+        fake_targets_and_priorities = [
+            (oslo_messaging.Target(topic="fake_topic",
+                                   exchange="test1"), 'info'),
+            (oslo_messaging.Target(topic="fake_topic",
+                                   exchange="test2"), 'info'),
+            (oslo_messaging.Target(topic="fake_topic",
+                                   exchange="test1"), 'error'),
+            (oslo_messaging.Target(topic="fake_topic",
+                                   exchange="test3"), 'error'),
+        ]
+        self.driver.listen_for_notifications(fake_targets_and_priorities)
+        self.assertEqual(1, len(fake_consumer.mock_calls))
+        fake_consumer.assert_called_once_with(set(['fake_topic.error',
+                                                   'fake_topic.info']),
+                                              None)
+
+    @mock.patch.object(kafka_driver.Connection, '_ensure_connection')
+    @mock.patch.object(kafka_driver.Connection, 'declare_topic_consumer')
     def test_stop_listener(self, fake_consumer, fake_client):
         fake_target = oslo_messaging.Target(topic='fake_topic')
         fake_targets_and_priorities = [(fake_target, 'info')]
