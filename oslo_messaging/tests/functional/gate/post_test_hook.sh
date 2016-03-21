@@ -15,10 +15,11 @@
 # This script is executed inside post_test_hook function in devstack gate.
 
 RPC_BACKEND=$1
+PYTHON=${2:-py27}
 
 function generate_testr_results {
     if [ -f .testrepository/0 ]; then
-        sudo .tox/py27-func-${RPC_BACKEND}/bin/testr last --subunit > $WORKSPACE/testrepository.subunit
+        sudo .tox/${PYTHON}-func-${RPC_BACKEND}/bin/testr last --subunit > $WORKSPACE/testrepository.subunit
         sudo mv $WORKSPACE/testrepository.subunit $BASE/logs/testrepository.subunit
         sudo /usr/os-testr-env/bin/subunit2html $BASE/logs/testrepository.subunit $BASE/logs/testr_results.html
         sudo gzip -9 $BASE/logs/testrepository.subunit
@@ -61,7 +62,7 @@ cd $BASE/new/oslo.messaging
 # Run tests
 echo "Running oslo.messaging functional test suite"
 # Preserve env for OS_ credentials
-sudo -E -H -u jenkins tox -e py27-func-$RPC_BACKEND
+sudo -E -H -u jenkins tox -e ${PYTHON}-func-$RPC_BACKEND
 EXIT_CODE=$?
 set -e
 
