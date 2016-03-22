@@ -316,6 +316,7 @@ class Client(object):
         # and a message transport
         self.position = random.randint(0, self.messages_count - 1)
         self.sent_messages = MessageStatsCollector('client-%s' % client_id)
+        self.errors = MessageStatsCollector('error-%s' % client_id)
 
         if has_result:
             self.round_trip_messages = MessageStatsCollector(
@@ -325,7 +326,14 @@ class Client(object):
         msg = make_message(self.seq, MESSAGES[self.position], time.time())
         self.sent_messages.push(msg)
 
-        res = self.method(self.client, msg)
+        res = None
+        try:
+            res = self.method(self.client, msg)
+        except Exception:
+            self.errors.push(msg)
+        else:
+            LOG.debug("SENT: %s", msg)
+
         if res:
             return_ts = time.time()
             res = update_message(res, return_ts=return_ts)
@@ -445,6 +453,7 @@ def _rpc_call(client, msg):
         res = client.call({}, 'info', message=msg)
     except Exception as e:
         LOG.exception('Error %s on CALL for message %s', str(e), msg)
+        raise
     else:
         LOG.debug("SENT: %s, RCV: %s", msg, res)
         return res
@@ -455,6 +464,7 @@ def _rpc_cast(client, msg):
         client.cast({}, 'info', message=msg)
     except Exception as e:
         LOG.exception('Error %s on CAST for message %s', str(e), msg)
+        raise
     else:
         LOG.debug("SENT: %s", msg)
 
@@ -482,6 +492,7 @@ def show_client_stats(clients, json_filename, has_reply=False):
     for cl in clients:
         cl_id = cl.client_id
         output['series']['client_%s' % cl_id] = cl.sent_messages.get_series()
+        output['series']['error_%s' % cl_id] = cl.errors.get_series()
 
         if has_reply:
             output['series']['round_trip_%s' % cl_id] = (
@@ -490,6 +501,10 @@ def show_client_stats(clients, json_filename, has_reply=False):
     sent_stats = MessageStatsCollector.calc_stats(
         'client', *(cl.sent_messages for cl in clients))
     output['summary']['client'] = sent_stats
+
+    error_stats = MessageStatsCollector.calc_stats(
+        'error', *(cl.errors for cl in clients))
+    output['summary']['error'] = error_stats
 
     if has_reply:
         round_trip_stats = MessageStatsCollector.calc_stats(
