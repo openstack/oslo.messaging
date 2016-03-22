@@ -560,7 +560,7 @@ def main():
                         help='number of client threads')
     client.add_argument('-m', dest='messages', type=int, default=1,
                         help='number of call per threads')
-    client.add_argument('-w', dest='wait_after_msg', type=int, default=-1,
+    client.add_argument('-w', dest='wait_after_msg', type=float, default=-1,
                         help='sleep time between two messages')
     client.add_argument('--timeout', dest='timeout', type=int, default=3,
                         help='client timeout')
@@ -576,7 +576,7 @@ def main():
                         help='number of client threads')
     client.add_argument('-m', dest='messages', type=int, default=1,
                         help='number of call per threads')
-    client.add_argument('-w', dest='wait_after_msg', type=int, default=-1,
+    client.add_argument('-w', dest='wait_after_msg', type=float, default=-1,
                         help='sleep time between two messages')
     client.add_argument('--timeout', dest='timeout', type=int, default=3,
                         help='client timeout')
