@@ -92,11 +92,11 @@ class TestHeartbeat(test_utils.BaseTestCase):
 
         if not heartbeat_side_effect:
             self.assertEqual(1, fake_ensure_connection.call_count)
-            self.assertEqual(3, fake_logger.debug.call_count)
+            self.assertEqual(2, fake_logger.debug.call_count)
             self.assertEqual(0, fake_logger.info.call_count)
         else:
             self.assertEqual(2, fake_ensure_connection.call_count)
-            self.assertEqual(3, fake_logger.debug.call_count)
+            self.assertEqual(2, fake_logger.debug.call_count)
             self.assertEqual(1, fake_logger.info.call_count)
             self.assertIn(mock.call(info, mock.ANY),
                           fake_logger.info.mock_calls)
