@@ -123,9 +123,7 @@ class CheckForLoggingIssues(BaseASTChecker):
                 self.visit(value)
 
     def _filter_imports(self, module_name, alias):
-        """Keeps lists of logging and i18n imports
-
-        """
+        """Keeps lists of logging and i18n imports."""
         if module_name in self.LOG_MODULES:
             self.logger_module_names.append(alias.asname or alias.name)
         elif module_name in self.I18N_MODULES:
@@ -221,10 +219,7 @@ class CheckForLoggingIssues(BaseASTChecker):
         return super(CheckForLoggingIssues, self).generic_visit(node)
 
     def visit_Call(self, node):
-        """Look for the 'LOG.*' calls.
-
-        """
-
+        """Look for the 'LOG.*' calls."""
         # obj.method
         if isinstance(node.func, ast.Attribute):
             obj_name = self._find_name(node.func.value)
@@ -236,13 +231,18 @@ class CheckForLoggingIssues(BaseASTChecker):
             else:  # could be Subscript, Call or many more
                 return super(CheckForLoggingIssues, self).generic_visit(node)
 
+            # if dealing with a logger the method can't be "warn"
+            if obj_name in self.logger_names and method_name == 'warn':
+                msg = node.args[0]  # first arg to a logging method is the msg
+                self.add_error(msg, message=self.USING_DEPRECATED_WARN)
+
             # must be a logger instance and one of the support logging methods
             if (obj_name not in self.logger_names
                     or method_name not in self.TRANS_HELPER_MAP):
                 return super(CheckForLoggingIssues, self).generic_visit(node)
 
             # the call must have arguments
-            if not len(node.args):
+            if not node.args:
                 return super(CheckForLoggingIssues, self).generic_visit(node)
 
             if method_name == 'debug':
@@ -328,15 +328,19 @@ class CheckForLoggingIssues(BaseASTChecker):
         peers = find_peers(node)
         for peer in peers:
             if isinstance(peer, ast.Raise):
-                if (isinstance(peer.type, ast.Call) and
-                        len(peer.type.args) > 0 and
-                        isinstance(peer.type.args[0], ast.Name) and
-                        name in (a.id for a in peer.type.args)):
+                if six.PY3:
+                    exc = peer.exc
+                else:
+                    exc = peer.type
+                if (isinstance(exc, ast.Call) and
+                        len(exc.args) > 0 and
+                        isinstance(exc.args[0], ast.Name) and
+                        name in (a.id for a in exc.args)):
                     return True
                 else:
                     return False
             elif isinstance(peer, ast.Assign):
-                if name in (t.id for t in peer.targets):
+                if name in (t.id for t in peer.targets if hasattr(t, 'id')):
                     return False
 
 
