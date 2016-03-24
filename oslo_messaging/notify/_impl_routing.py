@@ -52,7 +52,7 @@ class RoutingDriver(notifier.Driver):
 
     def _get_notifier_config_file(self, filename):
         """Broken out for testing."""
-        return file(filename, 'r')
+        return open(filename, 'r')
 
     def _load_notifiers(self):
         """One-time load of notifier config file."""
