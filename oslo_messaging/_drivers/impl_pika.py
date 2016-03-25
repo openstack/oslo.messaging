@@ -192,8 +192,11 @@ class PikaDriver(base.BaseDriver):
                 # exchange which is not exists, we get ChannelClosed exception
                 # and need to reconnect
                 try:
-                    self._declare_rpc_exchange(exchange,
-                                               expiration_time - time.time())
+                    self._declare_rpc_exchange(
+                        exchange,
+                        None if expiration_time is None else
+                        expiration_time - time.time()
+                    )
                 except pika_drv_exc.ConnectionException as e:
                     LOG.warning("Problem during declaring exchange. %s", e)
                 return True

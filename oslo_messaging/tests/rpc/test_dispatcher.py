@@ -109,33 +109,29 @@ class TestDispatcher(test_utils.BaseTestCase):
                      for e in self.endpoints]
 
         serializer = None
-        target = oslo_messaging.Target()
-        dispatcher = oslo_messaging.RPCDispatcher(target, endpoints,
-                                                  serializer)
-
-        def check_reply(reply=None, failure=None, log_failure=True):
-            if self.ex and failure is not None:
-                ex = failure[1]
-                self.assertFalse(self.success, ex)
-                self.assertIsNotNone(self.ex, ex)
-                self.assertIsInstance(ex, self.ex, ex)
-                if isinstance(ex, oslo_messaging.NoSuchMethod):
-                    self.assertEqual(self.msg.get('method'), ex.method)
-                elif isinstance(ex, oslo_messaging.UnsupportedVersion):
-                    self.assertEqual(self.msg.get('version', '1.0'),
-                                     ex.version)
-                    if ex.method:
-                        self.assertEqual(self.msg.get('method'), ex.method)
-            else:
-                self.assertTrue(self.success, failure)
-                self.assertIsNone(failure)
+        dispatcher = oslo_messaging.RPCDispatcher(endpoints, serializer)
 
         incoming = mock.Mock(ctxt=self.ctxt, message=self.msg)
-        incoming.reply.side_effect = check_reply
 
-        callback = dispatcher([incoming])
-        callback.run()
-        callback.done()
+        res = None
+
+        try:
+            res = dispatcher.dispatch(incoming)
+        except Exception as ex:
+            self.assertFalse(self.success, ex)
+            self.assertIsNotNone(self.ex, ex)
+            self.assertIsInstance(ex, self.ex, ex)
+            if isinstance(ex, oslo_messaging.NoSuchMethod):
+                self.assertEqual(self.msg.get('method'), ex.method)
+            elif isinstance(ex, oslo_messaging.UnsupportedVersion):
+                self.assertEqual(self.msg.get('version', '1.0'),
+                                 ex.version)
+                if ex.method:
+                    self.assertEqual(self.msg.get('method'), ex.method)
+        else:
+            self.assertTrue(self.success,
+                            "Not expected success of operation durung testing")
+            self.assertIsNotNone(res)
 
         for n, endpoint in enumerate(endpoints):
             for method_name in ['foo', 'bar']:
@@ -146,8 +142,6 @@ class TestDispatcher(test_utils.BaseTestCase):
                         self.ctxt, **self.msg.get('args', {}))
                 else:
                     self.assertEqual(0, method.call_count)
-
-        self.assertEqual(1, incoming.reply.call_count)
 
 
 class TestSerializer(test_utils.BaseTestCase):
@@ -165,9 +159,7 @@ class TestSerializer(test_utils.BaseTestCase):
     def test_serializer(self):
         endpoint = _FakeEndpoint()
         serializer = msg_serializer.NoOpSerializer()
-        target = oslo_messaging.Target()
-        dispatcher = oslo_messaging.RPCDispatcher(target, [endpoint],
-                                                  serializer)
+        dispatcher = oslo_messaging.RPCDispatcher([endpoint], serializer)
 
         self.mox.StubOutWithMock(endpoint, 'foo')
         args = dict([(k, 'd' + v) for k, v in self.args.items()])
@@ -187,7 +179,9 @@ class TestSerializer(test_utils.BaseTestCase):
 
         self.mox.ReplayAll()
 
-        retval = dispatcher._dispatch(self.ctxt, dict(method='foo',
-                                                      args=self.args))
+        incoming = mock.Mock()
+        incoming.ctxt = self.ctxt
+        incoming.message = dict(method='foo', args=self.args)
+        retval = dispatcher.dispatch(incoming)
         if self.retval is not None:
             self.assertEqual('s' + self.retval, retval)

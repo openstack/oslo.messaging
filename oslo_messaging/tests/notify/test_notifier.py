@@ -351,8 +351,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         logger = mock.MagicMock()
         logger.info = mock.MagicMock()
         message = {'password': 'passw0rd', 'event_type': 'foo'}
-        json_str = jsonutils.dumps(message)
-        mask_str = strutils.mask_password(json_str)
+        mask_str = jsonutils.dumps(strutils.mask_dict_password(message))
 
         with mock.patch.object(logging, 'getLogger') as gl:
             gl.return_value = logger

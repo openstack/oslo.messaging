@@ -61,6 +61,14 @@ class OptsTestCase(test_utils.BaseTestCase):
     def test_defaults(self):
         transport = mock.Mock()
         transport.conf = self.conf
-        server.MessageHandlingServer(transport, mock.Mock())
+
+        class MessageHandlingServerImpl(server.MessageHandlingServer):
+            def _create_listener(self):
+                pass
+
+            def _process_incoming(self, incoming):
+                pass
+
+        MessageHandlingServerImpl(transport, mock.Mock())
         opts.set_defaults(self.conf, executor_thread_pool_size=100)
         self.assertEqual(100, self.conf.executor_thread_pool_size)

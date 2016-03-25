@@ -103,9 +103,88 @@ by passing allow_requeue=True to get_notification_listener(). If the driver
 does not support requeueing, it will raise NotImplementedError at this point.
 
 """
+import itertools
+import logging
 
+from oslo_messaging._i18n import _LE
 from oslo_messaging.notify import dispatcher as notify_dispatcher
 from oslo_messaging import server as msg_server
+
+LOG = logging.getLogger(__name__)
+
+
+class NotificationServer(msg_server.MessageHandlingServer):
+    def __init__(self, transport, targets, dispatcher, executor='blocking',
+                 allow_requeue=True, pool=None):
+        super(NotificationServer, self).__init__(transport, dispatcher,
+                                                 executor)
+        self._allow_requeue = allow_requeue
+        self._pool = pool
+        self.targets = targets
+        self._targets_priorities = set(
+            itertools.product(self.targets,
+                              self.dispatcher.supported_priorities)
+        )
+
+    def _create_listener(self):
+        return msg_server.SingleMessageListenerAdapter(
+            self.transport._listen_for_notifications(
+                self._targets_priorities, self._pool
+            )
+        )
+
+    def _process_incoming(self, incoming):
+        res = notify_dispatcher.NotificationResult.REQUEUE
+        try:
+            res = self.dispatcher.dispatch(incoming)
+        except Exception:
+            LOG.error(_LE('Exception during message handling'), exc_info=True)
+
+        try:
+            if (res == notify_dispatcher.NotificationResult.REQUEUE and
+                    self._allow_requeue):
+                incoming.requeue()
+            else:
+                incoming.acknowledge()
+        except Exception:
+            LOG.error(_LE("Fail to ack/requeue message"), exc_info=True)
+
+
+class BatchNotificationServer(NotificationServer):
+    def __init__(self, transport, targets, dispatcher, executor='blocking',
+                 allow_requeue=True, pool=None, batch_size=1,
+                 batch_timeout=None):
+        super(BatchNotificationServer, self).__init__(
+            transport=transport, targets=targets, dispatcher=dispatcher,
+            executor=executor, allow_requeue=allow_requeue, pool=pool
+        )
+
+        self._batch_size = batch_size
+        self._batch_timeout = batch_timeout
+
+    def _create_listener(self):
+        return msg_server.BatchMessageListenerAdapter(
+            self.transport._listen_for_notifications(
+                self._targets_priorities, self._pool
+            ),
+            timeout=self._batch_timeout,
+            batch_size=self._batch_size
+        )
+
+    def _process_incoming(self, incoming):
+        try:
+            not_processed_messages = self.dispatcher.dispatch(incoming)
+        except Exception:
+            not_processed_messages = set(incoming)
+            LOG.error(_LE('Exception during message handling'), exc_info=True)
+        for m in incoming:
+            try:
+                if m in not_processed_messages and self._allow_requeue:
+                    m.requeue()
+                else:
+                    m.acknowledge()
+            except Exception:
+                LOG.error(_LE("Fail to ack/requeue message"), exc_info=True)
 
 
 def get_notification_listener(transport, targets, endpoints,
@@ -137,10 +216,10 @@ def get_notification_listener(transport, targets, endpoints,
     :type pool: str
     :raises: NotImplementedError
     """
-    dispatcher = notify_dispatcher.NotificationDispatcher(targets, endpoints,
-                                                          serializer,
-                                                          allow_requeue, pool)
-    return msg_server.MessageHandlingServer(transport, dispatcher, executor)
+    dispatcher = notify_dispatcher.NotificationDispatcher(endpoints,
+                                                          serializer)
+    return NotificationServer(transport, targets, dispatcher, executor,
+                              allow_requeue, pool)
 
 
 def get_batch_notification_listener(transport, targets, endpoints,
@@ -180,6 +259,8 @@ def get_batch_notification_listener(transport, targets, endpoints,
     :raises: NotImplementedError
     """
     dispatcher = notify_dispatcher.BatchNotificationDispatcher(
-        targets, endpoints, serializer, allow_requeue, pool,
-        batch_size, batch_timeout)
-    return msg_server.MessageHandlingServer(transport, dispatcher, executor)
+        endpoints, serializer)
+    return BatchNotificationServer(
+        transport, targets, dispatcher, executor, allow_requeue, pool,
+        batch_size, batch_timeout
+    )

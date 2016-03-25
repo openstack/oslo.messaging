@@ -149,7 +149,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
                                                serializer=serializer)
         # Mocking executor
         server._executor_cls = MagicMockIgnoreArgs
-        server.listener = MagicMockIgnoreArgs()
+        server._create_listener = MagicMockIgnoreArgs()
         server.dispatcher = MagicMockIgnoreArgs()
         # Here assigning executor's listener object to listener variable
         # before calling wait method, because in wait method we are
@@ -551,7 +551,6 @@ class TestServerLocking(test_utils.BaseTestCase):
             def __init__(self, *args, **kwargs):
                 self._lock = threading.Lock()
                 self._calls = []
-                self.listener = mock.MagicMock()
                 executors.append(self)
 
             submit = _logmethod('submit')
@@ -559,9 +558,16 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         self.executors = executors
 
-        self.server = oslo_messaging.MessageHandlingServer(mock.Mock(),
-                                                           mock.Mock())
+        class MessageHandlingServerImpl(oslo_messaging.MessageHandlingServer):
+            def _create_listener(self):
+                pass
+
+            def _process_incoming(self, incoming):
+                pass
+
+        self.server = MessageHandlingServerImpl(mock.Mock(), mock.Mock())
         self.server._executor_cls = FakeExecutor
+        self.server._create_listener = mock.Mock()
 
     def test_start_stop_wait(self):
         # Test a simple execution of start, stop, wait in order
