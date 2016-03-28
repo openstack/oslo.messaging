@@ -20,6 +20,7 @@ import os
 import random
 import socket
 import ssl
+import sys
 import threading
 import time
 import uuid
@@ -867,8 +868,10 @@ class Connection(object):
             LOG.debug('Failed to get socket attribute: %s' % str(e))
         else:
             sock.settimeout(timeout)
-            sock.setsockopt(socket.IPPROTO_TCP, TCP_USER_TIMEOUT,
-                            timeout * 1000 if timeout is not None else 0)
+            if sys.platform != 'win32':
+                sock.setsockopt(socket.IPPROTO_TCP,
+                                TCP_USER_TIMEOUT,
+                                timeout * 1000 if timeout is not None else 0)
 
     @contextlib.contextmanager
     def _transport_socket_timeout(self, timeout):
