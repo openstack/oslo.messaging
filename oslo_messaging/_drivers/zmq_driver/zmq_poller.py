@@ -83,7 +83,7 @@ class ZmqPoller(object):
         """Resume with polling
 
         Some implementations of poller may provide hold polling before reply
-        This method is intended to excplicitly resume polling aftewards.
+        This method is intended to explicitly resume polling afterwards.
         """
 
 

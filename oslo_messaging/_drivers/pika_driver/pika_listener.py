@@ -49,7 +49,7 @@ class RpcReplyPikaListener(object):
 
         :param expiration_time: Float, expiration time in seconds
             (like time.time()),
-        :return: String, queue name which hould be used for reply sending
+        :return: String, queue name which should be used for reply sending
         """
         if self._reply_consumer_initialized:
             return self._reply_queue

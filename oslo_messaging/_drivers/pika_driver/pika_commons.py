@@ -35,7 +35,7 @@ def is_eventlet_monkey_patched(module):
     """Determines safely is eventlet patching for module enabled or not
 
     :param module: String, module name
-    :return Bool, True if module is pathed, False otherwise
+    :return Bool, True if module is patched, False otherwise
     """
 
     if 'eventlet.patcher' not in sys.modules:
