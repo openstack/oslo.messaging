@@ -42,14 +42,12 @@ class RpcReplyPikaListener(object):
         self._poller_thread = None
         self._shutdown = False
 
-    def get_reply_qname(self, expiration_time=None):
+    def get_reply_qname(self):
         """As result return reply queue name, shared for whole process,
         but before this check is RPC listener initialized or not and perform
         initialization if needed
 
-        :param expiration_time: Float, expiration time in seconds
-            (like time.time()),
-        :return: String, queue name which should be used for reply sending
+        :return: String, queue name which hould be used for reply sending
         """
         if self._reply_consumer_initialized:
             return self._reply_queue

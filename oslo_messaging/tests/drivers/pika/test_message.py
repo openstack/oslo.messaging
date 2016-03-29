@@ -12,13 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import functools
-import time
 import unittest
 
 from concurrent import futures
 from mock import mock
 from mock import patch
 from oslo_serialization import jsonutils
+from oslo_utils import timeutils
 import pika
 
 import oslo_messaging
@@ -200,7 +200,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             content_encoding='utf-8', content_type='application/json'
         )
         outgoing_message_mock().send.assert_called_once_with(
-            expiration_time=None, reply_q='reply_queue', retrier=mock.ANY
+            reply_q='reply_queue', stopwatch=mock.ANY, retrier=mock.ANY
         )
         retry_mock.assert_called_once_with(
             retry_on_exception=mock.ANY, stop_max_attempt_number=3,
@@ -240,7 +240,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             content_type='application/json'
         )
         outgoing_message_mock().send.assert_called_once_with(
-            expiration_time=None, reply_q='reply_queue', retrier=mock.ANY
+            reply_q='reply_queue', stopwatch=mock.ANY, retrier=mock.ANY
         )
         retry_mock.assert_called_once_with(
             retry_on_exception=mock.ANY, stop_max_attempt_number=3,
@@ -314,7 +314,9 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         self._exchange = "it is exchange"
         self._routing_key = "it is routing key"
         self._expiration = 1
-        self._expiration_time = time.time() + self._expiration
+        self._stopwatch = (
+            timeutils.StopWatch(duration=self._expiration).start()
+        )
         self._mandatory = object()
 
         self._message = {"msg_type": 1, "msg_str": "hello"}
@@ -333,7 +335,7 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
             confirm=True,
             mandatory=self._mandatory,
             persistent=True,
-            expiration_time=self._expiration_time,
+            stopwatch=self._stopwatch,
             retrier=None
         )
 
@@ -378,7 +380,7 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
             confirm=False,
             mandatory=self._mandatory,
             persistent=False,
-            expiration_time=self._expiration_time,
+            stopwatch=self._stopwatch,
             retrier=None
         )
 
@@ -431,13 +433,13 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         )
 
         expiration = 1
-        expiration_time = time.time() + expiration
+        stopwatch = timeutils.StopWatch(duration=expiration).start()
 
         message.send(
             exchange=self._exchange,
             routing_key=self._routing_key,
             reply_listener=None,
-            expiration_time=expiration_time,
+            stopwatch=stopwatch,
             retrier=None
         )
 
@@ -478,7 +480,7 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         )
 
         expiration = 1
-        expiration_time = time.time() + expiration
+        stopwatch = timeutils.StopWatch(duration=expiration).start()
 
         result = "it is a result"
         reply_queue_name = "reply_queue_name"
@@ -493,7 +495,7 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
             exchange=self._exchange,
             routing_key=self._routing_key,
             reply_listener=reply_listener,
-            expiration_time=expiration_time,
+            stopwatch=stopwatch,
             retrier=None
         )
 
@@ -534,7 +536,9 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         self._reply_q = "reply_queue_name"
 
         self._expiration = 1
-        self._expiration_time = time.time() + self._expiration
+        self._stopwatch = (
+            timeutils.StopWatch(duration=self._expiration).start()
+        )
 
         self._pika_engine = mock.MagicMock()
 
@@ -550,8 +554,7 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
             self._pika_engine, self._msg_id, reply="all_fine"
         )
 
-        message.send(self._reply_q, expiration_time=self._expiration_time,
-                     retrier=None)
+        message.send(self._reply_q, stopwatch=self._stopwatch, retrier=None)
 
         self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.assert_called_once_with(
@@ -586,8 +589,7 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
             self._pika_engine, self._msg_id, failure_info=failure_info
         )
 
-        message.send(self._reply_q, expiration_time=self._expiration_time,
-                     retrier=None)
+        message.send(self._reply_q, stopwatch=self._stopwatch, retrier=None)
 
         self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.assert_called_once_with(
