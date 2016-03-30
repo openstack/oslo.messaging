@@ -40,6 +40,7 @@ _notifier_opts = [
     cfg.StrOpt('transport_url',
                deprecated_name='notification_transport_url',
                deprecated_group='DEFAULT',
+               secret=True,
                help='A URL representing the messaging driver to use for '
                     'notifications. If not set, we fall back to the same '
                     'configuration used for RPC.'),
