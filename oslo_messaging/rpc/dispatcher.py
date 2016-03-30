@@ -29,7 +29,6 @@ import sys
 
 import six
 
-from oslo_messaging._i18n import _LE
 from oslo_messaging import _utils as utils
 from oslo_messaging import dispatcher
 from oslo_messaging import localcontext
@@ -94,20 +93,16 @@ class RPCDispatcher(dispatcher.DispatcherBase):
 
     """
 
-    def __init__(self, target, endpoints, serializer):
+    def __init__(self, endpoints, serializer):
         """Construct a rpc server dispatcher.
 
-        :param target: the exchange, topic and server to listen on
-        :type target: Target
+        :param endpoints: list of endpoint objects for dispatching to
+        :param serializer: optional message serializer
         """
 
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
         self._default_target = msg_target.Target()
-        self._target = target
-
-    def _listen(self, transport):
-        return transport._listen(self._target)
 
     @staticmethod
     def _is_namespace(target, namespace):
@@ -127,43 +122,16 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         result = func(ctxt, **new_args)
         return self.serializer.serialize_entity(ctxt, result)
 
-    def __call__(self, incoming):
-        incoming[0].acknowledge()
-        return dispatcher.DispatcherExecutorContext(
-            incoming[0], self._dispatch_and_reply)
-
-    def _dispatch_and_reply(self, incoming):
-        try:
-            incoming.reply(self._dispatch(incoming.ctxt,
-                                          incoming.message))
-        except ExpectedException as e:
-            LOG.debug(u'Expected exception during message handling (%s)',
-                      e.exc_info[1])
-            incoming.reply(failure=e.exc_info, log_failure=False)
-        except Exception as e:
-            # current sys.exc_info() content can be overriden
-            # by another exception raise by a log handler during
-            # LOG.exception(). So keep a copy and delete it later.
-            exc_info = sys.exc_info()
-            try:
-                LOG.error(_LE('Exception during message handling: %s'), e,
-                          exc_info=exc_info)
-                incoming.reply(failure=exc_info)
-            finally:
-                # NOTE(dhellmann): Remove circular object reference
-                # between the current stack frame and the traceback in
-                # exc_info.
-                del exc_info
-
-    def _dispatch(self, ctxt, message):
+    def dispatch(self, incoming):
         """Dispatch an RPC message to the appropriate endpoint method.
 
-        :param ctxt: the request context
-        :type ctxt: dict
-        :param message: the message payload
-        :type message: dict
+        :param incoming: incoming message
+        :type incoming: IncomingMessage
         :raises: NoSuchMethod, UnsupportedVersion
         """
+        message = incoming.message
+        ctxt = incoming.ctxt
+
         method = message.get('method')
         args = message.get('args', {})
         namespace = message.get('namespace')

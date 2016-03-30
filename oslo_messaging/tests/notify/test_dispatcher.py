@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import itertools
-
 from oslo_utils import timeutils
 import testscenarios
 
@@ -24,7 +22,6 @@ from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
-
 
 notification_msg = dict(
     publisher_id="publisher_id",
@@ -96,20 +93,21 @@ class TestDispatcher(test_utils.BaseTestCase):
         msg = notification_msg.copy()
         msg['priority'] = self.priority
 
-        targets = [oslo_messaging.Target(topic='notifications')]
-        dispatcher = notify_dispatcher.NotificationDispatcher(
-            targets, endpoints, None, allow_requeue=True, pool=None)
-
-        # check it listen on wanted topics
-        self.assertEqual(sorted(set((targets[0], prio)
-                                    for prio in itertools.chain.from_iterable(
-                                        self.endpoints))),
-                         sorted(dispatcher._targets_priorities))
+        dispatcher = notify_dispatcher.NotificationDispatcher(endpoints, None)
 
         incoming = mock.Mock(ctxt={}, message=msg)
-        callback = dispatcher([incoming])
-        callback.run()
-        callback.done()
+
+        res = dispatcher.dispatch(incoming)
+
+        expected_res = (
+            notify_dispatcher.NotificationResult.REQUEUE
+            if (self.return_value ==
+                notify_dispatcher.NotificationResult.REQUEUE or
+                self.ex is not None)
+            else notify_dispatcher.NotificationResult.HANDLED
+        )
+
+        self.assertEqual(expected_res, res)
 
         # check endpoint callbacks are called or not
         for i, endpoint_methods in enumerate(self.endpoints):
@@ -127,26 +125,14 @@ class TestDispatcher(test_utils.BaseTestCase):
                 else:
                     self.assertEqual(0, endpoints[i].call_count)
 
-        if self.ex:
-            self.assertEqual(1, incoming.acknowledge.call_count)
-            self.assertEqual(0, incoming.requeue.call_count)
-        elif self.return_value == oslo_messaging.NotificationResult.HANDLED \
-                or self.return_value is None:
-            self.assertEqual(1, incoming.acknowledge.call_count)
-            self.assertEqual(0, incoming.requeue.call_count)
-        elif self.return_value == oslo_messaging.NotificationResult.REQUEUE:
-            self.assertEqual(0, incoming.acknowledge.call_count)
-            self.assertEqual(1, incoming.requeue.call_count)
-
     @mock.patch('oslo_messaging.notify.dispatcher.LOG')
     def test_dispatcher_unknown_prio(self, mylog):
         msg = notification_msg.copy()
         msg['priority'] = 'what???'
         dispatcher = notify_dispatcher.NotificationDispatcher(
-            [mock.Mock()], [mock.Mock()], None, allow_requeue=True, pool=None)
-        callback = dispatcher([mock.Mock(ctxt={}, message=msg)])
-        callback.run()
-        callback.done()
+            [mock.Mock()], None)
+        res = dispatcher.dispatch(mock.Mock(ctxt={}, message=msg))
+        self.assertEqual(None, res)
         mylog.warning.assert_called_once_with('Unknown priority "%s"',
                                               'what???')
 
@@ -236,9 +222,8 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
             **self.filter_rule)
         endpoint = mock.Mock(spec=['info'], filter_rule=notification_filter)
 
-        targets = [oslo_messaging.Target(topic='notifications')]
         dispatcher = notify_dispatcher.NotificationDispatcher(
-            targets, [endpoint], serializer=None, allow_requeue=True)
+            [endpoint], serializer=None)
         message = {'payload': {'state': 'active'},
                    'priority': 'info',
                    'publisher_id': self.publisher_id,
@@ -246,9 +231,7 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
                    'timestamp': '2014-03-03 18:21:04.369234',
                    'message_id': '99863dda-97f0-443a-a0c1-6ed317b7fd45'}
         incoming = mock.Mock(ctxt=self.context, message=message)
-        callback = dispatcher([incoming])
-        callback.run()
-        callback.done()
+        dispatcher.dispatch(incoming)
 
         if self.match:
             self.assertEqual(1, endpoint.info.call_count)

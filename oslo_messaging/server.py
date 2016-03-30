@@ -23,6 +23,7 @@ __all__ = [
     'ServerListenError',
 ]
 
+import abc
 import functools
 import inspect
 import logging
@@ -34,6 +35,7 @@ from oslo_service import service
 from oslo_utils import eventletutils
 from oslo_utils import excutils
 from oslo_utils import timeutils
+import six
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
@@ -295,6 +297,42 @@ def ordered(after=None, reset_after=None):
     return _ordered
 
 
+@six.add_metaclass(abc.ABCMeta)
+class MessageListenerAdapter(object):
+    def __init__(self, driver_listener, timeout=None):
+        self._driver_listener = driver_listener
+        self._timeout = timeout
+
+    @abc.abstractmethod
+    def poll(self):
+        """Poll incoming and return incoming request"""
+
+    def stop(self):
+        self._driver_listener.stop()
+
+    def cleanup(self):
+        self._driver_listener.cleanup()
+
+
+class SingleMessageListenerAdapter(MessageListenerAdapter):
+    def poll(self):
+        msgs = self._driver_listener.poll(prefetch_size=1,
+                                          timeout=self._timeout)
+        return msgs[0] if msgs else None
+
+
+class BatchMessageListenerAdapter(MessageListenerAdapter):
+    def __init__(self, driver_listener, timeout=None, batch_size=1):
+        super(BatchMessageListenerAdapter, self).__init__(driver_listener,
+                                                          timeout)
+        self._batch_size = batch_size
+
+    def poll(self):
+        return self._driver_listener.poll(prefetch_size=self._batch_size,
+                                          timeout=self._timeout)
+
+
+@six.add_metaclass(abc.ABCMeta)
 class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
     """Server for handling messages.
 
@@ -345,9 +383,18 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
 
         super(MessageHandlingServer, self).__init__()
 
-    def _submit_work(self, callback):
-        fut = self._work_executor.submit(callback.run)
-        fut.add_done_callback(lambda f: callback.done())
+    @abc.abstractmethod
+    def _process_incoming(self, incoming):
+        """Process incoming request
+
+        :param incoming: incoming request.
+        """
+
+    @abc.abstractmethod
+    def _create_listener(self):
+        """Creates listener object for polling requests
+        :return: MessageListenerAdapter
+        """
 
     @ordered(reset_after='stop')
     def start(self, override_pool_size=None):
@@ -374,7 +421,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         self._started = True
 
         try:
-            self.listener = self.dispatcher._listen(self.transport)
+            self.listener = self._create_listener()
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
 
@@ -412,22 +459,18 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
     @excutils.forever_retry_uncaught_exceptions
     def _runner(self):
         while self._started:
-            incoming = self.listener.poll(
-                timeout=self.dispatcher.batch_timeout,
-                prefetch_size=self.dispatcher.batch_size)
+            incoming = self.listener.poll()
 
             if incoming:
-                self._submit_work(self.dispatcher(incoming))
+                self._work_executor.submit(self._process_incoming, incoming)
 
         # listener is stopped but we need to process all already consumed
         # messages
         while True:
-            incoming = self.listener.poll(
-                timeout=self.dispatcher.batch_timeout,
-                prefetch_size=self.dispatcher.batch_size)
+            incoming = self.listener.poll()
 
             if incoming:
-                self._submit_work(self.dispatcher(incoming))
+                self._work_executor.submit(self._process_incoming, incoming)
             else:
                 return
 
