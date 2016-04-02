@@ -334,15 +334,18 @@ class PikaDriver(base.BaseDriver):
             retrier=retrier
         )
 
-    def listen(self, target):
+    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
         listener = pika_drv_poller.RpcServicePikaPoller(
             self._pika_engine, target,
             prefetch_count=self._pika_engine.rpc_listener_prefetch_count
         )
         listener.start()
-        return listener
+        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
+                                             batch_size, batch_timeout)
 
-    def listen_for_notifications(self, targets_and_priorities, pool):
+    def listen_for_notifications(self, targets_and_priorities, pool,
+                                 on_incoming_callback,
+                                 batch_size, batch_timeout):
         listener = pika_drv_poller.NotificationPikaPoller(
             self._pika_engine, targets_and_priorities,
             prefetch_count=(
@@ -351,7 +354,8 @@ class PikaDriver(base.BaseDriver):
             queue_name=pool
         )
         listener.start()
-        return listener
+        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
+                                             batch_size, batch_timeout)
 
     def cleanup(self):
         self._reply_listener.cleanup()

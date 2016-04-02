@@ -28,7 +28,7 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class ZmqServer(base.Listener):
+class ZmqServer(base.PollStyleListener):
 
     def __init__(self, driver, conf, matchmaker, target, poller=None):
         super(ZmqServer, self).__init__()
@@ -47,7 +47,7 @@ class ZmqServer(base.Listener):
             self.consumers.append(self.sub_consumer)
 
     @base.batch_poll_helper
-    def poll(self, timeout=None, prefetch_size=1):
+    def poll(self, timeout=None):
         message, socket = self.poller.poll(
             timeout or self.conf.rpc_poll_timeout)
         return message
@@ -63,7 +63,7 @@ class ZmqServer(base.Listener):
             consumer.cleanup()
 
 
-class ZmqNotificationServer(base.Listener):
+class ZmqNotificationServer(base.PollStyleListener):
 
     def __init__(self, driver, conf, matchmaker, targets_and_priorities):
         super(ZmqNotificationServer, self).__init__()
@@ -82,7 +82,7 @@ class ZmqNotificationServer(base.Listener):
                 self.driver, self.conf, self.matchmaker, t, self.poller))
 
     @base.batch_poll_helper
-    def poll(self, timeout=None, prefetch_size=1):
+    def poll(self, timeout=None):
         message, socket = self.poller.poll(
             timeout or self.conf.rpc_poll_timeout)
         return message

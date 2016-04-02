@@ -14,12 +14,12 @@
 #    under the License.
 
 import abc
-import time
+import threading
 
 from oslo_config import cfg
+from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
-from six.moves import range as compat_range
 
 
 from oslo_messaging import exceptions
@@ -38,21 +38,33 @@ def batch_poll_helper(func):
     This decorator helps driver that polls message one by one,
     to returns a list of message.
     """
-    def wrapper(in_self, timeout=None, prefetch_size=1):
+    def wrapper(in_self, timeout=None, batch_size=1, batch_timeout=None):
         incomings = []
         driver_prefetch = in_self.prefetch_size
         if driver_prefetch > 0:
-            prefetch_size = min(prefetch_size, driver_prefetch)
-        watch = timeutils.StopWatch(duration=timeout)
-        with watch:
-            for __ in compat_range(prefetch_size):
-                msg = func(in_self, timeout=watch.leftover(return_none=True))
+            batch_size = min(batch_size, driver_prefetch)
+
+        with timeutils.StopWatch(timeout) as timeout_watch:
+            # poll first message
+            msg = func(in_self, timeout=timeout_watch.leftover(True))
+            if msg is not None:
+                incomings.append(msg)
+            if batch_size == 1 or msg is None:
+                return incomings
+
+            # update batch_timeout according to timeout for whole operation
+            timeout_left = timeout_watch.leftover(True)
+            if timeout_left is not None and (
+                    batch_timeout is None or timeout_left < batch_timeout):
+                batch_timeout = timeout_left
+
+        with timeutils.StopWatch(batch_timeout) as batch_timeout_watch:
+            # poll remained batch messages
+            while len(incomings) < batch_size and msg is not None:
+                msg = func(in_self, timeout=batch_timeout_watch.leftover(True))
                 if msg is not None:
                     incomings.append(msg)
-                else:
-                    # timeout reached or listener stopped
-                    break
-                time.sleep(0)
+
         return incomings
     return wrapper
 
@@ -81,20 +93,22 @@ class RpcIncomingMessage(IncomingMessage):
 
     @abc.abstractmethod
     def reply(self, reply=None, failure=None, log_failure=True):
-        "Send a reply or failure back to the client."
+        """Send a reply or failure back to the client."""
 
 
 @six.add_metaclass(abc.ABCMeta)
-class Listener(object):
+class PollStyleListener(object):
     def __init__(self, prefetch_size=-1):
         self.prefetch_size = prefetch_size
 
     @abc.abstractmethod
-    def poll(self, timeout=None, prefetch_size=1):
-        """Blocking until 'prefetch_size' message is pending and return
+    def poll(self, timeout=None, batch_size=1, batch_timeout=None):
+        """Blocking until 'batch_size' message is pending and return
         [IncomingMessage].
-        Return None after timeout seconds if timeout is set and no message is
-        ending or if the listener have been stopped.
+        Waits for first message. Then waits for next batch_size-1 messages
+        during batch window defined by batch_timeout
+        This method block current thread until message comes,  stop() is
+        executed by another thread or timemout is elapsed.
         """
 
     def stop(self):
@@ -110,6 +124,113 @@ class Listener(object):
         if cleanup of listener required.
         """
         pass
+
+
+@six.add_metaclass(abc.ABCMeta)
+class Listener(object):
+    def __init__(self, on_incoming_callback, batch_size, batch_timeout,
+                 prefetch_size=-1):
+        """Init Listener
+
+        :param on_incoming_callback: callback function to be executed when
+            listener received messages. Messages should be processed and
+            acked/nacked by callback
+        :param batch_size: desired number of messages passed to
+            single on_incoming_callback call
+        :param batch_timeout: defines how long should we wait for batch_size
+            messages if we already have some messages waiting for processing
+        :param prefetch_size: defines how many massages we want to prefetch
+            from backend (depend on driver type) by single request
+        """
+        self.on_incoming_callback = on_incoming_callback
+        self.batch_timeout = batch_timeout
+        self.prefetch_size = prefetch_size
+        if prefetch_size > 0:
+            batch_size = min(batch_size, prefetch_size)
+        self.batch_size = batch_size
+
+    @abc.abstractmethod
+    def start(self):
+        """Stop listener.
+        Stop the listener message polling
+        """
+
+    @abc.abstractmethod
+    def wait(self):
+        """Wait listener.
+        Wait for processing remained input after listener Stop
+        """
+
+    @abc.abstractmethod
+    def stop(self):
+        """Stop listener.
+        Stop the listener message polling
+        """
+
+    @abc.abstractmethod
+    def cleanup(self):
+        """Cleanup listener.
+        Close connection (socket) used by listener if any.
+        As this is listener specific method, overwrite it in to derived class
+        if cleanup of listener required.
+        """
+
+
+class PollStyleListenerAdapter(Listener):
+    def __init__(self, poll_style_listener, on_incoming_callback, batch_size,
+                 batch_timeout):
+        super(PollStyleListenerAdapter, self).__init__(
+            on_incoming_callback, batch_size, batch_timeout,
+            poll_style_listener.prefetch_size
+        )
+        self._poll_style_listener = poll_style_listener
+        self._listen_thread = threading.Thread(target=self._runner)
+        self._listen_thread.daemon = True
+        self._started = False
+
+    def start(self):
+        """Start listener.
+        Start the listener message polling
+        """
+        self._started = True
+        self._listen_thread.start()
+
+    @excutils.forever_retry_uncaught_exceptions
+    def _runner(self):
+        while self._started:
+            incoming = self._poll_style_listener.poll(
+                batch_size=self.batch_size, batch_timeout=self.batch_timeout)
+
+            if incoming:
+                self.on_incoming_callback(incoming)
+
+        # listener is stopped but we need to process all already consumed
+        # messages
+        while True:
+            incoming = self._poll_style_listener.poll(
+                batch_size=self.batch_size, batch_timeout=self.batch_timeout)
+
+            if not incoming:
+                return
+            self.on_incoming_callback(incoming)
+
+    def stop(self):
+        """Stop listener.
+        Stop the listener message polling
+        """
+        self._started = False
+        self._poll_style_listener.stop()
+
+    def wait(self):
+        self._listen_thread.join()
+
+    def cleanup(self):
+        """Cleanup listener.
+        Close connection (socket) used by listener if any.
+        As this is listener specific method, overwrite it in to derived class
+        if cleanup of listener required.
+        """
+        self._poll_style_listener.cleanup()
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -138,11 +259,13 @@ class BaseDriver(object):
         """Send a notification message to the given target."""
 
     @abc.abstractmethod
-    def listen(self, target):
+    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
         """Construct a Listener for the given target."""
 
     @abc.abstractmethod
-    def listen_for_notifications(self, targets_and_priorities, pool):
+    def listen_for_notifications(self, targets_and_priorities, pool,
+                                 on_incoming_callback, batch_size,
+                                 batch_timeout):
         """Construct a notification Listener for the given list of
         tuple of (target, priority).
         """

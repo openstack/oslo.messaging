@@ -247,7 +247,7 @@ class OsloKafkaMessage(base.RpcIncomingMessage):
         LOG.warning(_LW("reply is not supported"))
 
 
-class KafkaListener(base.Listener):
+class KafkaListener(base.PollStyleListener):
 
     def __init__(self, conn):
         super(KafkaListener, self).__init__()
@@ -342,7 +342,9 @@ class KafkaDriver(base.BaseDriver):
         raise NotImplementedError(
             'The RPC implementation for Kafka is not implemented')
 
-    def listen_for_notifications(self, targets_and_priorities, pool=None):
+    def listen_for_notifications(self, targets_and_priorities, pool,
+                                 on_incoming_callback, batch_size,
+                                 batch_timeout):
         """Listen to a specified list of targets on Kafka brokers
 
         :param targets_and_priorities: List of pairs (target, priority)
@@ -361,7 +363,8 @@ class KafkaDriver(base.BaseDriver):
         conn.declare_topic_consumer(topics, pool)
 
         listener = KafkaListener(conn)
-        return listener
+        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
+                                             batch_size, batch_timeout)
 
     def _get_connection(self, purpose):
         return driver_common.ConnectionContext(self.connection_pool, purpose)

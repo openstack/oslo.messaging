@@ -106,7 +106,7 @@ class PikaPollerTestCase(unittest.TestCase):
         self._poller_connection_mock.process_data_events.side_effect = f
 
         poller.start()
-        res = poller.poll(prefetch_size=1)
+        res = poller.poll(batch_size=1)
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0], incoming_message_class_mock.return_value)
         self.assertEqual(
@@ -116,7 +116,7 @@ class PikaPollerTestCase(unittest.TestCase):
 
         poller.stop()
 
-        res2 = poller.poll(prefetch_size=n)
+        res2 = poller.poll(batch_size=n)
 
         self.assertEqual(len(res2), n - 1)
         self.assertEqual(incoming_message_class_mock.call_count, n)
@@ -162,7 +162,7 @@ class PikaPollerTestCase(unittest.TestCase):
         self._poller_connection_mock.process_data_events.side_effect = f
 
         poller.start()
-        res = poller.poll(prefetch_size=n)
+        res = poller.poll(batch_size=n)
 
         self.assertEqual(len(res), n)
         self.assertEqual(incoming_message_class_mock.call_count, n)
@@ -210,7 +210,7 @@ class PikaPollerTestCase(unittest.TestCase):
         self._poller_connection_mock.process_data_events.side_effect = f
 
         poller.start()
-        res = poller.poll(prefetch_size=n, timeout=timeout)
+        res = poller.poll(batch_size=n, timeout=timeout)
 
         self.assertEqual(len(res), success_count)
         self.assertEqual(incoming_message_class_mock.call_count, success_count)

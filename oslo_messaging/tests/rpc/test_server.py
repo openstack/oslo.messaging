@@ -29,7 +29,7 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 class ServerSetupMixin(object):
 
-    class Server(threading.Thread):
+    class Server(object):
         def __init__(self, transport, topic, server, endpoint, serializer):
             self.controller = ServerSetupMixin.ServerController()
             target = oslo_messaging.Target(topic=topic, server=server)
@@ -38,9 +38,6 @@ class ServerSetupMixin(object):
                                                         [endpoint,
                                                          self.controller],
                                                         serializer=serializer)
-
-            super(ServerSetupMixin.Server, self).__init__()
-            self.daemon = True
 
         def wait(self):
             # Wait for the executor to process the stop message, indicating all
@@ -52,7 +49,7 @@ class ServerSetupMixin(object):
             self.server.stop()
             self.server.wait()
 
-        def run(self):
+        def start(self):
             self.server.start()
 
     class ServerController(object):
@@ -86,10 +83,7 @@ class ServerSetupMixin(object):
                              endpoint=endpoint,
                              serializer=self.serializer)
 
-        thread = threading.Thread(target=server.start)
-        thread.daemon = True
-        thread.start()
-
+        server.start()
         return server
 
     def _stop_server(self, client, server, topic=None):
@@ -492,9 +486,9 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         else:
             endpoint1 = endpoint2 = TestEndpoint()
 
-        thread1 = self._setup_server(transport1, endpoint1,
+        server1 = self._setup_server(transport1, endpoint1,
                                      topic=self.topic1, server=self.server1)
-        thread2 = self._setup_server(transport2, endpoint2,
+        server2 = self._setup_server(transport2, endpoint2,
                                      topic=self.topic2, server=self.server2)
 
         client1 = self._setup_client(transport1, topic=self.topic1)
@@ -513,12 +507,10 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         (client1.call if self.call1 else client1.cast)({}, 'ping', arg='1')
         (client2.call if self.call2 else client2.cast)({}, 'ping', arg='2')
 
-        self.assertTrue(thread1.isAlive())
         self._stop_server(client1.prepare(fanout=None),
-                          thread1, topic=self.topic1)
-        self.assertTrue(thread2.isAlive())
+                          server1, topic=self.topic1)
         self._stop_server(client2.prepare(fanout=None),
-                          thread2, topic=self.topic2)
+                          server2, topic=self.topic2)
 
         def check(pings, expect):
             self.assertEqual(len(expect), len(pings))
@@ -560,14 +552,13 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         class MessageHandlingServerImpl(oslo_messaging.MessageHandlingServer):
             def _create_listener(self):
-                pass
+                return mock.Mock()
 
             def _process_incoming(self, incoming):
                 pass
 
         self.server = MessageHandlingServerImpl(mock.Mock(), mock.Mock())
         self.server._executor_cls = FakeExecutor
-        self.server._create_listener = mock.Mock()
 
     def test_start_stop_wait(self):
         # Test a simple execution of start, stop, wait in order
@@ -576,9 +567,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         self.server.stop()
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 2)
+        self.assertEqual(len(self.executors), 1)
         self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
         self.assertTrue(self.server.listener.cleanup.called)
 
     def test_reversed_order(self):
@@ -597,9 +587,8 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 2)
+        self.assertEqual(len(self.executors), 1)
         self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
 
     def test_wait_for_running_task(self):
         # Test that if 2 threads call a method simultaneously, both will wait,
@@ -660,9 +649,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Check that both threads have finished, start was only called once,
         # and execute ran
         self.assertTrue(waiter_finished.is_set())
-        self.assertEqual(2, len(self.executors))
+        self.assertEqual(1, len(self.executors))
         self.assertEqual(self.executors[0]._calls, [])
-        self.assertEqual(self.executors[1]._calls, ['submit'])
 
     def test_start_stop_wait_stop_wait(self):
         # Test that we behave correctly when calling stop/wait more than once.
@@ -674,9 +662,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         self.server.stop()
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 2)
+        self.assertEqual(len(self.executors), 1)
         self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
         self.assertTrue(self.server.listener.cleanup.called)
 
     def test_state_wrapping(self):
@@ -711,9 +698,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         complete_waiting_callback.wait()
 
         # The server should have started, but stop should not have been called
-        self.assertEqual(2, len(self.executors))
+        self.assertEqual(1, len(self.executors))
         self.assertEqual(self.executors[0]._calls, [])
-        self.assertEqual(self.executors[1]._calls, ['submit'])
         self.assertFalse(thread1_finished.is_set())
 
         self.server.stop()
@@ -721,20 +707,17 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # We should have gone through all the states, and thread1 should still
         # be waiting
-        self.assertEqual(2, len(self.executors))
+        self.assertEqual(1, len(self.executors))
         self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
         self.assertFalse(thread1_finished.is_set())
 
         # Start again
         self.server.start()
 
         # We should now record 4 executors (2 for each server)
-        self.assertEqual(4, len(self.executors))
+        self.assertEqual(2, len(self.executors))
         self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
-        self.assertEqual(self.executors[2]._calls, [])
-        self.assertEqual(self.executors[3]._calls, ['submit'])
+        self.assertEqual(self.executors[1]._calls, [])
         self.assertFalse(thread1_finished.is_set())
 
         # Allow thread1 to complete
@@ -743,11 +726,9 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # thread1 should now have finished, and stop should not have been
         # called again on either the first or second executor
-        self.assertEqual(4, len(self.executors))
+        self.assertEqual(2, len(self.executors))
         self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, ['submit', 'shutdown'])
-        self.assertEqual(self.executors[2]._calls, [])
-        self.assertEqual(self.executors[3]._calls, ['submit'])
+        self.assertEqual(self.executors[1]._calls, [])
         self.assertTrue(thread1_finished.is_set())
 
     @mock.patch.object(server_module, 'DEFAULT_LOG_AFTER', 1)

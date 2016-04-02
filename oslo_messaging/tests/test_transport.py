@@ -38,7 +38,7 @@ class _FakeDriver(object):
     def send_notification(self, *args, **kwargs):
         pass
 
-    def listen(self, target):
+    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
         pass
 
 
@@ -314,10 +314,10 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
         self.mox.StubOutWithMock(t._driver, 'listen')
-        t._driver.listen(self._target)
+        t._driver.listen(self._target, None, 1, None)
         self.mox.ReplayAll()
 
-        t._listen(self._target)
+        t._listen(self._target, None, 1, None)
 
 
 class TestTransportUrlCustomisation(test_utils.BaseTestCase):

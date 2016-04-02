@@ -118,8 +118,9 @@ class RPCServer(msg_server.MessageHandlingServer):
         self._target = target
 
     def _create_listener(self):
-        return msg_server.SingleMessageListenerAdapter(
-            self.transport._listen(self._target)
+        return self.transport._listen(
+            self._target,
+            lambda incoming: self._on_incoming(incoming[0]), 1, None
         )
 
     def _process_incoming(self, incoming):

@@ -42,7 +42,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
         for i in range(10):
             try:
                 target = oslo_messaging.Target(topic='testtopic_' + str(i))
-                new_listener = self.driver.listen(target)
+                new_listener = self.driver.listen(target, None, None, None)
                 listeners.append(new_listener)
             except zmq_socket.ZmqPortRangeExceededException:
                 pass

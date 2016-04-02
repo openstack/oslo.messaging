@@ -127,10 +127,9 @@ class NotificationServer(msg_server.MessageHandlingServer):
         )
 
     def _create_listener(self):
-        return msg_server.SingleMessageListenerAdapter(
-            self.transport._listen_for_notifications(
-                self._targets_priorities, self._pool
-            )
+        return self.transport._listen_for_notifications(
+            self._targets_priorities, self._pool,
+            lambda incoming: self._on_incoming(incoming[0]), 1, None
         )
 
     def _process_incoming(self, incoming):
@@ -163,12 +162,9 @@ class BatchNotificationServer(NotificationServer):
         self._batch_timeout = batch_timeout
 
     def _create_listener(self):
-        return msg_server.BatchMessageListenerAdapter(
-            self.transport._listen_for_notifications(
-                self._targets_priorities, self._pool
-            ),
-            timeout=self._batch_timeout,
-            batch_size=self._batch_size
+        return self.transport._listen_for_notifications(
+            self._targets_priorities, self._pool, self._on_incoming,
+            self._batch_size, self._batch_timeout,
         )
 
     def _process_incoming(self, incoming):

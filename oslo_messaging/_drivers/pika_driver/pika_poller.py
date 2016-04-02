@@ -27,7 +27,7 @@ from oslo_messaging._drivers.pika_driver import pika_message as pika_drv_msg
 LOG = logging.getLogger(__name__)
 
 
-class PikaPoller(base.Listener):
+class PikaPoller(base.PollStyleListener):
     """Provides user friendly functionality for RabbitMQ message consuming,
     handles low level connectivity problems and restore connection if some
     connectivity related problem detected
@@ -43,8 +43,8 @@ class PikaPoller(base.Listener):
         :param incoming_message_class: PikaIncomingMessage, wrapper for
             consumed RabbitMQ message
         """
+        super(PikaPoller, self).__init__(prefetch_count)
         self._pika_engine = pika_engine
-        self._prefetch_count = prefetch_count
         self._incoming_message_class = incoming_message_class
 
         self._connection = None
@@ -65,7 +65,7 @@ class PikaPoller(base.Listener):
             for_listening=True
         )
         self._channel = self._connection.channel()
-        self._channel.basic_qos(prefetch_count=self._prefetch_count)
+        self._channel.basic_qos(prefetch_count=self.prefetch_size)
 
         if self._queues_to_consume is None:
             self._queues_to_consume = self._declare_queue_binding()
@@ -161,27 +161,23 @@ class PikaPoller(base.Listener):
             if message.need_ack():
                 del self._message_queue[i]
 
-    def poll(self, timeout=None, prefetch_size=1):
+    @base.batch_poll_helper
+    def poll(self, timeout=None):
         """Main method of this class - consumes message from RabbitMQ
 
         :param: timeout: float, seconds, timeout for waiting new incoming
             message, None means wait forever
-        :param: prefetch_size:  Integer, count of messages which we are want to
-            poll. It blocks until prefetch_size messages are consumed or until
-            timeout gets expired
         :return: list of PikaIncomingMessage, RabbitMQ messages
         """
 
         with timeutils.StopWatch(timeout) as stop_watch:
             while True:
                 with self._lock:
-                    last_queue_size = len(self._message_queue)
+                    if self._message_queue:
+                        return self._message_queue.pop(0)
 
-                    if (last_queue_size >= prefetch_size
-                            or stop_watch.expired()):
-                        result = self._message_queue[:prefetch_size]
-                        del self._message_queue[:prefetch_size]
-                        return result
+                    if stop_watch.expired():
+                        return None
 
                     try:
                         if self._started:
@@ -202,11 +198,10 @@ class PikaPoller(base.Listener):
                                 self._connection.process_data_events(
                                     time_limit=0
                                 )
-                            # and return result if we don't see new messages
-                            if last_queue_size == len(self._message_queue):
-                                result = self._message_queue[:prefetch_size]
-                                del self._message_queue[:prefetch_size]
-                                return result
+
+                            # and return if we don't see new messages
+                            if not self._message_queue:
+                                return None
                     except pika_drv_exc.EstablishConnectionException as e:
                         LOG.warning(
                             "Problem during establishing connection for pika "
