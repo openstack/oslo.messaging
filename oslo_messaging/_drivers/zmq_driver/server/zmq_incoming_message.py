@@ -29,12 +29,13 @@ zmq = zmq_async.import_zmq()
 
 class ZmqIncomingRequest(base.RpcIncomingMessage):
 
-    def __init__(self, socket, rep_id, request, poller):
+    def __init__(self, socket, rep_id, request, envelope, poller):
         super(ZmqIncomingRequest, self).__init__(request.context,
                                                  request.message)
         self.reply_socket = socket
         self.reply_id = rep_id
         self.request = request
+        self.envelope = envelope
         self.received = None
         self.poller = poller
 
@@ -54,8 +55,8 @@ class ZmqIncomingRequest(base.RpcIncomingMessage):
         self.received = True
         self.reply_socket.send(self.reply_id, zmq.SNDMORE)
         self.reply_socket.send(b'', zmq.SNDMORE)
+        self.reply_socket.send_pyobj(self.envelope, zmq.SNDMORE)
         self.reply_socket.send_pyobj(response)
-        self.poller.resume_polling(self.reply_socket)
 
     def requeue(self):
         """Requeue is not supported"""

@@ -48,7 +48,7 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
     def poll(self, timeout=None):
 
         if timeout:
-            timeout *= 1000  # zmq poller waits milliseconds
+            timeout *= 1000  # zmq poller expects milliseconds
 
         sockets = None
 
@@ -64,9 +64,6 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
                 return self.recv_methods[socket](socket), socket
             else:
                 return socket.recv_multipart(), socket
-
-    def resume_polling(self, socket):
-        pass  # Nothing to do for threading poller
 
     def close(self):
         pass  # Nothing to do for threading poller

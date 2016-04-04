@@ -20,7 +20,6 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
-from oslo_messaging._i18n import _LI
 
 LOG = logging.getLogger(__name__)
 
@@ -54,13 +53,6 @@ class PubPublisherProxy(object):
                                                 self.socket.port)
 
         self.sync_channel = SyncChannel(conf, matchmaker, self.zmq_context)
-
-        LOG.info(_LI("[PUB:%(pub)s, PULL:%(pull)s] Run PUB publisher"),
-                 {"pub": self.host,
-                  "pull": self.sync_channel.sync_host})
-
-        self.matchmaker.register_publisher(
-            (self.host, self.sync_channel.sync_host))
 
     def send_request(self, multipart_message):
 

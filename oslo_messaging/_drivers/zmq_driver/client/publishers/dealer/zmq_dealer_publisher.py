@@ -16,7 +16,6 @@ import logging
 
 from oslo_messaging._drivers.zmq_driver.client.publishers\
     import zmq_publisher_base
-from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -31,6 +30,7 @@ class DealerPublisher(zmq_publisher_base.QueuedSender):
 
         def _send_message_data(socket, request):
             socket.send(b'', zmq.SNDMORE)
+            socket.send_pyobj(request.create_envelope(), zmq.SNDMORE)
             socket.send_pyobj(request)
 
             LOG.debug("Sent message_id %(message)s to a target %(target)s",
@@ -75,13 +75,13 @@ class DealerPublisherLight(zmq_publisher_base.QueuedSender):
                       "a target %(target)s",
                       {"message": request.message_id,
                        "target": request.target,
-                       "addr": zmq_address.get_broker_address(conf)})
+                       "addr": list(socket.connections)})
 
         sockets_manager = zmq_publisher_base.SocketsManager(
             conf, matchmaker, zmq.ROUTER, zmq.DEALER)
         super(DealerPublisherLight, self).__init__(
             sockets_manager, _do_send_request)
-        self.socket = self.outbound_sockets.get_socket_to_broker()
+        self.socket = self.outbound_sockets.get_socket_to_publishers()
 
     def _connect_socket(self, target):
         return self.socket

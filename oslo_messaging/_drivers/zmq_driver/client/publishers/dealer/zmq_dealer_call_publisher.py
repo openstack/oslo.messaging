@@ -42,20 +42,26 @@ class DealerCallPublisher(object):
         self.conf = conf
         self.matchmaker = matchmaker
         self.reply_waiter = ReplyWaiter(conf)
-        sockets_manager = zmq_publisher_base.SocketsManager(
+        self.sockets_manager = zmq_publisher_base.SocketsManager(
             conf, matchmaker, zmq.ROUTER, zmq.DEALER)
 
         def _do_send_request(socket, request):
-            #  DEALER socket specific envelope empty delimiter
+            target_hosts = self.sockets_manager.get_hosts(request.target)
+            envelope = request.create_envelope(target_hosts)
+            # DEALER socket specific envelope empty delimiter
             socket.send(b'', zmq.SNDMORE)
+            socket.send_pyobj(envelope, zmq.SNDMORE)
             socket.send_pyobj(request)
 
             LOG.debug("Sent message_id %(message)s to a target %(target)s",
                       {"message": request.message_id,
                        "target": request.target})
 
-        self.sender = CallSender(sockets_manager, _do_send_request,
-                                 self.reply_waiter)
+        self.sender = CallSender(self.sockets_manager, _do_send_request,
+                                 self.reply_waiter) \
+            if not conf.use_router_proxy else \
+            CallSenderLight(self.sockets_manager, _do_send_request,
+                            self.reply_waiter)
 
     def send_request(self, request):
         reply_future = self.sender.send_request(request)
@@ -99,6 +105,14 @@ class CallSender(zmq_publisher_base.QueuedSender):
         return socket
 
 
+class CallSenderLight(CallSender):
+
+    def _connect_socket(self, target):
+        socket = self.outbound_sockets.get_socket_to_routers()
+        self.reply_waiter.poll_socket(socket)
+        return socket
+
+
 class ReplyWaiter(object):
 
     def __init__(self, conf):
@@ -122,6 +136,8 @@ class ReplyWaiter(object):
         def _receive_method(socket):
             empty = socket.recv()
             assert empty == b'', "Empty expected!"
+            envelope = socket.recv_pyobj()
+            assert envelope is not None, "Invalid envelope!"
             reply = socket.recv_pyobj()
             LOG.debug("Received reply %s", reply)
             return reply

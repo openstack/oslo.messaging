@@ -118,7 +118,6 @@ To specify the Redis server for RedisMatchMaker, use options in
         [matchmaker_redis]
         host = 127.0.0.1
         port = 6379
-        password = None
 
 In order to cleanup redis storage from expired records (e.g. target listener
 goes down) TTL may be applied for keys. Configure 'zmq_target_expire' option
@@ -138,16 +137,51 @@ stored in Redis is that the key is a base topic and the corresponding values are
 hostname arrays to be sent to.
 
 
+Proxy and huge number of TCP sockets
+------------------------------------
+
+The most heavily used RPC pattern (CALL) may consume too many TCP sockets in
+directly connected configuration. To solve the issue ROUTER proxy may be used.
+In order to configure driver to use ROUTER proxy set up the 'use_router_proxy'
+option to True in [DEFAULT] section (False is set by default).
+
+For example::
+
+        use_router_proxy = True
+
+Not less than 3 proxies should be running on controllers or on stand alone
+nodes. The parameters for the script oslo-messaging-zmq-proxy should be::
+
+        oslo-messaging-zmq-proxy
+            --type ROUTER
+            --config-file /etc/oslo/zeromq.conf
+            --log-file /var/log/oslo/zmq-router-proxy.log
+
+
 Proxy for fanout publishing
 ---------------------------
 
-Each machine running OpenStack services, or sending RPC messages, should run
-the 'oslo-messaging-zmq-broker' daemon.
-
 Fanout-based patterns like CAST+Fanout and notifications always use proxy
-as they act over PUB/SUB, 'use_pub_sub' - defaults to True. If not using
-PUB/SUB (use_pub_sub = False) then fanout will be emulated over direct
-DEALER/ROUTER unicast which is possible but less efficient and therefore
+as they act over PUB/SUB, 'use_pub_sub' option defaults to True. In such case
+publisher proxy should be running. Publisher-proxies are independent from each
+other. Recommended number of proxies in the cloud is not less than 3. You
+may run them on a standalone nodes or on controller nodes.
+The parameters for the script oslo-messaging-zmq-proxy should be::
+
+        oslo-messaging-zmq-proxy
+            --type PUBLISHER
+            --config-file /etc/oslo/zeromq.conf
+            --log-file /var/log/oslo/zmq-publisher-proxy.log
+
+Actually PUBLISHER is the default value for the parameter --type, so
+could be omitted::
+
+        oslo-messaging-zmq-proxy
+            --config-file /etc/oslo/zeromq.conf
+            --log-file /var/log/oslo/zmq-publisher-proxy.log
+
+If not using PUB/SUB (use_pub_sub = False) then fanout will be emulated over
+direct DEALER/ROUTER unicast which is possible but less efficient and therefore
 is not recommended. In a case of direct DEALER/ROUTER unicast proxy is not
 needed.
 
@@ -158,22 +192,11 @@ For example::
         use_pub_sub = True
 
 
-In case of using the broker all publishers (clients) talk to servers over
-the local broker connecting to it via IPC transport.
-
-The IPC runtime directory, 'rpc_zmq_ipc_dir', can be set in [DEFAULT] section.
-
-For example::
-
-        rpc_zmq_ipc_dir = /var/run/openstack
-
-The parameters for the script oslo-messaging-zmq-receiver should be::
-
-        oslo-messaging-zmq-broker
-            --config-file /etc/oslo/zeromq.conf
-            --log-file /var/log/oslo/zmq-broker.log
+In case of using a proxy all publishers (clients) talk to servers over
+the proxy connecting to it via TCP.
 
 You can specify ZeroMQ options in /etc/oslo/zeromq.conf if necessary.
+
 
 Listening Address (optional)
 ----------------------------

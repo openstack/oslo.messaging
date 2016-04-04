@@ -56,7 +56,8 @@ matchmaker_redis_opts = [
 ]
 
 _PUBLISHERS_KEY = "PUBLISHERS"
-_RETRY_METHODS = ("get_hosts", "get_publishers")
+_ROUTERS_KEY = "ROUTERS"
+_RETRY_METHODS = ("get_hosts", "get_publishers", "get_routers")
 
 
 def retry_if_connection_error(ex):
@@ -143,6 +144,15 @@ class RedisMatchMaker(base.MatchMakerBase):
                       for host_str in
                       self._get_hosts_by_key(_PUBLISHERS_KEY)])
         return hosts
+
+    def register_router(self, hostname):
+        self._redis.sadd(_ROUTERS_KEY, hostname)
+
+    def unregister_router(self, hostname):
+        self._redis.srem(_ROUTERS_KEY, hostname)
+
+    def get_routers(self):
+        return self._get_hosts_by_key(_ROUTERS_KEY)
 
     def _get_hosts_by_key(self, key):
         return self._redis.smembers(key)

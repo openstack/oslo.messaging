@@ -17,8 +17,6 @@ from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_call_publisher
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher
-from oslo_messaging._drivers.zmq_driver.client.publishers \
-    import zmq_push_publisher
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -42,9 +40,6 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
                 zmq_names.CALL_TYPE:
                     zmq_dealer_call_publisher.DealerCallPublisher(
                         conf, matchmaker),
-
-                zmq_names.CAST_TYPE:
-                    zmq_push_publisher.PushPublisher(conf, matchmaker),
 
                 # Here use DealerPublisherLight for sending request to proxy
                 # which finally uses PubPublisher to send fanout in case of

@@ -16,12 +16,14 @@ cat > ${DATADIR}/zmq.conf <<EOF
 transport_url=${TRANSPORT_URL}
 rpc_zmq_matchmaker=${ZMQ_MATCHMAKER}
 rpc_zmq_ipc_dir=${ZMQ_IPC_DIR}
+use_router_proxy=True
 [matchmaker_redis]
 port=${ZMQ_REDIS_PORT}
 EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
 
-oslo-messaging-zmq-broker --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-broker.log 2>&1 &
+oslo-messaging-zmq-proxy --type PUBLISHER --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-publisher.log 2>&1 &
+oslo-messaging-zmq-proxy --type ROUTER --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-router.log 2>&1 &
 
 $*
