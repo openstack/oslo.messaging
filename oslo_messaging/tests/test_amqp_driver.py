@@ -516,9 +516,9 @@ class TestFailover(test_utils.BaseTestCase):
             if broker.isAlive():
                 broker.stop()
 
-    def test_broker_failover(self):
-        """Simulate failover of one broker to another."""
+    def _failover(self, fail_brokers):
         self._brokers[0].start()
+        # self.config(trace=True, group="oslo_messaging_amqp")
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
 
         target = oslo_messaging.Target(topic="my-topic")
@@ -541,11 +541,10 @@ class TestFailover(test_utils.BaseTestCase):
         self.assertEqual(self._brokers[0].topic_count, 1)
         self.assertEqual(self._brokers[0].direct_count, 1)
 
-        # fail broker 0 and start broker 1:
-        self._brokers[0].stop()
-        self._brokers[1].start()
+        # invoke failover method
+        fail_brokers(self._brokers[0], self._brokers[1])
 
-        # wait for listener links to re-establish
+        # wait for listener links to re-establish on broker 1
         # 4 = 3 links per listener + 1 for the global reply queue
         predicate = lambda: self._brokers[1].sender_link_count == 4
         _wait_until(predicate, 30)
@@ -571,10 +570,40 @@ class TestFailover(test_utils.BaseTestCase):
         self._brokers[1].stop()
         driver.cleanup()
 
+    def test_broker_crash(self):
+        """Simulate a failure of one broker."""
+        def _meth(broker0, broker1):
+            # fail broker 0 and start broker 1:
+            broker0.stop()
+            time.sleep(0.5)
+            broker1.start()
+        self._failover(_meth)
+
+    def test_broker_shutdown(self):
+        """Simulate a normal shutdown of a broker."""
+        def _meth(broker0, broker1):
+            broker0.stop(clean=True)
+            time.sleep(0.5)
+            broker1.start()
+        self._failover(_meth)
+
+    def test_heartbeat_failover(self):
+        """Simulate broker heartbeat timeout."""
+        def _meth(broker0, broker1):
+            # keep alive heartbeat from broker 0 will stop, which should force
+            # failover to broker 1 in about two seconds
+            broker0.pause()
+            broker1.start()
+        self.config(idle_timeout=2, group="oslo_messaging_amqp")
+        self._failover(_meth)
+        self._brokers[0].stop()
+
     def test_listener_failover(self):
-        """Verify that Listeners are re-established after failover.
+        """Verify that Listeners sharing the same topic are re-established
+        after failover.
         """
         self._brokers[0].start()
+        # self.config(trace=True, group="oslo_messaging_amqp")
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
 
         target = oslo_messaging.Target(topic="my-topic")
@@ -596,11 +625,11 @@ class TestFailover(test_utils.BaseTestCase):
         _wait_until(predicate, 30)
         self.assertTrue(predicate())
 
-        # fail broker 0 and start broker 1:
-        self._brokers[0].stop()
+        #  start broker 1 then shutdown broker 0:
         self._brokers[1].start()
+        self._brokers[0].stop(clean=True)
 
-        # wait again for 7 sending links to re-establish
+        # wait again for 7 sending links to re-establish on broker 1
         predicate = lambda: self._brokers[1].sender_link_count == 7
         _wait_until(predicate, 30)
         self.assertTrue(predicate())
@@ -617,8 +646,8 @@ class TestFailover(test_utils.BaseTestCase):
         listener2.join(timeout=30)
         self.assertFalse(listener1.isAlive() or listener2.isAlive())
 
-        self._brokers[1].stop()
         driver.cleanup()
+        self._brokers[1].stop()
 
 
 class FakeBroker(threading.Thread):
@@ -659,23 +688,19 @@ class FakeBroker(threading.Thread):
                 self.connection.open()
                 self.sender_links = set()
                 self.receiver_links = set()
-                self.closed = False
+                self.dead_links = set()
 
             def destroy(self):
                 """Destroy the test connection."""
-                # destroy modifies the set, so make a copy
-                tmp = self.sender_links.copy()
-                while tmp:
-                    link = tmp.pop()
+                for link in self.sender_links | self.receiver_links:
                     link.destroy()
-                # destroy modifies the set, so make a copy
-                tmp = self.receiver_links.copy()
-                while tmp:
-                    link = tmp.pop()
-                    link.destroy()
+                self.sender_links.clear()
+                self.receiver_links.clear()
+                self.dead_links.clear()
                 self.connection.destroy()
                 self.connection = None
                 self.socket.close()
+                self.socket = None
 
             def fileno(self):
                 """Allows use of this in a select() call."""
@@ -685,18 +710,23 @@ class FakeBroker(threading.Thread):
                 """Called when socket is read-ready."""
                 try:
                     pyngus.read_socket_input(self.connection, self.socket)
+                    self.connection.process(time.time())
                 except socket.error:
-                    pass
-                self.connection.process(time.time())
+                    self._socket_error()
 
             def send_output(self):
                 """Called when socket is write-ready."""
                 try:
                     pyngus.write_socket_output(self.connection,
                                                self.socket)
+                    self.connection.process(time.time())
                 except socket.error:
-                    pass
-                self.connection.process(time.time())
+                    self._socket_error()
+
+            def _socket_error(self):
+                self.connection.close_input()
+                self.connection.close_output()
+                # the broker will clean up in its main loop
 
             # Pyngus ConnectionEventHandler callbacks:
 
@@ -710,7 +740,6 @@ class FakeBroker(threading.Thread):
             def connection_closed(self, connection):
                 """Connection close completed."""
                 self.server.connection_count -= 1
-                self.closed = True  # main loop will destroy
 
             def connection_failed(self, connection, error):
                 """Connection failure detected."""
@@ -757,10 +786,10 @@ class FakeBroker(threading.Thread):
 
             def destroy(self):
                 """Destroy the link."""
-                self._cleanup()
                 conn = self.conn
                 self.conn = None
                 conn.sender_links.remove(self)
+                conn.dead_links.discard(self)
                 if self.link:
                     self.link.destroy()
                     self.link = None
@@ -774,6 +803,7 @@ class FakeBroker(threading.Thread):
                     self.server.remove_route(self.link.source_address,
                                              self)
                     self.routed = False
+                self.conn.dead_links.add(self)
 
             # Pyngus SenderEventHandler callbacks:
 
@@ -783,12 +813,14 @@ class FakeBroker(threading.Thread):
                 self.routed = True
 
             def sender_remote_closed(self, sender_link, error):
-                self._cleanup()
                 self.link.close()
 
             def sender_closed(self, sender_link):
                 self.server.sender_link_count -= 1
-                self.destroy()
+                self._cleanup()
+
+            def sender_failed(self, sender_link, error):
+                self.sender_closed(sender_link)
 
         class ReceiverLink(pyngus.ReceiverEventHandler):
             """An AMQP Receiving link."""
@@ -808,6 +840,7 @@ class FakeBroker(threading.Thread):
                 conn = self.conn
                 self.conn = None
                 conn.receiver_links.remove(self)
+                conn.dead_links.discard(self)
                 if self.link:
                     self.link.destroy()
                     self.link = None
@@ -822,7 +855,10 @@ class FakeBroker(threading.Thread):
 
             def receiver_closed(self, receiver_link):
                 self.server.receiver_link_count -= 1
-                self.destroy()
+                self.conn.dead_links.add(self)
+
+            def receiver_failed(self, receiver_link, error):
+                self.receiver_closed(receiver_link)
 
             def message_received(self, receiver_link, message, handle):
                 """Forward this message out the proper sending link."""
@@ -863,6 +899,7 @@ class FakeBroker(threading.Thread):
                                           % (self.host, self.port))
         self._connections = {}
         self._sources = {}
+        self._pause = threading.Event()
         # count of messages forwarded, by messaging pattern
         self.direct_count = 0
         self.topic_count = 0
@@ -878,14 +915,26 @@ class FakeBroker(threading.Thread):
         """Start the server."""
         LOG.debug("Starting Test Broker on %s:%d", self.host, self.port)
         self._shutdown = False
+        self._closing = False
         self.daemon = True
+        self._pause.set()
         self._my_socket.listen(10)
         super(FakeBroker, self).start()
 
-    def stop(self):
-        """Shutdown the server."""
+    def pause(self):
+        self._pause.clear()
+        os.write(self._wakeup_pipe[1], b'!')
+
+    def stop(self, clean=False):
+        """Stop the server."""
+        # If clean is True, attempt a clean shutdown by closing all open
+        # links/connections first.  Otherwise force an immediate disconnect
         LOG.debug("Stopping test Broker %s:%d", self.host, self.port)
-        self._shutdown = True
+        if clean:
+            self._closing = 1
+        else:
+            self._shutdown = True
+        self._pause.set()
         os.write(self._wakeup_pipe[1], b'!')
         self.join()
         LOG.debug("Test Broker %s:%d stopped", self.host, self.port)
@@ -894,6 +943,7 @@ class FakeBroker(threading.Thread):
         """Process I/O and timer events until the broker is stopped."""
         LOG.debug("Test Broker on %s:%d started", self.host, self.port)
         while not self._shutdown:
+            self._pause.wait()
             readers, writers, timers = self.container.need_processing()
 
             # map pyngus Connections back to _TestConnections:
@@ -915,16 +965,19 @@ class FakeBroker(threading.Thread):
             worked = set()
             for r in readable:
                 if r is self._my_socket:
-                    # new inbound connection request received,
-                    # create a new Connection for it:
-                    client_socket, client_address = self._my_socket.accept()
-                    name = str(client_address)
-                    conn = FakeBroker.Connection(self, client_socket, name,
-                                                 self._sasl_mechanisms,
-                                                 self._user_credentials,
-                                                 self._sasl_config_dir,
-                                                 self._sasl_config_name)
-                    self._connections[conn.name] = conn
+                    # new inbound connection request received
+                    sock, addr = self._my_socket.accept()
+                    if not self._closing:
+                        # create a new Connection for it:
+                        name = str(addr)
+                        conn = FakeBroker.Connection(self, sock, name,
+                                                     self._sasl_mechanisms,
+                                                     self._user_credentials,
+                                                     self._sasl_config_dir,
+                                                     self._sasl_config_name)
+                        self._connections[conn.name] = conn
+                    else:
+                        sock.close()  # drop it
                 elif r is self._wakeup_pipe[0]:
                     os.read(self._wakeup_pipe[0], 512)
                 else:
@@ -943,14 +996,26 @@ class FakeBroker(threading.Thread):
                 w.send_output()
                 worked.add(w)
 
-            # clean up any closed connections:
+            # clean up any closed connections or links:
             while worked:
                 conn = worked.pop()
-                if conn.closed:
+                if conn.connection.closed:
                     del self._connections[conn.name]
                     conn.destroy()
+                else:
+                    while conn.dead_links:
+                        conn.dead_links.pop().destroy()
 
-        # Shutting down
+            if self._closing and not self._connections:
+                self._shutdown = True
+            elif self._closing == 1:
+                # start closing connections
+                self._closing = 2
+                for conn in self._connections.values():
+                    conn.connection.close()
+
+        # Shutting down.  Any open links are just disconnected - the peer will
+        # see a socket close.
         self._my_socket.close()
         for conn in self._connections.values():
             conn.destroy()

@@ -76,7 +76,7 @@ class _SocketConnection(object):
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.connection.close_input()
-                self.connection.close()
+                self.connection.close_output()
                 self._handler.socket_error(str(e))
                 return pyngus.Connection.EOS
 
@@ -90,7 +90,7 @@ class _SocketConnection(object):
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.connection.close_output()
-                self.connection.close()
+                self.connection.close_input()
                 self._handler.socket_error(str(e))
                 return pyngus.Connection.EOS
 
@@ -161,6 +161,7 @@ class _SocketConnection(object):
     def close(self):
         if self.socket:
             self.socket.close()
+            self.socket = None
 
 
 class Schedule(object):
@@ -257,15 +258,18 @@ class Thread(threading.Thread):
         """
         self._requests.wakeup(request)
 
-    def shutdown(self, wait=True, timeout=None):
+    def shutdown(self):
         """Shutdown the eventloop thread.  Thread safe.
         """
         LOG.debug("eventloop shutdown requested")
         self._shutdown = True
         self.wakeup()
-        if wait:
-            self.join(timeout=timeout)
-        LOG.debug("eventloop shutdown complete")
+
+    def destroy(self):
+        # release the container.  This can only be called after the eventloop
+        # thread exited
+        self._container.destroy()
+        self._container = None
 
     # the following methods are not thread safe - they must be run from the
     # eventloop thread
@@ -322,12 +326,6 @@ class Thread(threading.Thread):
                     continue
                 raise  # assuming fatal...
 
-            # don't process any I/O or timers if woken up by a shutdown:
-            # if we've been forked we don't want to do I/O on the parent's
-            # sockets
-            if self._shutdown:
-                break
-
             readable, writable, ignore = results
 
             for r in readable:
@@ -345,4 +343,3 @@ class Thread(threading.Thread):
 
         LOG.info(_LI("eventloop thread exiting, container=%s"),
                  self._container.name)
-        self._container.destroy()

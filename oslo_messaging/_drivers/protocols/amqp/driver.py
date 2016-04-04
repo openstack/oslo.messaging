@@ -199,19 +199,28 @@ class ProtonDriver(base.BaseDriver):
         """
         def wrap(self, *args, **kws):
             with self._lock:
+                # check to see if a fork was done after the Controller and its
+                # I/O thread was spawned.  old_pid will be None the first time
+                # this is called which will cause the Controller to be created.
                 old_pid = self._pid
                 self._pid = os.getpid()
 
-            if old_pid != self._pid:
-                if self._ctrl is not None:
-                    LOG.warning(_LW("Process forked after connection "
-                                    "established!"))
-                    self._ctrl.shutdown(wait=False)
-                # Create a Controller that connects to the messaging service:
-                self._ctrl = controller.Controller(self._hosts,
-                                                   self._default_exchange,
-                                                   self._conf)
-                self._ctrl.connect()
+                if old_pid != self._pid:
+                    if self._ctrl is not None:
+                        # fork was called after the Controller was created, and
+                        # we are now executing as the child process.  Do not
+                        # touch the existing Controller - it is owned by the
+                        # parent.  Best we can do here is simply drop it and
+                        # hope we get lucky.
+                        LOG.warning(_LW("Process forked after connection "
+                                        "established!"))
+                        self._ctrl = None
+                    # Create a Controller that connects to the messaging
+                    # service:
+                    self._ctrl = controller.Controller(self._hosts,
+                                                       self._default_exchange,
+                                                       self._conf)
+                    self._ctrl.connect()
             return func(self, *args, **kws)
         return wrap
 
