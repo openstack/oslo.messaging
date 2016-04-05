@@ -12,14 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
-
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import timeutils
 import pika_pool
 import retrying
 
 from oslo_messaging._drivers import base
+from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
 from oslo_messaging._drivers.pika_driver import pika_engine as pika_drv_engine
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_listener as pika_drv_lstnr
@@ -158,7 +158,8 @@ class PikaDriver(base.BaseDriver):
     def require_features(self, requeue=False):
         pass
 
-    def _declare_rpc_exchange(self, exchange, timeout):
+    def _declare_rpc_exchange(self, exchange, stopwatch):
+        timeout = stopwatch.leftover(return_none=True)
         with (self._pika_engine.connection_without_confirmation_pool
                 .acquire(timeout=timeout)) as conn:
             try:
@@ -177,82 +178,75 @@ class PikaDriver(base.BaseDriver):
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              retry=None):
-        expiration_time = None if timeout is None else time.time() + timeout
+        with timeutils.StopWatch(duration=timeout) as stopwatch:
+            if retry is None:
+                retry = self._pika_engine.default_rpc_retry_attempts
 
-        if retry is None:
-            retry = self._pika_engine.default_rpc_retry_attempts
+            exchange = self._pika_engine.get_rpc_exchange_name(
+                target.exchange
+            )
 
-        exchange = self._pika_engine.get_rpc_exchange_name(
-            target.exchange
-        )
+            def on_exception(ex):
+                if isinstance(ex, pika_drv_exc.ExchangeNotFoundException):
+                    # it is desired to create exchange because if we sent to
+                    # exchange which is not exists, we get ChannelClosed
+                    # exception and need to reconnect
+                    try:
+                        self._declare_rpc_exchange(exchange, stopwatch)
+                    except pika_drv_exc.ConnectionException as e:
+                        LOG.warning("Problem during declaring exchange. %s", e)
+                    return True
+                elif isinstance(ex, (pika_drv_exc.ConnectionException,
+                                     exceptions.MessageDeliveryFailure)):
+                    LOG.warning("Problem during message sending. %s", ex)
+                    return True
+                else:
+                    return False
 
-        def on_exception(ex):
-            if isinstance(ex, pika_drv_exc.ExchangeNotFoundException):
-                # it is desired to create exchange because if we sent to
-                # exchange which is not exists, we get ChannelClosed exception
-                # and need to reconnect
+            retrier = (
+                None if retry == 0 else
+                retrying.retry(
+                    stop_max_attempt_number=(None if retry == -1 else retry),
+                    retry_on_exception=on_exception,
+                    wait_fixed=self._pika_engine.rpc_retry_delay * 1000,
+                )
+            )
+
+            if target.fanout:
+                return self.cast_all_workers(
+                    exchange, target.topic, ctxt, message, stopwatch, retrier
+                )
+
+            routing_key = self._pika_engine.get_rpc_queue_name(
+                target.topic, target.server, retrier is None
+            )
+
+            msg = pika_drv_msg.RpcPikaOutgoingMessage(self._pika_engine,
+                                                      message, ctxt)
+            try:
+                reply = msg.send(
+                    exchange=exchange,
+                    routing_key=routing_key,
+                    reply_listener=(
+                        self._reply_listener if wait_for_reply else None
+                    ),
+                    stopwatch=stopwatch,
+                    retrier=retrier
+                )
+            except pika_drv_exc.ExchangeNotFoundException as ex:
                 try:
-                    self._declare_rpc_exchange(
-                        exchange,
-                        None if expiration_time is None else
-                        expiration_time - time.time()
-                    )
+                    self._declare_rpc_exchange(exchange, stopwatch)
                 except pika_drv_exc.ConnectionException as e:
                     LOG.warning("Problem during declaring exchange. %s", e)
-                return True
-            elif isinstance(ex, (pika_drv_exc.ConnectionException,
-                                 exceptions.MessageDeliveryFailure)):
-                LOG.warning("Problem during message sending. %s", ex)
-                return True
-            else:
-                return False
+                raise ex
 
-        retrier = (
-            None if retry == 0 else
-            retrying.retry(
-                stop_max_attempt_number=(None if retry == -1 else retry),
-                retry_on_exception=on_exception,
-                wait_fixed=self._pika_engine.rpc_retry_delay * 1000,
-            )
-        )
+            if reply is not None:
+                if reply.failure is not None:
+                    raise reply.failure
 
-        if target.fanout:
-            return self.cast_all_workers(
-                exchange, target.topic, ctxt, message, expiration_time,
-                retrier
-            )
+                return reply.result
 
-        routing_key = self._pika_engine.get_rpc_queue_name(
-            target.topic, target.server, retrier is None
-        )
-
-        msg = pika_drv_msg.RpcPikaOutgoingMessage(self._pika_engine, message,
-                                                  ctxt)
-        try:
-            reply = msg.send(
-                exchange=exchange,
-                routing_key=routing_key,
-                reply_listener=(
-                    self._reply_listener if wait_for_reply else None
-                ),
-                expiration_time=expiration_time,
-                retrier=retrier
-            )
-        except pika_drv_exc.ExchangeNotFoundException as ex:
-            try:
-                self._declare_rpc_exchange(exchange,
-                                           expiration_time - time.time())
-            except pika_drv_exc.ConnectionException as e:
-                LOG.warning("Problem during declaring exchange. %s", e)
-            raise ex
-
-        if reply is not None:
-            if reply.failure is not None:
-                raise reply.failure
-
-            return reply.result
-
-    def cast_all_workers(self, exchange, topic, ctxt, message, expiration_time,
+    def cast_all_workers(self, exchange, topic, ctxt, message, stopwatch,
                          retrier=None):
         msg = pika_drv_msg.PikaOutgoingMessage(self._pika_engine, message,
                                                ctxt)
@@ -263,23 +257,23 @@ class PikaDriver(base.BaseDriver):
                     topic, "all_workers", retrier is None
                 ),
                 mandatory=False,
-                expiration_time=expiration_time,
+                stopwatch=stopwatch,
                 retrier=retrier
             )
         except pika_drv_exc.ExchangeNotFoundException:
             try:
-                self._declare_rpc_exchange(
-                    exchange, expiration_time - time.time()
-                )
+                self._declare_rpc_exchange(exchange, stopwatch)
             except pika_drv_exc.ConnectionException as e:
                 LOG.warning("Problem during declaring exchange. %s", e)
 
-    def _declare_notification_queue_binding(self, target, timeout=None):
-        if timeout is not None and timeout < 0:
+    def _declare_notification_queue_binding(
+            self, target, stopwatch=pika_drv_cmns.INFINITE_STOP_WATCH):
+        if stopwatch.expired():
             raise exceptions.MessagingTimeout(
                 "Timeout for current operation was expired."
             )
         try:
+            timeout = stopwatch.leftover(return_none=True)
             with (self._pika_engine.connection_without_confirmation_pool
                     .acquire)(timeout=timeout) as conn:
                 self._pika_engine.declare_queue_binding_by_channel(
