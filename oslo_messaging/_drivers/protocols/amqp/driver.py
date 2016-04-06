@@ -233,7 +233,6 @@ class ProtonDriver(base.BaseDriver):
         if retry is not None:
             raise NotImplementedError('"retry" not implemented by '
                                       'this transport driver')
-
         request = marshal_request(message, ctxt, envelope)
         expire = 0
         if timeout:
@@ -246,14 +245,16 @@ class ProtonDriver(base.BaseDriver):
         self._ctrl.add_task(task)
         # wait for the eventloop to process the command. If the command is
         # an RPC call retrieve the reply message
-        reply = task.wait(timeout)
-        if reply:
-            # TODO(kgiusti) how to handle failure to un-marshal?  Must log, and
-            # determine best way to communicate this failure back up to the
-            # caller
-            reply = unmarshal_response(reply, self._allowed_remote_exmods)
-        LOG.debug("Send to %s returning", target)
-        return reply
+
+        if wait_for_reply:
+            reply = task.wait(timeout)
+            if reply:
+                # TODO(kgiusti) how to handle failure to un-marshal?
+                # Must log, and determine best way to communicate this failure
+                # back up to the caller
+                reply = unmarshal_response(reply, self._allowed_remote_exmods)
+            LOG.debug("Send to %s returning", target)
+            return reply
 
     @_ensure_connect_called
     def send_notification(self, target, ctxt, message, version,

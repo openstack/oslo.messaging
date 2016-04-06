@@ -295,7 +295,6 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
                    'topic-2.debug']
 
         excepted_targets = []
-        exception_count = 0
         for version in (1.0, 2.0):
             for t in targets:
                 try:
@@ -303,7 +302,6 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
                                              "context", {'target': t},
                                              version)
                 except oslo_messaging.MessageDeliveryFailure:
-                    exception_count += 1
                     excepted_targets.append(t)
 
         listener.join(timeout=30)
@@ -314,9 +312,8 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         self.assertEqual(topics.count('topic-1.error'), 2)
         self.assertEqual(topics.count('topic-2.debug'), 2)
         self.assertEqual(self._broker.dropped_count, 4)
-        self.assertEqual(exception_count, 4)
-        self.assertEqual(excepted_targets.count('topic-1.bad'), 2)
-        self.assertEqual(excepted_targets.count('bad-topic.debug'), 2)
+        self.assertEqual(excepted_targets.count('topic-1.bad'), 0)
+        self.assertEqual(excepted_targets.count('bad-topic.debug'), 0)
         driver.cleanup()
 
 
