@@ -868,7 +868,8 @@ class Connection(object):
             LOG.debug('Failed to get socket attribute: %s' % str(e))
         else:
             sock.settimeout(timeout)
-            if sys.platform != 'win32':
+            # TCP_USER_TIMEOUT is not defined on Windows and Mac OS X
+            if sys.platform != 'win32' and sys.platform != 'darwin':
                 sock.setsockopt(socket.IPPROTO_TCP,
                                 TCP_USER_TIMEOUT,
                                 timeout * 1000 if timeout is not None else 0)
