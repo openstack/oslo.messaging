@@ -37,6 +37,7 @@ from oslo_messaging import exceptions
 
 _transport_opts = [
     cfg.StrOpt('transport_url',
+               secret=True,
                help='A URL representing the messaging driver to use and its '
                     'full configuration. If not set, we fall back to the '
                     'rpc_backend option and driver specific configuration.'),
