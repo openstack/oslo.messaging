@@ -13,6 +13,7 @@
 #    under the License.
 
 import testtools
+import time
 
 import oslo_messaging
 from oslo_messaging._drivers import impl_zmq
@@ -95,12 +96,13 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
 
         target = oslo_messaging.Target(topic='testtopic', server="my@server")
         self.listener.listen(target)
+        time.sleep(0.01)
         result = self.driver.send(
             target, {},
             {'method': 'hello-world', 'tx_id': 1},
             wait_for_reply=False)
 
-        self.listener._received.wait()
+        self.listener._received.wait(5)
 
         self.assertIsNone(result)
         self.assertTrue(self.listener._received.isSet())
@@ -117,7 +119,7 @@ class TestZmqBasics(zmq_common.ZmqBaseTestCase):
             {'method': 'hello-world', 'tx_id': 1},
             wait_for_reply=False)
 
-        self.listener._received.wait()
+        self.listener._received.wait(5)
 
         self.assertIsNone(result)
         self.assertTrue(self.listener._received.isSet())

@@ -54,6 +54,11 @@ def get_executor(method, zmq_concurrency='eventlet'):
     return threading_poller.ThreadingExecutor(method)
 
 
+def is_eventlet_concurrency(conf):
+    return _is_eventlet_zmq_available() and conf.rpc_zmq_concurrency == \
+        'eventlet'
+
+
 def _is_eventlet_zmq_available():
     return importutils.try_import('eventlet.green.zmq')
 
