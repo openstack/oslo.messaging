@@ -57,7 +57,8 @@ DISTRIBUTION_BUCKET_SIZE = 500
 
 def init_random_generator():
     data = []
-    with open('./messages_length.yaml') as m_file:
+    file_dir = os.path.dirname(os.path.abspath(__file__))
+    with open(os.path.join(file_dir, 'messages_length.yaml')) as m_file:
         content = yaml.safe_load(m_file)
         data += [int(n) for n in content[
             'test_data']['string_lengths'].split(', ')]
