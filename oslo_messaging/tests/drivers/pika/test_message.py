@@ -116,7 +116,6 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
         )
         self._properties = pika.BasicProperties(
             content_type="application/json",
-            content_encoding="utf-8",
             headers={"version": "1.0"},
         )
 
@@ -197,7 +196,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         outgoing_message_mock.assert_called_once_with(
             self._pika_engine, 123456789, failure_info=None, reply='all_fine',
-            content_encoding='utf-8', content_type='application/json'
+            content_type='application/json'
         )
         outgoing_message_mock().send.assert_called_once_with(
             reply_q='reply_queue', stopwatch=mock.ANY, retrier=mock.ANY
@@ -236,7 +235,6 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             self._pika_engine, 123456789,
             failure_info=failure_info,
             reply=None,
-            content_encoding='utf-8',
             content_type='application/json'
         )
         outgoing_message_mock().send.assert_called_once_with(
@@ -263,7 +261,6 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
 
         self._properties = pika.BasicProperties(
             content_type="application/json",
-            content_encoding="utf-8",
             headers={"version": "1.0"},
             correlation_id=123456789
         )
@@ -311,6 +308,7 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
 class PikaOutgoingMessageTestCase(unittest.TestCase):
     def setUp(self):
         self._pika_engine = mock.MagicMock()
+        self._pika_engine.default_content_type = "application/json"
         self._exchange = "it is exchange"
         self._routing_key = "it is routing key"
         self._expiration = 1
@@ -322,8 +320,8 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         self._message = {"msg_type": 1, "msg_str": "hello"}
         self._context = {"request_id": 555, "token": "it is a token"}
 
-    @patch("oslo_serialization.jsonutils.dumps",
-           new=functools.partial(jsonutils.dumps, sort_keys=True))
+    @patch("oslo_serialization.jsonutils.dump_as_bytes",
+           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_with_confirmation(self):
         message = pika_drv_msg.PikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -359,7 +357,6 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual('utf-8', props.content_encoding)
         self.assertEqual('application/json', props.content_type)
         self.assertEqual(2, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration) <
@@ -367,8 +364,8 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertEqual({'version': '1.0'}, props.headers)
         self.assertTrue(props.message_id)
 
-    @patch("oslo_serialization.jsonutils.dumps",
-           new=functools.partial(jsonutils.dumps, sort_keys=True))
+    @patch("oslo_serialization.jsonutils.dump_as_bytes",
+           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_without_confirmation(self):
         message = pika_drv_msg.PikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -404,7 +401,6 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_without_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual('utf-8', props.content_encoding)
         self.assertEqual('application/json', props.content_type)
         self.assertEqual(1, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration)
@@ -421,12 +417,13 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         self._pika_engine = mock.MagicMock()
         self._pika_engine.get_rpc_exchange_name.return_value = self._exchange
         self._pika_engine.get_rpc_queue_name.return_value = self._routing_key
+        self._pika_engine.default_content_type = "application/json"
 
         self._message = {"msg_type": 1, "msg_str": "hello"}
         self._context = {"request_id": 555, "token": "it is a token"}
 
-    @patch("oslo_serialization.jsonutils.dumps",
-           new=functools.partial(jsonutils.dumps, sort_keys=True))
+    @patch("oslo_serialization.jsonutils.dump_as_bytes",
+           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_cast_message(self):
         message = pika_drv_msg.RpcPikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -463,7 +460,6 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual('utf-8', props.content_encoding)
         self.assertEqual('application/json', props.content_type)
         self.assertEqual(1, props.delivery_mode)
         self.assertTrue(expiration * 1000 - float(props.expiration) < 100)
@@ -472,8 +468,8 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
 
-    @patch("oslo_serialization.jsonutils.dumps",
-           new=functools.partial(jsonutils.dumps, sort_keys=True))
+    @patch("oslo_serialization.jsonutils.dump_as_bytes",
+           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_call_message(self):
         message = pika_drv_msg.RpcPikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -521,7 +517,6 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual('utf-8', props.content_encoding)
         self.assertEqual('application/json', props.content_type)
         self.assertEqual(1, props.delivery_mode)
         self.assertTrue(expiration * 1000 - float(props.expiration) < 100)
@@ -544,11 +539,12 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
 
         self._rpc_reply_exchange = "rpc_reply_exchange"
         self._pika_engine.rpc_reply_exchange = self._rpc_reply_exchange
+        self._pika_engine.default_content_type = "application/json"
 
         self._msg_id = 12345567
 
-    @patch("oslo_serialization.jsonutils.dumps",
-           new=functools.partial(jsonutils.dumps, sort_keys=True))
+    @patch("oslo_serialization.jsonutils.dump_as_bytes",
+           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_success_message_send(self):
         message = pika_drv_msg.RpcReplyPikaOutgoingMessage(
             self._pika_engine, self._msg_id, reply="all_fine"
@@ -567,7 +563,6 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual('utf-8', props.content_encoding)
         self.assertEqual('application/json', props.content_type)
         self.assertEqual(1, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration) <
@@ -578,8 +573,8 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertTrue(props.message_id)
 
     @patch("traceback.format_exception", new=lambda x, y, z: z)
-    @patch("oslo_serialization.jsonutils.dumps",
-           new=functools.partial(jsonutils.dumps, sort_keys=True))
+    @patch("oslo_serialization.jsonutils.dump_as_bytes",
+           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_failure_message_send(self):
         failure_info = (oslo_messaging.MessagingException,
                         oslo_messaging.MessagingException("Error message"),
@@ -612,7 +607,6 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual('utf-8', props.content_encoding)
         self.assertEqual('application/json', props.content_type)
         self.assertEqual(1, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration) <

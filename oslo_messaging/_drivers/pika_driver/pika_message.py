@@ -20,7 +20,6 @@ import uuid
 
 from concurrent import futures
 from oslo_log import log as logging
-from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 from pika import exceptions as pika_exceptions
@@ -101,7 +100,6 @@ class PikaIncomingMessage(base.IncomingMessage):
         self._version = version
 
         self._content_type = properties.content_type
-        self._content_encoding = properties.content_encoding
         self.unique_id = properties.message_id
 
         self.expiration_time = (
@@ -109,15 +107,16 @@ class PikaIncomingMessage(base.IncomingMessage):
             time.time() + float(properties.expiration) / 1000
         )
 
-        if self._content_type != "application/json":
+        try:
+            serializer = pika_drv_cmns.MESSAGE_SERIALIZERS[self._content_type]
+        except KeyError:
             raise NotImplementedError(
-                "Content-type['{}'] is not valid, "
-                "'application/json' only is supported.".format(
+                "Content-type['{}'] is not supported.".format(
                     self._content_type
                 )
             )
 
-        message_dict = jsonutils.loads(body, encoding=self._content_encoding)
+        message_dict = serializer.load_from_bytes(body)
 
         context_dict = {}
 
@@ -190,7 +189,6 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
         reply_outgoing_message = RpcReplyPikaOutgoingMessage(
             self._pika_engine, self.msg_id, reply=reply, failure_info=failure,
             content_type=self._content_type,
-            content_encoding=self._content_encoding
         )
 
         def on_exception(ex):
@@ -297,8 +295,7 @@ class PikaOutgoingMessage(object):
     and send it
     """
 
-    def __init__(self, pika_engine, message, context,
-                 content_type="application/json", content_encoding="utf-8"):
+    def __init__(self, pika_engine, message, context, content_type=None):
         """Parse RabbitMQ message
 
         :param pika_engine: PikaEngine, shared object with configuration and
@@ -306,19 +303,23 @@ class PikaOutgoingMessage(object):
         :param message: Dictionary, user's message fields
         :param context: Dictionary, request context's fields
         :param content_type: String, content-type header, defines serialization
-            mechanism
-        :param content_encoding: String, defines encoding for text data
+            mechanism, if None default content-type from pika_engine is used
         """
 
         self._pika_engine = pika_engine
 
-        self._content_type = content_type
-        self._content_encoding = content_encoding
+        self._content_type = (
+            content_type if content_type is not None else
+            self._pika_engine.default_content_type
+        )
 
-        if self._content_type != "application/json":
+        try:
+            self._serializer = pika_drv_cmns.MESSAGE_SERIALIZERS[
+                self._content_type
+            ]
+        except KeyError:
             raise NotImplementedError(
-                "Content-type['{}'] is not valid, "
-                "'application/json' only is supported.".format(
+                "Content-type['{}'] is not supported.".format(
                     self._content_type
                 )
             )
@@ -340,7 +341,6 @@ class PikaOutgoingMessage(object):
                 msg['_$_' + key] = value
 
         props = pika_spec.BasicProperties(
-            content_encoding=self._content_encoding,
             content_type=self._content_type,
             headers={_VERSION_HEADER: _VERSION},
             message_id=self.unique_id,
@@ -447,8 +447,7 @@ class PikaOutgoingMessage(object):
                 if confirm else
                 self._pika_engine.connection_without_confirmation_pool)
 
-        body = jsonutils.dump_as_bytes(msg_dict,
-                                       encoding=self._content_encoding)
+        body = self._serializer.dump_as_bytes(msg_dict)
 
         LOG.debug(
             "Sending message:[body:%s; properties: %s] to target: "
@@ -490,10 +489,9 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
     """PikaOutgoingMessage implementation for RPC messages. It adds
     possibility to wait and receive RPC reply
     """
-    def __init__(self, pika_engine, message, context,
-                 content_type="application/json", content_encoding="utf-8"):
+    def __init__(self, pika_engine, message, context, content_type=None):
         super(RpcPikaOutgoingMessage, self).__init__(
-            pika_engine, message, context, content_type, content_encoding
+            pika_engine, message, context, content_type
         )
         self.msg_id = None
         self.reply_q = None
@@ -549,7 +547,7 @@ class RpcReplyPikaOutgoingMessage(PikaOutgoingMessage):
     correlation_id AMQP property to link this reply with response
     """
     def __init__(self, pika_engine, msg_id, reply=None, failure_info=None,
-                 content_type="application/json", content_encoding="utf-8"):
+                 content_type=None):
         """Initialize with reply information for sending
 
         :param pika_engine: PikaEngine, shared object with configuration and
@@ -559,8 +557,7 @@ class RpcReplyPikaOutgoingMessage(PikaOutgoingMessage):
         :param failure_info: Tuple, should be a sys.exc_info() tuple.
             Should be None if RPC request was successfully processed.
         :param content_type: String, content-type header, defines serialization
-            mechanism
-        :param content_encoding: String, defines encoding for text data
+            mechanism, if None default content-type from pika_engine is used
         """
         self.msg_id = msg_id
 
@@ -588,7 +585,7 @@ class RpcReplyPikaOutgoingMessage(PikaOutgoingMessage):
             msg = {'s': reply}
 
         super(RpcReplyPikaOutgoingMessage, self).__init__(
-            pika_engine, msg, None, content_type, content_encoding
+            pika_engine, msg, None, content_type
         )
 
     def send(self, reply_q, stopwatch=pika_drv_cmns.INFINITE_STOP_WATCH,

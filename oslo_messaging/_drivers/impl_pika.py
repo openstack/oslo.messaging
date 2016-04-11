@@ -50,6 +50,13 @@ pika_pool_opts = [
                     "staleness. Stale connections are closed on acquire.")
 ]
 
+message_opts = [
+    cfg.StrOpt('default_serializer_type', default='json',
+               choices=('json', 'msgpack'),
+               help="Default serialization mechanism for "
+                    "serializing/deserializing outgoing/incoming messages")
+]
+
 notification_opts = [
     cfg.BoolOpt('notification_persistence', default=False,
                 help="Persist notification messages."),
@@ -124,6 +131,7 @@ class PikaDriver(base.BaseDriver):
         conf.register_group(opt_group)
         conf.register_opts(pika_drv_conn_factory.pika_opts, group=opt_group)
         conf.register_opts(pika_pool_opts, group=opt_group)
+        conf.register_opts(message_opts, group=opt_group)
         conf.register_opts(rpc_opts, group=opt_group)
         conf.register_opts(notification_opts, group=opt_group)
 

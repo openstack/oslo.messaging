@@ -137,6 +137,10 @@ class PikaEngine(object):
             raise ValueError("notification_retry_delay should be non-negative "
                              "integer")
 
+        self.default_content_type = (
+            'application/' + conf.oslo_messaging_pika.default_serializer_type
+        )
+
     def _init_if_needed(self):
         cur_pid = os.getpid()
 
