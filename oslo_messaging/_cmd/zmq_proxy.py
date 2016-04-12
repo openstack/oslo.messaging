@@ -14,12 +14,12 @@
 
 import argparse
 import logging
-import time
 
 from oslo_config import cfg
 
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver.broker import zmq_proxy
+from oslo_messaging._drivers.zmq_driver.broker import zmq_queue_proxy
 from oslo_messaging import server
 
 CONF = cfg.CONF
@@ -62,13 +62,15 @@ def main():
         raise Exception("Bad proxy type %s, should be one of %s" %
                         (args.proxy_type, PROXY_TYPES))
 
-    reactor = zmq_proxy.ZmqPublisher(CONF) if args.proxy_type == PUBLISHER \
-        else zmq_proxy.ZmqRouter(CONF)
+    reactor = zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.PublisherProxy) \
+        if args.proxy_type == PUBLISHER \
+        else zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.RouterProxy)
 
-    reactor.start()
-
-    while True:
-        time.sleep(1)
+    try:
+        while True:
+            reactor.run()
+    except KeyboardInterrupt:
+        reactor.close()
 
 if __name__ == "__main__":
     main()

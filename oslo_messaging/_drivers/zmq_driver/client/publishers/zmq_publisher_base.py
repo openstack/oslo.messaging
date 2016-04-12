@@ -142,8 +142,9 @@ class SocketsManager(object):
         return socket
 
     def get_socket_to_hosts(self, target, hosts):
-        if str(target) in self.outbound_sockets:
-            socket = self._check_for_new_hosts(target)
+        key = str(target)
+        if key in self.outbound_sockets:
+            socket, tm = self.outbound_sockets[key]
         else:
             socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
                                           self.socket_type)

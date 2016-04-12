@@ -107,10 +107,14 @@ class CallSender(zmq_publisher_base.QueuedSender):
 
 class CallSenderLight(CallSender):
 
+    def __init__(self, sockets_manager, _do_send_request, reply_waiter):
+        super(CallSenderLight, self).__init__(
+            sockets_manager, _do_send_request, reply_waiter)
+        self.socket = self.outbound_sockets.get_socket_to_routers()
+        self.reply_waiter.poll_socket(self.socket)
+
     def _connect_socket(self, target):
-        socket = self.outbound_sockets.get_socket_to_routers()
-        self.reply_waiter.poll_socket(socket)
-        return socket
+        return self.socket
 
 
 class ReplyWaiter(object):

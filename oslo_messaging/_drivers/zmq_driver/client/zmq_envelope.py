@@ -71,7 +71,8 @@ class Envelope(object):
     def to_dict(self):
         envelope = {zmq_names.FIELD_MSG_TYPE: self._msg_type,
                     zmq_names.FIELD_MSG_ID: self._message_id,
-                    zmq_names.FIELD_TARGET: self._target}
+                    zmq_names.FIELD_TARGET: self._target,
+                    zmq_names.FIELD_TARGET_HOSTS: self._target_hosts}
         envelope.update({k: v for k, v in self._kwargs.items()
                          if v is not None})
         return envelope
