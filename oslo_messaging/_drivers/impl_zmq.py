@@ -32,6 +32,8 @@ from oslo_messaging import server
 RPCException = rpc_common.RPCException
 _MATCHMAKER_BACKENDS = ('redis', 'dummy')
 _MATCHMAKER_DEFAULT = 'redis'
+_CONCURRENCY_CHOICES = ('eventlet', 'native')
+_CONCURRENCY_DEFAULT = 'eventlet'
 LOG = logging.getLogger(__name__)
 
 
@@ -46,7 +48,8 @@ zmq_opts = [
                choices=_MATCHMAKER_BACKENDS,
                help='MatchMaker driver.'),
 
-    cfg.StrOpt('rpc_zmq_concurrency', default='eventlet',
+    cfg.StrOpt('rpc_zmq_concurrency', default=_CONCURRENCY_DEFAULT,
+               choices=_CONCURRENCY_CHOICES,
                help='Type of concurrency used. Either "native" or "eventlet"'),
 
     cfg.IntOpt('rpc_zmq_contexts', default=1,

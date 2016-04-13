@@ -31,6 +31,11 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
         default_publisher = zmq_dealer_publisher.DealerPublisher(
             conf, matchmaker)
 
+        cast_publisher = zmq_dealer_publisher.DealerPublisherAsync(
+            conf, matchmaker) \
+            if zmq_async.is_eventlet_concurrency(conf) \
+            else default_publisher
+
         fanout_publisher = zmq_dealer_publisher.DealerPublisherLight(
             conf, matchmaker) if conf.use_pub_sub else default_publisher
 
@@ -40,6 +45,8 @@ class ZmqClient(zmq_client_base.ZmqClientBase):
                 zmq_names.CALL_TYPE:
                     zmq_dealer_call_publisher.DealerCallPublisher(
                         conf, matchmaker),
+
+                zmq_names.CAST_TYPE: cast_publisher,
 
                 # Here use DealerPublisherLight for sending request to proxy
                 # which finally uses PubPublisher to send fanout in case of
