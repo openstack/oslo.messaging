@@ -57,13 +57,17 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
         ('none', dict(url=None,
-                      expected=[dict(host='localhost', port=9092)])),
+                      expected=dict(hostaddrs=['localhost:9092']))),
         ('empty', dict(url='kafka:///',
-                       expected=[dict(host='localhost', port=9092)])),
+                       expected=dict(hostaddrs=['localhost:9092']))),
         ('host', dict(url='kafka://127.0.0.1',
-                      expected=[dict(host='127.0.0.1', port=9092)])),
+                      expected=dict(hostaddrs=['127.0.0.1:9092']))),
         ('port', dict(url='kafka://localhost:1234',
-                      expected=[dict(host='localhost', port=1234)])),
+                      expected=dict(hostaddrs=['localhost:1234']))),
+        ('two', dict(url='kafka://localhost:1234,localhost2:1234',
+                     expected=dict(hostaddrs=['localhost:1234',
+                                              'localhost2:1234']))),
+
     ]
 
     def setUp(self):
@@ -76,8 +80,7 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
         driver = transport._driver
 
         conn = driver._get_connection(kafka_driver.PURPOSE_SEND)
-        self.assertEqual(self.expected[0]['host'], conn.host)
-        self.assertEqual(self.expected[0]['port'], conn.port)
+        self.assertEqual(self.expected['hostaddrs'], conn.hostaddrs)
 
 
 class TestKafkaDriver(test_utils.BaseTestCase):
