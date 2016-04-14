@@ -189,17 +189,13 @@ class AMQPListener(base.PollStyleListener):
 
     def __call__(self, message):
         ctxt = rpc_amqp.unpack_context(message)
-
-        # FIXME(sileht): Don't log the message until strutils is more
-        # efficient, (rpc_amqp.unpack_context already log the context)
-        # LOG.debug(u'received: %s',
-        #           strutils.mask_password(six.text_type(dict(message))))
-
         unique_id = self.msg_id_cache.check_duplicate_message(message)
-
-        LOG.debug("received message msg_id: %(msg_id)s reply to %(queue)s", {
-            'queue': ctxt.reply_q, 'msg_id': ctxt.msg_id})
-
+        if ctxt.msg_id:
+            LOG.debug("received message msg_id: %(msg_id)s reply to "
+                      "%(queue)s", {'queue': ctxt.reply_q,
+                                    'msg_id': ctxt.msg_id})
+        else:
+            LOG.debug("received message with unique_id: %s", unique_id)
         self.incoming.append(AMQPIncomingMessage(self,
                                                  ctxt.to_dict(),
                                                  message,
