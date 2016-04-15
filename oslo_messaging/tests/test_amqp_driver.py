@@ -131,7 +131,7 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         """Verify unused listener can cleanly shutdown."""
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
-        listener = driver.listen(target, None, None, None)._poll_style_listener
+        listener = driver.listen(target, None, None)._poll_style_listener
         self.assertIsInstance(listener, amqp_driver.ProtonListener)
         driver.cleanup()
 
@@ -139,7 +139,7 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         rc = driver.send(target, {"context": True},
                          {"msg": "value"}, wait_for_reply=False)
         self.assertIsNone(rc)
@@ -152,10 +152,10 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target1 = oslo_messaging.Target(topic="test-topic", exchange="e1")
         listener1 = _ListenerThread(
-            driver.listen(target1, None, None, None)._poll_style_listener, 1)
+            driver.listen(target1, None, None)._poll_style_listener, 1)
         target2 = oslo_messaging.Target(topic="test-topic", exchange="e2")
         listener2 = _ListenerThread(
-            driver.listen(target2, None, None, None)._poll_style_listener, 1)
+            driver.listen(target2, None, None)._poll_style_listener, 1)
 
         rc = driver.send(target1, {"context": "whatever"},
                          {"method": "echo", "id": "e1"},
@@ -182,10 +182,10 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target1 = oslo_messaging.Target(topic="test-topic", server="server1")
         listener1 = _ListenerThread(
-            driver.listen(target1, None, None, None)._poll_style_listener, 4)
+            driver.listen(target1, None, None)._poll_style_listener, 4)
         target2 = oslo_messaging.Target(topic="test-topic", server="server2")
         listener2 = _ListenerThread(
-            driver.listen(target2, None, None, None)._poll_style_listener, 3)
+            driver.listen(target2, None, None)._poll_style_listener, 3)
 
         shared_target = oslo_messaging.Target(topic="test-topic")
         fanout_target = oslo_messaging.Target(topic="test-topic",
@@ -256,7 +256,7 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
 
         # the listener will drop this message:
         try:
@@ -283,7 +283,7 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
                          (oslo_messaging.Target(topic="topic-1"), 'error'),
                          (oslo_messaging.Target(topic="topic-2"), 'debug')]
         nl = driver.listen_for_notifications(
-            notifications, None, None, None, None)._poll_style_listener
+            notifications, None, None, None)._poll_style_listener
 
         # send one for each support version:
         msg_count = len(notifications) * 2
@@ -345,7 +345,7 @@ class TestAuthentication(test_utils.BaseTestCase):
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         rc = driver.send(target, {"context": True},
                          {"method": "echo"}, wait_for_reply=True)
         self.assertIsNotNone(rc)
@@ -364,7 +364,7 @@ class TestAuthentication(test_utils.BaseTestCase):
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           driver.send,
                           target, {"context": True},
@@ -436,7 +436,7 @@ mech_list: ${mechs}
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         rc = driver.send(target, {"context": True},
                          {"method": "echo"}, wait_for_reply=True)
         self.assertIsNotNone(rc)
@@ -455,7 +455,7 @@ mech_list: ${mechs}
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           driver.send,
                           target, {"context": True},
@@ -476,7 +476,7 @@ mech_list: ${mechs}
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           driver.send,
                           target, {"context": True},
@@ -497,7 +497,7 @@ mech_list: ${mechs}
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 1)
         rc = driver.send(target, {"context": True},
                          {"method": "echo"}, wait_for_reply=True)
         self.assertIsNotNone(rc)
@@ -533,7 +533,7 @@ class TestFailover(test_utils.BaseTestCase):
 
         target = oslo_messaging.Target(topic="my-topic")
         listener = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 2)
+            driver.listen(target, None, None)._poll_style_listener, 2)
 
         # wait for listener links to come up
         # 4 == 3 links per listener + 1 for the global reply queue
@@ -620,9 +620,9 @@ class TestFailover(test_utils.BaseTestCase):
         target = oslo_messaging.Target(topic="my-topic")
         bcast = oslo_messaging.Target(topic="my-topic", fanout=True)
         listener1 = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 2)
+            driver.listen(target, None, None)._poll_style_listener, 2)
         listener2 = _ListenerThread(
-            driver.listen(target, None, None, None)._poll_style_listener, 2)
+            driver.listen(target, None, None)._poll_style_listener, 2)
 
         # wait for 7 sending links to become active on the broker.
         # 7 = 3 links per Listener + 1 global reply link

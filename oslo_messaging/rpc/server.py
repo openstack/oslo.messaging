@@ -118,19 +118,17 @@ class RPCServer(msg_server.MessageHandlingServer):
         self._target = target
 
     def _create_listener(self):
-        return self.transport._listen(
-            self._target,
-            lambda incoming: self._on_incoming(incoming[0]), 1, None
-        )
+        return self.transport._listen(self._target, 1, None)
 
     def _process_incoming(self, incoming):
-        incoming.acknowledge()
+        message = incoming[0]
+        message.acknowledge()
         try:
-            res = self.dispatcher.dispatch(incoming)
+            res = self.dispatcher.dispatch(message)
         except rpc_dispatcher.ExpectedException as e:
             LOG.debug(u'Expected exception during message handling (%s)',
                       e.exc_info[1])
-            incoming.reply(failure=e.exc_info)
+            message.reply(failure=e.exc_info)
         except Exception as e:
             # current sys.exc_info() content can be overriden
             # by another exception raise by a log handler during
@@ -138,7 +136,7 @@ class RPCServer(msg_server.MessageHandlingServer):
             exc_info = sys.exc_info()
             try:
                 LOG.exception(_LE('Exception during message handling: %s'), e)
-                incoming.reply(failure=exc_info)
+                message.reply(failure=exc_info)
             finally:
                 # NOTE(dhellmann): Remove circular object reference
                 # between the current stack frame and the traceback in
@@ -146,9 +144,9 @@ class RPCServer(msg_server.MessageHandlingServer):
                 del exc_info
         else:
             try:
-                incoming.reply(res)
+                message.reply(res)
             except Exception:
-                LOG.Exception("Can not send reply for message %s", incoming)
+                LOG.Exception("Can not send reply for message %s", message)
 
 
 def get_rpc_server(transport, target, endpoints,

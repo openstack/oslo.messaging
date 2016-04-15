@@ -81,11 +81,11 @@ class IncomingMessage(object):
         self.message = message
 
     def acknowledge(self):
-        "Acknowledge the message."
+        """Acknowledge the message."""
 
     @abc.abstractmethod
     def requeue(self):
-        "Requeue the message."
+        """Requeue the message."""
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -128,44 +128,39 @@ class PollStyleListener(object):
 
 @six.add_metaclass(abc.ABCMeta)
 class Listener(object):
-    def __init__(self, on_incoming_callback, batch_size, batch_timeout,
+    def __init__(self, batch_size, batch_timeout,
                  prefetch_size=-1):
         """Init Listener
 
-        :param on_incoming_callback: callback function to be executed when
-            listener received messages. Messages should be processed and
-            acked/nacked by callback
         :param batch_size: desired number of messages passed to
-            single on_incoming_callback call
+            single on_incoming_callback notification
         :param batch_timeout: defines how long should we wait for batch_size
             messages if we already have some messages waiting for processing
         :param prefetch_size: defines how many massages we want to prefetch
             from backend (depend on driver type) by single request
         """
-        self.on_incoming_callback = on_incoming_callback
+        self.on_incoming_callback = None
         self.batch_timeout = batch_timeout
         self.prefetch_size = prefetch_size
         if prefetch_size > 0:
             batch_size = min(batch_size, prefetch_size)
         self.batch_size = batch_size
 
-    @abc.abstractmethod
-    def start(self):
-        """Stop listener.
-        Stop the listener message polling
-        """
+    def start(self, on_incoming_callback):
+        """Start listener.
+        Start the listener message polling
 
-    @abc.abstractmethod
-    def wait(self):
-        """Wait listener.
-        Wait for processing remained input after listener Stop
+        :param on_incoming_callback:  callback function to be executed when
+            listener received messages. Messages should be processed and
+            acked/nacked by callback
         """
+        self.on_incoming_callback = on_incoming_callback
 
-    @abc.abstractmethod
     def stop(self):
         """Stop listener.
         Stop the listener message polling
         """
+        self.on_incoming_callback = None
 
     @abc.abstractmethod
     def cleanup(self):
@@ -177,21 +172,24 @@ class Listener(object):
 
 
 class PollStyleListenerAdapter(Listener):
-    def __init__(self, poll_style_listener, on_incoming_callback, batch_size,
-                 batch_timeout):
+    def __init__(self, poll_style_listener, batch_size, batch_timeout):
         super(PollStyleListenerAdapter, self).__init__(
-            on_incoming_callback, batch_size, batch_timeout,
-            poll_style_listener.prefetch_size
+            batch_size, batch_timeout, poll_style_listener.prefetch_size
         )
         self._poll_style_listener = poll_style_listener
         self._listen_thread = threading.Thread(target=self._runner)
         self._listen_thread.daemon = True
         self._started = False
 
-    def start(self):
+    def start(self, on_incoming_callback):
         """Start listener.
         Start the listener message polling
+
+        :param on_incoming_callback:  callback function to be executed when
+            listener received messages. Messages should be processed and
+            acked/nacked by callback
         """
+        super(PollStyleListenerAdapter, self).start(on_incoming_callback)
         self._started = True
         self._listen_thread.start()
 
@@ -220,9 +218,8 @@ class PollStyleListenerAdapter(Listener):
         """
         self._started = False
         self._poll_style_listener.stop()
-
-    def wait(self):
         self._listen_thread.join()
+        super(PollStyleListenerAdapter, self).stop()
 
     def cleanup(self):
         """Cleanup listener.
@@ -259,13 +256,12 @@ class BaseDriver(object):
         """Send a notification message to the given target."""
 
     @abc.abstractmethod
-    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
+    def listen(self, target, batch_size, batch_timeout):
         """Construct a Listener for the given target."""
 
     @abc.abstractmethod
     def listen_for_notifications(self, targets_and_priorities, pool,
-                                 on_incoming_callback, batch_size,
-                                 batch_timeout):
+                                 batch_size, batch_timeout):
         """Construct a notification Listener for the given list of
         tuple of (target, priority).
         """

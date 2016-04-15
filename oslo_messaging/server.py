@@ -308,8 +308,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
     def __init__(self, transport, dispatcher, executor='blocking'):
         """Construct a message handling server.
 
-        The dispatcher parameter is a callable which is invoked with context
-        and message dictionaries each time a message is received.
+        The dispatcher parameter is a DispatcherBase instance which is used
+        for routing request to endpoint for processing.
 
         The executor parameter controls how incoming messages will be received
         and dispatched. By default, the most simple executor is used - the
@@ -317,8 +317,9 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
 
         :param transport: the messaging transport
         :type transport: Transport
-        :param dispatcher: a callable which is invoked for each method
-        :type dispatcher: callable
+        :param dispatcher: has a dispatch() method which is invoked for each
+                           incoming request
+        :type dispatcher: DispatcherBase
         :param executor: name of message executor - for example
                          'eventlet', 'blocking'
         :type executor: str
@@ -347,7 +348,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         super(MessageHandlingServer, self).__init__()
 
     def _on_incoming(self, incoming):
-        """Hanles on_incoming event
+        """Handles on_incoming event
 
         :param incoming: incoming request.
         """
@@ -411,7 +412,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
 
-        return self.listener.start
+        self.listener.start(self._on_incoming)
 
     @ordered(after='start')
     def stop(self):
@@ -436,7 +437,6 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         Once it's finished, the underlying driver resources associated to this
         server are released (like closing useless network connections).
         """
-        self.listener.wait()
         self._work_executor.shutdown(wait=True)
 
         # Close listener connection after processing all messages

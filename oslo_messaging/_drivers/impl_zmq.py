@@ -254,7 +254,7 @@ class ZmqDriver(base.BaseDriver):
         client = self.notifier.get()
         client.send_notify(target, ctxt, message, version, retry)
 
-    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
+    def listen(self, target, batch_size, batch_timeout):
         """Listen to a specified target on a server side
 
         :param target: Message destination target
@@ -262,12 +262,11 @@ class ZmqDriver(base.BaseDriver):
         """
         listener = zmq_server.ZmqServer(self, self.conf, self.matchmaker,
                                         target)
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
 
     def listen_for_notifications(self, targets_and_priorities, pool,
-                                 on_incoming_callback, batch_size,
-                                 batch_timeout):
+                                 batch_size, batch_timeout):
         """Listen to a specified list of targets on a server side
 
         :param targets_and_priorities: List of pairs (target, priority)
@@ -277,8 +276,8 @@ class ZmqDriver(base.BaseDriver):
         """
         listener = zmq_server.ZmqNotificationServer(
             self, self.conf, self.matchmaker, targets_and_priorities)
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
 
     def cleanup(self):
         """Cleanup all driver's connections finally

@@ -97,25 +97,23 @@ class Transport(object):
         self._driver.send_notification(target, ctxt, message, version,
                                        retry=retry)
 
-    def _listen(self, target, on_incoming_callback, batch_size, batch_timeout):
+    def _listen(self, target, batch_size, batch_timeout):
         if not (target.topic and target.server):
             raise exceptions.InvalidTarget('A server\'s target must have '
                                            'topic and server names specified',
                                            target)
-        return self._driver.listen(target, on_incoming_callback, batch_size,
+        return self._driver.listen(target, batch_size,
                                    batch_timeout)
 
     def _listen_for_notifications(self, targets_and_priorities, pool,
-                                  on_incoming_callback, batch_size,
-                                  batch_timeout):
+                                  batch_size, batch_timeout):
         for target, priority in targets_and_priorities:
             if not target.topic:
                 raise exceptions.InvalidTarget('A target must have '
                                                'topic specified',
                                                target)
         return self._driver.listen_for_notifications(
-            targets_and_priorities, pool, on_incoming_callback, batch_size,
-            batch_timeout
+            targets_and_priorities, pool, batch_size, batch_timeout
         )
 
     def cleanup(self):
