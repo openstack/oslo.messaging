@@ -109,6 +109,7 @@ class SocketsManager(object):
         self.socket_type = socket_type
         self.zmq_context = zmq.Context()
         self.outbound_sockets = {}
+        self.socket_to_publishers = None
 
     def _track_socket(self, socket, target):
         self.outbound_sockets[str(target)] = (socket, time.time())
@@ -152,20 +153,14 @@ class SocketsManager(object):
         return socket
 
     def get_socket_to_publishers(self):
-        socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                      self.socket_type)
+        if self.socket_to_publishers is not None:
+            return self.socket_to_publishers
+        self.socket_to_publishers = zmq_socket.ZmqSocket(
+            self.conf, self.zmq_context, self.socket_type)
         publishers = self.matchmaker.get_publishers()
         for pub_address, router_address in publishers:
-            socket.connect_to_host(router_address)
-        return socket
-
-    def get_socket_to_routers(self):
-        socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                      self.socket_type)
-        routers = self.matchmaker.get_routers()
-        for router_address in routers:
-            socket.connect_to_host(router_address)
-        return socket
+            self.socket_to_publishers.connect_to_host(router_address)
+        return self.socket_to_publishers
 
     def cleanup(self):
         for socket, tm in self.outbound_sockets.values():

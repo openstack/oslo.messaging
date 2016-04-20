@@ -19,12 +19,12 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 class Envelope(object):
 
     def __init__(self, msg_type=None, message_id=None, target=None,
-                 target_hosts=None, **kwargs):
+                 routing_key=None, **kwargs):
         self._msg_type = msg_type
         self._message_id = message_id
         self._target = target
-        self._target_hosts = target_hosts
         self._reply_id = None
+        self._routing_key = routing_key
         self._kwargs = kwargs
 
     @property
@@ -36,8 +36,20 @@ class Envelope(object):
         self._reply_id = value
 
     @property
+    def routing_key(self):
+        return self._routing_key
+
+    @routing_key.setter
+    def routing_key(self, value):
+        self._routing_key = value
+
+    @property
     def msg_type(self):
         return self._msg_type
+
+    @msg_type.setter
+    def msg_type(self, value):
+        self._msg_type = value
 
     @property
     def message_id(self):
@@ -46,10 +58,6 @@ class Envelope(object):
     @property
     def target(self):
         return self._target
-
-    @property
-    def target_hosts(self):
-        return self._target_hosts
 
     @property
     def is_mult_send(self):
@@ -72,7 +80,7 @@ class Envelope(object):
         envelope = {zmq_names.FIELD_MSG_TYPE: self._msg_type,
                     zmq_names.FIELD_MSG_ID: self._message_id,
                     zmq_names.FIELD_TARGET: self._target,
-                    zmq_names.FIELD_TARGET_HOSTS: self._target_hosts}
+                    zmq_names.FIELD_ROUTING_KEY: self._routing_key}
         envelope.update({k: v for k, v in self._kwargs.items()
                          if v is not None})
         return envelope

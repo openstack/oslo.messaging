@@ -89,32 +89,3 @@ class DealerPublisherAsync(object):
 
     def cleanup(self):
         self.sockets_manager.cleanup()
-
-
-class DealerPublisherLight(object):
-    """Used when publishing to a proxy. """
-
-    def __init__(self, conf, matchmaker):
-        self.sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
-        self.socket = self.sockets_manager.get_socket_to_publishers()
-
-    def send_request(self, request):
-        if request.msg_type == zmq_names.CALL_TYPE:
-            raise zmq_publisher_base.UnsupportedSendPattern(
-                request.msg_type)
-
-        envelope = request.create_envelope()
-
-        self.socket.send(b'', zmq.SNDMORE)
-        self.socket.send_pyobj(envelope, zmq.SNDMORE)
-        self.socket.send_pyobj(request)
-
-        LOG.debug("->[proxy:%(addr)s] Sending message_id %(message)s to "
-                  "a target %(target)s",
-                  {"message": request.message_id,
-                   "target": request.target,
-                   "addr": list(self.socket.connections)})
-
-    def cleanup(self):
-        self.socket.close()

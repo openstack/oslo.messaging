@@ -30,8 +30,7 @@ class StartupOrderTestCase(multiproc_utils.MutliprocTestCase):
         self.conf.prog = "test_prog"
         self.conf.project = "test_project"
 
-        kwargs = {'rpc_response_timeout': 30,
-                  'use_pub_sub': False}
+        kwargs = {'rpc_response_timeout': 30}
         self.config(**kwargs)
 
         log_path = self.conf.rpc_zmq_ipc_dir + "/" + str(os.getpid()) + ".log"

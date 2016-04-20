@@ -45,13 +45,13 @@ matchmaker_redis_opts = [
                default='oslo-messaging-zeromq',
                help='Redis replica set name.'),
     cfg.IntOpt('wait_timeout',
-               default=500,
+               default=5000,
                help='Time in ms to wait between connection attempts.'),
     cfg.IntOpt('check_timeout',
-               default=20000,
+               default=60000,
                help='Time in ms to wait before the transaction is killed.'),
     cfg.IntOpt('socket_timeout',
-               default=1000,
+               default=10000,
                help='Timeout in ms on blocking socket operations'),
 ]
 

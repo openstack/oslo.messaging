@@ -26,7 +26,7 @@ FIELD_MSG_ID = 'message_id'
 FIELD_MSG_TYPE = 'msg_type'
 FIELD_REPLY_ID = 'reply_id'
 FIELD_TARGET = 'target'
-FIELD_TARGET_HOSTS = 'target_hosts'
+FIELD_ROUTING_KEY = 'routing_key'
 
 
 IDX_REPLY_TYPE = 1

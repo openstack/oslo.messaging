@@ -17,6 +17,8 @@ import logging
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.zmq_driver.server.consumers\
+    import zmq_dealer_consumer
+from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_router_consumer
 from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_sub_consumer
@@ -37,12 +39,19 @@ class ZmqServer(base.PollStyleListener):
         self.matchmaker = matchmaker
         self.target = target
         self.poller = poller or zmq_async.get_poller()
+
         self.router_consumer = zmq_router_consumer.RouterConsumer(
-            conf, self.poller, self)
+            conf, self.poller, self) if not conf.use_router_proxy else None
+        self.dealer_consumer = zmq_dealer_consumer.DealerConsumer(
+            conf, self.poller, self) if conf.use_router_proxy else None
         self.sub_consumer = zmq_sub_consumer.SubConsumer(
             conf, self.poller, self) if conf.use_pub_sub else None
 
-        self.consumers = [self.router_consumer]
+        self.consumers = []
+        if self.router_consumer:
+            self.consumers.append(self.router_consumer)
+        if self.dealer_consumer:
+            self.consumers.append(self.dealer_consumer)
         if self.sub_consumer:
             self.consumers.append(self.sub_consumer)
 
@@ -53,9 +62,10 @@ class ZmqServer(base.PollStyleListener):
         return message
 
     def stop(self):
-        consumer = self.router_consumer
-        LOG.info(_LI("Stop server %(address)s:%(port)s"),
-                 {'address': consumer.address, 'port': consumer.port})
+        if self.router_consumer:
+            LOG.info(_LI("Stop server %(address)s:%(port)s"),
+                     {'address': self.router_consumer.address,
+                      'port': self.router_consumer.port})
 
     def cleanup(self):
         self.poller.close()
