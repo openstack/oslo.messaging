@@ -7,9 +7,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging 4.0.1.dev43\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-01-19 06:14+0000\n"
+"Project-Id-Version: oslo.messaging 4.5.1.dev102\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-21 07:18+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,12 +18,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.2.0\n"
 
-#: oslo_messaging/notify/dispatcher.py:78
-msgid "Fail to ack/requeue message"
+#: oslo_messaging/notify/listener.py:140 oslo_messaging/notify/listener.py:175
+msgid "Exception during message handling"
 msgstr ""
 
-#: oslo_messaging/notify/dispatcher.py:89
-msgid "Exception during message handling"
+#: oslo_messaging/notify/listener.py:149 oslo_messaging/notify/listener.py:183
+msgid "Fail to ack/requeue message"
 msgstr ""
 
 #: oslo_messaging/notify/messaging.py:51
@@ -36,15 +36,19 @@ msgstr ""
 msgid "An exception occurred processing the API call: %s "
 msgstr ""
 
-#: oslo_messaging/notify/notifier.py:229
+#: oslo_messaging/notify/notifier.py:242
 #, python-format
 msgid ""
 "Problem '%(e)s' attempting to send to notification system. "
 "Payload=%(payload)s"
 msgstr ""
 
-#: oslo_messaging/rpc/dispatcher.py:153
+#: oslo_messaging/rpc/server.py:140
 #, python-format
 msgid "Exception during message handling: %s"
+msgstr ""
+
+#: oslo_messaging/tests/drivers/zmq/zmq_common.py:62
+msgid "Unexpected exception occurred."
 msgstr ""
 
