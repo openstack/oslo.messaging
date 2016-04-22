@@ -39,14 +39,13 @@ class TestServerListener(object):
         self.message = None
 
     def listen(self, target):
-        self.listener = self.driver.listen(target, None, None,
+        self.listener = self.driver.listen(target, None,
                                            None)._poll_style_listener
         self.executor.execute()
 
     def listen_notifications(self, targets_and_priorities):
         self.listener = self.driver.listen_for_notifications(
-            targets_and_priorities, None, None, None,
-            None)._poll_style_listener
+            targets_and_priorities, None, None, None)._poll_style_listener
         self.executor.execute()
 
     def _run(self):

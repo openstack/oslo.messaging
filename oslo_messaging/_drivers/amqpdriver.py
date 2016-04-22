@@ -469,7 +469,7 @@ class AMQPDriverBase(base.BaseDriver):
         return self._send(target, ctxt, message,
                           envelope=(version == 2.0), notify=True, retry=retry)
 
-    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
+    def listen(self, target, batch_size, batch_timeout):
         conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
         listener = AMQPListener(self, conn)
@@ -483,12 +483,11 @@ class AMQPDriverBase(base.BaseDriver):
                                     callback=listener)
         conn.declare_fanout_consumer(target.topic, listener)
 
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
 
     def listen_for_notifications(self, targets_and_priorities, pool,
-                                 on_incoming_callback, batch_size,
-                                 batch_timeout):
+                                 batch_size, batch_timeout):
         conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
         listener = AMQPListener(self, conn)
@@ -497,8 +496,8 @@ class AMQPDriverBase(base.BaseDriver):
                 exchange_name=self._get_exchange(target),
                 topic='%s.%s' % (target.topic, priority),
                 callback=listener, queue_name=pool)
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
 
     def cleanup(self):
         if self._connection_pool:

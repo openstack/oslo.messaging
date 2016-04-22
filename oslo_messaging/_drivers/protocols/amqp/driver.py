@@ -267,19 +267,18 @@ class ProtonDriver(base.BaseDriver):
         return self.send(target, ctxt, message, envelope=(version == 2.0))
 
     @_ensure_connect_called
-    def listen(self, target, on_incoming_callback, batch_size, batch_timeout):
+    def listen(self, target, batch_size, batch_timeout):
         """Construct a Listener for the given target."""
         LOG.debug("Listen to %s", target)
         listener = ProtonListener(self)
         self._ctrl.add_task(drivertasks.ListenTask(target, listener))
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
         return listener
 
     @_ensure_connect_called
     def listen_for_notifications(self, targets_and_priorities, pool,
-                                 on_incoming_callback, batch_size,
-                                 batch_timeout):
+                                 batch_size, batch_timeout):
         LOG.debug("Listen for notifications %s", targets_and_priorities)
         if pool:
             raise NotImplementedError('"pool" not implemented by '
@@ -289,8 +288,8 @@ class ProtonDriver(base.BaseDriver):
             topic = '%s.%s' % (target.topic, priority)
             t = messaging_target.Target(topic=topic)
             self._ctrl.add_task(drivertasks.ListenTask(t, listener, True))
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
 
     def cleanup(self):
         """Release all resources."""

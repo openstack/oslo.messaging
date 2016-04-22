@@ -435,7 +435,7 @@ class TestSendReceive(test_utils.BaseTestCase):
 
         target = oslo_messaging.Target(topic='testtopic')
 
-        listener = driver.listen(target, None, None, None)._poll_style_listener
+        listener = driver.listen(target, None, None)._poll_style_listener
 
         senders = []
         replies = []
@@ -525,7 +525,7 @@ class TestPollAsync(test_utils.BaseTestCase):
         self.addCleanup(transport.cleanup)
         driver = transport._driver
         target = oslo_messaging.Target(topic='testtopic')
-        listener = driver.listen(target, None, None, None)._poll_style_listener
+        listener = driver.listen(target, None, None)._poll_style_listener
         received = listener.poll(timeout=0.050)
         self.assertEqual([], received)
 
@@ -541,7 +541,7 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
 
         target = oslo_messaging.Target(topic='testtopic')
 
-        listener = driver.listen(target, None, None, None)._poll_style_listener
+        listener = driver.listen(target, None, None)._poll_style_listener
         senders = []
         replies = []
         msgs = []
@@ -877,7 +877,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
                                        server=self.server,
                                        fanout=self.fanout)
 
-        listener = driver.listen(target, None, None, None)._poll_style_listener
+        listener = driver.listen(target, None, None)._poll_style_listener
 
         connection, producer = _create_producer(target)
         self.addCleanup(connection.release)

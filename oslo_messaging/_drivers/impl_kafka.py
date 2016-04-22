@@ -340,8 +340,7 @@ class KafkaDriver(base.BaseDriver):
             'The RPC implementation for Kafka is not implemented')
 
     def listen_for_notifications(self, targets_and_priorities, pool,
-                                 on_incoming_callback, batch_size,
-                                 batch_timeout):
+                                 batch_size, batch_timeout):
         """Listen to a specified list of targets on Kafka brokers
 
         :param targets_and_priorities: List of pairs (target, priority)
@@ -360,8 +359,8 @@ class KafkaDriver(base.BaseDriver):
         conn.declare_topic_consumer(topics, pool)
 
         listener = KafkaListener(conn)
-        return base.PollStyleListenerAdapter(listener, on_incoming_callback,
-                                             batch_size, batch_timeout)
+        return base.PollStyleListenerAdapter(listener, batch_size,
+                                             batch_timeout)
 
     def _get_connection(self, purpose):
         return driver_common.ConnectionContext(self.connection_pool, purpose)
