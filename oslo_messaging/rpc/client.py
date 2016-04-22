@@ -355,9 +355,13 @@ class RPCClient(object):
         Similarly, the request context must be a dict unless the client's
         serializer supports serializing another type.
 
-        Note: cast doesn't ensure the remote method to be been executed
-        on each destination. But ensures that it will be not executed twice
-        on a destination.
+        Note: cast does not ensure that the remote method will be executed on
+        each destination. But it does ensure that the method will be not
+        executed twice on a destination (e.g. 'at-most-once' execution).
+
+        Note: there are no ordering guarantees across successive casts, even
+        among casts to the same destination. Therefore methods may be executed
+        in an order different from the order in which they are cast.
 
         :param ctxt: a request context dict
         :type ctxt: dict
