@@ -14,6 +14,7 @@
 
 import collections
 import contextlib
+import errno
 import functools
 import itertools
 import os
@@ -870,9 +871,16 @@ class Connection(object):
             sock.settimeout(timeout)
             # TCP_USER_TIMEOUT is not defined on Windows and Mac OS X
             if sys.platform != 'win32' and sys.platform != 'darwin':
-                sock.setsockopt(socket.IPPROTO_TCP,
-                                TCP_USER_TIMEOUT,
-                                timeout * 1000 if timeout is not None else 0)
+                try:
+                    timeout = timeout * 1000 if timeout is not None else 0
+                    sock.setsockopt(socket.IPPROTO_TCP,
+                                    TCP_USER_TIMEOUT,
+                                    timeout)
+                except socket.error as error:
+                    code = error[0]
+                    # TCP_USER_TIMEOUT not defined on kernels <2.6.37
+                    if code != errno.ENOPROTOOPT:
+                        raise
 
     @contextlib.contextmanager
     def _transport_socket_timeout(self, timeout):
