@@ -15,7 +15,6 @@
 import abc
 import logging
 
-from oslo_messaging._drivers.zmq_driver.broker import zmq_base_proxy
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_proxy
 from oslo_messaging._drivers.zmq_driver.client.publishers \
@@ -30,10 +29,12 @@ zmq = zmq_async.import_zmq(zmq_concurrency='native')
 LOG = logging.getLogger(__name__)
 
 
-class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
+class UniversalQueueProxy(object):
 
     def __init__(self, conf, context, matchmaker):
-        super(UniversalQueueProxy, self).__init__(conf, context)
+        self.conf = conf
+        self.context = context
+        super(UniversalQueueProxy, self).__init__()
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller(zmq_concurrency='native')
 
@@ -75,6 +76,9 @@ class UniversalQueueProxy(zmq_base_proxy.BaseProxy):
         payload.insert(zmq_names.MULTIPART_IDX_ENVELOPE, envelope)
         return payload
 
+    def cleanup(self):
+        self.router_socket.close()
+
 
 class PublisherProxy(UniversalQueueProxy):
 
@@ -92,14 +96,19 @@ class PublisherProxy(UniversalQueueProxy):
                   "router": self.router_address})
 
     def _redirect_in_request(self, multipart_message):
-        LOG.debug("-> Redirecting request %s to TCP publisher",
-                  multipart_message)
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
         if self.conf.use_pub_sub and envelope.is_mult_send:
+            LOG.debug("-> Redirecting request %s to TCP publisher", envelope)
             self.pub_publisher.send_request(multipart_message)
 
     def _redirect_reply(self, multipart_message):
         """No reply is possible for publisher."""
+
+    def cleanup(self):
+        super(PublisherProxy, self).cleanup()
+        self.pub_publisher.cleanup()
+        self.matchmaker.unregister_publisher(
+            (self.pub_publisher.host, self.router_address))
 
 
 class RouterProxy(UniversalQueueProxy):
@@ -117,19 +126,22 @@ class RouterProxy(UniversalQueueProxy):
                  {"router": self.router_address})
 
     def _redirect_in_request(self, multipart_message):
-        LOG.debug("-> Redirecting request %s to TCP publisher",
-                  multipart_message)
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        LOG.debug("Envelope: %s", envelope)
+        LOG.debug("-> Redirecting request %s to TCP publisher", envelope)
         if not envelope.is_mult_send:
             self.dealer_publisher.send_request(multipart_message)
 
     def _redirect_reply(self, multipart_message):
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        LOG.debug("Envelope.reply_id: %s", envelope.reply_id)
+        LOG.debug("<- Redirecting reply: %s", envelope)
         response_binary = multipart_message[zmq_names.MULTIPART_IDX_BODY]
 
         self.router_socket.send(envelope.reply_id, zmq.SNDMORE)
         self.router_socket.send(b'', zmq.SNDMORE)
         self.router_socket.send_pyobj(envelope, zmq.SNDMORE)
         self.router_socket.send(response_binary)
+
+    def cleanup(self):
+        super(RouterProxy, self).cleanup()
+        self.dealer_publisher.cleanup()
+        self.matchmaker.unregister_router(self.router_address)

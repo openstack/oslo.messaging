@@ -60,7 +60,7 @@ class DealerPublisherProxy(object):
         envelope = socket.recv_pyobj()
         assert envelope is not None, "Invalid envelope!"
         reply = socket.recv()
-        LOG.debug("Received reply %s", reply)
+        LOG.debug("Received reply %s", envelope)
         return [envelope, reply]
 
     def cleanup(self):

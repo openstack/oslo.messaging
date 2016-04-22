@@ -31,11 +31,12 @@ zmq = zmq_async.import_zmq()
 
 class ZmqSocket(object):
 
-    def __init__(self, conf, context, socket_type):
+    def __init__(self, conf, context, socket_type, high_watermark=0):
         self.conf = conf
         self.context = context
         self.socket_type = socket_type
         self.handle = context.socket(socket_type)
+        self.handle.set_hwm(high_watermark)
 
         self.close_linger = -1
         if self.conf.rpc_cast_timeout > 0:
@@ -124,8 +125,9 @@ class ZmqPortRangeExceededException(exceptions.MessagingException):
 
 class ZmqRandomPortSocket(ZmqSocket):
 
-    def __init__(self, conf, context, socket_type):
-        super(ZmqRandomPortSocket, self).__init__(conf, context, socket_type)
+    def __init__(self, conf, context, socket_type, high_watermark=0):
+        super(ZmqRandomPortSocket, self).__init__(conf, context, socket_type,
+                                                  high_watermark)
         self.bind_address = zmq_address.get_tcp_random_address(self.conf)
 
         try:

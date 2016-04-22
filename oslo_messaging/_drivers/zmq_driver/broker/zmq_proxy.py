@@ -13,21 +13,18 @@
 #    under the License.
 
 import logging
-import os
 
-from oslo_utils import excutils
 from stevedore import driver
 
-from oslo_messaging._drivers.zmq_driver.broker import zmq_queue_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LI
 
 zmq = zmq_async.import_zmq(zmq_concurrency='native')
 LOG = logging.getLogger(__name__)
 
 
 class ZmqProxy(object):
-    """Base class for Publishers and Routers proxies.
+    """Wrapper class for Publishers and Routers proxies.
        The main reason to have a proxy is high complexity of TCP sockets number
        growth with direct connections (when services connect directly to
        each other). The general complexity for ZeroMQ+Openstack deployment
@@ -40,54 +37,9 @@ class ZmqProxy(object):
        Publisher is a server which performs broadcast to subscribers.
        Router is used for direct message types in case of number of TCP socket
        connections is critical for specific deployment. Generally 3 publishers
-       is enough for deployment. Routers should be
-    """
+       is enough for deployment.
 
-    def __init__(self, conf):
-        super(ZmqProxy, self).__init__()
-        self.conf = conf
-        self._create_ipc_dirs()
-        self.matchmaker = driver.DriverManager(
-            'oslo.messaging.zmq.matchmaker',
-            self.conf.rpc_zmq_matchmaker,
-        ).driver(self.conf)
-        self.context = zmq.Context()
-        self.proxies = []
-
-    def _create_ipc_dirs(self):
-        ipc_dir = self.conf.rpc_zmq_ipc_dir
-        try:
-            os.makedirs("%s/fanout" % ipc_dir)
-        except os.error:
-            if not os.path.isdir(ipc_dir):
-                with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Required IPC directory does not exist at"
-                                  " %s"), ipc_dir)
-
-    def start(self):
-        for proxy in self.proxies:
-            proxy.start()
-
-    def wait(self):
-        for proxy in self.proxies:
-            proxy.wait()
-
-    def close(self):
-        LOG.info(_LI("Broker shutting down ..."))
-        for proxy in self.proxies:
-            proxy.stop()
-
-
-class ZmqPublisher(ZmqProxy):
-
-    def __init__(self, conf):
-        super(ZmqPublisher, self).__init__(conf)
-        self.proxies.append(zmq_queue_proxy.PublisherProxy(
-            conf, self.context, self.matchmaker))
-
-
-class ZmqRouter(ZmqProxy):
-    """Router is used for direct messages in order to reduce the number of
+       Router is used for direct messages in order to reduce the number of
        allocated TCP sockets in controller. The list of requirements to Router:
 
        1. There may be any number of routers in the deployment. Routers are
@@ -107,9 +59,22 @@ class ZmqRouter(ZmqProxy):
 
        Those requirements should limit the performance impact caused by using
        of proxies making proxies as lightweight as possible.
+
     """
 
-    def __init__(self, conf):
-        super(ZmqRouter, self).__init__(conf)
-        self.proxies.append(zmq_queue_proxy.RouterProxy(
-            conf, self.context, self.matchmaker))
+    def __init__(self, conf, proxy_cls):
+        super(ZmqProxy, self).__init__()
+        self.conf = conf
+        self.matchmaker = driver.DriverManager(
+            'oslo.messaging.zmq.matchmaker',
+            self.conf.rpc_zmq_matchmaker,
+        ).driver(self.conf)
+        self.context = zmq.Context()
+        self.proxy = proxy_cls(conf, self.context, self.matchmaker)
+
+    def run(self):
+        self.proxy.run()
+
+    def close(self):
+        LOG.info(_LI("Proxy shutting down ..."))
+        self.proxy.cleanup()

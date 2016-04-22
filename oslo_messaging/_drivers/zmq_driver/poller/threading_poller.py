@@ -38,22 +38,17 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
         self.recv_methods = {}
 
     def register(self, socket, recv_method=None):
-        LOG.debug("Registering socket")
         if socket in self.recv_methods:
             return
+        LOG.debug("Registering socket")
         if recv_method is not None:
             self.recv_methods[socket] = recv_method
         self.poller.register(socket, zmq.POLLIN)
 
     def poll(self, timeout=None):
-
-        if timeout:
-            timeout *= 1000  # zmq poller expects milliseconds
-
-        sockets = None
-
+        sockets = {}
         try:
-            sockets = dict(self.poller.poll(timeout=timeout))
+            sockets = dict(self.poller.poll())
         except zmq.ZMQError as e:
             LOG.debug("Polling terminated with error: %s", e)
 
