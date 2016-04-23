@@ -167,8 +167,8 @@ class CastTestCase(utils.SkipIfNoTransportURL):
         client.sync()
 
         group.sync(1)
-        self.assertIn(["openstack", "stackopen"],
-                      group.servers[1].endpoint.sval)
+        self.assertIn(group.servers[1].endpoint.sval,
+                      ["openstack", "stackopen"])
         self.assertEqual(12, group.servers[1].endpoint.ival)
         for i in [0, 2]:
             self.assertEqual('', group.servers[i].endpoint.sval)
@@ -207,7 +207,7 @@ class CastTestCase(utils.SkipIfNoTransportURL):
         client.sync()
         group.sync(server='all')
         for s in group.servers:
-            self.assertIn(["openstack", "stackopen"], s.endpoint.sval)
+            self.assertIn(s.endpoint.sval, ["openstack", "stackopen"])
             self.assertEqual(12, s.endpoint.ival)
 
 
