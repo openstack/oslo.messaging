@@ -22,6 +22,12 @@ def version_is_compatible(imp_version, version):
     :param imp_version: The version implemented
     :param version: The version requested by an incoming message.
     """
+    if imp_version is None:
+        return True
+
+    if version is None:
+        return False
+
     version_parts = version.split('.')
     imp_version_parts = imp_version.split('.')
     try:
