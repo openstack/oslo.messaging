@@ -150,7 +150,8 @@ class NotificationServer(NotificationServerBase):
         try:
             res = self.dispatcher.dispatch(message)
         except Exception:
-            LOG.error(_LE('Exception during message handling'), exc_info=True)
+            LOG.exception(_LE('Exception during message handling.'))
+            res = notify_dispatcher.NotificationResult.REQUEUE
 
         try:
             if (res == notify_dispatcher.NotificationResult.REQUEUE and
@@ -159,7 +160,7 @@ class NotificationServer(NotificationServerBase):
             else:
                 message.acknowledge()
         except Exception:
-            LOG.error(_LE("Fail to ack/requeue message"), exc_info=True)
+            LOG.exception(_LE("Fail to ack/requeue message."))
 
 
 class BatchNotificationServer(NotificationServerBase):
@@ -169,7 +170,7 @@ class BatchNotificationServer(NotificationServerBase):
             not_processed_messages = self.dispatcher.dispatch(incoming)
         except Exception:
             not_processed_messages = set(incoming)
-            LOG.error(_LE('Exception during message handling'), exc_info=True)
+            LOG.exception(_LE('Exception during messages handling.'))
         for m in incoming:
             try:
                 if m in not_processed_messages and self._allow_requeue:
@@ -177,7 +178,7 @@ class BatchNotificationServer(NotificationServerBase):
                 else:
                     m.acknowledge()
             except Exception:
-                LOG.error(_LE("Fail to ack/requeue message"), exc_info=True)
+                LOG.exception(_LE("Fail to ack/requeue message."))
 
 
 def get_notification_listener(transport, targets, endpoints,
