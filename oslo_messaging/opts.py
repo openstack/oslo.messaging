@@ -25,6 +25,7 @@ from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_pika
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers import impl_zmq
+from oslo_messaging._drivers.pika_driver import pika_connection_factory
 from oslo_messaging._drivers.protocols.amqp import opts as amqp_opts
 from oslo_messaging._drivers.zmq_driver.matchmaker import matchmaker_redis
 from oslo_messaging.notify import notifier
@@ -48,8 +49,9 @@ _opts = [
     ('oslo_messaging_notifications', notifier._notifier_opts),
     ('oslo_messaging_rabbit', list(
         itertools.chain(amqp.amqp_opts, impl_rabbit.rabbit_opts,
-                        impl_pika.pika_opts, impl_pika.pika_pool_opts,
-                        impl_pika.notification_opts, impl_pika.rpc_opts))),
+                        pika_connection_factory.pika_opts,
+                        impl_pika.pika_pool_opts, impl_pika.notification_opts,
+                        impl_pika.rpc_opts))),
 ]
 
 

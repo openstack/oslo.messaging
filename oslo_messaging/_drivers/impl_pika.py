@@ -19,6 +19,8 @@ import pika_pool
 import retrying
 
 from oslo_messaging._drivers import base
+from oslo_messaging._drivers.pika_driver import (pika_connection_factory as
+                                                 pika_drv_conn_factory)
 from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
 from oslo_messaging._drivers.pika_driver import pika_engine as pika_drv_engine
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
@@ -28,27 +30,6 @@ from oslo_messaging._drivers.pika_driver import pika_poller as pika_drv_poller
 from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
-
-pika_opts = [
-    cfg.IntOpt('channel_max', default=None,
-               help='Maximum number of channels to allow'),
-    cfg.IntOpt('frame_max', default=None,
-               help='The maximum byte size for an AMQP frame'),
-    cfg.IntOpt('heartbeat_interval', default=3,
-               help="How often to send heartbeats for consumer's connections"),
-    cfg.BoolOpt('ssl', default=None,
-                help='Enable SSL'),
-    cfg.DictOpt('ssl_options', default=None,
-                help='Arguments passed to ssl.wrap_socket'),
-    cfg.FloatOpt('socket_timeout', default=0.25,
-                 help="Set socket timeout in seconds for connection's socket"),
-    cfg.FloatOpt('tcp_user_timeout', default=0.25,
-                 help="Set TCP_USER_TIMEOUT in seconds for connection's "
-                      "socket"),
-    cfg.FloatOpt('host_connection_reconnect_delay', default=0.25,
-                 help="Set delay for reconnection to some host which has "
-                      "connection error")
-]
 
 pika_pool_opts = [
     cfg.IntOpt('pool_max_size', default=30,
@@ -141,7 +122,7 @@ class PikaDriver(base.BaseDriver):
         opt_group = cfg.OptGroup(name='oslo_messaging_pika',
                                  title='Pika driver options')
         conf.register_group(opt_group)
-        conf.register_opts(pika_opts, group=opt_group)
+        conf.register_opts(pika_drv_conn_factory.pika_opts, group=opt_group)
         conf.register_opts(pika_pool_opts, group=opt_group)
         conf.register_opts(rpc_opts, group=opt_group)
         conf.register_opts(notification_opts, group=opt_group)
@@ -350,3 +331,4 @@ class PikaDriver(base.BaseDriver):
 
     def cleanup(self):
         self._reply_listener.cleanup()
+        self._pika_engine.cleanup()
