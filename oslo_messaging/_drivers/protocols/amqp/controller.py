@@ -477,10 +477,10 @@ class Controller(pyngus.ConnectionEventHandler):
 
     def _resolve(self, target):
         """Return a link address for a given target."""
-        if target.server:
-            return self._server_address(target)
-        elif target.fanout:
+        if target.fanout:
             return self._broadcast_address(target)
+        elif target.server:
+            return self._server_address(target)
         else:
             return self._group_request_address(target)
 
