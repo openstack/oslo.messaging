@@ -144,6 +144,28 @@ stored in Redis is that the key is a base topic and the corresponding values are
 hostname arrays to be sent to.
 
 
+HA for Redis database
+---------------------
+
+Single node Redis works fine for testing, but for production there is some
+availability guarantees wanted. Without Redis database zmq deployment should
+continue working anyway, because there is no need in Redis for services when
+connections established already. But if you would like to restart some services
+or run more workers or add more hardware nodes to the deployment you will need
+nodes discovery mechanism to work and it requires Redis.
+
+To provide database recovery in situations when redis node goes down for example,
+we use Sentinel solution and redis master-slave-slave configuration (if we have
+3 controllers and run Redis on each of them).
+
+To deploy redis with HA follow the `sentinel-install`_ instructions. From the
+messaging driver's side you will need to setup following configuration which
+is different from a single-node redis deployment ::
+
+        [matchmaker_redis]
+        sentinel_hosts=host1:26379, host2:26379, host3:26379
+
+
 Restrict the number of TCP sockets on controller
 ------------------------------------------------
 
@@ -250,3 +272,4 @@ Example of local.conf::
 
 
 .. _devstack-plugin-zmq: https://github.com/openstack/devstack-plugin-zmq.git
+.. _sentinel-install: http://redis.io/topics/sentinel
