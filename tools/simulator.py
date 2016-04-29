@@ -532,12 +532,17 @@ def write_json_file(filename, output):
         LOG.info('Stats are written into %s', filename)
 
 
+class SignalExit(SystemExit):
+    def __init__(self, signo, exccode=1):
+        super(SignalExit, self).__init__(exccode)
+        self.signo = signo
+
+
 def signal_handler(signum, frame):
     global IS_RUNNING
     IS_RUNNING = False
-    LOG.info('Signal %s is caught. Interrupting the execution', signum)
-    for server in SERVERS:
-        server.stop()
+
+    raise SignalExit(signum)
 
 
 def _setup_logging(is_debug):
@@ -647,47 +652,52 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
-    if args.mode == 'rpc-server':
-        target = messaging.Target(topic=args.topic, server=args.server)
-        if args.url.startswith('zmq'):
-            cfg.CONF.rpc_zmq_matchmaker = "redis"
+    try:
+        if args.mode == 'rpc-server':
+            target = messaging.Target(topic=args.topic, server=args.server)
+            if args.url.startswith('zmq'):
+                cfg.CONF.rpc_zmq_matchmaker = "redis"
 
-        endpoint = rpc_server(transport, target, args.wait_before_answer,
-                              args.executor, args.duration)
-        show_server_stats(endpoint, args.json_filename)
+            endpoint = rpc_server(transport, target, args.wait_before_answer,
+                                  args.executor, args.duration)
+            show_server_stats(endpoint, args.json_filename)
 
-    elif args.mode == 'notify-server':
-        endpoint = notify_server(transport, args.topic,
-                                 args.wait_before_answer, args.duration,
-                                 args.requeue)
-        show_server_stats(endpoint, args.json_filename)
+        elif args.mode == 'notify-server':
+            endpoint = notify_server(transport, args.topic,
+                                     args.wait_before_answer, args.duration,
+                                     args.requeue)
+            show_server_stats(endpoint, args.json_filename)
 
-    elif args.mode == 'batch-notify-server':
-        endpoint = batch_notify_server(transport, args.topic,
-                                       args.wait_before_answer, args.duration,
-                                       args.requeue)
-        show_server_stats(endpoint, args.json_filename)
+        elif args.mode == 'batch-notify-server':
+            endpoint = batch_notify_server(transport, args.topic,
+                                           args.wait_before_answer,
+                                           args.duration, args.requeue)
+            show_server_stats(endpoint, args.json_filename)
 
-    elif args.mode == 'notify-client':
-        spawn_notify_clients(args.threads, args.topic, transport,
-                             args.messages, args.wait_after_msg, args.timeout,
-                             args.duration)
-        show_client_stats(CLIENTS, args.json_filename)
+        elif args.mode == 'notify-client':
+            spawn_notify_clients(args.threads, args.topic, transport,
+                                 args.messages, args.wait_after_msg,
+                                 args.timeout, args.duration)
+            show_client_stats(CLIENTS, args.json_filename)
 
-    elif args.mode == 'rpc-client':
-        targets = [target.partition('.')[::2] for target in args.targets]
-        targets = [messaging.Target(
-            topic=topic, server=server_name, fanout=args.is_fanout) for
-            topic, server_name in targets]
-        spawn_rpc_clients(args.threads, transport, targets,
-                          args.wait_after_msg, args.timeout, args.is_cast,
-                          args.messages, args.duration)
+        elif args.mode == 'rpc-client':
+            targets = [target.partition('.')[::2] for target in args.targets]
+            targets = [messaging.Target(
+                topic=topic, server=server_name, fanout=args.is_fanout) for
+                topic, server_name in targets]
+            spawn_rpc_clients(args.threads, transport, targets,
+                              args.wait_after_msg, args.timeout, args.is_cast,
+                              args.messages, args.duration)
 
-        show_client_stats(CLIENTS, args.json_filename, not args.is_cast)
+            show_client_stats(CLIENTS, args.json_filename, not args.is_cast)
 
-        if args.exit_wait:
-            LOG.info("Finished. waiting for %d seconds", args.exit_wait)
-            time.sleep(args.exit_wait)
+            if args.exit_wait:
+                LOG.info("Finished. waiting for %d seconds", args.exit_wait)
+                time.sleep(args.exit_wait)
+    except SignalExit as e:
+        LOG.info('Signal %s is caught. Interrupting the execution', e.signo)
+        for server in SERVERS:
+            server.stop()
 
 
 if __name__ == '__main__':
