@@ -212,10 +212,11 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
     def test_send_with_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
+        exchange_mock = mock.Mock()
         with transport._driver._get_connection(
                 driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
-            conn._publish(mock.Mock(), 'msg', routing_key='routing_key',
+            conn._publish(exchange_mock, 'msg', routing_key='routing_key',
                           timeout=1)
 
         # NOTE(gcb) kombu accept TTL as seconds instead of millisecond since
@@ -226,23 +227,30 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
         if versionutils.is_compatible('3.0.25', kombu_version):
             fake_publish.assert_called_with(
                 'msg', expiration=1,
-                compression=self.conf.oslo_messaging_rabbit.kombu_compression)
+                exchange=exchange_mock,
+                compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+                routing_key='routing_key')
         else:
             fake_publish.assert_called_with(
                 'msg', expiration=1000,
-                compression=self.conf.oslo_messaging_rabbit.kombu_compression)
+                exchange=exchange_mock,
+                compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+                routing_key='routing_key')
 
     @mock.patch('kombu.messaging.Producer.publish')
     def test_send_no_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
+        exchange_mock = mock.Mock()
         with transport._driver._get_connection(
                 driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
-            conn._publish(mock.Mock(), 'msg', routing_key='routing_key')
+            conn._publish(exchange_mock, 'msg', routing_key='routing_key')
         fake_publish.assert_called_with(
             'msg', expiration=None,
-            compression=self.conf.oslo_messaging_rabbit.kombu_compression)
+            compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+            exchange=exchange_mock,
+            routing_key='routing_key')
 
     def test_declared_queue_publisher(self):
         transport = oslo_messaging.get_transport(self.conf,
@@ -277,14 +285,17 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
                 # Ensure it creates it
                 try_send(e_passive)
 
-                with mock.patch('kombu.messaging.Producer', side_effect=exc):
-                    # Should reset the cache and ensures the exchange does
-                    # not exists
-                    self.assertRaises(exc, try_send, e_passive)
-                # Recreate it
-                try_send(e_active)
-                # Ensure it have been recreated
-                try_send(e_passive)
+            with mock.patch('kombu.messaging.Producer.publish',
+                            side_effect=exc):
+                # Ensure the exchange is already in cache
+                self.assertIn('foobar', conn._declared_exchanges)
+                # Reset connection
+                self.assertRaises(exc, try_send, e_passive)
+                # Ensure the cache is empty
+                self.assertEqual(0, len(conn._declared_exchanges))
+
+            try_send(e_active)
+            self.assertIn('foobar', conn._declared_exchanges)
 
 
 class TestRabbitConsume(test_utils.BaseTestCase):
