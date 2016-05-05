@@ -116,7 +116,10 @@ class MessageStatsCollector(object):
         self.label = label
         self.buffer = []  # buffer to store messages during report interval
         self.series = []  # stats for every report interval
-        threading.Timer(1.0, self.monitor).start()  # schedule in a second
+
+        now = time.time()
+        diff = int(now) - now + 1  # align start to whole seconds
+        threading.Timer(diff, self.monitor).start()  # schedule in a second
 
     def monitor(self):
         global IS_RUNNING
@@ -439,6 +442,11 @@ def send_messages(client_id, client_builder, messages_count, duration):
     global IS_RUNNING
     client = client_builder()
     CLIENTS.append(client)
+
+    # align message sending closer to whole seconds
+    now = time.time()
+    diff = int(now) - now + 1
+    time.sleep(diff)
 
     if duration:
         with timeutils.StopWatch(duration) as stop_watch:
