@@ -28,29 +28,22 @@ CONF.register_opts(server._pool_opts)
 CONF.rpc_zmq_native = True
 
 
-USAGE = """ Usage: ./zmq-proxy.py --type {PUBLISHER,ROUTER} [-h] [] ...
+USAGE = """ Usage: ./zmq-proxy.py [-h] [] ...
 
 Usage example:
- python oslo_messaging/_cmd/zmq-proxy.py\
- --type PUBLISHER"""
-
-
-PUBLISHER = 'PUBLISHER'
-ROUTER = 'ROUTER'
-PROXY_TYPES = (PUBLISHER, ROUTER)
+ python oslo_messaging/_cmd/zmq-proxy.py"""
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(name)s '
+                               '%(levelname)-8s %(message)s')
 
     parser = argparse.ArgumentParser(
         description='ZeroMQ proxy service',
         usage=USAGE
     )
 
-    parser.add_argument('--type', dest='proxy_type', type=str,
-                        default=PUBLISHER,
-                        help='Proxy type PUBLISHER or ROUTER')
     parser.add_argument('--config-file', dest='config_file', type=str,
                         help='Path to configuration file')
     args = parser.parse_args()
@@ -58,18 +51,12 @@ def main():
     if args.config_file:
         cfg.CONF(["--config-file", args.config_file])
 
-    if args.proxy_type not in PROXY_TYPES:
-        raise Exception("Bad proxy type %s, should be one of %s" %
-                        (args.proxy_type, PROXY_TYPES))
-
-    reactor = zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.PublisherProxy) \
-        if args.proxy_type == PUBLISHER \
-        else zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.RouterProxy)
+    reactor = zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.UniversalQueueProxy)
 
     try:
         while True:
             reactor.run()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         reactor.close()
 
 if __name__ == "__main__":

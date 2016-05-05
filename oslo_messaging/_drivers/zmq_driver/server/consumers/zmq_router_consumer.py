@@ -80,5 +80,5 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
             else:
                 LOG.error(_LE("Unknown message type: %s"), request.msg_type)
 
-        except zmq.ZMQError as e:
+        except (zmq.ZMQError, AssertionError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))

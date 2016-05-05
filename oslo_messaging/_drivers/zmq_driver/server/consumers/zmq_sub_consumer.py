@@ -55,7 +55,6 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         super(SubConsumer, self).__init__(conf, poller, server)
         self.matchmaker = server.matchmaker
         self.target = server.target
-        self.subscriptions = set()
         self.socket = zmq_socket.ZmqSocket(self.conf, self.context, zmq.SUB)
         self.sockets.append(self.socket)
         self.id = uuid.uuid4()
@@ -75,13 +74,10 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         topic_filter = zmq_address.target_to_subscribe_filter(target)
         if target.topic:
             self.socket.setsockopt(zmq.SUBSCRIBE, six.b(target.topic))
-            self.subscriptions.add(six.b(target.topic))
         if target.server:
             self.socket.setsockopt(zmq.SUBSCRIBE, six.b(target.server))
-            self.subscriptions.add(six.b(target.server))
         if target.topic and target.server:
             self.socket.setsockopt(zmq.SUBSCRIBE, topic_filter)
-            self.subscriptions.add(topic_filter)
 
         LOG.debug("[%(host)s] Subscribing to topic %(filter)s",
                   {"host": self.id, "filter": topic_filter})
@@ -90,7 +86,6 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         topic_filter = socket.recv()
         LOG.debug("[%(id)s] Received %(topic_filter)s topic",
                   {'id': self.id, 'topic_filter': topic_filter})
-        assert topic_filter in self.subscriptions
         request = socket.recv_pyobj()
         return request
 
@@ -108,7 +103,7 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
                 LOG.error(_LE("Unknown message type: %s"), request.msg_type)
             else:
                 return SubIncomingMessage(request, socket)
-        except zmq.ZMQError as e:
+        except (zmq.ZMQError, AssertionError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
 
     def cleanup(self):

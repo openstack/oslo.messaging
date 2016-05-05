@@ -23,7 +23,6 @@ EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
 
-oslo-messaging-zmq-proxy --type PUBLISHER --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-publisher.log 2>&1 &
-oslo-messaging-zmq-proxy --type ROUTER --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-router.log 2>&1 &
+oslo-messaging-zmq-proxy --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-publisher.log 2>&1 &
 
 $*

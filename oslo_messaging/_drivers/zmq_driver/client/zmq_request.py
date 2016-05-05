@@ -70,11 +70,12 @@ class Request(object):
 
         self.message_id = str(uuid.uuid1())
 
-    def create_envelope(self, hosts=None):
+    def create_envelope(self, routing_key=None, reply_id=None):
         envelope = zmq_envelope.Envelope(msg_type=self.msg_type,
                                          message_id=self.message_id,
                                          target=self.target,
-                                         target_hosts=hosts)
+                                         routing_key=routing_key)
+        envelope.reply_id = reply_id
         return envelope
 
     @abc.abstractproperty
@@ -114,8 +115,9 @@ class CallRequest(RpcRequest):
 
         super(CallRequest, self).__init__(*args, **kwargs)
 
-    def create_envelope(self, hosts=None):
-        envelope = super(CallRequest, self).create_envelope(hosts)
+    def create_envelope(self, routing_key=None, reply_id=None):
+        envelope = super(CallRequest, self).create_envelope(
+            routing_key, reply_id)
         envelope.set('timeout', self.timeout)
         return envelope
 

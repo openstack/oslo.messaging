@@ -12,11 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from fixtures._fixtures import timeout
+import retrying
 from stevedore import driver
 import testscenarios
 import testtools
-
-import retrying
 
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
@@ -97,6 +97,6 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         hosts = []
         try:
             hosts = self.test_matcher.get_hosts(target, "test")
-        except retrying.RetryError:
+        except (timeout.TimeoutException, retrying.RetryError):
             pass
         self.assertEqual(hosts, [])
