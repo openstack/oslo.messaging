@@ -87,7 +87,7 @@ class DealerConsumer(zmq_consumer_base.ConsumerBase):
         self.target = server.target
         self.sockets_manager = zmq_publisher_base.SocketsManager(
             conf, self.matchmaker, zmq.ROUTER, zmq.DEALER)
-        self.socket = self.sockets_manager.get_socket_to_publishers()
+        self.socket = self.sockets_manager.get_socket_to_routers()
         self.poller.register(self.socket, self.receive_message)
         self.host = self.socket.handle.identity
         self.target_updater = zmq_consumer_base.TargetUpdater(

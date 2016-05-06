@@ -110,6 +110,7 @@ class SocketsManager(object):
         self.zmq_context = zmq.Context()
         self.outbound_sockets = {}
         self.socket_to_publishers = None
+        self.socket_to_routers = None
 
     def _track_socket(self, socket, target):
         self.outbound_sockets[str(target)] = (socket, time.time())
@@ -161,6 +162,16 @@ class SocketsManager(object):
         for pub_address, router_address in publishers:
             self.socket_to_publishers.connect_to_host(router_address)
         return self.socket_to_publishers
+
+    def get_socket_to_routers(self):
+        if self.socket_to_routers is not None:
+            return self.socket_to_routers
+        self.socket_to_routers = zmq_socket.ZmqSocket(
+            self.conf, self.zmq_context, self.socket_type)
+        routers = self.matchmaker.get_routers()
+        for router_address in routers:
+            self.socket_to_routers.connect_to_host(router_address)
+        return self.socket_to_routers
 
     def cleanup(self):
         for socket, tm in self.outbound_sockets.values():

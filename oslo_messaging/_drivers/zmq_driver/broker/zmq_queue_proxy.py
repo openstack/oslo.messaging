@@ -35,23 +35,32 @@ class UniversalQueueProxy(object):
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller(zmq_concurrency='native')
 
-        self.router_socket = zmq_socket.ZmqRandomPortSocket(
+        self.fe_router_socket = zmq_socket.ZmqRandomPortSocket(
+            conf, context, zmq.ROUTER)
+        self.be_router_socket = zmq_socket.ZmqRandomPortSocket(
             conf, context, zmq.ROUTER)
 
-        self.poller.register(self.router_socket.handle,
+        self.poller.register(self.fe_router_socket.handle,
+                             self._receive_in_request)
+        self.poller.register(self.be_router_socket.handle,
                              self._receive_in_request)
 
-        self.router_address = zmq_address.combine_address(
-            self.conf.rpc_zmq_host, self.router_socket.port)
+        self.fe_router_address = zmq_address.combine_address(
+            self.conf.rpc_zmq_host, self.fe_router_socket.port)
+        self.be_router_address = zmq_address.combine_address(
+            self.conf.rpc_zmq_host, self.fe_router_socket.port)
 
         self.pub_publisher = zmq_pub_publisher.PubPublisherProxy(
             conf, matchmaker)
 
         self.matchmaker.register_publisher(
-            (self.pub_publisher.host, self.router_address))
+            (self.pub_publisher.host, self.fe_router_address))
         LOG.info(_LI("[PUB:%(pub)s, ROUTER:%(router)s] Run PUB publisher"),
                  {"pub": self.pub_publisher.host,
-                  "router": self.router_address})
+                  "router": self.fe_router_address})
+        self.matchmaker.register_router(self.be_router_address)
+        LOG.info(_LI("[Backend ROUTER:%(router)s] Run ROUTER"),
+                 {"router": self.be_router_address})
 
     def run(self):
         message, socket = self.poller.poll(self.conf.rpc_poll_timeout)
@@ -63,31 +72,40 @@ class UniversalQueueProxy(object):
             LOG.debug("-> Redirecting request %s to TCP publisher", envelope)
             self.pub_publisher.send_request(message)
         elif not envelope.is_mult_send:
-            self._redirect_message(message)
+            self._redirect_message(self.be_router_socket
+                                   if socket is self.fe_router_socket
+                                   else self.fe_router_socket, message)
 
     @staticmethod
     def _receive_in_request(socket):
-        reply_id = socket.recv()
-        assert reply_id is not None, "Valid id expected"
-        empty = socket.recv()
-        assert empty == b'', "Empty delimiter expected"
-        envelope = socket.recv_pyobj()
-        payload = socket.recv_multipart()
-        payload.insert(zmq_names.MULTIPART_IDX_ENVELOPE, envelope)
-        return payload
+        try:
+            reply_id = socket.recv()
+            assert reply_id is not None, "Valid id expected"
+            empty = socket.recv()
+            assert empty == b'', "Empty delimiter expected"
+            envelope = socket.recv_pyobj()
+            payload = socket.recv_multipart()
+            payload.insert(zmq_names.MULTIPART_IDX_ENVELOPE, envelope)
+            return payload
+        except (AssertionError, zmq.ZMQError):
+            LOG.error("Received message with wrong format")
+            return None
 
-    def _redirect_message(self, multipart_message):
+    @staticmethod
+    def _redirect_message(socket, multipart_message):
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
         LOG.debug("<-> Dispatch message: %s", envelope)
         response_binary = multipart_message[zmq_names.MULTIPART_IDX_BODY]
 
-        self.router_socket.send(envelope.routing_key, zmq.SNDMORE)
-        self.router_socket.send(b'', zmq.SNDMORE)
-        self.router_socket.send_pyobj(envelope, zmq.SNDMORE)
-        self.router_socket.send(response_binary)
+        socket.send(envelope.routing_key, zmq.SNDMORE)
+        socket.send(b'', zmq.SNDMORE)
+        socket.send_pyobj(envelope, zmq.SNDMORE)
+        socket.send(response_binary)
 
     def cleanup(self):
-        self.router_socket.close()
+        self.fe_router_socket.close()
+        self.be_router_socket.close()
         self.pub_publisher.cleanup()
         self.matchmaker.unregister_publisher(
-            (self.pub_publisher.host, self.router_address))
+            (self.pub_publisher.host, self.fe_router_address))
+        self.matchmaker.unregister_router(self.be_router_address)
