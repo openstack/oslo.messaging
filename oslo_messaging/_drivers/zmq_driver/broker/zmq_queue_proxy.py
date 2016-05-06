@@ -78,7 +78,7 @@ class UniversalQueueProxy(object):
 
     def _redirect_message(self, multipart_message):
         envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        LOG.debug("<-> Route message: %s", envelope)
+        LOG.debug("<-> Dispatch message: %s", envelope)
         response_binary = multipart_message[zmq_names.MULTIPART_IDX_BODY]
 
         self.router_socket.send(envelope.routing_key, zmq.SNDMORE)
