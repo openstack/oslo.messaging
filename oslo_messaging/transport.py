@@ -377,7 +377,7 @@ class TransportURL(object):
 
         virtual_host = None
         if url.path.startswith('/'):
-            virtual_host = url.path[1:]
+            virtual_host = parse.unquote(url.path[1:])
 
         hosts = []
 
@@ -392,6 +392,8 @@ class TransportURL(object):
                 username, hostname = host.split('@', 1)
                 if ':' in username:
                     username, password = username.split(':', 1)
+                    password = parse.unquote(password)
+                username = parse.unquote(username)
 
             if not hostname:
                 hostname = None

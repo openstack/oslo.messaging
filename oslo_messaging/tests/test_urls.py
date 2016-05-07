@@ -116,6 +116,14 @@ class TestParseURL(test_utils.BaseTestCase):
                               dict(host='ffff::2', port=4321,
                                    username='u2', password='p2'),
                           ]))),
+        ('quoting',
+         dict(url='foo://u%24:p%26@host:1234/%24', aliases=None,
+              expect=dict(transport='foo',
+                          virtual_host='$',
+                          hosts=[
+                              dict(host='host', port=1234,
+                                   username='u$', password='p&'),
+                          ]))),
     ]
 
     def test_parse_url(self):
