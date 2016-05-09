@@ -34,8 +34,8 @@ import proton
 import pyngus
 from six import moves
 
-from oslo_messaging._drivers.protocols.amqp import eventloop
-from oslo_messaging._drivers.protocols.amqp import opts
+from oslo_messaging._drivers.amqp1_driver import eventloop
+from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
 from oslo_messaging import transport
