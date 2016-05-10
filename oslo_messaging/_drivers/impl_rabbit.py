@@ -17,6 +17,7 @@ import contextlib
 import errno
 import functools
 import itertools
+import math
 import os
 import random
 import socket
@@ -873,9 +874,14 @@ class Connection(object):
             if sys.platform != 'win32' and sys.platform != 'darwin':
                 try:
                     timeout = timeout * 1000 if timeout is not None else 0
+                    # NOTE(gdavoian): only integers and strings are allowed
+                    # as socket options' values, and TCP_USER_TIMEOUT option
+                    # can take only integer values, so we round-up the timeout
+                    # to the nearest integer in order to ensure that the
+                    # connection is not broken before the expected timeout
                     sock.setsockopt(socket.IPPROTO_TCP,
                                     TCP_USER_TIMEOUT,
-                                    timeout)
+                                    int(math.ceil(timeout)))
                 except socket.error as error:
                     code = error[0]
                     # TCP_USER_TIMEOUT not defined on kernels <2.6.37
