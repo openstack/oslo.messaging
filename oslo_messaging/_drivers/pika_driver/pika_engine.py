@@ -18,6 +18,7 @@ import threading
 import time
 
 from oslo_log import log as logging
+from oslo_utils import eventletutils
 import pika
 from pika import credentials as pika_credentials
 
@@ -248,7 +249,7 @@ class PikaEngine(object):
             # Note(dukhlov): we need to force select poller usage in case when
             # 'thread' module is monkey patched becase current eventlet
             # implementation does not support patching of poll/epoll/kqueue
-            if pika_drv_cmns.is_eventlet_monkey_patched("thread"):
+            if eventletutils.is_monkey_patched("thread"):
                 from pika.adapters import select_connection
                 select_connection.SELECT_TYPE = "select"
 

@@ -14,7 +14,6 @@
 
 import select
 import socket
-import sys
 
 from oslo_utils import timeutils
 from pika import exceptions as pika_exceptions
@@ -32,16 +31,3 @@ PIKA_CONNECTIVITY_ERRORS = (
 EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
 
 INFINITE_STOP_WATCH = timeutils.StopWatch(duration=None).start()
-
-
-def is_eventlet_monkey_patched(module):
-    """Determines safely is eventlet patching for module enabled or not
-
-    :param module: String, module name
-    :return Bool, True if module is patched, False otherwise
-    """
-
-    if 'eventlet.patcher' not in sys.modules:
-        return False
-    import eventlet.patcher
-    return eventlet.patcher.is_monkey_patched(module)
