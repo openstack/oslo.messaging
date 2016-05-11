@@ -14,8 +14,6 @@
 
 import logging
 
-from oslo_messaging._drivers.zmq_driver.client.publishers\
-    import zmq_publisher_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -53,21 +51,21 @@ class PubPublisherProxy(object):
                                                 self.socket.port)
 
     def send_request(self, multipart_message):
-
-        envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        if not envelope.is_mult_send:
-            raise zmq_publisher_base.UnsupportedSendPattern(envelope.msg_type)
-
-        topic_filter = envelope.topic_filter
+        message_type = multipart_message.pop(0)
+        assert message_type in (zmq_names.CAST_FANOUT_TYPE,
+                                zmq_names.NOTIFY_TYPE), "Fanout expected!"
+        topic_filter = multipart_message.pop(0)
+        message_id = multipart_message.pop(0)
+        reply_id = multipart_message.pop(0)
+        assert reply_id is not None, "Reply id expected!"
 
         self.socket.send(topic_filter, zmq.SNDMORE)
-        self.socket.send(multipart_message[zmq_names.MULTIPART_IDX_BODY])
+        self.socket.send(message_id, zmq.SNDMORE)
+        self.socket.send_multipart(multipart_message)
 
-        LOG.debug("Publishing message [%(topic)s] %(message_id)s to "
-                  "a target %(target)s ",
-                  {"message_id": envelope.message_id,
-                   "target": envelope.target,
-                   "topic": topic_filter})
+        LOG.debug("Publishing message %(message_id)s on [%(topic)s]",
+                  {"topic": topic_filter,
+                   "message_id": message_id})
 
     def cleanup(self):
         self.socket.close()
