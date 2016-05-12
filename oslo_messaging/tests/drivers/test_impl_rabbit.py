@@ -310,6 +310,51 @@ class TestRabbitConsume(test_utils.BaseTestCase):
 
         self.assertEqual(0, int(deadline - time.time()))
 
+    def test_consume_from_missing_queue(self):
+        transport = oslo_messaging.get_transport(self.conf, 'kombu+memory://')
+        self.addCleanup(transport.cleanup)
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_LISTEN) as conn:
+            with mock.patch('kombu.Queue.consume') as consume, mock.patch(
+                    'kombu.Queue.declare') as declare:
+                conn.declare_topic_consumer(exchange_name='test',
+                                            topic='test',
+                                            callback=lambda msg: True)
+                import amqp
+                consume.side_effect = [amqp.NotFound, None]
+                conn.connection.connection.recoverable_connection_errors = ()
+                conn.connection.connection.recoverable_channel_errors = ()
+                self.assertEqual(1, declare.call_count)
+                conn.connection.connection.transport.drain_events = mock.Mock()
+                # Ensure that a queue will be re-declared if the consume method
+                # of kombu.Queue raise amqp.NotFound
+                conn.consume()
+                self.assertEqual(2, declare.call_count)
+
+    def test_consume_from_missing_queue_with_io_error_on_redeclaration(self):
+        transport = oslo_messaging.get_transport(self.conf, 'kombu+memory://')
+        self.addCleanup(transport.cleanup)
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_LISTEN) as conn:
+            with mock.patch('kombu.Queue.consume') as consume, mock.patch(
+                    'kombu.Queue.declare') as declare:
+                conn.declare_topic_consumer(exchange_name='test',
+                                            topic='test',
+                                            callback=lambda msg: True)
+                import amqp
+                consume.side_effect = [amqp.NotFound, None]
+                declare.side_effect = [IOError, None]
+
+                conn.connection.connection.recoverable_connection_errors = (
+                    IOError,)
+                conn.connection.connection.recoverable_channel_errors = ()
+                self.assertEqual(1, declare.call_count)
+                conn.connection.connection.transport.drain_events = mock.Mock()
+                # Ensure that a queue will be re-declared after
+                # 'queue not found' exception despite on connection error.
+                conn.consume()
+                self.assertEqual(3, declare.call_count)
+
     def test_connection_ack_have_disconnected_kombu_connection(self):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')

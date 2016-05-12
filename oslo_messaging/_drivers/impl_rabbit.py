@@ -250,7 +250,7 @@ class Consumer(object):
 
     def __init__(self, exchange_name, queue_name, routing_key, type, durable,
                  exchange_auto_delete, queue_auto_delete, callback,
-                 nowait=True, rabbit_ha_queues=None, rabbit_queue_ttl=0):
+                 nowait=False, rabbit_ha_queues=None, rabbit_queue_ttl=0):
         """Init the Publisher class with the exchange_name, routing_key,
         type, durable auto_delete
         """
@@ -1004,11 +1004,31 @@ class Connection(object):
             if not self.connection.connected:
                 raise self.connection.recoverable_connection_errors[0]
 
-            if self._new_tags:
+            consume_max_retries = 2
+            while self._new_tags and consume_max_retries:
                 for consumer, tag in self._consumers.items():
                     if tag in self._new_tags:
-                        consumer.consume(tag=tag)
-                        self._new_tags.remove(tag)
+                        try:
+                            consumer.consume(tag=tag)
+                            self._new_tags.remove(tag)
+                        except self.connection.channel_errors as exc:
+                            # NOTE(kbespalov): during the interval between
+                            # a queue declaration and consumer declaration
+                            # the queue can disappear. In this case
+                            # we must redeclare queue and try to re-consume.
+                            # More details is here:
+                            # bugs.launchpad.net/oslo.messaging/+bug/1581148
+                            if exc.code == 404 and consume_max_retries:
+                                consumer.declare(self)
+                                # NOTE(kbespalov): the broker closes a channel
+                                # at any channel error. The py-amqp catches
+                                # this situation and re-open a new channel.
+                                # So, we must re-declare all consumers again.
+                                self._new_tags = set(self._consumers.values())
+                                consume_max_retries -= 1
+                                break
+                            else:
+                                raise
 
             poll_timeout = (self._poll_timeout if timeout is None
                             else min(timeout, self._poll_timeout))
