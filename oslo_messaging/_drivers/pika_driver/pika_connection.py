@@ -18,7 +18,6 @@ import os
 import threading
 
 import futurist
-import pika
 from pika.adapters import select_connection
 from pika import exceptions as pika_exceptions
 from pika import spec as pika_spec
@@ -31,8 +30,9 @@ LOG = logging.getLogger(__name__)
 
 
 class ThreadSafePikaConnection(object):
-    def __init__(self, params=None):
-        self.params = params
+    def __init__(self, parameters=None,
+                 _impl_class=select_connection.SelectConnection):
+        self.params = parameters
         self._connection_lock = threading.Lock()
         self._evt_closed = threading.Event()
         self._task_queue = collections.deque()
@@ -45,8 +45,8 @@ class ThreadSafePikaConnection(object):
                 pika_exceptions.AMQPConnectionError(err)
             )
 
-        self._impl = pika.SelectConnection(
-            parameters=params,
+        self._impl = _impl_class(
+            parameters=parameters,
             on_open_callback=create_connection_future.set_result,
             on_open_error_callback=on_open_error,
             on_close_callback=self._on_connection_close,
@@ -63,6 +63,10 @@ class ThreadSafePikaConnection(object):
         self._thread.start()
 
         create_connection_future.result()
+
+    def _check_called_not_from_event_loop(self):
+        if current_thread() == self._thread_id:
+            raise RuntimeError("This call is not allowed from ioloop thread")
 
     def _execute_task(self, func, *args, **kwargs):
         if current_thread() == self._thread_id:
@@ -150,6 +154,8 @@ class ThreadSafePikaConnection(object):
                 LOG.exception("Error during processing connection's IO")
 
     def close(self, *args, **kwargs):
+        self._check_called_not_from_event_loop()
+
         res = self._execute_task(self._impl.close, *args, **kwargs)
 
         self._evt_closed.wait()
@@ -157,6 +163,8 @@ class ThreadSafePikaConnection(object):
         return res
 
     def channel(self, channel_number=None):
+        self._check_called_not_from_event_loop()
+
         channel_opened_future = self._register_pending_future()
 
         impl_channel = self._execute_task(
@@ -250,12 +258,18 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         self._impl.close(reply_code=reply_code, reply_text=reply_text)
         self._evt_closed.wait()
 
+    def _check_called_not_from_event_loop(self):
+        self._connection._check_called_not_from_event_loop()
+
     def flow(self, active):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(
             self._impl.flow, callback=self._current_future.set_result,
             active=active
         )
+
         return self._current_future.result()
 
     def basic_consume(self,  # pylint: disable=R0913
@@ -265,6 +279,9 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
                       exclusive=False,
                       consumer_tag=None,
                       arguments=None):
+
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(
             self._impl.add_callback, self._current_future.set_result,
@@ -288,6 +305,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         return tag
 
     def basic_cancel(self, consumer_tag):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(
             self._impl.basic_cancel,
@@ -310,6 +329,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
                 properties=None, mandatory=False, immediate=False):
 
         if self._delivery_confirmation:
+            self._check_called_not_from_event_loop()
+
             # In publisher-acknowledgments mode
             self._message_returned = False
             self._current_future = futurist.Future()
@@ -343,6 +364,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
                                immediate=immediate)
 
     def basic_qos(self, prefetch_size=0, prefetch_count=0, all_channels=False):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.basic_qos,
                            callback=self._current_future.set_result,
@@ -352,6 +375,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         self._current_future.result()
 
     def basic_recover(self, requeue=False):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(
             self._impl.basic_recover,
@@ -369,6 +394,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         self._message_returned = True
 
     def confirm_delivery(self):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.add_callback,
                            callback=self._current_future.set_result,
@@ -387,6 +414,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
                          exchange_type='direct', passive=False, durable=False,
                          auto_delete=False, internal=False,
                          arguments=None, **kwargs):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.exchange_declare,
                            callback=self._current_future.set_result,
@@ -403,6 +432,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         return self._current_future.result()
 
     def exchange_delete(self, exchange=None, if_unused=False):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.exchange_delete,
                            callback=self._current_future.set_result,
@@ -414,6 +445,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
 
     def exchange_bind(self, destination=None, source=None, routing_key='',
                       arguments=None):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.exchange_bind,
                            callback=self._current_future.set_result,
@@ -427,6 +460,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
 
     def exchange_unbind(self, destination=None, source=None, routing_key='',
                         arguments=None):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.exchange_unbind,
                            callback=self._current_future.set_result,
@@ -441,6 +476,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
     def queue_declare(self, queue='', passive=False, durable=False,
                       exclusive=False, auto_delete=False,
                       arguments=None):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.queue_declare,
                            callback=self._current_future.set_result,
@@ -455,6 +492,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         return self._current_future.result()
 
     def queue_delete(self, queue='', if_unused=False, if_empty=False):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.queue_delete,
                            callback=self._current_future.set_result,
@@ -466,6 +505,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
         return self._current_future.result()
 
     def queue_purge(self, queue=''):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.queue_purge,
                            callback=self._current_future.set_result,
@@ -475,6 +516,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
 
     def queue_bind(self, queue, exchange, routing_key=None,
                    arguments=None):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.queue_bind,
                            callback=self._current_future.set_result,
@@ -487,6 +530,8 @@ class ThreadSafePikaChannel(object):  # pylint: disable=R0904,R0902
 
     def queue_unbind(self, queue='', exchange=None, routing_key=None,
                      arguments=None):
+        self._check_called_not_from_event_loop()
+
         self._current_future = futurist.Future()
         self._execute_task(self._impl.queue_unbind,
                            callback=self._current_future.set_result,

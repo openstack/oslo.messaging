@@ -11,27 +11,19 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import logging
 import os
-import random
-import socket
 import threading
-import time
-
-from oslo_log import log as logging
-from oslo_utils import eventletutils
-import pika
-from pika import credentials as pika_credentials
-
-import pika_pool
 import uuid
 
+from oslo_utils import eventletutils
+import pika_pool
+from stevedore import driver
+
 from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
-from oslo_messaging._drivers.pika_driver import pika_connection
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
 LOG = logging.getLogger(__name__)
-
-_PID = None
 
 
 class _PooledConnectionWithConfirmations(pika_pool.Connection):
@@ -53,17 +45,24 @@ class PikaEngine(object):
     etc.
     """
 
-    # constants for creating connection statistics
-    HOST_CONNECTION_LAST_TRY_TIME = "last_try_time"
-    HOST_CONNECTION_LAST_SUCCESS_TRY_TIME = "last_success_try_time"
-
-    # constant for setting tcp_user_timeout socket option
-    # (it should be defined in 'select' module of standard library in future)
-    TCP_USER_TIMEOUT = 18
-
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
         self.conf = conf
+        self.url = url
+
+        self._connection_factory_type = (
+            self.conf.oslo_messaging_pika.connection_factory
+        )
+
+        self._connection_factory = None
+        self._connection_without_confirmation_pool = None
+        self._connection_with_confirmation_pool = None
+        self._pid = None
+        self._init_lock = threading.Lock()
+
+        self.host_connection_reconnect_delay = (
+            conf.oslo_messaging_pika.host_connection_reconnect_delay
+        )
 
         # processing rpc options
         self.default_rpc_exchange = (
@@ -136,201 +135,78 @@ class PikaEngine(object):
             raise ValueError("notification_retry_delay should be non-negative "
                              "integer")
 
-        self._tcp_user_timeout = self.conf.oslo_messaging_pika.tcp_user_timeout
-        self.host_connection_reconnect_delay = (
-            self.conf.oslo_messaging_pika.host_connection_reconnect_delay
-        )
-        self._heartbeat_interval = (
-            self.conf.oslo_messaging_pika.heartbeat_interval
-        )
-
-        # initializing connection parameters for configured RabbitMQ hosts
-        self._common_pika_params = {
-            'virtual_host': url.virtual_host,
-            'channel_max': self.conf.oslo_messaging_pika.channel_max,
-            'frame_max': self.conf.oslo_messaging_pika.frame_max,
-            'ssl': self.conf.oslo_messaging_pika.ssl,
-            'ssl_options': self.conf.oslo_messaging_pika.ssl_options,
-            'socket_timeout': self.conf.oslo_messaging_pika.socket_timeout,
-        }
-
-        self._connection_lock = threading.RLock()
-        self._pid = None
-
-        self._connection_host_status = {}
-
-        if not url.hosts:
-            raise ValueError("You should provide at least one RabbitMQ host")
-
-        self._host_list = url.hosts
-
-        self._cur_connection_host_num = random.randint(
-            0, len(self._host_list) - 1
-        )
-
-        # initializing 2 connection pools: 1st for connections without
-        # confirmations, 2nd - with confirmations
-        self.connection_without_confirmation_pool = pika_pool.QueuedPool(
-            create=self.create_connection,
-            max_size=self.conf.oslo_messaging_pika.pool_max_size,
-            max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
-            timeout=self.conf.oslo_messaging_pika.pool_timeout,
-            recycle=self.conf.oslo_messaging_pika.pool_recycle,
-            stale=self.conf.oslo_messaging_pika.pool_stale,
-        )
-
-        self.connection_with_confirmation_pool = pika_pool.QueuedPool(
-            create=self.create_connection,
-            max_size=self.conf.oslo_messaging_pika.pool_max_size,
-            max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
-            timeout=self.conf.oslo_messaging_pika.pool_timeout,
-            recycle=self.conf.oslo_messaging_pika.pool_recycle,
-            stale=self.conf.oslo_messaging_pika.pool_stale,
-        )
-
-        self.connection_with_confirmation_pool.Connection = (
-            _PooledConnectionWithConfirmations
-        )
-
-    def create_connection(self, for_listening=False):
-        """Create and return connection to any available host.
-
-        :return: created connection
-        :raise: ConnectionException if all hosts are not reachable
-        """
-
-        with self._connection_lock:
-            self._init_if_needed()
-
-            host_count = len(self._host_list)
-            connection_attempts = host_count
-
-            while connection_attempts > 0:
-                self._cur_connection_host_num += 1
-                self._cur_connection_host_num %= host_count
-                try:
-                    return self.create_host_connection(
-                        self._cur_connection_host_num, for_listening
-                    )
-                except pika_pool.Connection.connectivity_errors as e:
-                    LOG.warning("Can't establish connection to host. %s", e)
-                except pika_drv_exc.HostConnectionNotAllowedException as e:
-                    LOG.warning("Connection to host is not allowed. %s", e)
-
-                connection_attempts -= 1
-
-            raise pika_drv_exc.EstablishConnectionException(
-                "Can not establish connection to any configured RabbitMQ "
-                "host: " + str(self._host_list)
-            )
-
-    def _set_tcp_user_timeout(self, s):
-        if not self._tcp_user_timeout:
-            return
-        try:
-            s.setsockopt(
-                socket.IPPROTO_TCP, self.TCP_USER_TIMEOUT,
-                int(self._tcp_user_timeout * 1000)
-            )
-        except socket.error:
-            LOG.warning(
-                "Whoops, this kernel doesn't seem to support TCP_USER_TIMEOUT."
-            )
-
     def _init_if_needed(self):
-        global _PID
-
         cur_pid = os.getpid()
 
-        if _PID != cur_pid:
-            if _PID:
+        if self._pid == cur_pid:
+            return
+
+        with self._init_lock:
+            if self._pid == cur_pid:
+                return
+
+            if self._pid:
                 LOG.warning("New pid is detected. Old: %s, new: %s. "
-                            "Cleaning up...", _PID, cur_pid)
-            # Note(dukhlov): we need to force select poller usage in case when
-            # 'thread' module is monkey patched becase current eventlet
-            # implementation does not support patching of poll/epoll/kqueue
+                            "Cleaning up...", self._pid, cur_pid)
+
+            # Note(dukhlov): we need to force select poller usage in case
+            # when 'thread' module is monkey patched becase current
+            # eventlet implementation does not support patching of
+            # poll/epoll/kqueue
             if eventletutils.is_monkey_patched("thread"):
                 from pika.adapters import select_connection
                 select_connection.SELECT_TYPE = "select"
 
-            _PID = cur_pid
-
-    def create_host_connection(self, host_index, for_listening=False):
-        """Create new connection to host #host_index
-
-        :param host_index: Integer, number of host for connection establishing
-        :param for_listening: Boolean, creates connection for listening
-            if True
-        :return: New connection
-        """
-        with self._connection_lock:
-            self._init_if_needed()
-
-            host = self._host_list[host_index]
-
-            connection_params = pika.ConnectionParameters(
-                host=host.hostname,
-                port=host.port,
-                credentials=pika_credentials.PlainCredentials(
-                    host.username, host.password
-                ),
-                heartbeat_interval=(
-                    self._heartbeat_interval if for_listening else None
-                ),
-                **self._common_pika_params
+            mgr = driver.DriverManager(
+                'oslo.messaging.pika.connection_factory',
+                self._connection_factory_type
             )
 
-            cur_time = time.time()
+            self._connection_factory = mgr.driver(self.url, self.conf)
 
-            host_connection_status = self._connection_host_status.get(host)
+            # initializing 2 connection pools: 1st for connections without
+            # confirmations, 2nd - with confirmations
+            self._connection_without_confirmation_pool = pika_pool.QueuedPool(
+                create=self.create_connection,
+                max_size=self.conf.oslo_messaging_pika.pool_max_size,
+                max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
+                timeout=self.conf.oslo_messaging_pika.pool_timeout,
+                recycle=self.conf.oslo_messaging_pika.pool_recycle,
+                stale=self.conf.oslo_messaging_pika.pool_stale,
+            )
 
-            if host_connection_status is None:
-                host_connection_status = {
-                    self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME: 0,
-                    self.HOST_CONNECTION_LAST_TRY_TIME: 0
-                }
-                self._connection_host_status[host] = host_connection_status
+            self._connection_with_confirmation_pool = pika_pool.QueuedPool(
+                create=self.create_connection,
+                max_size=self.conf.oslo_messaging_pika.pool_max_size,
+                max_overflow=self.conf.oslo_messaging_pika.pool_max_overflow,
+                timeout=self.conf.oslo_messaging_pika.pool_timeout,
+                recycle=self.conf.oslo_messaging_pika.pool_recycle,
+                stale=self.conf.oslo_messaging_pika.pool_stale,
+            )
 
-            last_success_time = host_connection_status[
-                self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME
-            ]
-            last_time = host_connection_status[
-                self.HOST_CONNECTION_LAST_TRY_TIME
-            ]
+            self._connection_with_confirmation_pool.Connection = (
+                _PooledConnectionWithConfirmations
+            )
 
-            # raise HostConnectionNotAllowedException if we tried to establish
-            # connection in last 'host_connection_reconnect_delay' and got
-            # failure
-            if (last_time != last_success_time and
-                    cur_time - last_time <
-                    self.host_connection_reconnect_delay):
-                raise pika_drv_exc.HostConnectionNotAllowedException(
-                    "Connection to host #{} is not allowed now because of "
-                    "previous failure".format(host_index)
-                )
+            self._pid = cur_pid
 
-            try:
-                if for_listening:
-                    connection = pika_connection.ThreadSafePikaConnection(
-                        params=connection_params
-                    )
-                else:
-                    connection = pika.BlockingConnection(
-                        parameters=connection_params
-                    )
-                    connection.params = connection_params
+    def create_connection(self, for_listening=False):
+        self._init_if_needed()
+        return self._connection_factory.create_connection(for_listening)
 
-                self._set_tcp_user_timeout(connection._impl.socket)
+    @property
+    def connection_without_confirmation_pool(self):
+        self._init_if_needed()
+        return self._connection_without_confirmation_pool
 
-                self._connection_host_status[host][
-                    self.HOST_CONNECTION_LAST_SUCCESS_TRY_TIME
-                ] = cur_time
+    @property
+    def connection_with_confirmation_pool(self):
+        self._init_if_needed()
+        return self._connection_with_confirmation_pool
 
-                return connection
-            finally:
-                self._connection_host_status[host][
-                    self.HOST_CONNECTION_LAST_TRY_TIME
-                ] = cur_time
+    def cleanup(self):
+        if self._connection_factory:
+            self._connection_factory.cleanup()
 
     def declare_exchange_by_channel(self, channel, exchange, exchange_type,
                                     durable):
