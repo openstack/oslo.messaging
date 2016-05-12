@@ -15,6 +15,7 @@
 
 import abc
 import collections
+import sys
 import threading
 
 from oslo_log import log as logging
@@ -23,6 +24,16 @@ import six
 from oslo_messaging._drivers import common
 
 LOG = logging.getLogger(__name__)
+
+# TODO(harlowja): remove this when we no longer have to support 2.7
+if sys.version_info[0:2] < (3, 2):
+    def wait_condition(cond):
+        # FIXME(markmc): timeout needed to allow keyboard interrupt
+        # http://bugs.python.org/issue8844
+        cond.wait(timeout=1)
+else:
+    def wait_condition(cond):
+        cond.wait()
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -67,9 +78,7 @@ class Pool(object):
                     self._current_size += 1
                     break
 
-                # FIXME(markmc): timeout needed to allow keyboard interrupt
-                # http://bugs.python.org/issue8844
-                self._cond.wait(timeout=1)
+                wait_condition(self._cond)
 
         # We've grabbed a slot and dropped the lock, now do the creation
         try:
