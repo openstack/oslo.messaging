@@ -20,7 +20,6 @@ zmq = zmq_async.import_zmq()
 FIELD_TYPE = 'type'
 FIELD_FAILURE = 'failure'
 FIELD_REPLY = 'reply'
-FIELD_LOG_FAILURE = 'log_failure'
 FIELD_ID = 'id'
 FIELD_MSG_ID = 'message_id'
 FIELD_MSG_TYPE = 'msg_type'

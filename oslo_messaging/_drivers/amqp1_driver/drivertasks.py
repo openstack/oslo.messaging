@@ -94,11 +94,10 @@ class ListenTask(controller.Task):
 class ReplyTask(controller.Task):
     """A task that sends 'response' message to 'address'.
     """
-    def __init__(self, address, response, log_failure):
+    def __init__(self, address, response):
         super(ReplyTask, self).__init__()
         self._address = address
         self._response = response
-        self._log_failure = log_failure
         self._wakeup = threading.Event()
 
     def wait(self):

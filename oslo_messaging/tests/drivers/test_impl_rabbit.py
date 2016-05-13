@@ -451,14 +451,6 @@ class TestSendReceive(test_utils.BaseTestCase):
         senders = []
         replies = []
         msgs = []
-        errors = []
-
-        def stub_error(msg, *a, **kw):
-            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
-                a = a[0]
-            errors.append(str(msg) % a)
-
-        self.stubs.Set(driver_common.LOG, 'error', stub_error)
 
         def send_and_wait_for_reply(i):
             try:
@@ -500,8 +492,7 @@ class TestSendReceive(test_utils.BaseTestCase):
                         raise ZeroDivisionError
                     except Exception:
                         failure = sys.exc_info()
-                    msgs[i].reply(failure=failure,
-                                  log_failure=not self.expected)
+                    msgs[i].reply(failure=failure)
                 elif self.rx_id:
                     msgs[i].reply({'rx_id': i})
                 else:
@@ -518,11 +509,6 @@ class TestSendReceive(test_utils.BaseTestCase):
                 self.assertEqual({'rx_id': order[i]}, reply)
             else:
                 self.assertEqual(self.reply, reply)
-
-        if not self.timeout and self.failure and not self.expected:
-            self.assertTrue(len(errors) > 0, errors)
-        else:
-            self.assertEqual(0, len(errors), errors)
 
 
 TestSendReceive.generate_scenarios()

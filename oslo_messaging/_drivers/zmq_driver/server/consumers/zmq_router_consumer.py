@@ -37,7 +37,7 @@ class RouterIncomingMessage(base.RpcIncomingMessage):
         self.msg_id = msg_id
         self.message = message
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         """Reply is not needed for non-call messages"""
 
     def acknowledge(self):

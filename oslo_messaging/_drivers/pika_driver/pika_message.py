@@ -175,13 +175,11 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
         self.reply_q = properties.reply_to
         self.msg_id = properties.correlation_id
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         """Send back reply to the RPC client
         :param reply: Dictionary, reply. In case of exception should be None
         :param failure: Tuple, should be a sys.exc_info() tuple.
             Should be None if RPC request was successfully processed.
-        :param log_failure: Boolean, not used in this implementation.
-            It present here to be compatible with driver API
 
         :return RpcReplyPikaIncomingMessage, message with reply
         """

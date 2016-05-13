@@ -98,13 +98,13 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         self._reply_to = message.reply_to
         self._correlation_id = message.id
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         """Schedule a ReplyTask to send the reply."""
         if self._reply_to:
             response = marshal_response(reply=reply, failure=failure)
             response.correlation_id = self._correlation_id
             LOG.debug("Replying to %s", self._correlation_id)
-            task = drivertasks.ReplyTask(self._reply_to, response, log_failure)
+            task = drivertasks.ReplyTask(self._reply_to, response)
             self.listener.driver._ctrl.add_task(task)
         else:
             LOG.debug("Ignoring reply as no reply address available")

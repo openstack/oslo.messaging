@@ -37,7 +37,7 @@ class DealerIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, context, message):
         super(DealerIncomingMessage, self).__init__(context, message)
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         """Reply is not needed for non-call messages"""
 
     def acknowledge(self):
@@ -55,16 +55,14 @@ class DealerIncomingRequest(base.RpcIncomingMessage):
         self.reply_id = reply_id
         self.message_id = message_id
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         if failure is not None:
-            failure = rpc_common.serialize_remote_exception(failure,
-                                                            log_failure)
+            failure = rpc_common.serialize_remote_exception(failure)
         response = zmq_response.Response(type=zmq_names.REPLY_TYPE,
                                          message_id=self.message_id,
                                          reply_id=self.reply_id,
                                          reply_body=reply,
-                                         failure=failure,
-                                         log_failure=log_failure)
+                                         failure=failure)
 
         LOG.debug("Replying %s", self.message_id)
 
