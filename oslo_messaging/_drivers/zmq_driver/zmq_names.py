@@ -36,13 +36,12 @@ MULTIPART_IDX_ENVELOPE = 0
 MULTIPART_IDX_BODY = 1
 
 
-CALL_TYPE = 'call'
-CAST_TYPE = 'cast'
-CAST_FANOUT_TYPE = 'cast-f'
-NOTIFY_TYPE = 'notify'
-
-REPLY_TYPE = 'reply'
-ACK_TYPE = 'ack'
+CALL_TYPE = 1
+CAST_TYPE = 2
+CAST_FANOUT_TYPE = 3
+NOTIFY_TYPE = 4
+REPLY_TYPE = 5
+ACK_TYPE = 6
 
 MESSAGE_TYPES = (CALL_TYPE,
                  CAST_TYPE,
@@ -50,7 +49,7 @@ MESSAGE_TYPES = (CALL_TYPE,
                  NOTIFY_TYPE)
 
 MULTISEND_TYPES = (CAST_FANOUT_TYPE, NOTIFY_TYPE)
-DIRECT_TYPES = (CALL_TYPE, CAST_TYPE)
+DIRECT_TYPES = (CALL_TYPE, CAST_TYPE, REPLY_TYPE)
 CAST_TYPES = (CAST_TYPE, CAST_FANOUT_TYPE)
 NOTIFY_TYPES = (NOTIFY_TYPE,)
 NON_BLOCKING_TYPES = CAST_TYPES + NOTIFY_TYPES
@@ -66,3 +65,13 @@ def socket_type_str(socket_type):
                       zmq.PUB: "PUB",
                       zmq.SUB: "SUB"}
     return zmq_socket_str[socket_type]
+
+
+def message_type_str(message_type):
+    msg_type_str = {CALL_TYPE: "CALL",
+                    CAST_TYPE: "CAST",
+                    CAST_FANOUT_TYPE: "CAST_FANOUT_TYPE",
+                    NOTIFY_TYPE: "NOTIFY_TYPE",
+                    REPLY_TYPE: "REPLY_TYPE",
+                    ACK_TYPE: "ACK_TYPE"}
+    return msg_type_str[message_type]

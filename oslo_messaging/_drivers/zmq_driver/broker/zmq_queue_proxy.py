@@ -14,6 +14,8 @@
 
 import logging
 
+import six
+
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_pub_publisher
 from oslo_messaging._drivers.zmq_driver import zmq_address
@@ -67,11 +69,11 @@ class UniversalQueueProxy(object):
         if message is None:
             return
 
-        envelope = message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        if self.conf.use_pub_sub and envelope.is_mult_send:
-            LOG.debug("-> Redirecting request %s to TCP publisher", envelope)
+        msg_type = message[0]
+        if self.conf.use_pub_sub and msg_type in (zmq_names.CAST_FANOUT_TYPE,
+                                                  zmq_names.NOTIFY_TYPE):
             self.pub_publisher.send_request(message)
-        elif not envelope.is_mult_send:
+        elif msg_type in zmq_names.DIRECT_TYPES:
             self._redirect_message(self.be_router_socket
                                    if socket is self.fe_router_socket
                                    else self.fe_router_socket, message)
@@ -83,9 +85,12 @@ class UniversalQueueProxy(object):
             assert reply_id is not None, "Valid id expected"
             empty = socket.recv()
             assert empty == b'', "Empty delimiter expected"
-            envelope = socket.recv_pyobj()
+            msg_type = int(socket.recv())
+            routing_key = socket.recv()
             payload = socket.recv_multipart()
-            payload.insert(zmq_names.MULTIPART_IDX_ENVELOPE, envelope)
+            payload.insert(0, reply_id)
+            payload.insert(0, routing_key)
+            payload.insert(0, msg_type)
             return payload
         except (AssertionError, zmq.ZMQError):
             LOG.error("Received message with wrong format")
@@ -93,14 +98,16 @@ class UniversalQueueProxy(object):
 
     @staticmethod
     def _redirect_message(socket, multipart_message):
-        envelope = multipart_message[zmq_names.MULTIPART_IDX_ENVELOPE]
-        LOG.debug("<-> Dispatch message: %s", envelope)
-        response_binary = multipart_message[zmq_names.MULTIPART_IDX_BODY]
-
-        socket.send(envelope.routing_key, zmq.SNDMORE)
+        message_type = multipart_message.pop(0)
+        routing_key = multipart_message.pop(0)
+        reply_id = multipart_message.pop(0)
+        message_id = multipart_message[0]
+        socket.send(routing_key, zmq.SNDMORE)
         socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(envelope, zmq.SNDMORE)
-        socket.send(response_binary)
+        socket.send(reply_id, zmq.SNDMORE)
+        socket.send(six.b(str(message_type)), zmq.SNDMORE)
+        LOG.debug("Redirecting message %s" % message_id)
+        socket.send_multipart(multipart_message)
 
     def cleanup(self):
         self.fe_router_socket.close()

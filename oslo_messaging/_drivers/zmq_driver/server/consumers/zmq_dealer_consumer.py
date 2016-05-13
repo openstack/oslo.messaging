@@ -14,6 +14,8 @@
 
 import logging
 
+import six
+
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client.publishers\
@@ -32,15 +34,14 @@ zmq = zmq_async.import_zmq()
 
 class DealerIncomingMessage(base.RpcIncomingMessage):
 
-    def __init__(self, context, message, msg_id):
+    def __init__(self, context, message):
         super(DealerIncomingMessage, self).__init__(context, message)
-        self.msg_id = msg_id
 
     def reply(self, reply=None, failure=None, log_failure=True):
         """Reply is not needed for non-call messages"""
 
     def acknowledge(self):
-        LOG.debug("Not sending acknowledge for %s", self.msg_id)
+        """Not sending acknowledge"""
 
     def requeue(self):
         """Requeue is not supported"""
@@ -48,31 +49,29 @@ class DealerIncomingMessage(base.RpcIncomingMessage):
 
 class DealerIncomingRequest(base.RpcIncomingMessage):
 
-    def __init__(self, socket, request, envelope):
-        super(DealerIncomingRequest, self).__init__(request.context,
-                                                    request.message)
+    def __init__(self, socket, reply_id, message_id, context, message):
+        super(DealerIncomingRequest, self).__init__(context, message)
         self.reply_socket = socket
-        self.request = request
-        self.envelope = envelope
+        self.reply_id = reply_id
+        self.message_id = message_id
 
     def reply(self, reply=None, failure=None, log_failure=True):
         if failure is not None:
             failure = rpc_common.serialize_remote_exception(failure,
                                                             log_failure)
         response = zmq_response.Response(type=zmq_names.REPLY_TYPE,
-                                         message_id=self.request.message_id,
-                                         reply_id=self.envelope.reply_id,
+                                         message_id=self.message_id,
+                                         reply_id=self.reply_id,
                                          reply_body=reply,
                                          failure=failure,
                                          log_failure=log_failure)
 
-        LOG.debug("Replying %s", (str(self.request.message_id)))
-
-        self.envelope.routing_key = self.envelope.reply_id
-        self.envelope.msg_type = zmq_names.REPLY_TYPE
+        LOG.debug("Replying %s", self.message_id)
 
         self.reply_socket.send(b'', zmq.SNDMORE)
-        self.reply_socket.send_pyobj(self.envelope, zmq.SNDMORE)
+        self.reply_socket.send(six.b(str(zmq_names.REPLY_TYPE)), zmq.SNDMORE)
+        self.reply_socket.send(self.reply_id, zmq.SNDMORE)
+        self.reply_socket.send(self.message_id, zmq.SNDMORE)
         self.reply_socket.send_pyobj(response)
 
     def requeue(self):
@@ -95,29 +94,25 @@ class DealerConsumer(zmq_consumer_base.ConsumerBase):
             zmq.DEALER)
         LOG.info(_LI("[%s] Run DEALER consumer"), self.host)
 
-    def _receive_request(self, socket):
-        empty = socket.recv()
-        assert empty == b'', 'Bad format: empty delimiter expected'
-        envelope = socket.recv_pyobj()
-        request = socket.recv_pyobj()
-        return request, envelope
-
     def receive_message(self, socket):
         try:
-            request, envelope = self._receive_request(socket)
-            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s",
-                      {"host": self.host,
-                       "type": request.msg_type,
-                       "id": request.message_id,
-                       "target": request.target})
-
-            if request.msg_type == zmq_names.CALL_TYPE:
-                return DealerIncomingRequest(socket, request, envelope)
-            elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
-                return DealerIncomingMessage(request.context, request.message,
-                                             request.message_id)
+            empty = socket.recv()
+            assert empty == b'', 'Bad format: empty delimiter expected'
+            reply_id = socket.recv()
+            message_type = int(socket.recv())
+            message_id = socket.recv()
+            context = socket.recv_pyobj()
+            message = socket.recv_pyobj()
+            LOG.debug("[%(host)s] Received message %(id)s",
+                      {"host": self.host, "id": message_id})
+            if message_type == zmq_names.CALL_TYPE:
+                return DealerIncomingRequest(
+                    socket, reply_id, message_id, context, message)
+            elif message_type in zmq_names.NON_BLOCKING_TYPES:
+                return DealerIncomingMessage(context, message)
             else:
-                LOG.error(_LE("Unknown message type: %s"), request.msg_type)
+                LOG.error(_LE("Unknown message type: %s"),
+                          zmq_names.message_type_str(message_type))
 
         except (zmq.ZMQError, AssertionError) as e:
             LOG.error(_LE("Receiving message failure: %s"), str(e))

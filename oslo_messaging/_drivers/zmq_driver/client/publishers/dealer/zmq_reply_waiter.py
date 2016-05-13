@@ -42,17 +42,16 @@ class ReplyWaiter(object):
             self.replies.pop(message_id)
 
     def poll_socket(self, socket):
+        self.poller.register(socket, recv_method=self.receive_method)
 
-        def _receive_method(socket):
-            empty = socket.recv()
-            assert empty == b'', "Empty expected!"
-            envelope = socket.recv_pyobj()
-            assert envelope is not None, "Invalid envelope!"
-            reply = socket.recv_pyobj()
-            LOG.debug("Received reply %s", envelope)
-            return reply
-
-        self.poller.register(socket, recv_method=_receive_method)
+    def receive_method(self, socket):
+        empty = socket.recv()
+        assert empty == b'', "Empty expected!"
+        envelope = socket.recv_pyobj()
+        assert envelope is not None, "Invalid envelope!"
+        reply = socket.recv_pyobj()
+        LOG.debug("Received reply %s", envelope)
+        return reply
 
     def run_loop(self):
         reply, socket = self.poller.poll(

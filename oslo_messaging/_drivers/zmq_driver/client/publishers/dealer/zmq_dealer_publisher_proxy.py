@@ -13,6 +13,7 @@
 #    under the License.
 
 import logging
+import six
 import time
 
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
@@ -21,6 +22,7 @@ from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_reply_waiter
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_publisher_base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -43,13 +45,16 @@ class DealerPublisherProxy(object):
             raise zmq_publisher_base.UnsupportedSendPattern(
                 request.msg_type)
 
-        envelope = request.create_envelope(
-            routing_key=self.routing_table.get_routable_host(request.target)
-            if request.msg_type in zmq_names.DIRECT_TYPES else None)
+        routing_key = self.routing_table.get_routable_host(request.target) \
+            if request.msg_type in zmq_names.DIRECT_TYPES else \
+            zmq_address.target_to_subscribe_filter(request.target)
 
         self.socket.send(b'', zmq.SNDMORE)
-        self.socket.send_pyobj(envelope, zmq.SNDMORE)
-        self.socket.send_pyobj(request)
+        self.socket.send(six.b(str(request.msg_type)), zmq.SNDMORE)
+        self.socket.send(six.b(routing_key), zmq.SNDMORE)
+        self.socket.send(six.b(request.message_id), zmq.SNDMORE)
+        self.socket.send_pyobj(request.context, zmq.SNDMORE)
+        self.socket.send_pyobj(request.message)
 
         LOG.debug("->[proxy:%(addr)s] Sending message_id %(message)s to "
                   "a target %(target)s",
@@ -64,7 +69,7 @@ class DealerPublisherProxy(object):
 class DealerCallPublisherProxy(zmq_dealer_call_publisher.DealerCallPublisher):
 
     def __init__(self, conf, matchmaker, sockets_manager):
-        reply_waiter = zmq_reply_waiter.ReplyWaiter(conf)
+        reply_waiter = ReplyWaiterProxy(conf)
         sender = CallSenderProxy(conf, matchmaker, sockets_manager,
                                  reply_waiter)
         super(DealerCallPublisherProxy, self).__init__(
@@ -84,17 +89,34 @@ class CallSenderProxy(zmq_dealer_call_publisher.CallSender):
         return self.socket
 
     def _do_send_request(self, socket, request):
-        envelope = request.create_envelope(
-            routing_key=self.routing_table.get_routable_host(request.target),
-            reply_id=self.socket.handle.identity)
+        routing_key = self.routing_table.get_routable_host(request.target)
+
         # DEALER socket specific envelope empty delimiter
         socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(envelope, zmq.SNDMORE)
-        socket.send_pyobj(request)
+        socket.send(six.b(str(request.msg_type)), zmq.SNDMORE)
+        socket.send(six.b(routing_key), zmq.SNDMORE)
+        socket.send(six.b(request.message_id), zmq.SNDMORE)
+        socket.send_pyobj(request.context, zmq.SNDMORE)
+        socket.send_pyobj(request.message)
 
         LOG.debug("Sent message_id %(message)s to a target %(target)s",
                   {"message": request.message_id,
                    "target": request.target})
+
+
+class ReplyWaiterProxy(zmq_reply_waiter.ReplyWaiter):
+
+    def receive_method(self, socket):
+        empty = socket.recv()
+        assert empty == b'', "Empty expected!"
+        reply_id = socket.recv()
+        assert reply_id is not None, "Reply ID expected!"
+        message_type = int(socket.recv())
+        assert message_type == zmq_names.REPLY_TYPE, "Reply is expected!"
+        message_id = socket.recv()
+        reply = socket.recv_pyobj()
+        LOG.debug("Received reply %s", message_id)
+        return reply
 
 
 class RoutingTable(object):

@@ -15,13 +15,12 @@
 import pickle
 import time
 
-import contextlib
-
 import oslo_messaging
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_pub_publisher
-from oslo_messaging._drivers.zmq_driver.client import zmq_request
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging.tests.drivers.zmq import zmq_common
 
 
@@ -51,11 +50,16 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         #  Needed only in test env to give listener a chance to connect
         #  before request fires
         time.sleep(1)
-        with contextlib.closing(zmq_request.FanoutRequest(
-                target, context={}, message={'method': 'hello-world'},
-                retry=None)) as request:
-            self.publisher.send_request([request.create_envelope(),
-                                         pickle.dumps(request)])
+        context = {}
+        message = {'method': 'hello-world'}
+
+        self.publisher.send_request(
+            [zmq_names.CAST_FANOUT_TYPE,
+             zmq_address.target_to_subscribe_filter(target),
+             b"message",
+             b"0000-0000",
+             pickle.dumps(context),
+             pickle.dumps(message)])
 
     def _check_listener(self, listener):
         listener._received.wait(timeout=5)
