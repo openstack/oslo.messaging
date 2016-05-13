@@ -35,10 +35,6 @@ Usage example:
 
 
 def main():
-    logging.basicConfig(level=logging.DEBUG,
-                        format='%(asctime)s %(name)s '
-                               '%(levelname)-8s %(message)s')
-
     parser = argparse.ArgumentParser(
         description='ZeroMQ proxy service',
         usage=USAGE
@@ -46,10 +42,20 @@ def main():
 
     parser.add_argument('--config-file', dest='config_file', type=str,
                         help='Path to configuration file')
+    parser.add_argument('-d', '--debug', dest='debug', type=bool,
+                        default=False,
+                        help="Turn on DEBUG logging level instead of INFO")
     args = parser.parse_args()
 
     if args.config_file:
         cfg.CONF(["--config-file", args.config_file])
+
+    log_level = logging.INFO
+    if args.debug:
+        log_level = logging.DEBUG
+    logging.basicConfig(level=log_level,
+                        format='%(asctime)s %(name)s '
+                               '%(levelname)-8s %(message)s')
 
     reactor = zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.UniversalQueueProxy)
 
