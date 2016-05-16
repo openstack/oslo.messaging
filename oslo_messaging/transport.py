@@ -229,7 +229,7 @@ class TransportURL(object):
 
     Transport URLs take the form::
 
-      transport://user:pass@host1:port[,hostN:portN]/virtual_host
+      transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host
 
     i.e. the scheme selects the transport driver, you may include multiple
     hosts in netloc and the path part is a "virtual host" partition path.
@@ -338,7 +338,7 @@ class TransportURL(object):
 
         Assuming a URL takes the form of::
 
-          transport://user:pass@host1:port[,hostN:portN]/virtual_host
+          transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host
 
         then parse the URL and return a TransportURL object.
 
