@@ -87,7 +87,7 @@ zmq_opts = [
                      'PUB/SUB always uses proxy.'),
 
     cfg.BoolOpt('use_router_proxy', default=True,
-                help='Use ROUTER remote proxy for direct methods.'),
+                help='Use ROUTER remote proxy.'),
 
     cfg.PortOpt('rpc_zmq_min_port',
                 default=49153,
