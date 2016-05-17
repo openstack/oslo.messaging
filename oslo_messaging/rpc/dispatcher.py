@@ -31,7 +31,6 @@ import six
 
 from oslo_messaging import _utils as utils
 from oslo_messaging import dispatcher
-from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import server as msg_server
 from oslo_messaging import target as msg_target
@@ -148,11 +147,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                 continue
 
             if hasattr(endpoint, method):
-                localcontext._set_local_context(ctxt)
-                try:
-                    return self._do_dispatch(endpoint, method, ctxt, args)
-                finally:
-                    localcontext._clear_local_context()
+                return self._do_dispatch(endpoint, method, ctxt, args)
 
             found_compatible = True
 

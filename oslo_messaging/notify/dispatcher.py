@@ -21,7 +21,6 @@ import six
 
 from oslo_messaging._i18n import _LW
 from oslo_messaging import dispatcher
-from oslo_messaging import localcontext
 from oslo_messaging import serializer as msg_serializer
 
 
@@ -77,8 +76,6 @@ class NotificationDispatcher(dispatcher.DispatcherBase):
         return NotificationResult.HANDLED
 
     def _exec_callback(self, callback, message):
-        localcontext._set_local_context(message["ctxt"])
-
         try:
             return callback(message["ctxt"],
                             message["publisher_id"],
@@ -88,8 +85,6 @@ class NotificationDispatcher(dispatcher.DispatcherBase):
         except Exception:
             LOG.exception("Callback raised an exception.")
             return NotificationResult.REQUEUE
-        finally:
-            localcontext._clear_local_context()
 
     def _extract_user_message(self, incoming):
         ctxt = self.serializer.deserialize_context(incoming.ctxt)
