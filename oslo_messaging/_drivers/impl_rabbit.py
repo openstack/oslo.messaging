@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
 import contextlib
 import errno
 import functools
@@ -505,9 +504,16 @@ class Connection(object):
         self._initial_pid = os.getpid()
 
         self._consumers = {}
+        self._producer = None
         self._new_tags = set()
         self._active_tags = {}
         self._tags = itertools.count(1)
+
+        # Set of exchanges and queues declared on the channel to avoid
+        # unnecessary redeclaration. This set is resetted each time
+        # the connection is resetted in Connection._set_current_channel
+        self._declared_exchanges = set()
+        self._declared_queues = set()
 
         self._consume_loop_stopped = False
         self.channel = None
@@ -791,14 +797,16 @@ class Connection(object):
             return
 
         if self.channel is not None:
-            self.PUBLISHER_DECLARED_QUEUES.pop(self.channel, None)
+            self._declared_queues.clear()
+            self._declared_exchanges.clear()
             self.connection.maybe_close_channel(self.channel)
 
         self.channel = new_channel
 
-        if (new_channel is not None and
-           self.purpose == rpc_common.PURPOSE_LISTEN):
-            self._set_qos(new_channel)
+        if new_channel is not None:
+            if self.purpose == rpc_common.PURPOSE_LISTEN:
+                self._set_qos(new_channel)
+            self._producer = kombu.messaging.Producer(new_channel)
 
     def _set_qos(self, channel):
         """Set QoS prefetch count on the channel"""
@@ -1117,10 +1125,10 @@ class Connection(object):
 
     def _publish(self, exchange, msg, routing_key=None, timeout=None):
         """Publish a message."""
-        producer = kombu.messaging.Producer(exchange=exchange,
-                                            channel=self.channel,
-                                            auto_declare=not exchange.passive,
-                                            routing_key=routing_key)
+
+        if not (exchange.passive or exchange.name in self._declared_exchanges):
+                exchange(self.channel).declare()
+                self._declared_exchanges.add(exchange.name)
 
         log_info = {'msg': msg,
                     'who': exchange or 'default',
@@ -1131,13 +1139,11 @@ class Connection(object):
         # NOTE(sileht): no need to wait more, caller expects
         # a answer before timeout is reached
         with self._transport_socket_timeout(timeout):
-            producer.publish(msg, expiration=self._get_expiration(timeout),
-                             compression=self.kombu_compression)
-
-    # List of notification queue declared on the channel to avoid
-    # unnecessary redeclaration. This list is resetted each time
-    # the connection is resetted in Connection._set_current_channel
-    PUBLISHER_DECLARED_QUEUES = collections.defaultdict(set)
+            self._producer.publish(msg,
+                                   exchange=exchange,
+                                   routing_key=routing_key,
+                                   expiration=self._get_expiration(timeout),
+                                   compression=self.kombu_compression)
 
     def _publish_and_creates_default_queue(self, exchange, msg,
                                            routing_key=None, timeout=None):
@@ -1157,8 +1163,7 @@ class Connection(object):
         # NOTE(sileht): We only do it once per reconnection
         # the Connection._set_current_channel() is responsible to clear
         # this cache
-        if (queue_indentifier not in
-                self.PUBLISHER_DECLARED_QUEUES[self.channel]):
+        if queue_indentifier not in self._declared_queues:
             queue = kombu.entity.Queue(
                 channel=self.channel,
                 exchange=exchange,
@@ -1172,7 +1177,7 @@ class Connection(object):
                 'Connection._publish_and_creates_default_queue: '
                 'declare queue %(key)s on %(exchange)s exchange', log_info)
             queue.declare()
-            self.PUBLISHER_DECLARED_QUEUES[self.channel].add(queue_indentifier)
+            self._declared_queues.add(queue_indentifier)
 
         self._publish(exchange, msg, routing_key=routing_key, timeout=timeout)
 
