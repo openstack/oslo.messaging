@@ -39,12 +39,14 @@ _transport_opts = [
     cfg.StrOpt('transport_url',
                secret=True,
                help='A URL representing the messaging driver to use and its '
-                    'full configuration. If not set, we fall back to the '
-                    'rpc_backend option and driver specific configuration.'),
+                    'full configuration.'),
     cfg.StrOpt('rpc_backend',
+               deprecated_for_removal=True,
+               deprecated_reason="Replaced by [DEFAULT]/transport_url",
                default='rabbit',
                help='The messaging driver to use, defaults to rabbit. Other '
                     'drivers include amqp and zmq.'),
+
     cfg.StrOpt('control_exchange',
                default='openstack',
                help='The default exchange under which topics are scoped. May '
