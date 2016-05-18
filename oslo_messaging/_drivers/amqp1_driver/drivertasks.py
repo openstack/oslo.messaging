@@ -16,7 +16,7 @@ import logging
 import threading
 import time
 
-from oslo_messaging._drivers.protocols.amqp import controller
+from oslo_messaging._drivers.amqp1_driver import controller
 from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 

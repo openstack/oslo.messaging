@@ -39,10 +39,10 @@ from oslo_messaging import target as messaging_target
 
 proton = importutils.try_import('proton')
 controller = importutils.try_import(
-    'oslo_messaging._drivers.protocols.amqp.controller'
+    'oslo_messaging._drivers.amqp1_driver.controller'
 )
 drivertasks = importutils.try_import(
-    'oslo_messaging._drivers.protocols.amqp.drivertasks'
+    'oslo_messaging._drivers.amqp1_driver.drivertasks'
 )
 LOG = logging.getLogger(__name__)
 

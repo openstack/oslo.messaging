@@ -36,7 +36,7 @@ from oslo_messaging.tests import utils as test_utils
 # are available in the base repos for all supported platforms.
 pyngus = importutils.try_import("pyngus")
 if pyngus:
-    from oslo_messaging._drivers.protocols.amqp import driver as amqp_driver
+    import oslo_messaging._drivers.impl_amqp1 as amqp_driver
 
 # The Cyrus-based SASL tests can only be run if the installed version of proton
 # has been built with Cyrus SASL support.
