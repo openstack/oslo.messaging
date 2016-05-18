@@ -14,7 +14,6 @@
 #    under the License.
 
 from .exceptions import *
-from .localcontext import *
 from .notify import *
 from .rpc import *
 from .serializer import *
