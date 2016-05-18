@@ -392,6 +392,14 @@ class TestVersionCap(test_utils.BaseTestCase):
          dict(cap='2.0', prepare_cap=_notset,
               version=None, prepare_version='1.0',
               success=False)),
+        ('ctor_cap_none_version_ok',
+         dict(cap=None, prepare_cap=_notset,
+              version='1.0', prepare_version=_notset,
+              success=True)),
+        ('ctor_cap_version_none_fail',
+         dict(cap='1.0', prepare_cap=_notset,
+              version=None, prepare_version=_notset,
+              success=False)),
     ]
 
     @classmethod
@@ -492,6 +500,21 @@ class TestCanSendVersion(test_utils.BaseTestCase):
               version=None, prepare_version='1.0',
               can_send_version=_notset,
               can_send=False)),
+        ('ctor_cap_none_version_ok',
+         dict(cap=None, prepare_cap=_notset,
+              version='1.0', prepare_version=_notset,
+              can_send_version=_notset,
+              can_send=True)),
+        ('ctor_cap_version_none_fail',
+         dict(cap='1.0', prepare_cap=_notset,
+              version=None, prepare_version=_notset,
+              can_send_version=_notset,
+              can_send=False)),
+        ('ctor_cap_version_can_send_none_fail',
+         dict(cap='1.0', prepare_cap=_notset,
+              version='1.0', prepare_version=_notset,
+              can_send_version=None,
+              can_send=False)),
     ]
 
     def test_version_cap(self):
@@ -529,3 +552,5 @@ class TestCanSendVersion(test_utils.BaseTestCase):
                           client.prepare, version='5')
         self.assertRaises(exceptions.MessagingException,
                           client.prepare, version='5.a')
+        self.assertRaises(exceptions.MessagingException,
+                          client.prepare, version='5.5.a')

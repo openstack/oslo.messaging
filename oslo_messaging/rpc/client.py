@@ -123,12 +123,11 @@ class _BaseCallContext(object):
     def can_send_version(self, version=_marker):
         """Check to see if a version is compatible with the version cap."""
         version = self.target.version if version is self._marker else version
-        return (not self.version_cap or
-                utils.version_is_compatible(self.version_cap, version))
+        return utils.version_is_compatible(self.version_cap, version)
 
     @classmethod
     def _check_version(cls, version):
-        if version is not None and version is not cls._marker:
+        if version is not cls._marker:
             # quick sanity check to make sure parsable version numbers are used
             try:
                 utils.version_is_compatible(version, version)
@@ -142,8 +141,7 @@ class _BaseCallContext(object):
         msg = self._make_message(ctxt, method, kwargs)
         msg_ctxt = self.serializer.serialize_context(ctxt)
 
-        if self.version_cap:
-            self._check_version_cap(msg.get('version'))
+        self._check_version_cap(msg.get('version'))
 
         try:
             self.transport._send(self.target, msg_ctxt, msg, retry=self.retry)
@@ -163,8 +161,7 @@ class _BaseCallContext(object):
         if self.timeout is None:
             timeout = self.conf.rpc_response_timeout
 
-        if self.version_cap:
-            self._check_version_cap(msg.get('version'))
+        self._check_version_cap(msg.get('version'))
 
         try:
             result = self.transport._send(self.target, msg_ctxt, msg,
