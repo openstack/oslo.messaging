@@ -175,11 +175,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
     conf.register_opts(_transport_opts)
 
     if not isinstance(url, TransportURL):
-        url = url or conf.transport_url
-        parsed = TransportURL.parse(conf, url, aliases)
-        if not parsed.transport:
-            raise InvalidTransportURL(url, 'No scheme specified in "%s"' % url)
-        url = parsed
+        url = TransportURL.parse(conf, url, aliases)
 
     kwargs = dict(default_exchange=conf.control_exchange,
                   allowed_remote_exmods=allowed_remote_exmods)
@@ -335,7 +331,7 @@ class TransportURL(object):
         return url
 
     @classmethod
-    def parse(cls, conf, url, aliases=None):
+    def parse(cls, conf, url=None, aliases=None):
         """Parse an url.
 
         Assuming a URL takes the form of::
@@ -357,6 +353,8 @@ class TransportURL(object):
               {"host": "host2:port2"}
             ]
 
+        If the url is not provided conf.transport_url is parsed intead.
+
         :param conf: a ConfigOpts instance
         :type conf: oslo.config.cfg.ConfigOpts
         :param url: The URL to parse
@@ -365,6 +363,8 @@ class TransportURL(object):
         :type aliases: dict
         :returns: A TransportURL
         """
+
+        url = url or conf.transport_url
         if not url:
             return cls(conf, aliases=aliases)
 
@@ -372,6 +372,9 @@ class TransportURL(object):
             raise InvalidTransportURL(url, 'Wrong URL type')
 
         url = parse.urlparse(url)
+
+        if not url.scheme:
+            raise InvalidTransportURL(url.geturl(), 'No scheme specified')
 
         # Make sure there's not a query string; that could identify
         # requirements we can't comply with (for example ssl), so reject it if
