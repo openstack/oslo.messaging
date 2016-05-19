@@ -33,9 +33,13 @@ PURPOSE_LISTEN = 'listen'
 
 kafka_opts = [
     cfg.StrOpt('kafka_default_host', default='localhost',
+               deprecated_for_removal=True,
+               deprecated_reason="Replaced by [DEFAULT]/transport_url",
                help='Default Kafka broker Host'),
 
     cfg.PortOpt('kafka_default_port', default=9092,
+                deprecated_for_removal=True,
+                deprecated_reason="Replaced by [DEFAULT]/transport_url",
                 help='Default Kafka broker Port'),
 
     cfg.IntOpt('kafka_max_fetch_bytes', default=1024 * 1024,
