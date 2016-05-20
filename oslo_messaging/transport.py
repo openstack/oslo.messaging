@@ -230,10 +230,12 @@ class TransportURL(object):
 
     Transport URLs take the form::
 
-      transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host
+      transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host?query
 
     i.e. the scheme selects the transport driver, you may include multiple
-    hosts in netloc and the path part is a "virtual host" partition path.
+    hosts in netloc, the path part is a "virtual host" partition path and
+    the query part contains some driver-specific options which may override
+    corresponding values from a static configuration.
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
@@ -243,12 +245,14 @@ class TransportURL(object):
     :type virtual_host: str
     :param hosts: a list of TransportHost objects
     :type hosts: list
-    :param aliases: DEPRECATED: A map of transport alias to transport name
+    :param aliases: DEPRECATED: a map of transport alias to transport name
     :type aliases: dict
+    :param query: a dictionary of URL query parameters
+    :type query: dict
     """
 
     def __init__(self, conf, transport=None, virtual_host=None, hosts=None,
-                 aliases=None):
+                 aliases=None, query=None):
         self.conf = conf
         self.conf.register_opts(_transport_opts)
         self._transport = transport
@@ -261,6 +265,10 @@ class TransportURL(object):
             self.aliases = {}
         else:
             self.aliases = aliases
+        if query is None:
+            self.query = {}
+        else:
+            self.query = query
 
         self._deprecation_logged = False
 
@@ -346,6 +354,9 @@ class TransportURL(object):
         if self.virtual_host:
             url += parse.quote(self.virtual_host)
 
+        if self.query:
+            url += '?' + parse.urlencode(self.query, doseq=True)
+
         return url
 
     @classmethod
@@ -354,7 +365,7 @@ class TransportURL(object):
 
         Assuming a URL takes the form of::
 
-          transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host
+          transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host?query
 
         then parse the URL and return a TransportURL object.
 
@@ -371,7 +382,7 @@ class TransportURL(object):
               {"host": "host2:port2"}
             ]
 
-        If the url is not provided conf.transport_url is parsed intead.
+        If the url is not provided conf.transport_url is parsed instead.
 
         :param conf: a ConfigOpts instance
         :type conf: oslo.config.cfg.ConfigOpts
@@ -394,13 +405,12 @@ class TransportURL(object):
         if not url.scheme:
             raise InvalidTransportURL(url.geturl(), 'No scheme specified')
 
-        # Make sure there's not a query string; that could identify
-        # requirements we can't comply with (for example ssl), so reject it if
-        # it's present
-        if '?' in url.path or url.query:
-            raise InvalidTransportURL(url.geturl(),
-                                      "Cannot comply with query string in "
-                                      "transport URL")
+        transport = url.scheme
+
+        query = {}
+        if url.query:
+            for key, values in six.iteritems(parse.parse_qs(url.query)):
+                query[key] = ','.join(values)
 
         virtual_host = None
         if url.path.startswith('/'):
@@ -430,7 +440,7 @@ class TransportURL(object):
                 if host_end < 0:
                     # NOTE(Vek): Identical to what Python 2.7's
                     # urlparse.urlparse() raises in this case
-                    raise ValueError("Invalid IPv6 URL")
+                    raise ValueError('Invalid IPv6 URL')
 
                 port_text = hostname[host_end:]
                 hostname = hostname[1:host_end]
@@ -449,4 +459,4 @@ class TransportURL(object):
                                        username=username,
                                        password=password))
 
-        return cls(conf, url.scheme, virtual_host, hosts, aliases)
+        return cls(conf, transport, virtual_host, hosts, aliases, query)
