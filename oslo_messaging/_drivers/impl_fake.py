@@ -30,7 +30,7 @@ class FakeIncomingMessage(base.RpcIncomingMessage):
         self.requeue_callback = requeue
         self._reply_q = reply_q
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         if self._reply_q:
             failure = failure[1] if failure else None
             self._reply_q.put((reply, failure))

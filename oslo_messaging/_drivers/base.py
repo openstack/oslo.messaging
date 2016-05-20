@@ -92,7 +92,7 @@ class IncomingMessage(object):
 class RpcIncomingMessage(IncomingMessage):
 
     @abc.abstractmethod
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         """Send a reply or failure back to the client."""
 
 

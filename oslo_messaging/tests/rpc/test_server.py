@@ -21,6 +21,7 @@ import testscenarios
 
 import mock
 import oslo_messaging
+from oslo_messaging.rpc import server as rpc_server_module
 from oslo_messaging import server as server_module
 from oslo_messaging.tests import utils as test_utils
 
@@ -326,6 +327,22 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             def ping(self, ctxt, arg):
                 raise ValueError(arg)
 
+        debugs = []
+        errors = []
+
+        def stub_debug(msg, *a, **kw):
+            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+                a = a[0]
+            debugs.append(str(msg) % a)
+
+        def stub_error(msg, *a, **kw):
+            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+                a = a[0]
+            errors.append(str(msg) % a)
+
+        self.stubs.Set(rpc_server_module.LOG, 'debug', stub_debug)
+        self.stubs.Set(rpc_server_module.LOG, 'error', stub_error)
+
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
 
@@ -334,6 +351,8 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         except Exception as ex:
             self.assertIsInstance(ex, ValueError)
             self.assertEqual('dsfoo', str(ex))
+            self.assertTrue(len(debugs) == 0)
+            self.assertTrue(len(errors) > 0)
         else:
             self.assertTrue(False)
 
@@ -341,6 +360,22 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
     def test_expected_failure(self):
         transport = oslo_messaging.get_transport(self.conf, url='fake:')
+
+        debugs = []
+        errors = []
+
+        def stub_debug(msg, *a, **kw):
+            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+                a = a[0]
+            debugs.append(str(msg) % a)
+
+        def stub_error(msg, *a, **kw):
+            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+                a = a[0]
+            errors.append(str(msg) % a)
+
+        self.stubs.Set(rpc_server_module.LOG, 'debug', stub_debug)
+        self.stubs.Set(rpc_server_module.LOG, 'error', stub_error)
 
         class TestEndpoint(object):
             @oslo_messaging.expected_exceptions(ValueError)
@@ -355,6 +390,8 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         except Exception as ex:
             self.assertIsInstance(ex, ValueError)
             self.assertEqual('dsfoo', str(ex))
+            self.assertTrue(len(debugs) > 0)
+            self.assertTrue(len(errors) == 0)
         else:
             self.assertTrue(False)
 

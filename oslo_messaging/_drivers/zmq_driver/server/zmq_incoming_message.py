@@ -39,16 +39,14 @@ class ZmqIncomingRequest(base.RpcIncomingMessage):
         self.received = None
         self.poller = poller
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         if failure is not None:
-            failure = rpc_common.serialize_remote_exception(failure,
-                                                            log_failure)
+            failure = rpc_common.serialize_remote_exception(failure)
         response = zmq_response.Response(type=zmq_names.REPLY_TYPE,
                                          message_id=self.request.message_id,
                                          reply_id=self.reply_id,
                                          reply_body=reply,
-                                         failure=failure,
-                                         log_failure=log_failure)
+                                         failure=failure)
 
         LOG.debug("Replying %s", (str(self.request.message_id)))
 

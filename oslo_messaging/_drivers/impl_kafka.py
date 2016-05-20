@@ -237,7 +237,7 @@ class OsloKafkaMessage(base.RpcIncomingMessage):
     def requeue(self):
         LOG.warning(_LW("requeue is not supported"))
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         LOG.warning(_LW("reply is not supported"))
 
 

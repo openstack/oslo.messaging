@@ -50,14 +50,13 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         self.stopwatch = timeutils.StopWatch()
         self.stopwatch.start()
 
-    def _send_reply(self, conn, reply=None, failure=None, log_failure=True):
+    def _send_reply(self, conn, reply=None, failure=None):
         if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
                                                          self.msg_id):
             return
 
         if failure:
-            failure = rpc_common.serialize_remote_exception(failure,
-                                                            log_failure)
+            failure = rpc_common.serialize_remote_exception(failure)
         # NOTE(sileht): ending can be removed in N*, see Listener.wait()
         # for more detail.
         msg = {'result': reply, 'failure': failure, 'ending': True,
@@ -74,7 +73,7 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
                       'elapsed': self.stopwatch.elapsed()})
         conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         if not self.msg_id:
             # NOTE(Alexei_987) not sending reply, if msg_id is empty
             #    because reply should not be expected by caller side
@@ -96,8 +95,7 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
             try:
                 with self.listener.driver._get_connection(
                         rpc_common.PURPOSE_SEND) as conn:
-                    self._send_reply(conn, reply, failure,
-                                     log_failure=log_failure)
+                    self._send_reply(conn, reply, failure)
                 return
             except rpc_amqp.AMQPDestinationNotFound:
                 if timer.check_return() > 0:

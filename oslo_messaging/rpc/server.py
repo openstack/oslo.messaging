@@ -132,15 +132,14 @@ class RPCServer(msg_server.MessageHandlingServer):
         try:
             res = self.dispatcher.dispatch(message)
         except rpc_dispatcher.ExpectedException as e:
-            LOG.debug(u'Expected exception during message handling (%s)',
-                      e.exc_info[1])
             failure = e.exc_info
-        except Exception as e:
+            LOG.debug(u'Expected exception during message handling (%s)', e)
+        except Exception:
             # current sys.exc_info() content can be overriden
-            # by another exception raise by a log handler during
+            # by another exception raised by a log handler during
             # LOG.exception(). So keep a copy and delete it later.
             failure = sys.exc_info()
-            LOG.exception(_LE('Exception during handling message'))
+            LOG.exception(_LE('Exception during message handling'))
 
         try:
             if failure is None:

@@ -61,11 +61,6 @@ def add_remote_postfix(ex):
 
 class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
-    _log_failure = [
-        ('log_failure', dict(log_failure=True)),
-        ('do_not_log_failure', dict(log_failure=False)),
-    ]
-
     _add_remote = [
         ('add_remote', dict(add_remote=True)),
         ('do_not_add_remote', dict(add_remote=False)),
@@ -100,27 +95,19 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
     @classmethod
     def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._log_failure,
-                                                         cls._add_remote,
+        cls.scenarios = testscenarios.multiply_scenarios(cls._add_remote,
                                                          cls._exception_types)
 
     def setUp(self):
         super(SerializeRemoteExceptionTestCase, self).setUp()
 
     def test_serialize_remote_exception(self):
-        errors = []
-
-        def stub_error(msg, *a, **kw):
-            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
-                a = a[0]
-            errors.append(str(msg) % a)
-
-        self.stubs.Set(exceptions.LOG, 'error', stub_error)
-
         try:
             try:
                 raise self.cls(*self.args, **self.kwargs)
             except Exception as ex:
+                # Note: in Python 3 ex variable will be cleared at the end of
+                # the except clause, so explicitly make an extra copy of it
                 cls_error = ex
                 if self.add_remote:
                     ex = add_remote_postfix(ex)
@@ -128,8 +115,7 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         except Exception:
             exc_info = sys.exc_info()
 
-        serialized = exceptions.serialize_remote_exception(
-            exc_info, log_failure=self.log_failure)
+        serialized = exceptions.serialize_remote_exception(exc_info)
 
         failure = jsonutils.loads(serialized)
 
@@ -142,11 +128,6 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         # Note: _Remote prefix not stripped from tracebacks
         tb = cls_error.__class__.__name__ + ': ' + self.msg
         self.assertIn(tb, ''.join(failure['tb']))
-
-        if self.log_failure:
-            self.assertTrue(len(errors) > 0, errors)
-        else:
-            self.assertEqual(0, len(errors), errors)
 
 
 SerializeRemoteExceptionTestCase.generate_scenarios()
