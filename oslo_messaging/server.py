@@ -38,7 +38,7 @@ import six
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
-from oslo_messaging._i18n import _LW
+from oslo_messaging._i18n import _LW, _LI
 from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
@@ -313,7 +313,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
 
         The executor parameter controls how incoming messages will be received
         and dispatched. By default, the most simple executor is used - the
-        blocking executor.
+        blocking executor. It handles only one message at once. It's
+        recommended to use threading or eventlet.
 
         :param transport: the messaging transport
         :type transport: Transport
@@ -330,6 +331,14 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         self.transport = transport
         self.dispatcher = dispatcher
         self.executor_type = executor
+        if self.executor_type == 'blocking':
+            # NOTE(sileht): We keep blocking as default to not enforce the
+            # application to use threading or eventlet. Because application
+            # have to be preprepared accordingly for each one (monkeypatching,
+            # threadsafe, ...)
+            LOG.info(_LI("blocking executor handles only one message at "
+                         "once. threading or eventlet executor is "
+                         "recommended."))
 
         self.listener = None
 
