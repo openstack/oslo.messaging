@@ -48,11 +48,11 @@ class ZmqServer(base.PollStyleListener):
             conf, self.poller, self) if conf.use_pub_sub else None
 
         self.consumers = []
-        if self.router_consumer:
+        if self.router_consumer is not None:
             self.consumers.append(self.router_consumer)
-        if self.dealer_consumer:
+        if self.dealer_consumer is not None:
             self.consumers.append(self.dealer_consumer)
-        if self.sub_consumer:
+        if self.sub_consumer is not None:
             self.consumers.append(self.sub_consumer)
 
     @base.batch_poll_helper

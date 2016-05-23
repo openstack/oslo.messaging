@@ -138,9 +138,14 @@ class RedisMatchMaker(base.MatchMakerBase):
                     "port": self.conf.matchmaker_redis.port,
                     "password": self.conf.matchmaker_redis.password}
 
-    def register_publisher(self, hostname):
+    def _add_key_with_expire(self, key, value, expire):
+        self._redis.sadd(key, value)
+        if expire > 0:
+            self._redis.expire(key, expire)
+
+    def register_publisher(self, hostname, expire=-1):
         host_str = ",".join(hostname)
-        self._redis.sadd(_PUBLISHERS_KEY, host_str)
+        self._add_key_with_expire(_PUBLISHERS_KEY, host_str, expire)
 
     def unregister_publisher(self, hostname):
         host_str = ",".join(hostname)
@@ -153,8 +158,8 @@ class RedisMatchMaker(base.MatchMakerBase):
                       self._get_hosts_by_key(_PUBLISHERS_KEY)])
         return hosts
 
-    def register_router(self, hostname):
-        self._redis.sadd(_ROUTERS_KEY, hostname)
+    def register_router(self, hostname, expire=-1):
+        self._add_key_with_expire(_ROUTERS_KEY, hostname, expire)
 
     def unregister_router(self, hostname):
         self._redis.srem(_ROUTERS_KEY, hostname)
@@ -167,22 +172,22 @@ class RedisMatchMaker(base.MatchMakerBase):
 
     def register(self, target, hostname, listener_type, expire=-1):
 
-        def register_key(key):
-            self._redis.sadd(key, hostname)
-            if expire > 0:
-                self._redis.expire(key, expire)
-
         if target.topic and target.server:
             key = zmq_address.target_to_key(target, listener_type)
-            register_key(key)
+            self._add_key_with_expire(key, hostname, expire)
 
         if target.topic:
             key = zmq_address.prefix_str(target.topic, listener_type)
-            register_key(key)
+            self._add_key_with_expire(key, hostname, expire)
 
     def unregister(self, target, hostname, listener_type):
-        key = zmq_address.target_to_key(target, listener_type)
-        self._redis.srem(key, hostname)
+        if target.topic and target.server:
+            key = zmq_address.target_to_key(target, listener_type)
+            self._redis.srem(key, hostname)
+
+        if target.topic:
+            key = zmq_address.prefix_str(target.topic, listener_type)
+            self._redis.srem(key, hostname)
 
     def get_hosts(self, target, listener_type):
         LOG.debug("[Redis] get_hosts for target %s", target)

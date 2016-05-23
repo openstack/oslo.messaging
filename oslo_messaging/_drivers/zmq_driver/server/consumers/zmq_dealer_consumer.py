@@ -25,6 +25,7 @@ from oslo_messaging._drivers.zmq_driver.server.consumers\
     import zmq_consumer_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
@@ -90,6 +91,8 @@ class DealerConsumer(zmq_consumer_base.ConsumerBase):
         self.target_updater = zmq_consumer_base.TargetUpdater(
             conf, self.matchmaker, self.target, self.host,
             zmq.DEALER)
+        self.connection_updater = ConsumerConnectionUpdater(
+            conf, self.matchmaker, self.socket)
         LOG.info(_LI("[%s] Run DEALER consumer"), self.host)
 
     def receive_message(self, socket):
@@ -111,6 +114,19 @@ class DealerConsumer(zmq_consumer_base.ConsumerBase):
             else:
                 LOG.error(_LE("Unknown message type: %s"),
                           zmq_names.message_type_str(message_type))
-
         except (zmq.ZMQError, AssertionError) as e:
             LOG.error(_LE("Receiving message failure: %s"), str(e))
+
+    def cleanup(self):
+        LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
+        super(DealerConsumer, self).cleanup()
+        self.matchmaker.unregister(self.target, self.host,
+                                   zmq_names.socket_type_str(zmq.DEALER))
+
+
+class ConsumerConnectionUpdater(zmq_updater.ConnectionUpdater):
+
+    def _update_connection(self):
+        routers = self.matchmaker.get_routers()
+        for router_address in routers:
+            self.socket.connect_to_host(router_address)

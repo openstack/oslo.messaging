@@ -25,6 +25,7 @@ from oslo_messaging._drivers.zmq_driver.client.publishers \
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_updater
 
 zmq = zmq_async.import_zmq()
 
@@ -40,6 +41,8 @@ class DealerPublisherProxy(object):
             conf, matchmaker, zmq.ROUTER, zmq.DEALER)
         self.socket = socket_to_proxy
         self.routing_table = RoutingTable(conf, matchmaker)
+        self.connection_updater = PublisherConnectionUpdater(
+            conf, matchmaker, self.socket)
 
     def send_request(self, request):
         if request.msg_type == zmq_names.CALL_TYPE:
@@ -92,6 +95,8 @@ class CallSenderProxy(zmq_dealer_call_publisher.CallSender):
         self.socket = self.outbound_sockets.get_socket_to_publishers()
         self.reply_waiter.poll_socket(self.socket)
         self.routing_table = RoutingTable(conf, matchmaker)
+        self.connection_updater = PublisherConnectionUpdater(
+            conf, matchmaker, self.socket)
 
     def _connect_socket(self, target):
         return self.socket
@@ -170,3 +175,11 @@ class RoutingTable(object):
     def _renew_routable_hosts(self, target):
         hosts, _ = self.routing_table[str(target)]
         self.routable_hosts[str(target)] = list(hosts)
+
+
+class PublisherConnectionUpdater(zmq_updater.ConnectionUpdater):
+
+    def _update_connection(self):
+        publishers = self.matchmaker.get_publishers()
+        for pub_address, router_address in publishers:
+            self.socket.connect_to_host(router_address)

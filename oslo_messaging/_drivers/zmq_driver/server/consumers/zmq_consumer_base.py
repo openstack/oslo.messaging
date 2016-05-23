@@ -14,7 +14,6 @@
 
 import abc
 import logging
-import time
 
 import six
 
@@ -23,6 +22,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
+from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -60,8 +60,8 @@ class SingleSocketConsumer(ConsumerBase):
         self.socket_type = socket_type
         self.host = None
         self.socket = self.subscribe_socket(socket_type)
-        self.target_updater = TargetUpdater(conf, self.matchmaker, self.target,
-                                            self.host, socket_type)
+        self.target_updater = TargetUpdater(
+            conf, self.matchmaker, self.target, self.host, socket_type)
 
     def subscribe_socket(self, socket_type):
         try:
@@ -96,25 +96,20 @@ class SingleSocketConsumer(ConsumerBase):
         super(SingleSocketConsumer, self).cleanup()
 
 
-class TargetUpdater(object):
+class TargetUpdater(zmq_updater.UpdaterBase):
     """This entity performs periodic async updates
     to the matchmaker.
     """
 
     def __init__(self, conf, matchmaker, target, host, socket_type):
-        self.conf = conf
-        self.matchmaker = matchmaker
         self.target = target
         self.host = host
         self.socket_type = socket_type
-        self.executor = zmq_async.get_executor(method=self._update_target)
-        self.executor.execute()
+        super(TargetUpdater, self).__init__(conf, matchmaker,
+                                            self._update_target)
 
     def _update_target(self):
         self.matchmaker.register(
             self.target, self.host,
-            zmq_names.socket_type_str(self.socket_type))
-        time.sleep(self.conf.zmq_target_expire / 2)
-
-    def cleanup(self):
-        self.executor.stop()
+            zmq_names.socket_type_str(self.socket_type),
+            expire=self.conf.zmq_target_expire)
