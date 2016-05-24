@@ -383,7 +383,7 @@ class RPCClient(_BaseCallContext):
         :type kwargs: dict
         :raises: MessageDeliveryFailure
         """
-        super(RPCClient, self).cast(ctxt, method, **kwargs)
+        self.prepare().cast(ctxt, method, **kwargs)
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply.
@@ -425,8 +425,8 @@ class RPCClient(_BaseCallContext):
         :type kwargs: dict
         :raises: MessagingTimeout, RemoteError, MessageDeliveryFailure
         """
-        return super(RPCClient, self).call(ctxt, method, **kwargs)
+        return self.prepare().call(ctxt, method, **kwargs)
 
     def can_send_version(self, version=_marker):
         """Check to see if a version is compatible with the version cap."""
-        return super(RPCClient, self).can_send_version(version)
+        return self.prepare(version=version).can_send_version()
