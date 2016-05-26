@@ -26,6 +26,7 @@ functions scheduled by the Controller.
 
 import abc
 import logging
+import random
 import threading
 import uuid
 
@@ -298,7 +299,7 @@ class Hosts(object):
             entry.port = entry.port or 5672
             entry.username = entry.username or default_username
             entry.password = entry.password or default_password
-        self._current = 0
+        self._current = random.randint(0, len(self._entries) - 1)
 
     @property
     def current(self):
