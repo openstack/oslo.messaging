@@ -140,7 +140,6 @@ class _SocketConnection(object):
                 pn_sasl.plain(host.username, password)
             else:
                 pn_sasl.mechanisms("ANONYMOUS")
-                # TODO(kgiusti): server if accepting inbound connections
                 pn_sasl.client()
 
         self.connection.open()
@@ -164,37 +163,56 @@ class _SocketConnection(object):
             self.socket = None
 
 
-class Schedule(object):
-    """A list of callables (requests). Each callable may have a delay (in
-    milliseconds) which causes the callable to be scheduled to run after the
-    delay passes.
+class Scheduler(object):
+    """Schedule callables to be run in the future.
     """
+    class Event(object):
+        def __init__(self, callback, deadline):
+            self._callback = callback
+            self._deadline = deadline
+
+        def cancel(self):
+            # quicker than rebalancing the tree
+            self._callback = None
+
+        def __lt__(self, other):
+            return self._deadline < other._deadline
+
     def __init__(self):
         self._entries = []
 
-    def schedule(self, request, delay):
-        """Request a callable be executed after delay."""
-        entry = (time.time() + delay, request)
+    def alarm(self, request, deadline):
+        """Request a callable be executed at a specific time
+        """
+        entry = Scheduler.Event(request, deadline)
         heapq.heappush(self._entries, entry)
+        return entry
 
-    def get_delay(self, max_delay=None):
+    def defer(self, request, delay):
+        """Request a callable be executed after delay seconds
+        """
+        return self.alarm(request, time.time() + delay)
+
+    def _get_delay(self, max_delay=None):
         """Get the delay in milliseconds until the next callable needs to be
         run, or 'max_delay' if no outstanding callables or the delay to the
         next callable is > 'max_delay'.
         """
-        due = self._entries[0][0] if self._entries else None
+        due = self._entries[0]._deadline if self._entries else None
         if due is None:
             return max_delay
         now = time.time()
-        if due < now:
+        if due <= now:
             return 0
         else:
             return min(due - now, max_delay) if max_delay else due - now
 
-    def process(self):
+    def _process(self):
         """Invoke all expired callables."""
-        while self._entries and self._entries[0][0] < time.time():
-            heapq.heappop(self._entries)[1]()
+        while self._entries and self._entries[0]._deadline <= time.time():
+            callback = heapq.heappop(self._entries)._callback
+            if callback:
+                callback()
 
 
 class Requests(object):
@@ -240,7 +258,7 @@ class Thread(threading.Thread):
         # callables from other threads:
         self._requests = Requests()
         # delayed callables (only used on this thread for now):
-        self._schedule = Schedule()
+        self._scheduler = Scheduler()
 
         # Configure a container
         if container_name is None:
@@ -274,9 +292,13 @@ class Thread(threading.Thread):
     # the following methods are not thread safe - they must be run from the
     # eventloop thread
 
-    def schedule(self, request, delay):
+    def defer(self, request, delay):
         """Invoke request after delay seconds."""
-        self._schedule.schedule(request, delay)
+        return self._scheduler.defer(request, delay)
+
+    def alarm(self, request, deadline):
+        """Invoke request at a particular time"""
+        return self._scheduler.alarm(request, deadline)
 
     def connect(self, host, handler, properties=None, name=None):
         """Get a _SocketConnection to a peer represented by url."""
@@ -315,7 +337,7 @@ class Thread(threading.Thread):
                 timeout = 0 if deadline <= now else deadline - now
 
             # adjust timeout for any deferred requests
-            timeout = self._schedule.get_delay(timeout)
+            timeout = self._scheduler._get_delay(timeout)
 
             try:
                 results = select.select(readfds, writefds, [], timeout)
@@ -339,7 +361,7 @@ class Thread(threading.Thread):
             for w in writable:
                 w.write()
 
-            self._schedule.process()  # run any deferred requests
+            self._scheduler._process()  # run any deferred requests
 
         LOG.info(_LI("eventloop thread exiting, container=%s"),
                  self._container.name)

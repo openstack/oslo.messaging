@@ -32,7 +32,6 @@ import threading
 import time
 import uuid
 
-from oslo_config import cfg
 import proton
 import pyngus
 from six import iteritems
@@ -40,46 +39,211 @@ from six import itervalues
 from six import moves
 
 from oslo_messaging._drivers.amqp1_driver import eventloop
-from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
+from oslo_messaging import target
 from oslo_messaging import transport
 
 LOG = logging.getLogger(__name__)
 
 
 class Task(object):
-    """Perform a messaging operation via the Controller."""
+    """Run a command on the eventloop thread, wait until it completes
+    """
+
     @abc.abstractmethod
-    def execute(self, controller):
-        """This method will be run on the eventloop thread."""
+    def wait(self):
+        """Called by the client thread to wait for the operation to
+        complete. The implementation may optionally return a value.
+        """
+
+    @abc.abstractmethod
+    def _execute(self, controller):
+        """This method will be run on the eventloop thread to perform the
+        messaging operation.
+        """
+
+
+class SubscribeTask(Task):
+    """A task that creates a subscription to the given target.  Messages
+    arriving from the target are given to the listener.
+    """
+    def __init__(self, target, listener, notifications=False):
+        super(SubscribeTask, self).__init__()
+        self._target = target
+        self._listener = listener
+        self._notifications = notifications
+        self._wakeup = threading.Event()
+
+    def wait(self):
+        self._wakeup.wait()
+
+    def _execute(self, controller):
+        if self._notifications:
+            controller.subscribe_notifications(self._target,
+                                               self._listener.incoming,
+                                               self._listener.id)
+        else:
+            controller.subscribe(self._target,
+                                 self._listener.incoming,
+                                 self._listener.id)
+        self._wakeup.set()
+
+
+class SendTask(Task):
+    """This is the class used by the Controller to send messages to a given
+    destination.
+    """
+    def __init__(self, name, message, target, deadline, retry,
+                 wait_for_ack):
+        super(SendTask, self).__init__()
+        self.name = name
+        # note: target can be either a Target class or a string
+        self.target = target
+        self.message = message
+        self.deadline = deadline
+        self.retry = retry
+        self.wait_for_ack = wait_for_ack
+        self.timer = None
+        self._wakeup = threading.Event()
+        self._controller = None
+        self._error = None
+
+    def wait(self):
+        self._wakeup.wait()
+        return self._error
+
+    def _execute(self, controller):
+        self._controller = controller
+        controller.send(self)
+
+    def _prepare(self, sender):
+        """Called immediately before the message is handed off to the i/o
+        system.  This implies that the sender link is up and credit is
+        available for this send request.
+        """
+        pass
+
+    def _on_ack(self, state, info):
+        """Called by eventloop thread when the ack/nack is received from the
+        peer.
+        """
+        if self._wakeup.is_set():
+            LOG.debug("Message ACKed after send completed: %s %s", state, info)
+            return
+
+        if state != pyngus.SenderLink.ACCEPTED:
+            # TODO(kgiusti): should retry if deadline not hit
+            msg = ("{name} message send to {target} failed: remote"
+                   " disposition: {disp}, info:"
+                   "{info}".format(name=self.name,
+                                   target=self.target,
+                                   disp=state,
+                                   info=info))
+            self._error = exceptions.MessageDeliveryFailure(msg)
+        self._cleanup()
+        self._wakeup.set()
+
+    def _on_timeout(self):
+        """Invoked by the eventloop when the send fails to complete before the
+        timeout is reached.
+        """
+        if self._wakeup.is_set():
+            LOG.debug("Message send timeout occurred after send completed")
+            return
+        self.timer = None
+        if self.message.ttl:
+            msg = ("{name} message sent to {target} failed: timed"
+                   " out".format(name=self.name, target=self.target))
+            self._error = exceptions.MessagingTimeout(msg)
+        else:
+            msg = ("{name} message sent to {target} failed:"
+                   " undeliverable".format(name=self.name, target=self.target))
+            self._error = exceptions.MessageDeliveryFailure(msg)
+        self._cleanup()
+        self._wakeup.set()
+
+    def _on_error(self, description):
+        """Invoked by the eventloop if the send operation fails for reasons
+        other than timeout and nack.
+        """
+        if self._wakeup.is_set():
+            LOG.debug("Message send error occurred after send completed: %s",
+                      str(description))
+            return
+
+        msg = ("{name} message sent to {target} failed:"
+               " {reason}".format(name=self.name,
+                                  target=self.target,
+                                  reason=description))
+        self._error = exceptions.MessageDeliveryFailure(msg)
+        self._cleanup()
+        self._wakeup.set()
+
+    def _cleanup(self):
+        if self.timer:
+            self.timer.cancel()
+            self.timer = None
+
+
+class RPCCallTask(SendTask):
+    """Performs an RPC Call.  Sends the request and waits for a response from
+    the destination.
+    """
+
+    def __init__(self, target, message, deadline, retry):
+        super(RPCCallTask, self).__init__("RPC Call", message, target,
+                                          deadline, retry, wait_for_ack=True)
+        self._reply_link = None
+        self._reply_msg = None
+        self._msg_id = None
+
+    def wait(self):
+        error = super(RPCCallTask, self).wait()
+        return error or self._reply_msg
+
+    def _prepare(self, sender):
+        # reserve a message id for mapping the received response
+        self._reply_link = sender._reply_link
+        rl = self._reply_link
+        self._msg_id = rl.prepare_for_response(self.message, self._on_reply)
+
+    def _on_reply(self, message):
+        # called if/when the reply message arrives
+        if self._wakeup.is_set():
+            LOG.debug("RPC Reply received after call completed")
+            return
+        self._reply_msg = message
+        self._reply_link = None
+        self._cleanup()
+        self._wakeup.set()
+
+    def _on_ack(self, state, info):
+        if self._wakeup.is_set():
+            LOG.debug("RPC ACKed after call completed: %s %s", state, info)
+            return
+        if state != pyngus.SenderLink.ACCEPTED:
+            super(RPCCallTask, self)._on_ack(state, info)
+        # must wait for reply if ACCEPTED
+
+    def _cleanup(self):
+        if self._reply_link:
+            self._reply_link.cancel_response(self._msg_id)
+            self._msg_id = None
+        super(RPCCallTask, self)._cleanup()
 
 
 class Sender(pyngus.SenderEventHandler):
-    """A link for sending to a particular address on the message bus.  All send
-    and reply tasks that need to send a message to this address share this
-    link.
+    """A link for sending to a particular address on the message bus.
     """
-
-    class _SendRequest(object):
-        """Request to send a single message"""
-        def __init__(self, message, result_queue=None, reply_expected=False,
-                     deadline=None, retry=None):
-            self.message = message
-            self.result_queue = result_queue
-            self.reply_expected = reply_expected
-            self.retry = retry
-            self.deadline = deadline
-
-    def __init__(self, address, scheduler, delay, kind="RPC_Caller"):
+    def __init__(self, address, scheduler, delay):
         super(Sender, self).__init__()
         self._address = address
         self._link = None
-        self._name = "%s-%s:src=%s:tgt=%s" % (kind, uuid.uuid4().hex,
-                                              address, address)
+        self._name = "Producer [target=%s:id=%s]" % (address, uuid.uuid4().hex)
         self._scheduler = scheduler
         self._delay = delay  # for re-connecting
-        # holds all pending _SendRequests
+        # holds all pending SendTasks
         self._pending_sends = collections.deque()
         # holds all messages sent but not yet acked
         self._unacked = set()
@@ -129,23 +293,28 @@ class Sender(pyngus.SenderEventHandler):
         self.reset()
         self._abort_pending("Link destroyed")
 
-    def send_message(self, message, result_queue=None, reply_expected=False,
-                     deadline=None, retry=None):
-        """Queue a message to be sent out the link.  The status of the send
-        operation will be put on the result_queue."
+    def send_message(self, send_task):
+        """Send a message out the link.
         """
-        LOG.debug("sender sending msg to %s", self._address)
-        message.address = self._address
-        send_req = Sender._SendRequest(message, result_queue, reply_expected,
-                                       deadline, retry)
+        if send_task.deadline:
+            def timer_callback():
+                # may be in either list, or none
+                self._unacked.discard(send_task)
+                try:
+                    self._pending_sends.remove(send_task)
+                except ValueError:
+                    pass
+                send_task._on_timeout()
+            send_task.timer = self._scheduler.alarm(timer_callback,
+                                                    send_task.deadline)
 
+        send_task.message.address = self._address
         if not self._can_send:
-            self._pending_sends.append(send_req)
+            self._pending_sends.append(send_task)
         elif self._pending_sends:
-            self._pending_sends.append(send_req)
-            self._send_pending()
+            self._pending_sends.append(send_task)
         else:
-            self._send(send_req)
+            self._send(send_task)
 
     # Pyngus callbacks:
 
@@ -154,7 +323,6 @@ class Sender(pyngus.SenderEventHandler):
         self._send_pending()
 
     def credit_granted(self, sender_link):
-        LOG.debug("sender %s credit granted", self._address)
         self._send_pending()
 
     def sender_remote_closed(self, sender_link, pn_condition):
@@ -172,7 +340,7 @@ class Sender(pyngus.SenderEventHandler):
         if self._connection:
             # still attached, so attempt to restart the link
             self._check_retry_limit()
-            self._scheduler.schedule(self._reopen_link, self._delay)
+            self._scheduler.defer(self._reopen_link, self._delay)
 
     def sender_failed(self, sender_link, error):
         """Protocol error occurred."""
@@ -180,20 +348,18 @@ class Sender(pyngus.SenderEventHandler):
                     {'addr': self._address, 'error': error})
         self.sender_closed(sender_link)
 
+    # end Pyngus callbacks
+
     def _check_retry_limit(self):
         # Called on recoverable connection or link failure.  Remove any pending
         # sends that have exhausted their retry count:
         expired = set()
-        for pending in self._pending_sends:
-            if pending.retry is not None:
-                pending.retry -= 1
-                if pending.retry <= 0:
-                    expired.add(pending)
-                    if pending.result_queue:
-                        msg = "Message send failed: retries exhausted"
-                        exc = exceptions.MessageDeliveryFailure(msg)
-                        result = {"status": "ERROR", "error": exc}
-                        pending.result_queue.put(result)
+        for send_task in self._pending_sends:
+            if send_task.retry is not None:
+                send_task.retry -= 1
+                if send_task.retry <= 0:
+                    expired.add(send_task)
+                    send_task._on_error("Send retries exhausted")
         while expired:
             self._pending_sends.remove(expired.pop())
 
@@ -201,25 +367,14 @@ class Sender(pyngus.SenderEventHandler):
         # fail all messages that have been sent to the message bus and have not
         # been acked yet
         while self._unacked:
-            send_req = self._unacked.pop()
-            if send_req.reply_expected and self._reply_link:
-                # only in-flight messages have reply_link entries
-                self._reply_link.cancel_response(send_req.message.id)
-            if send_req.result_queue:
-                msg = "Message send failed: %s"
-                exc = exceptions.MessageDeliveryFailure(msg % error)
-                result = {"status": "ERROR", "error": exc}
-                send_req.result_queue.put(result)
+            send_task = self._unacked.pop()
+            send_task._on_error("Message send failed: %s" % error)
 
     def _abort_pending(self, error):
         # fail all messages that have yet to be sent to the message bus
         while self._pending_sends:
-            pending = self._pending_sends.popleft()
-            if pending.result_queue:
-                msg = "Message send failed: %s"
-                exc = exceptions.MessageDeliveryFailure(msg)
-                result = {"status": "ERROR", "error": exc}
-                pending.result_queue.put(result)
+            send_task = self._pending_sends.popleft()
+            send_task._on_error("Message send failed: %s" % error)
 
     @property
     def _can_send(self):
@@ -227,53 +382,34 @@ class Sender(pyngus.SenderEventHandler):
                 self._link.active and
                 self._link.credit > 0)
 
-    def _send(self, send_req):
-        if send_req.deadline and send_req.deadline <= time.time():
-            # simply drop - client has already timed out
-            return
-        if send_req.reply_expected:
-            # add correlation id
-            rl = self._reply_link
-            msg_id = rl.prepare_for_response(send_req.message,
-                                             send_req.result_queue)
+    def _send(self, send_task):
+        send_task._prepare(self)
+        if send_task.wait_for_ack:
+            def pyngus_callback(link, handle, state, info):
+                # invoked when the message bus (n)acks this message
+                if state == pyngus.SenderLink.TIMED_OUT:
+                    # ignore pyngus timeout - we maintain our own timer
+                    return
+                self._unacked.discard(send_task)
+                send_task._on_ack(state, info)
 
-        def _callback(link, handle, state, info):
-            # invoked when the message bus acknowledges this message
-            if send_req in self._unacked:
-                self._unacked.remove(send_req)
-                if state == pyngus.SenderLink.ACCEPTED:  # message received
-                    LOG.debug("sender msg sent to %s acked", self._address)
-                    if send_req.result_queue and not send_req.reply_expected:
-                        # can wake up the sender now since we are not going
-                        # to wait for an RPC response
-                        result = {"status": "OK"}
-                        send_req.result_queue.put(result)
-                else:
-                    # nacked:
-                    LOG.debug("sender msg sent to %s NACKED", self._address)
-                    if send_req.reply_expected and self._reply_link:
-                        # no response will be received, so cancel the
-                        # correlation map entry
-                        self._reply_link.cancel_response(msg_id)
-                    if send_req.result_queue:
-                        msg = ("Message send failed:"
-                               " remote disposition: %s, info: %s" % (state,
-                                                                      info))
-                        exc = exceptions.MessageDeliveryFailure(msg)
-                        result = {"status": "ERROR", "error": exc}
-                        send_req.result_queue.put(result)
+            self._unacked.add(send_task)
+            self._link.send(send_task.message,
+                            delivery_callback=pyngus_callback,
+                            handle=self,
+                            deadline=send_task.deadline)
+        else:
+            self._link.send(send_task.message)
+            # simulate ack to wakeup sender
+            send_task._on_ack(pyngus.SenderLink.ACCEPTED, dict())
 
-        self._unacked.add(send_req)
-        self._link.send(send_req.message,
-                        delivery_callback=_callback,
-                        handle=self,
-                        deadline=send_req.deadline)
-        LOG.debug("sender msg sent to %s", self._address)
+        LOG.debug("Message sent to %s", self._address)
 
     def _send_pending(self):
         # send as many pending messages as there is credit available
-        while self._pending_sends and self._can_send:
-            self._send(self._pending_sends.popleft())
+        if self._can_send:
+            while self._pending_sends and self._link.credit > 0:
+                self._send(self._pending_sends.popleft())
 
     def _open_link(self):
         link = self._connection.create_sender(name=self._name,
@@ -324,7 +460,7 @@ class Replies(pyngus.ReceiverEventHandler):
             self._receiver.destroy()
             self._receiver = None
 
-    def prepare_for_response(self, request, reply_queue):
+    def prepare_for_response(self, request, callback):
         """Apply a unique message identifier to this request message. This will
         be used to identify messages sent in reply.  The identifier is placed
         in the 'id' field of the request message.  It is expected that the
@@ -333,7 +469,7 @@ class Replies(pyngus.ReceiverEventHandler):
         """
         request.id = uuid.uuid4().hex
         # reply is placed on reply_queue
-        self._correlation[request.id] = reply_queue
+        self._correlation[request.id] = callback
         request.reply_to = self._receiver.source_address
         LOG.debug("Reply for msg id=%(id)s expected on link %(reply_to)s",
                   {'id': request.id, 'reply_to': request.reply_to})
@@ -389,9 +525,7 @@ class Replies(pyngus.ReceiverEventHandler):
         key = message.correlation_id
         if key in self._correlation:
             LOG.debug("Received response for msg id=%s", key)
-            result = {"status": "OK",
-                      "response": message}
-            self._correlation[key].put(result)
+            self._correlation[key](message)
             # cleanup (only need one response per request)
             del self._correlation[key]
             receiver.message_accepted(handle)
@@ -480,16 +614,17 @@ class Server(pyngus.ReceiverEventHandler):
         if self._connection and not self._reopen_scheduled:
             LOG.debug("Server subscription reopen scheduled")
             self._reopen_scheduled = True
-            self._scheduler.schedule(self._reopen_links, self._delay)
+            self._scheduler.defer(self._reopen_links, self._delay)
 
     def message_received(self, receiver, message, handle):
         """This is a Pyngus callback, invoked by Pyngus when a new message
         arrives on this receiver link from the peer.
         """
+        LOG.debug("Message received on: %s", receiver.target_address)
         if receiver.capacity < self._capacity / 2:
             receiver.add_capacity(self._capacity - receiver.capacity)
         self._incoming.put(message)
-        LOG.debug("message received: %s", message)
+        # @TODO(kgiusti): fix me: don't ack here
         receiver.message_accepted(handle)
 
     def _open_link(self, address, name):
@@ -579,11 +714,6 @@ class Controller(pyngus.ConnectionEventHandler):
         # specific ProtonListener's identifier:
         self._servers = {}
 
-        opt_group = cfg.OptGroup(name='oslo_messaging_amqp',
-                                 title='AMQP 1.0 driver options')
-        config.register_group(opt_group)
-        config.register_opts(opts.amqp1_opts, group=opt_group)
-
         self.server_request_prefix = \
             config.oslo_messaging_amqp.server_request_prefix
         self.broadcast_prefix = config.oslo_messaging_amqp.broadcast_prefix
@@ -662,17 +792,17 @@ class Controller(pyngus.ConnectionEventHandler):
 
     # methods executed by Tasks created by the driver:
 
-    def request(self, target, request, result_queue, reply_expected, deadline,
-                retry):
-        """Send an RPC request message to the given target and arrange for a
-        result to be put on the result_queue. If reply_expected, the result
-        will include the reply message (if successful).
-        """
-        if retry is None or retry < 0:
-            retry = self.max_send_retries
-        address = self._resolve(target)
-        LOG.debug("Sending request for %(target)s to %(address)s",
-                  {'target': target, 'address': address})
+    def send(self, send_task):
+        if send_task.deadline and send_task.deadline <= time.time():
+            send_task._on_timeout()
+            return
+        if isinstance(send_task.target, target.Target):
+            address = self._resolve(send_task.target)
+        else:
+            address = send_task.target
+        LOG.debug("Sending message to %s", address)
+        if send_task.retry is None or send_task.retry < 0:
+            send_task.retry = self.max_send_retries
         sender = self._senders.get(address)
         if not sender:
             sender = Sender(address, self.processor, self.link_retry_delay)
@@ -680,24 +810,7 @@ class Controller(pyngus.ConnectionEventHandler):
             if self.reply_link and self.reply_link.active:
                 sender.attach(self._socket_connection.connection,
                               self.reply_link)
-        sender.send_message(request, result_queue, reply_expected,
-                            deadline, retry)
-
-    def response(self, address, response):
-        """Send an RPC response message to the client listening on 'address'.
-        To prevent a misbehaving client from blocking a server indefinitely,
-        the message is send asynchronously.
-        """
-        LOG.debug("Sending response to %s", address)
-        sender = self._senders.get(address)
-        if not sender:
-            sender = Sender(address, self.processor, self.link_retry_delay,
-                            kind="RPC_Replier")
-            self._senders[address] = sender
-            if self.reply_link and self.reply_link.active:
-                sender.attach(self._socket_connection.connection,
-                              self.reply_link)
-        sender.send_message(message=response, retry=self.max_send_retries)
+        sender.send_message(send_task)
 
     def subscribe(self, target, in_queue, subscription_id):
         """Subscribe to messages sent to 'target', place received messages on
@@ -800,7 +913,7 @@ class Controller(pyngus.ConnectionEventHandler):
         while (not self._tasks.empty() and
                count < self._max_task_batch):
             try:
-                self._tasks.get(False).execute(self)
+                self._tasks.get(False)._execute(self)
             except Exception as e:
                 LOG.exception(_LE("Error processing task: %s"), e)
             count += 1
@@ -947,7 +1060,7 @@ class Controller(pyngus.ConnectionEventHandler):
                 self._reconnecting = True
                 LOG.info(_LI("delaying reconnect attempt for %d seconds"),
                          self._delay)
-                self.processor.schedule(self._do_reconnect, self._delay)
+                self.processor.defer(self._do_reconnect, self._delay)
                 self._delay = min(self._delay * 2, 60)
 
     def _do_reconnect(self):
@@ -965,7 +1078,7 @@ class Controller(pyngus.ConnectionEventHandler):
     def _hard_reset(self):
         """Reset the controller to its pre-connection state"""
         # note well: since this method destroys the connection, it cannot be
-        # invoked directly from a pyngus callback.  Use processor.schedule() to
+        # invoked directly from a pyngus callback.  Use processor.defer() to
         # run this method on the main loop instead.
         unused = []
         for key, sender in iteritems(self._senders):

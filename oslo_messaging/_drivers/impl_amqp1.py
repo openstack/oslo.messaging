@@ -27,10 +27,12 @@ import threading
 import time
 import uuid
 
+from oslo_config import cfg
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
+from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
 from oslo_messaging._i18n import _LI, _LW
@@ -41,13 +43,10 @@ proton = importutils.try_import('proton')
 controller = importutils.try_import(
     'oslo_messaging._drivers.amqp1_driver.controller'
 )
-drivertasks = importutils.try_import(
-    'oslo_messaging._drivers.amqp1_driver.drivertasks'
-)
 LOG = logging.getLogger(__name__)
 
 
-def marshal_response(reply=None, failure=None):
+def marshal_response(reply, failure):
     # TODO(grs): do replies have a context?
     # NOTE(flaper87): Set inferred to True since rabbitmq-amqp-1.0 doesn't
     # have support for vbin8.
@@ -99,13 +98,24 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         self._correlation_id = message.id
 
     def reply(self, reply=None, failure=None):
-        """Schedule a ReplyTask to send the reply."""
+        """Schedule an RPCReplyTask to send the reply."""
         if self._reply_to:
-            response = marshal_response(reply=reply, failure=failure)
+            response = marshal_response(reply, failure)
             response.correlation_id = self._correlation_id
-            LOG.debug("Replying to %s", self._correlation_id)
-            task = drivertasks.ReplyTask(self._reply_to, response)
+            LOG.debug("Sending RPC reply to %s (%s)", self._reply_to,
+                      self._correlation_id)
+            now = time.time()
+            deadline = now + self.listener.driver._default_reply_timeout
+            task = controller.SendTask("RPC Reply", response, self._reply_to,
+                                       # analogous to kombu missing dest t/o:
+                                       deadline,
+                                       retry=0,
+                                       wait_for_ack=True)
             self.listener.driver._ctrl.add_task(task)
+            rc = task.wait()
+            if rc:
+                # something failed.  Not much we can do at this point but log
+                LOG.debug("Reply failed to send: %s", str(rc))
         else:
             LOG.debug("Ignoring reply as no reply address available")
 
@@ -161,7 +171,7 @@ class ProtonListener(base.PollStyleListener):
         if message is None:
             return None
         request, ctxt = unmarshal_request(message)
-        LOG.debug("Returning incoming message")
+        LOG.debug("poll: message received")
         return ProtonIncomingMessage(self, ctxt, request, message)
 
 
@@ -175,12 +185,17 @@ class ProtonDriver(base.BaseDriver):
                  default_exchange=None, allowed_remote_exmods=[]):
         # TODO(kgiusti) Remove once driver fully stabilizes:
         LOG.warning(_LW("Support for the 'amqp' transport is EXPERIMENTAL."))
-        if proton is None or hasattr(controller, "fake_controller"):
+        if proton is None or controller is None:
             raise NotImplementedError("Proton AMQP C libraries not installed")
 
         super(ProtonDriver, self).__init__(conf, url, default_exchange,
                                            allowed_remote_exmods)
-        # TODO(grs): handle authentication etc
+
+        opt_group = cfg.OptGroup(name='oslo_messaging_amqp',
+                                 title='AMQP 1.0 driver options')
+        conf.register_group(opt_group)
+        conf.register_opts(opts.amqp1_opts, group=opt_group)
+
         self._hosts = url.hosts
         self._conf = conf
         self._default_exchange = default_exchange
@@ -190,6 +205,11 @@ class ProtonDriver(base.BaseDriver):
         self._ctrl = None
         self._pid = None
         self._lock = threading.Lock()
+
+        # TODO(kgiusti): make configurable:
+        self._default_reply_timeout = 30
+        self._default_send_timeout = 60
+        self._default_notify_timeout = 60
 
     def _ensure_connect_called(func):
         """Causes a new controller to be created when the messaging service is
@@ -257,22 +277,29 @@ class ProtonDriver(base.BaseDriver):
             # amqp uses millisecond time values, timeout is seconds
             request.ttl = int(timeout * 1000)
             request.expiry_time = int(expire * 1000)
-        LOG.debug("Send to %s", target)
-        task = drivertasks.SendTask(target, request, wait_for_reply, expire,
-                                    retry)
-        self._ctrl.add_task(task)
-        # wait for the eventloop to process the command. If the command is
-        # an RPC call retrieve the reply message
-
+        else:
+            # no timeout provided by application.  If the backend is queueless
+            # this could lead to a hang - provide a default to prevent this
+            # TODO(kgiusti) only do this if brokerless backend
+            expire = time.time() + self._default_send_timeout
+        LOG.debug("Sending message to %s", target)
         if wait_for_reply:
-            reply = task.wait(timeout)
-            if reply:
-                # TODO(kgiusti) how to handle failure to un-marshal?
-                # Must log, and determine best way to communicate this failure
-                # back up to the caller
-                reply = unmarshal_response(reply, self._allowed_remote_exmods)
-            LOG.debug("Send to %s returning", target)
-            return reply
+            task = controller.RPCCallTask(target, request, expire, retry)
+        else:
+            task = controller.SendTask("RPC Cast", request, target, expire,
+                                       retry, wait_for_ack=True)
+        self._ctrl.add_task(task)
+
+        reply = task.wait()
+        if isinstance(reply, Exception):
+            raise reply
+        if reply:
+            # TODO(kgiusti) how to handle failure to un-marshal?
+            # Must log, and determine best way to communicate this failure
+            # back up to the caller
+            reply = unmarshal_response(reply, self._allowed_remote_exmods)
+        LOG.debug("Send to %s returning", target)
+        return reply
 
     @_ensure_connect_called
     def send_notification(self, target, ctxt, message, version,
@@ -294,18 +321,31 @@ class ProtonDriver(base.BaseDriver):
                       N means N retries
         :type retry: int
         """
-        return self.send(target, ctxt, message, envelope=(version == 2.0),
-                         retry=retry)
+        request = marshal_request(message, ctxt, (version == 2.0))
+        # no timeout is applied to notifications, however if the backend is
+        # queueless this could lead to a hang - provide a default to prevent
+        # this
+        # TODO(kgiusti) should raise NotImplemented if not broker backend
+        LOG.debug("Send notification to %s", target)
+        task = controller.SendTask("Notify", request, target,
+                                   time.time() + self._default_notify_timeout,
+                                   retry, wait_for_ack=True)
+        self._ctrl.add_task(task)
+        rc = task.wait()
+        if isinstance(rc, Exception):
+            raise rc
+        LOG.debug("Send notification to %s returning", target)
 
     @_ensure_connect_called
     def listen(self, target, batch_size, batch_timeout):
         """Construct a Listener for the given target."""
         LOG.debug("Listen to %s", target)
         listener = ProtonListener(self)
-        self._ctrl.add_task(drivertasks.ListenTask(target, listener))
+        task = controller.SubscribeTask(target, listener)
+        self._ctrl.add_task(task)
+        task.wait()
         return base.PollStyleListenerAdapter(listener, batch_size,
                                              batch_timeout)
-        return listener
 
     @_ensure_connect_called
     def listen_for_notifications(self, targets_and_priorities, pool,
@@ -313,6 +353,7 @@ class ProtonDriver(base.BaseDriver):
         """Construct a Listener for notifications on the given target and
         priority.
         """
+        # TODO(kgiusti) should raise NotImplemented if not broker backend
         LOG.debug("Listen for notifications %s", targets_and_priorities)
         if pool:
             raise NotImplementedError('"pool" not implemented by '
@@ -321,7 +362,9 @@ class ProtonDriver(base.BaseDriver):
         for target, priority in targets_and_priorities:
             topic = '%s.%s' % (target.topic, priority)
             t = messaging_target.Target(topic=topic)
-            self._ctrl.add_task(drivertasks.ListenTask(t, listener, True))
+            task = controller.SubscribeTask(t, listener, notifications=True)
+            self._ctrl.add_task(task)
+            task.wait()
         return base.PollStyleListenerAdapter(listener, batch_size,
                                              batch_timeout)
 
