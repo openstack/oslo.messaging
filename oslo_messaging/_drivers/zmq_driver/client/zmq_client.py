@@ -13,6 +13,7 @@
 #    under the License.
 
 
+from oslo_messaging._drivers import common
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_call_publisher
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
@@ -28,45 +29,102 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 zmq = zmq_async.import_zmq()
 
 
-class ZmqClient(zmq_client_base.ZmqClientBase):
+class WrongClientException(common.RPCException):
+    """Raised if client type doesn't match configuration"""
+
+
+class ZmqClientMixDirectPubSub(zmq_client_base.ZmqClientBase):
+    """Client for using with direct connections and fanout over proxy:
+
+        use_pub_sub = true
+        use_router_proxy = false
+
+    """
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
+
+        if conf.use_router_proxy or not conf.use_pub_sub:
+            raise WrongClientException()
 
         self.sockets_manager = zmq_publisher_base.SocketsManager(
             conf, matchmaker, zmq.ROUTER, zmq.DEALER)
 
-        default_publisher = zmq_dealer_publisher.DealerPublisher(
-            conf, matchmaker)
-
-        publisher_to_proxy = zmq_dealer_publisher_proxy.DealerPublisherProxy(
+        fanout_publisher = zmq_dealer_publisher_proxy.DealerPublisherProxy(
             conf, matchmaker, self.sockets_manager.get_socket_to_publishers())
 
-        call_publisher = zmq_dealer_publisher_proxy.DealerCallPublisherProxy(
-            conf, matchmaker, self.sockets_manager) if conf.use_router_proxy \
-            else zmq_dealer_call_publisher.DealerCallPublisher(
-                conf, matchmaker, self.sockets_manager)
-
-        cast_publisher = publisher_to_proxy if conf.use_router_proxy \
-            else zmq_dealer_publisher.DealerPublisherAsync(
-                conf, matchmaker)
-
-        fanout_publisher = publisher_to_proxy \
-            if conf.use_pub_sub else default_publisher
-
-        super(ZmqClient, self).__init__(
+        super(ZmqClientMixDirectPubSub, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
-                zmq_names.CALL_TYPE: call_publisher,
+                zmq_names.CALL_TYPE:
+                    zmq_dealer_call_publisher.DealerCallPublisher(
+                        conf, matchmaker, self.sockets_manager),
 
-                zmq_names.CAST_TYPE: cast_publisher,
-
-                # Here use DealerPublisherLight for sending request to proxy
-                # which finally uses PubPublisher to send fanout in case of
-                # 'use_pub_sub' option configured.
                 zmq_names.CAST_FANOUT_TYPE: fanout_publisher,
 
                 zmq_names.NOTIFY_TYPE: fanout_publisher,
 
-                "default": default_publisher
+                "default": zmq_dealer_publisher.DealerPublisherAsync(
+                    conf, matchmaker)
+            }
+        )
+
+
+class ZmqClientDirect(zmq_client_base.ZmqClientBase):
+    """This kind of client (publishers combination) is to be used for
+    direct connections only:
+
+        use_pub_sub = false
+        use_router_proxy = false
+    """
+
+    def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
+
+        if conf.use_pub_sub or conf.use_router_proxy:
+            raise WrongClientException()
+
+        self.sockets_manager = zmq_publisher_base.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+
+        super(ZmqClientDirect, self).__init__(
+            conf, matchmaker, allowed_remote_exmods,
+            publishers={
+                zmq_names.CALL_TYPE:
+                    zmq_dealer_call_publisher.DealerCallPublisher(
+                        conf, matchmaker, self.sockets_manager),
+
+                "default": zmq_dealer_publisher.DealerPublisher(
+                    conf, matchmaker)
+            }
+        )
+
+
+class ZmqClientProxy(zmq_client_base.ZmqClientBase):
+    """Client for using with proxy:
+
+        use_pub_sub = true
+        use_router_proxy = true
+    or
+        use_pub_sub = false
+        use_router_proxy = true
+    """
+
+    def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
+
+        if not conf.use_router_proxy:
+            raise WrongClientException()
+
+        self.sockets_manager = zmq_publisher_base.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+
+        super(ZmqClientProxy, self).__init__(
+            conf, matchmaker, allowed_remote_exmods,
+            publishers={
+                zmq_names.CALL_TYPE:
+                    zmq_dealer_publisher_proxy.DealerCallPublisherProxy(
+                        conf, matchmaker, self.sockets_manager),
+
+                "default": zmq_dealer_publisher_proxy.DealerPublisherProxy(
+                        conf, matchmaker,
+                        self.sockets_manager.get_socket_to_publishers())
             }
         )

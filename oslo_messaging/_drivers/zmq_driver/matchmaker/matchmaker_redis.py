@@ -190,7 +190,7 @@ class RedisMatchMaker(base.MatchMakerBase):
         key = zmq_address.target_to_key(target, listener_type)
         hosts.extend(self._get_hosts_by_key(key))
 
-        if not hosts and target.topic and target.server:
+        if (not hosts or target.fanout) and target.topic and target.server:
             key = zmq_address.prefix_str(target.topic, listener_type)
             hosts.extend(self._get_hosts_by_key(key))
 

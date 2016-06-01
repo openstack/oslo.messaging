@@ -182,12 +182,18 @@ class ZmqDriver(base.BaseDriver):
             self.get_matchmaker_backend(url),
         ).driver(self.conf, url=url)
 
+        client_cls = zmq_client.ZmqClientProxy
+        if conf.use_pub_sub and not conf.use_router_proxy:
+            client_cls = zmq_client.ZmqClientMixDirectPubSub
+        elif not conf.use_pub_sub and not conf.use_router_proxy:
+            client_cls = zmq_client.ZmqClientDirect
+
         self.client = LazyDriverItem(
-            zmq_client.ZmqClient, self.conf, self.matchmaker,
+            client_cls, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
 
         self.notifier = LazyDriverItem(
-            zmq_client.ZmqClient, self.conf, self.matchmaker,
+            client_cls, self.conf, self.matchmaker,
             self.allowed_remote_exmods)
 
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
