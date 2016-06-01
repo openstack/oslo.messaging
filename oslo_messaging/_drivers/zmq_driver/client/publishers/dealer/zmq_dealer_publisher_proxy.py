@@ -35,6 +35,7 @@ class DealerPublisherProxy(object):
     """Used when publishing to a proxy. """
 
     def __init__(self, conf, matchmaker, socket_to_proxy):
+        self.conf = conf
         self.sockets_manager = zmq_publisher_base.SocketsManager(
             conf, matchmaker, zmq.ROUTER, zmq.DEALER)
         self.socket = socket_to_proxy
@@ -45,10 +46,17 @@ class DealerPublisherProxy(object):
             raise zmq_publisher_base.UnsupportedSendPattern(
                 request.msg_type)
 
-        routing_key = self.routing_table.get_routable_host(request.target) \
-            if request.msg_type in zmq_names.DIRECT_TYPES else \
-            zmq_address.target_to_subscribe_filter(request.target)
+        if self.conf.use_pub_sub:
+            routing_key = self.routing_table.get_routable_host(request.target) \
+                if request.msg_type in zmq_names.DIRECT_TYPES else \
+                zmq_address.target_to_subscribe_filter(request.target)
+            self._do_send_request(request, routing_key)
+        else:
+            routing_keys = self.routing_table.get_all_hosts(request.target)
+            for routing_key in routing_keys:
+                self._do_send_request(request, routing_key)
 
+    def _do_send_request(self, request, routing_key):
         self.socket.send(b'', zmq.SNDMORE)
         self.socket.send(six.b(str(request.msg_type)), zmq.SNDMORE)
         self.socket.send(six.b(routing_key), zmq.SNDMORE)
@@ -131,6 +139,10 @@ class RoutingTable(object):
         self.matchmaker = matchmaker
         self.routing_table = {}
         self.routable_hosts = {}
+
+    def get_all_hosts(self, target):
+        self._update_routing_table(target)
+        return list(self.routable_hosts.get(str(target)) or [])
 
     def get_routable_host(self, target):
         self._update_routing_table(target)

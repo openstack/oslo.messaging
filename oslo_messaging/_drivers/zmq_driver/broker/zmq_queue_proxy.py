@@ -73,7 +73,7 @@ class UniversalQueueProxy(object):
         if self.conf.use_pub_sub and msg_type in (zmq_names.CAST_FANOUT_TYPE,
                                                   zmq_names.NOTIFY_TYPE):
             self.pub_publisher.send_request(message)
-        elif msg_type in zmq_names.DIRECT_TYPES:
+        else:
             self._redirect_message(self.be_router_socket
                                    if socket is self.fe_router_socket
                                    else self.fe_router_socket, message)
