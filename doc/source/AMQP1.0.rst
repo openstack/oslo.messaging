@@ -120,7 +120,7 @@ The new driver is selected by specifying **amqp** as the transport
 name.  For example::
 
   from oslo import messaging
-  from olso.config import cfg
+  from oslo.config import cfg
 
   amqp_transport = messaging.get_transport(cfg.CONF,
                        "amqp://me:passwd@host:5672")
