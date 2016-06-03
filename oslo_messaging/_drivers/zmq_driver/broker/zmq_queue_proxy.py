@@ -24,7 +24,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._i18n import _LI
 
-zmq = zmq_async.import_zmq(zmq_concurrency='native')
+zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
 
 
@@ -35,7 +35,7 @@ class UniversalQueueProxy(object):
         self.context = context
         super(UniversalQueueProxy, self).__init__()
         self.matchmaker = matchmaker
-        self.poller = zmq_async.get_poller(zmq_concurrency='native')
+        self.poller = zmq_async.get_poller()
 
         self.fe_router_socket = zmq_socket.ZmqRandomPortSocket(
             conf, context, zmq.ROUTER)
