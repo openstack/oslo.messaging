@@ -21,12 +21,12 @@ import copy
 import itertools
 
 from oslo_messaging._drivers import amqp
+from oslo_messaging._drivers.amqp1_driver import opts as amqp_opts
 from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_pika
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.pika_driver import pika_connection_factory
-from oslo_messaging._drivers.protocols.amqp import opts as amqp_opts
 from oslo_messaging._drivers.zmq_driver.matchmaker import matchmaker_redis
 from oslo_messaging.notify import notifier
 from oslo_messaging.rpc import client

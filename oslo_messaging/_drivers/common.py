@@ -162,18 +162,15 @@ class Connection(object):
         raise NotImplementedError()
 
 
-def serialize_remote_exception(failure_info, log_failure=True):
+def serialize_remote_exception(failure_info):
     """Prepares exception data to be sent over rpc.
 
     Failure_info should be a sys.exc_info() tuple.
 
     """
     tb = traceback.format_exception(*failure_info)
+
     failure = failure_info[1]
-    if log_failure:
-        LOG.error(_LE("Returning exception %s to caller"),
-                  six.text_type(failure))
-        LOG.error(tb)
 
     kwargs = {}
     if hasattr(failure, 'kwargs'):

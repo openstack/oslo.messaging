@@ -26,6 +26,7 @@ functions scheduled by the Controller.
 
 import abc
 import logging
+import random
 import threading
 import uuid
 
@@ -34,8 +35,8 @@ import proton
 import pyngus
 from six import moves
 
-from oslo_messaging._drivers.protocols.amqp import eventloop
-from oslo_messaging._drivers.protocols.amqp import opts
+from oslo_messaging._drivers.amqp1_driver import eventloop
+from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
 from oslo_messaging import transport
@@ -298,7 +299,7 @@ class Hosts(object):
             entry.port = entry.port or 5672
             entry.username = entry.username or default_username
             entry.password = entry.password or default_password
-        self._current = 0
+        self._current = random.randint(0, len(self._entries) - 1)
 
     @property
     def current(self):

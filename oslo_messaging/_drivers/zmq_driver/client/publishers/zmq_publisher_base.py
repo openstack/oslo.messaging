@@ -112,16 +112,21 @@ class SocketsManager(object):
         self.socket_to_publishers = None
         self.socket_to_routers = None
 
-    def _track_socket(self, socket, target):
-        self.outbound_sockets[str(target)] = (socket, time.time())
-
     def get_hosts(self, target):
         return self.matchmaker.get_hosts(
             target, zmq_names.socket_type_str(self.listener_type))
 
+    @staticmethod
+    def _key_from_target(target):
+        return target.topic if target.fanout else str(target)
+
     def _get_hosts_and_connect(self, socket, target):
         hosts = self.get_hosts(target)
         self._connect_to_hosts(socket, target, hosts)
+
+    def _track_socket(self, socket, target):
+        key = self._key_from_target(target)
+        self.outbound_sockets[key] = (socket, time.time())
 
     def _connect_to_hosts(self, socket, target, hosts):
         for host in hosts:
@@ -129,28 +134,20 @@ class SocketsManager(object):
         self._track_socket(socket, target)
 
     def _check_for_new_hosts(self, target):
-        socket, tm = self.outbound_sockets[str(target)]
+        key = self._key_from_target(target)
+        socket, tm = self.outbound_sockets[key]
         if 0 <= self.conf.zmq_target_expire <= time.time() - tm:
             self._get_hosts_and_connect(socket, target)
         return socket
 
     def get_socket(self, target):
-        if str(target) in self.outbound_sockets:
+        key = self._key_from_target(target)
+        if key in self.outbound_sockets:
             socket = self._check_for_new_hosts(target)
         else:
             socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
                                           self.socket_type)
             self._get_hosts_and_connect(socket, target)
-        return socket
-
-    def get_socket_to_hosts(self, target, hosts):
-        key = str(target)
-        if key in self.outbound_sockets:
-            socket, tm = self.outbound_sockets[key]
-        else:
-            socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                          self.socket_type)
-            self._connect_to_hosts(socket, target, hosts)
         return socket
 
     def get_socket_to_publishers(self):

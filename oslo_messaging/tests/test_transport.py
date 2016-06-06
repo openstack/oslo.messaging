@@ -14,6 +14,7 @@
 #    under the License.
 
 import fixtures
+import mock
 from mox3 import mox
 from oslo_config import cfg
 import six
@@ -112,7 +113,8 @@ class GetTransportTestCase(test_utils.BaseTestCase):
                           allowed=[]))),
     ]
 
-    def test_get_transport(self):
+    @mock.patch('oslo_messaging.transport.LOG')
+    def test_get_transport(self, fake_logger):
         self.config(rpc_backend=self.rpc_backend,
                     control_exchange=self.control_exchange,
                     transport_url=self.transport_url)
@@ -141,6 +143,12 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         if self.aliases is not None:
             kwargs['aliases'] = self.aliases
         transport_ = oslo_messaging.get_transport(self.conf, **kwargs)
+
+        if self.aliases is not None:
+            self.assertEqual(fake_logger.warning.mock_calls,
+                             [mock.call('legacy "rpc_backend" is deprecated, '
+                                        '"testfoo" must be replaced by '
+                                        '"%s"' % self.aliases.get('testfoo'))])
 
         self.assertIsNotNone(transport_)
         self.assertIs(transport_.conf, self.conf)

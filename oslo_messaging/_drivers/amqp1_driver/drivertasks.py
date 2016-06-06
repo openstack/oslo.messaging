@@ -16,7 +16,7 @@ import logging
 import threading
 import time
 
-from oslo_messaging._drivers.protocols.amqp import controller
+from oslo_messaging._drivers.amqp1_driver import controller
 from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
@@ -94,11 +94,10 @@ class ListenTask(controller.Task):
 class ReplyTask(controller.Task):
     """A task that sends 'response' message to 'address'.
     """
-    def __init__(self, address, response, log_failure):
+    def __init__(self, address, response):
         super(ReplyTask, self).__init__()
         self._address = address
         self._response = response
-        self._log_failure = log_failure
         self._wakeup = threading.Event()
 
     def wait(self):

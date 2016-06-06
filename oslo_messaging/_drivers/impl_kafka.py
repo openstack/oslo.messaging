@@ -33,9 +33,13 @@ PURPOSE_LISTEN = 'listen'
 
 kafka_opts = [
     cfg.StrOpt('kafka_default_host', default='localhost',
+               deprecated_for_removal=True,
+               deprecated_reason="Replaced by [DEFAULT]/transport_url",
                help='Default Kafka broker Host'),
 
     cfg.PortOpt('kafka_default_port', default=9092,
+                deprecated_for_removal=True,
+                deprecated_reason="Replaced by [DEFAULT]/transport_url",
                 help='Default Kafka broker Port'),
 
     cfg.IntOpt('kafka_max_fetch_bytes', default=1024 * 1024,
@@ -97,21 +101,18 @@ class Connection(object):
 
     def _parse_url(self):
         driver_conf = self.conf.oslo_messaging_kafka
-        try:
-            self.host = self.url.hosts[0].hostname
-        except (NameError, IndexError):
-            self.host = driver_conf.kafka_default_host
 
-        try:
-            self.port = self.url.hosts[0].port
-        except (NameError, IndexError):
-            self.port = driver_conf.kafka_default_port
+        self.hostaddrs = []
 
-        if self.host is None:
-            self.host = driver_conf.kafka_default_host
+        for host in self.url.hosts:
+            if host.hostname:
+                self.hostaddrs.append("%s:%s" % (
+                    host.hostname,
+                    host.port or driver_conf.kafka_default_port))
 
-        if self.port is None:
-            self.port = driver_conf.kafka_default_port
+        if not self.hostaddrs:
+            self.hostaddrs.append("%s:%s" % (driver_conf.kafka_default_host,
+                                             driver_conf.kafka_default_port))
 
     def notify_send(self, topic, ctxt, msg, retry):
         """Send messages to Kafka broker.
@@ -215,7 +216,7 @@ class Connection(object):
             return
         try:
             self.kafka_client = kafka.KafkaClient(
-                "%s:%s" % (self.host, str(self.port)))
+                self.hostaddrs)
             self.producer = kafka.SimpleProducer(self.kafka_client)
         except KafkaError as e:
             LOG.exception(_LE("Kafka Connection is not available: %s"), e)
@@ -227,7 +228,7 @@ class Connection(object):
             self.kafka_client.ensure_topic_exists(topic)
         self.consumer = kafka.KafkaConsumer(
             *topics, group_id=group,
-            bootstrap_servers=["%s:%s" % (self.host, str(self.port))],
+            bootstrap_servers=self.hostaddrs,
             fetch_message_max_bytes=self.fetch_messages_max_bytes)
         self._consume_loop_stopped = False
 
@@ -240,7 +241,7 @@ class OsloKafkaMessage(base.RpcIncomingMessage):
     def requeue(self):
         LOG.warning(_LW("requeue is not supported"))
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         LOG.warning(_LW("reply is not supported"))
 
 

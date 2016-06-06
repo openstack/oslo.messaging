@@ -16,6 +16,7 @@ cat > ${DATADIR}/zmq.conf <<EOF
 transport_url=${TRANSPORT_URL}
 rpc_zmq_matchmaker=${ZMQ_MATCHMAKER}
 rpc_zmq_ipc_dir=${ZMQ_IPC_DIR}
+use_pub_sub=true
 use_router_proxy=true
 [matchmaker_redis]
 port=${ZMQ_REDIS_PORT}

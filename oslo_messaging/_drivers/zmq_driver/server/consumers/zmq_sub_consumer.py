@@ -34,7 +34,7 @@ class SubIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, context, message):
         super(SubIncomingMessage, self).__init__(context, message)
 
-    def reply(self, reply=None, failure=None, log_failure=True):
+    def reply(self, reply=None, failure=None):
         """Reply is not needed for non-call messages."""
 
     def acknowledge(self):
