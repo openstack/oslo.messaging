@@ -27,20 +27,9 @@ class TestImportZmq(test_utils.BaseTestCase):
     def setUp(self):
         super(TestImportZmq, self).setUp()
 
-    def test_config_short_names_are_converted_to_correct_module_names(self):
-        mock_try_import = mock.Mock()
-        zmq_async.importutils.try_import = mock_try_import
+    def test_when_eventlet_is_available_then_load_eventlet_green_zmq(self):
+        zmq_async.eventletutils.is_monkey_patched = lambda _: True
 
-        zmq_async.importutils.try_import.return_value = 'mock zmq module'
-        self.assertEqual('mock zmq module', zmq_async.import_zmq('native'))
-        mock_try_import.assert_called_with('zmq', default=None)
-
-        zmq_async.importutils.try_import.return_value = 'mock eventlet module'
-        self.assertEqual('mock eventlet module',
-                         zmq_async.import_zmq('eventlet'))
-        mock_try_import.assert_called_with('eventlet.green.zmq', default=None)
-
-    def test_when_no_args_then_default_zmq_module_is_loaded(self):
         mock_try_import = mock.Mock()
         zmq_async.importutils.try_import = mock_try_import
 
@@ -48,12 +37,15 @@ class TestImportZmq(test_utils.BaseTestCase):
 
         mock_try_import.assert_called_with('eventlet.green.zmq', default=None)
 
-    def test_invalid_config_value_raise_ValueError(self):
-        invalid_opt = 'x'
+    def test_when_evetlet_is_unavailable_then_load_zmq(self):
+        zmq_async.eventletutils.is_monkey_patched = lambda _: False
 
-        errmsg = 'Invalid zmq_concurrency value: x'
-        with self.assertRaisesRegexp(ValueError, errmsg):
-            zmq_async.import_zmq(invalid_opt)
+        mock_try_import = mock.Mock()
+        zmq_async.importutils.try_import = mock_try_import
+
+        zmq_async.import_zmq()
+
+        mock_try_import.assert_called_with('zmq', default=None)
 
 
 class TestGetPoller(test_utils.BaseTestCase):
@@ -62,38 +54,19 @@ class TestGetPoller(test_utils.BaseTestCase):
     def setUp(self):
         super(TestGetPoller, self).setUp()
 
-    def test_when_no_arg_to_get_poller_then_return_default_poller(self):
-        zmq_async._is_eventlet_zmq_available = lambda: True
+    def test_when_eventlet_is_available_then_return_GreenPoller(self):
+        zmq_async.eventletutils.is_monkey_patched = lambda _: True
 
         actual = zmq_async.get_poller()
 
         self.assertTrue(isinstance(actual, green_poller.GreenPoller))
 
-    def test_when_native_poller_requested_then_return_ThreadingPoller(self):
-        actual = zmq_async.get_poller('native')
-
-        self.assertTrue(isinstance(actual, threading_poller.ThreadingPoller))
-
     def test_when_eventlet_is_unavailable_then_return_ThreadingPoller(self):
-        zmq_async._is_eventlet_zmq_available = lambda: False
+        zmq_async.eventletutils.is_monkey_patched = lambda _: False
 
-        actual = zmq_async.get_poller('eventlet')
+        actual = zmq_async.get_poller()
 
         self.assertTrue(isinstance(actual, threading_poller.ThreadingPoller))
-
-    def test_when_eventlet_is_available_then_return_GreenPoller(self):
-        zmq_async._is_eventlet_zmq_available = lambda: True
-
-        actual = zmq_async.get_poller('eventlet')
-
-        self.assertTrue(isinstance(actual, green_poller.GreenPoller))
-
-    def test_invalid_config_value_raise_ValueError(self):
-        invalid_opt = 'x'
-
-        errmsg = 'Invalid zmq_concurrency value: x'
-        with self.assertRaisesRegexp(ValueError, errmsg):
-            zmq_async.get_poller(invalid_opt)
 
 
 class TestGetReplyPoller(test_utils.BaseTestCase):
@@ -102,33 +75,19 @@ class TestGetReplyPoller(test_utils.BaseTestCase):
     def setUp(self):
         super(TestGetReplyPoller, self).setUp()
 
-    def test_default_reply_poller_is_HoldReplyPoller(self):
-        zmq_async._is_eventlet_zmq_available = lambda: True
+    def test_when_eventlet_is_available_then_return_HoldReplyPoller(self):
+        zmq_async.eventletutils.is_monkey_patched = lambda _: True
 
         actual = zmq_async.get_poller()
 
         self.assertTrue(isinstance(actual, green_poller.GreenPoller))
 
-    def test_when_eventlet_is_available_then_return_HoldReplyPoller(self):
-        zmq_async._is_eventlet_zmq_available = lambda: True
-
-        actual = zmq_async.get_poller('eventlet')
-
-        self.assertTrue(isinstance(actual, green_poller.GreenPoller))
-
     def test_when_eventlet_is_unavailable_then_return_ThreadingPoller(self):
-        zmq_async._is_eventlet_zmq_available = lambda: False
+        zmq_async.eventletutils.is_monkey_patched = lambda _: False
 
-        actual = zmq_async.get_poller('eventlet')
+        actual = zmq_async.get_poller()
 
         self.assertTrue(isinstance(actual, threading_poller.ThreadingPoller))
-
-    def test_invalid_config_value_raise_ValueError(self):
-        invalid_opt = 'x'
-
-        errmsg = 'Invalid zmq_concurrency value: x'
-        with self.assertRaisesRegexp(ValueError, errmsg):
-            zmq_async.get_poller(invalid_opt)
 
 
 class TestGetExecutor(test_utils.BaseTestCase):
@@ -137,34 +96,19 @@ class TestGetExecutor(test_utils.BaseTestCase):
     def setUp(self):
         super(TestGetExecutor, self).setUp()
 
-    def test_default_executor_is_GreenExecutor(self):
-        zmq_async._is_eventlet_zmq_available = lambda: True
+    def test_when_eventlet_module_is_available_then_return_GreenExecutor(self):
+        zmq_async.eventletutils.is_monkey_patched = lambda _: True
 
         executor = zmq_async.get_executor('any method')
 
         self.assertTrue(isinstance(executor, green_poller.GreenExecutor))
         self.assertEqual('any method', executor._method)
 
-    def test_when_eventlet_module_is_available_then_return_GreenExecutor(self):
-        zmq_async._is_eventlet_zmq_available = lambda: True
-
-        executor = zmq_async.get_executor('any method', 'eventlet')
-
-        self.assertTrue(isinstance(executor, green_poller.GreenExecutor))
-        self.assertEqual('any method', executor._method)
-
     def test_when_eventlet_is_unavailable_then_return_ThreadingExecutor(self):
-        zmq_async._is_eventlet_zmq_available = lambda: False
+        zmq_async.eventletutils.is_monkey_patched = lambda _: False
 
-        executor = zmq_async.get_executor('any method', 'eventlet')
+        executor = zmq_async.get_executor('any method')
 
         self.assertTrue(isinstance(executor,
                                    threading_poller.ThreadingExecutor))
         self.assertEqual('any method', executor._method)
-
-    def test_invalid_config_value_raise_ValueError(self):
-        invalid_opt = 'x'
-
-        errmsg = 'Invalid zmq_concurrency value: x'
-        with self.assertRaisesRegexp(ValueError, errmsg):
-            zmq_async.get_executor('any method', invalid_opt)
