@@ -51,7 +51,7 @@ class UniversalQueueProxy(object):
         self.fe_router_address = zmq_address.combine_address(
             self.conf.rpc_zmq_host, self.fe_router_socket.port)
         self.be_router_address = zmq_address.combine_address(
-            self.conf.rpc_zmq_host, self.fe_router_socket.port)
+            self.conf.rpc_zmq_host, self.be_router_socket.port)
 
         self.pub_publisher = zmq_pub_publisher.PubPublisherProxy(
             conf, matchmaker)
@@ -70,9 +70,9 @@ class UniversalQueueProxy(object):
                                                   zmq_names.NOTIFY_TYPE):
             self.pub_publisher.send_request(message)
         else:
-            self._redirect_message(self.be_router_socket
-                                   if socket is self.fe_router_socket
-                                   else self.fe_router_socket, message)
+            self._redirect_message(self.be_router_socket.handle
+                                   if socket is self.fe_router_socket.handle
+                                   else self.fe_router_socket.handle, message)
 
     @staticmethod
     def _receive_in_request(socket):
