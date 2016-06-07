@@ -38,9 +38,12 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
         self.poller.register(socket, zmq.POLLIN)
 
     def poll(self, timeout=None):
+        if timeout is not None and timeout > 0:
+            timeout *= 1000  # convert seconds to milliseconds
+
         sockets = {}
         try:
-            sockets = dict(self.poller.poll())
+            sockets = dict(self.poller.poll(timeout=timeout))
         except zmq.ZMQError as e:
             LOG.debug("Polling terminated with error: %s", e)
 

@@ -65,7 +65,7 @@ class UniversalQueueProxy(object):
                  {"router": self.be_router_address})
 
     def run(self):
-        message, socket = self.poller.poll(self.conf.rpc_poll_timeout)
+        message, socket = self.poller.poll()
         if message is None:
             return
 
