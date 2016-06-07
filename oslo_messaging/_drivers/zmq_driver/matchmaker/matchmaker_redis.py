@@ -69,7 +69,7 @@ _RETRY_METHODS = ("get_hosts", "get_publishers", "get_routers")
 
 
 def retry_if_connection_error(ex):
-        return isinstance(ex, redis.ConnectionError)
+    return isinstance(ex, redis.ConnectionError)
 
 
 def retry_if_empty(hosts):
