@@ -30,7 +30,6 @@ class DealerPublisher(zmq_publisher_base.QueuedSender):
 
         def _send_message_data(socket, request):
             socket.send(b'', zmq.SNDMORE)
-            socket.send_pyobj(request.create_envelope(), zmq.SNDMORE)
             socket.send_pyobj(request)
 
             LOG.debug("Sent message_id %(message)s to a target %(target)s",
@@ -69,7 +68,6 @@ class DealerPublisherAsync(object):
     @staticmethod
     def _send_message_data(socket, request):
         socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(request.create_envelope(), zmq.SNDMORE)
         socket.send_pyobj(request)
 
         LOG.debug("Sent message_id %(message)s to a target %(target)s",
