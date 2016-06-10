@@ -96,6 +96,8 @@ class ZmqSocket(object):
         self.handle.close(*args, **kwargs)
 
     def connect_to_address(self, address):
+        if address in self.connections:
+            return
         stype = zmq_names.socket_type_str(self.socket_type)
         try:
             LOG.info(_LI("Connecting %(stype)s id %(id)s to %(address)s"),

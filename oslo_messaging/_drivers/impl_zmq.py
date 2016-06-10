@@ -72,9 +72,13 @@ zmq_opts = [
                help='The default number of seconds that poll should wait. '
                     'Poll raises timeout exception when timeout expired.'),
 
-    cfg.IntOpt('zmq_target_expire', default=120,
+    cfg.IntOpt('zmq_target_expire', default=300,
                help='Expiration timeout in seconds of a name service record '
                     'about existing target ( < 0 means no timeout).'),
+
+    cfg.IntOpt('zmq_target_update', default=180,
+               help='Update period in seconds of a name service record '
+                    'about existing target.'),
 
     cfg.BoolOpt('use_pub_sub', default=True,
                 help='Use PUB/SUB pattern for fanout methods. '
