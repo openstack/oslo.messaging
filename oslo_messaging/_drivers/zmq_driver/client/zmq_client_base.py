@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import contextlib
-
 from oslo_messaging._drivers.zmq_driver.client import zmq_request
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -41,29 +39,30 @@ class ZmqClientBase(object):
             or publishers["default"]
 
     def send_call(self, target, context, message, timeout=None, retry=None):
-        with contextlib.closing(zmq_request.CallRequest(
-                target, context=context, message=message,
-                timeout=timeout, retry=retry,
-                allowed_remote_exmods=self.allowed_remote_exmods)) as request:
-            return self.call_publisher.send_request(request)
+        request = zmq_request.CallRequest(
+            target, context=context, message=message, retry=retry,
+            timeout=timeout, allowed_remote_exmods=self.allowed_remote_exmods
+        )
+        return self.call_publisher.send_request(request)
 
     def send_cast(self, target, context, message, retry=None):
-        with contextlib.closing(zmq_request.CastRequest(
-                target, context=context, message=message,
-                retry=retry)) as request:
-            self.cast_publisher.send_request(request)
+        request = zmq_request.CastRequest(
+            target, context=context, message=message, retry=retry
+        )
+        self.cast_publisher.send_request(request)
 
     def send_fanout(self, target, context, message, retry=None):
-        with contextlib.closing(zmq_request.FanoutRequest(
-                target, context=context, message=message,
-                retry=retry)) as request:
-            self.fanout_publisher.send_request(request)
+        request = zmq_request.FanoutRequest(
+            target, context=context, message=message, retry=retry
+        )
+        self.fanout_publisher.send_request(request)
 
     def send_notify(self, target, context, message, version, retry=None):
-        with contextlib.closing(zmq_request.NotificationRequest(
-                target, context, message, version=version,
-                retry=retry)) as request:
-            self.notify_publisher.send_request(request)
+        request = zmq_request.NotificationRequest(
+            target, context=context, message=message, retry=retry,
+            version=version
+        )
+        self.notify_publisher.send_request(request)
 
     def cleanup(self):
         cleaned = set()

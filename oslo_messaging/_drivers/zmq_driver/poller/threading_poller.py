@@ -15,20 +15,12 @@
 import logging
 import threading
 
-from oslo_utils import eventletutils
-
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_poller
 
-zmq = zmq_async.import_zmq(zmq_concurrency='native')
+zmq = zmq_async.import_zmq()
 
 LOG = logging.getLogger(__name__)
-
-_threading = threading
-
-if eventletutils.EVENTLET_AVAILABLE:
-    import eventlet
-    _threading = eventlet.patcher.original('threading')
 
 
 class ThreadingPoller(zmq_poller.ZmqPoller):
@@ -46,9 +38,12 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
         self.poller.register(socket, zmq.POLLIN)
 
     def poll(self, timeout=None):
+        if timeout is not None and timeout > 0:
+            timeout *= 1000  # convert seconds to milliseconds
+
         sockets = {}
         try:
-            sockets = dict(self.poller.poll())
+            sockets = dict(self.poller.poll(timeout=timeout))
         except zmq.ZMQError as e:
             LOG.debug("Polling terminated with error: %s", e)
 
@@ -69,8 +64,8 @@ class ThreadingExecutor(zmq_poller.Executor):
     def __init__(self, method):
         self._method = method
         super(ThreadingExecutor, self).__init__(
-            _threading.Thread(target=self._loop))
-        self._stop = _threading.Event()
+            threading.Thread(target=self._loop))
+        self._stop = threading.Event()
 
     def _loop(self):
         while not self._stop.is_set():

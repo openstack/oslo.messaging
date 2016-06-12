@@ -82,9 +82,6 @@ class Request(object):
     def msg_type(self):
         """ZMQ message type"""
 
-    def close(self):
-        """Nothing to close in base request"""
-
 
 class RpcRequest(Request):
 

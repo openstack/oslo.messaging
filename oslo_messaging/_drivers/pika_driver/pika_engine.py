@@ -20,6 +20,7 @@ from oslo_utils import eventletutils
 import pika_pool
 from stevedore import driver
 
+from oslo_messaging._drivers import common as drv_cmn
 from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 
@@ -47,6 +48,7 @@ class PikaEngine(object):
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
+        conf = drv_cmn.ConfigOptsProxy(conf, url)
         self.conf = conf
         self.url = url
 

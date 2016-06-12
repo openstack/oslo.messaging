@@ -32,8 +32,6 @@ from oslo_messaging import server
 RPCException = rpc_common.RPCException
 _MATCHMAKER_BACKENDS = ('redis', 'dummy')
 _MATCHMAKER_DEFAULT = 'redis'
-_CONCURRENCY_CHOICES = ('eventlet', 'native')
-_CONCURRENCY_DEFAULT = 'eventlet'
 LOG = logging.getLogger(__name__)
 
 
@@ -47,10 +45,6 @@ zmq_opts = [
     cfg.StrOpt('rpc_zmq_matchmaker', default=_MATCHMAKER_DEFAULT,
                choices=_MATCHMAKER_BACKENDS,
                help='MatchMaker driver.'),
-
-    cfg.StrOpt('rpc_zmq_concurrency', default=_CONCURRENCY_DEFAULT,
-               choices=_CONCURRENCY_CHOICES,
-               help='Type of concurrency used. Either "native" or "eventlet"'),
 
     cfg.IntOpt('rpc_zmq_contexts', default=1,
                help='Number of ZeroMQ contexts, defaults to 1.'),
@@ -78,9 +72,13 @@ zmq_opts = [
                help='The default number of seconds that poll should wait. '
                     'Poll raises timeout exception when timeout expired.'),
 
-    cfg.IntOpt('zmq_target_expire', default=120,
+    cfg.IntOpt('zmq_target_expire', default=300,
                help='Expiration timeout in seconds of a name service record '
                     'about existing target ( < 0 means no timeout).'),
+
+    cfg.IntOpt('zmq_target_update', default=180,
+               help='Update period in seconds of a name service record '
+                    'about existing target.'),
 
     cfg.BoolOpt('use_pub_sub', default=True,
                 help='Use PUB/SUB pattern for fanout methods. '

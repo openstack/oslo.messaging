@@ -15,6 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import copy
 import logging
 import sys
@@ -442,3 +443,67 @@ class ConnectionContext(Connection):
             return getattr(self.connection, key)
         else:
             raise InvalidRPCConnectionReuse()
+
+
+class ConfigOptsProxy(collections.Mapping):
+    """Proxy for oslo_config.cfg.ConfigOpts.
+
+    Values from the query part of the transport url (if they are both present
+    and valid) override corresponding values from the configuration.
+    """
+
+    def __init__(self, conf, url):
+        self._conf = conf
+        self._url = url
+
+    def __getattr__(self, name):
+        value = getattr(self._conf, name)
+        if isinstance(value, self._conf.GroupAttr):
+            return self.GroupAttrProxy(self._conf, name, value, self._url)
+        return value
+
+    def __getitem__(self, name):
+        return self.__getattr__(name)
+
+    def __contains__(self, name):
+        return name in self._conf
+
+    def __iter__(self):
+        return iter(self._conf)
+
+    def __len__(self):
+        return len(self._conf)
+
+    class GroupAttrProxy(collections.Mapping):
+        """Internal helper proxy for oslo_config.cfg.ConfigOpts.GroupAttr."""
+
+        _VOID_MARKER = object()
+
+        def __init__(self, conf, group_name, group, url):
+            self._conf = conf
+            self._group_name = group_name
+            self._group = group
+            self._url = url
+
+        def __getattr__(self, opt_name):
+            # Make sure that the group has this specific option
+            opt_value_conf = getattr(self._group, opt_name)
+            # If the option is also present in the url and has a valid
+            # (i.e. convertible) value type, then try to override it
+            opt_value_url = self._url.query.get(opt_name, self._VOID_MARKER)
+            if opt_value_url is self._VOID_MARKER:
+                return opt_value_conf
+            opt_info = self._conf._get_opt_info(opt_name, self._group_name)
+            return opt_info['opt'].type(opt_value_url)
+
+        def __getitem__(self, opt_name):
+            return self.__getattr__(opt_name)
+
+        def __contains__(self, opt_name):
+            return opt_name in self._group
+
+        def __iter__(self):
+            return iter(self._group)
+
+        def __len__(self):
+            return len(self._group)

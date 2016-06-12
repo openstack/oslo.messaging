@@ -331,20 +331,33 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
 class TestTransportUrlCustomisation(test_utils.BaseTestCase):
     def setUp(self):
         super(TestTransportUrlCustomisation, self).setUp()
-        self.url1 = transport.TransportURL.parse(self.conf, "fake://vhost1")
-        self.url2 = transport.TransportURL.parse(self.conf, "fake://vhost2")
-        self.url3 = transport.TransportURL.parse(self.conf, "fake://vhost1")
+
+        def transport_url_parse(url):
+            return transport.TransportURL.parse(self.conf, url)
+
+        self.url1 = transport_url_parse("fake://vhost1?x=1&y=2&z=3")
+        self.url2 = transport_url_parse("fake://vhost2?foo=bar")
+        self.url3 = transport_url_parse("fake://vhost1?l=1&l=2&l=3")
+        self.url4 = transport_url_parse("fake://vhost2?d=x:1&d=y:2&d=z:3")
 
     def test_hash(self):
         urls = {}
         urls[self.url1] = self.url1
         urls[self.url2] = self.url2
         urls[self.url3] = self.url3
+        urls[self.url4] = self.url4
         self.assertEqual(2, len(urls))
 
     def test_eq(self):
         self.assertEqual(self.url1, self.url3)
-        self.assertNotEqual(self.url1, self.url2)
+        self.assertEqual(self.url2, self.url4)
+        self.assertNotEqual(self.url1, self.url4)
+
+    def test_query(self):
+        self.assertEqual(self.url1.query, {'x': '1', 'y': '2', 'z': '3'})
+        self.assertEqual(self.url2.query, {'foo': 'bar'})
+        self.assertEqual(self.url3.query, {'l': '1,2,3'})
+        self.assertEqual(self.url4.query, {'d': 'x:1,y:2,z:3'})
 
 
 class TestTransportHostCustomisation(test_utils.BaseTestCase):

@@ -12,30 +12,20 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_messaging._i18n import _
+from oslo_utils import eventletutils
 from oslo_utils import importutils
 
 
-# Map zmq_concurrency config option names to the actual module name.
-ZMQ_MODULES = {
-    'native': 'zmq',
-    'eventlet': 'eventlet.green.zmq',
-}
-
-
-def import_zmq(zmq_concurrency='eventlet'):
-    _raise_error_if_invalid_config_value(zmq_concurrency)
-
-    imported_zmq = importutils.try_import(ZMQ_MODULES[zmq_concurrency],
-                                          default=None)
-
+def import_zmq():
+    imported_zmq = importutils.try_import(
+        'eventlet.green.zmq' if eventletutils.is_monkey_patched('thread') else
+        'zmq', default=None
+    )
     return imported_zmq
 
 
-def get_poller(zmq_concurrency='eventlet'):
-    _raise_error_if_invalid_config_value(zmq_concurrency)
-
-    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
+def get_poller():
+    if eventletutils.is_monkey_patched('thread'):
         from oslo_messaging._drivers.zmq_driver.poller import green_poller
         return green_poller.GreenPoller()
 
@@ -43,10 +33,8 @@ def get_poller(zmq_concurrency='eventlet'):
     return threading_poller.ThreadingPoller()
 
 
-def get_executor(method, zmq_concurrency='eventlet'):
-    _raise_error_if_invalid_config_value(zmq_concurrency)
-
-    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
+def get_executor(method):
+    if eventletutils.is_monkey_patched('thread'):
         from oslo_messaging._drivers.zmq_driver.poller import green_poller
         return green_poller.GreenExecutor(method)
 
@@ -54,26 +42,10 @@ def get_executor(method, zmq_concurrency='eventlet'):
     return threading_poller.ThreadingExecutor(method)
 
 
-def is_eventlet_concurrency(conf):
-    return _is_eventlet_zmq_available() and conf.rpc_zmq_concurrency == \
-        'eventlet'
-
-
-def _is_eventlet_zmq_available():
-    return importutils.try_import('eventlet.green.zmq')
-
-
-def _raise_error_if_invalid_config_value(zmq_concurrency):
-    if zmq_concurrency not in ZMQ_MODULES:
-        errmsg = _('Invalid zmq_concurrency value: %s')
-        raise ValueError(errmsg % zmq_concurrency)
-
-
-def get_queue(zmq_concurrency='eventlet'):
-    _raise_error_if_invalid_config_value(zmq_concurrency)
-    if zmq_concurrency == 'eventlet' and _is_eventlet_zmq_available():
+def get_queue():
+    if eventletutils.is_monkey_patched('thread'):
         import eventlet
         return eventlet.queue.Queue(), eventlet.queue.Empty
-    else:
-        import six
-        return six.moves.queue.Queue(), six.moves.queue.Empty
+
+    import six
+    return six.moves.queue.Queue(), six.moves.queue.Empty

@@ -22,9 +22,10 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
+from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LI
 
-zmq = zmq_async.import_zmq(zmq_concurrency='native')
+zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
 
 
@@ -35,7 +36,7 @@ class UniversalQueueProxy(object):
         self.context = context
         super(UniversalQueueProxy, self).__init__()
         self.matchmaker = matchmaker
-        self.poller = zmq_async.get_poller(zmq_concurrency='native')
+        self.poller = zmq_async.get_poller()
 
         self.fe_router_socket = zmq_socket.ZmqRandomPortSocket(
             conf, context, zmq.ROUTER)
@@ -55,17 +56,12 @@ class UniversalQueueProxy(object):
         self.pub_publisher = zmq_pub_publisher.PubPublisherProxy(
             conf, matchmaker)
 
-        self.matchmaker.register_publisher(
-            (self.pub_publisher.host, self.fe_router_address))
-        LOG.info(_LI("[PUB:%(pub)s, ROUTER:%(router)s] Run PUB publisher"),
-                 {"pub": self.pub_publisher.host,
-                  "router": self.fe_router_address})
-        self.matchmaker.register_router(self.be_router_address)
-        LOG.info(_LI("[Backend ROUTER:%(router)s] Run ROUTER"),
-                 {"router": self.be_router_address})
+        self._router_updater = RouterUpdater(
+            conf, matchmaker, self.pub_publisher.host, self.fe_router_address,
+            self.be_router_address)
 
     def run(self):
-        message, socket = self.poller.poll(self.conf.rpc_poll_timeout)
+        message, socket = self.poller.poll()
         if message is None:
             return
 
@@ -106,7 +102,7 @@ class UniversalQueueProxy(object):
         socket.send(b'', zmq.SNDMORE)
         socket.send(reply_id, zmq.SNDMORE)
         socket.send(six.b(str(message_type)), zmq.SNDMORE)
-        LOG.debug("Redirecting message %s" % message_id)
+        LOG.debug("Dispatching message %s" % message_id)
         socket.send_multipart(multipart_message)
 
     def cleanup(self):
@@ -116,3 +112,29 @@ class UniversalQueueProxy(object):
         self.matchmaker.unregister_publisher(
             (self.pub_publisher.host, self.fe_router_address))
         self.matchmaker.unregister_router(self.be_router_address)
+
+
+class RouterUpdater(zmq_updater.UpdaterBase):
+    """This entity performs periodic async updates
+    from router proxy to the matchmaker.
+    """
+
+    def __init__(self, conf, matchmaker, publisher_address, fe_router_address,
+                 be_router_address):
+        self.publisher_address = publisher_address
+        self.fe_router_address = fe_router_address
+        self.be_router_address = be_router_address
+        super(RouterUpdater, self).__init__(conf, matchmaker,
+                                            self._update_records)
+
+    def _update_records(self):
+        self.matchmaker.register_publisher(
+            (self.publisher_address, self.fe_router_address),
+            expire=self.conf.zmq_target_expire)
+        LOG.info(_LI("[PUB:%(pub)s, ROUTER:%(router)s] Update PUB publisher"),
+                 {"pub": self.publisher_address,
+                  "router": self.fe_router_address})
+        self.matchmaker.register_router(self.be_router_address,
+                                        expire=self.conf.zmq_target_expire)
+        LOG.info(_LI("[Backend ROUTER:%(router)s] Update ROUTER"),
+                 {"router": self.be_router_address})

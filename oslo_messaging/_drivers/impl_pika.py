@@ -55,7 +55,7 @@ notification_opts = [
                 help="Persist notification messages."),
     cfg.StrOpt('default_notification_exchange',
                default="${control_exchange}_notification",
-               help="Exchange name for for sending notifications"),
+               help="Exchange name for sending notifications"),
     cfg.IntOpt(
         'notification_listener_prefetch_count', default=100,
         help="Max number of not acknowledged message which RabbitMQ can send "

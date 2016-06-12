@@ -19,7 +19,7 @@ from stevedore import driver
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 
-zmq = zmq_async.import_zmq(zmq_concurrency='native')
+zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
 
 

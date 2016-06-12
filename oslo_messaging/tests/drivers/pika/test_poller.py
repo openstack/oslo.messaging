@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import socket
 import threading
 import time
 import unittest
@@ -20,6 +19,7 @@ import unittest
 from concurrent import futures
 import mock
 
+from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_poller
 
 
@@ -65,10 +65,15 @@ class PikaPollerTestCase(unittest.TestCase):
             self._pika_engine, 1, None, self._prefetch_count, None
         )
 
-        self._pika_engine.create_connection.side_effect = socket.timeout()
+        self._pika_engine.create_connection.side_effect = (
+            pika_drv_exc.EstablishConnectionException
+        )
 
         # start() should not raise socket.timeout exception
         poller.start(None)
+
+        # stop is needed to stop reconnection background job
+        poller.stop()
 
     @mock.patch("oslo_messaging._drivers.pika_driver.pika_poller.PikaPoller."
                 "_declare_queue_binding")
