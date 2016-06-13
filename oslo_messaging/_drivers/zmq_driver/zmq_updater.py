@@ -34,6 +34,9 @@ class UpdaterBase(object):
         self.executor = zmq_async.get_executor(method=self._update_loop)
         self.executor.execute()
 
+    def stop(self):
+        self.executor.stop()
+
     def _update_loop(self):
         self.update_method()
         time.sleep(self.conf.zmq_target_update)

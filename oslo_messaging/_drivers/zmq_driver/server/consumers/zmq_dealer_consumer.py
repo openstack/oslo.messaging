@@ -77,23 +77,26 @@ class DealerIncomingRequest(base.RpcIncomingMessage):
         """Requeue is not supported"""
 
 
-class DealerConsumer(zmq_consumer_base.ConsumerBase):
+class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        super(DealerConsumer, self).__init__(conf, poller, server)
-        self.matchmaker = server.matchmaker
-        self.target = server.target
         self.sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, self.matchmaker, zmq.ROUTER, zmq.DEALER)
-        self.socket = self.sockets_manager.get_socket_to_routers()
-        self.poller.register(self.socket, self.receive_message)
-        self.host = self.socket.handle.identity
-        self.target_updater = zmq_consumer_base.TargetUpdater(
-            conf, self.matchmaker, self.target, self.host,
-            zmq.DEALER)
+            conf, server.matchmaker, zmq.ROUTER, zmq.DEALER)
+        self.host = None
+        super(DealerConsumer, self).__init__(conf, poller, server, zmq.DEALER)
         self.connection_updater = ConsumerConnectionUpdater(
             conf, self.matchmaker, self.socket)
         LOG.info(_LI("[%s] Run DEALER consumer"), self.host)
+
+    def subscribe_socket(self, socket_type):
+        try:
+            socket = self.sockets_manager.get_socket_to_routers()
+            self.host = socket.handle.identity
+            self.poller.register(socket, self.receive_message)
+            return socket
+        except zmq.ZMQError as e:
+            LOG.error(_LE("Failed connecting to ROUTER socket %(e)s") % e)
+            raise rpc_common.RPCException(str(e))
 
     def receive_message(self, socket):
         try:
@@ -120,8 +123,6 @@ class DealerConsumer(zmq_consumer_base.ConsumerBase):
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
         super(DealerConsumer, self).cleanup()
-        self.matchmaker.unregister(self.target, self.host,
-                                   zmq_names.socket_type_str(zmq.DEALER))
 
 
 class ConsumerConnectionUpdater(zmq_updater.ConnectionUpdater):
