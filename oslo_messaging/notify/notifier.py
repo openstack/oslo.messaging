@@ -171,7 +171,7 @@ class Notifier(object):
                       N means N retries
         :type retry: int
         :param topics: the topics which to send messages on
-        :type topic: list of strings
+        :type topics: list of strings
         """
         conf = transport.conf
         conf.register_opts(_notifier_opts,
