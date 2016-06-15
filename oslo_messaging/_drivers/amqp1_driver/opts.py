@@ -16,25 +16,11 @@ from oslo_config import cfg
 
 
 amqp1_opts = [
-    cfg.StrOpt('server_request_prefix',
-               default='exclusive',
-               deprecated_group='amqp1',
-               help="address prefix used when sending to a specific server"),
-
-    cfg.StrOpt('broadcast_prefix',
-               default='broadcast',
-               deprecated_group='amqp1',
-               help="address prefix used when broadcasting to all servers"),
-
-    cfg.StrOpt('group_request_prefix',
-               default='unicast',
-               deprecated_group='amqp1',
-               help="address prefix when sending to any server in group"),
-
     cfg.StrOpt('container_name',
                default=None,
                deprecated_group='amqp1',
-               help='Name for the AMQP container'),
+               help='Name for the AMQP container. must be globally unique.'
+                    ' Defaults to a generated UUID'),
 
     cfg.IntOpt('idle_timeout',
                default=0,  # disabled
@@ -130,5 +116,86 @@ amqp1_opts = [
                default=10,
                min=1,
                help='Time to pause between re-connecting an AMQP 1.0 link that'
-               ' failed due to a recoverable error.')
+               ' failed due to a recoverable error.'),
+
+    # Addressing:
+
+    cfg.StrOpt('addressing_mode',
+               default='dynamic',
+               help="Indicates the addressing mode used by the driver.\n"
+               "Permitted values:\n"
+               "'legacy'   - use legacy non-routable addressing\n"
+               "'routable' - use routable addresses\n"
+               "'dynamic'  - use legacy addresses if the message bus does not"
+               " support routing otherwise use routable addressing"),
+
+    # Legacy addressing customization:
+
+    cfg.StrOpt('server_request_prefix',
+               default='exclusive',
+               deprecated_group='amqp1',
+               help="address prefix used when sending to a specific server"),
+
+    cfg.StrOpt('broadcast_prefix',
+               default='broadcast',
+               deprecated_group='amqp1',
+               help="address prefix used when broadcasting to all servers"),
+
+    cfg.StrOpt('group_request_prefix',
+               default='unicast',
+               deprecated_group='amqp1',
+               help="address prefix when sending to any server in group"),
+
+    # Routable addressing customization:
+    #
+    # Addresses a composed of the following string values using a template in
+    # the form of:
+    # $(address_prefix)/$(*cast)/$(exchange)/$(topic)[/$(server-name)]
+    # where *cast is one of the multicast/unicast/anycast values used to
+    # identify the delivery pattern used for the addressed message
+
+    cfg.StrOpt('rpc_address_prefix',
+               default='openstack.org/om/rpc',
+               help="Address prefix for all generated RPC addresses"),
+
+    cfg.StrOpt('notify_address_prefix',
+               default='openstack.org/om/notify',
+               help="Address prefix for all generated Notification addresses"),
+
+    cfg.StrOpt('multicast_address',
+               default='multicast',
+               help="Appended to the address prefix when sending a fanout"
+               " message. Used by the message bus to identify fanout"
+               " messages."),
+
+    cfg.StrOpt('unicast_address',
+               default='unicast',
+               help="Appended to the address prefix when sending to a"
+               " particular RPC/Notification server. Used by the message bus"
+               " to identify messages sent to a single destination."),
+
+    cfg.StrOpt('anycast_address',
+               default='anycast',
+               help="Appended to the address prefix when sending to a group of"
+               " consumers. Used by the message bus to identify messages that"
+               " should be delivered in a round-robin fashion across"
+               " consumers."),
+
+    cfg.StrOpt('default_notification_exchange',
+               default=None,
+               help="Exchange name used in notification addresses.\n"
+               "Exchange name resolution precedence:\n"
+               "Target.exchange if set\n"
+               "else default_notification_exchange if set\n"
+               "else control_exchange if set\n"
+               "else 'notify'"),
+
+    cfg.StrOpt('default_rpc_exchange',
+               default=None,
+               help="Exchange name used in RPC addresses.\n"
+               "Exchange name resolution precedence:\n"
+               "Target.exchange if set\n"
+               "else default_rpc_exchange if set\n"
+               "else control_exchange if set\n"
+               "else 'rpc'")
 ]

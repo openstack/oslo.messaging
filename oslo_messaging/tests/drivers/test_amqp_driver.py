@@ -37,6 +37,12 @@ from oslo_messaging.tests import utils as test_utils
 # are available in the base repos for all supported platforms.
 pyngus = importutils.try_import("pyngus")
 if pyngus:
+    from oslo_messaging._drivers.amqp1_driver.addressing \
+        import AddresserFactory
+    from oslo_messaging._drivers.amqp1_driver.addressing \
+        import LegacyAddresser
+    from oslo_messaging._drivers.amqp1_driver.addressing \
+        import RoutableAddresser
     import oslo_messaging._drivers.impl_amqp1 as amqp_driver
 
 # The Cyrus-based SASL tests can only be run if the installed version of proton
@@ -120,7 +126,7 @@ class _AmqpBrokerTestCase(test_utils.BaseTestCase):
     @testtools.skipUnless(pyngus, "proton modules not present")
     def setUp(self):
         super(_AmqpBrokerTestCase, self).setUp()
-        self._broker = FakeBroker()
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp)
         self._broker_addr = "amqp://%s:%d" % (self._broker.host,
                                               self._broker.port)
         self._broker_url = oslo_messaging.TransportURL.parse(
@@ -531,7 +537,8 @@ class TestAuthentication(test_utils.BaseTestCase):
         # for simplicity, encode the credentials as they would appear 'on the
         # wire' in a SASL frame - username and password prefixed by zero.
         user_credentials = ["\0joe\0secret"]
-        self._broker = FakeBroker(sasl_mechanisms="PLAIN",
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sasl_mechanisms="PLAIN",
                                   user_credentials=user_credentials)
         self._broker.start()
 
@@ -614,7 +621,8 @@ mech_list: ${mechs}
         with open(conf, 'w') as f:
             f.write(t.substitute(db=db, mechs=mechs))
 
-        self._broker = FakeBroker(sasl_mechanisms=mechs,
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sasl_mechanisms=mechs,
                                   user_credentials=["\0joe\0secret"],
                                   sasl_config_dir=self._conf_dir,
                                   sasl_config_name="openstack")
@@ -716,7 +724,13 @@ class TestFailover(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestFailover, self).setUp()
-        self._brokers = [FakeBroker(), FakeBroker()]
+        # configure different addressing modes on the brokers to test failing
+        # over from one type of backend to another
+        self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
+        self._brokers = [FakeBroker(self.conf.oslo_messaging_amqp,
+                                    product="qpid-cpp"),
+                         FakeBroker(self.conf.oslo_messaging_amqp,
+                                    product="routable")]
         self._primary = 0
         self._backup = 1
         hosts = []
@@ -1025,6 +1039,240 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         driver.cleanup()
 
 
+@testtools.skipUnless(pyngus, "proton modules not present")
+class TestAddressing(test_utils.BaseTestCase):
+    # Verify the addressing modes supported by the driver
+    def _address_test(self, rpc_target, targets_priorities):
+        # verify proper messaging semantics for a given addressing mode
+        broker = FakeBroker(self.conf.oslo_messaging_amqp)
+        broker.start()
+        url = oslo_messaging.TransportURL.parse(self.conf,
+                                                "amqp://%s:%d" %
+                                                (broker.host, broker.port))
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+
+        rl = []
+        for server in ["Server1", "Server2"]:
+            _ = driver.listen(rpc_target(server=server), None,
+                              None)._poll_style_listener
+            # 3 == 1 msg to server + 1 fanout msg + 1 anycast msg
+            rl.append(_ListenerThread(_, 3))
+
+        nl = []
+        for n in range(2):
+            _ = driver.listen_for_notifications(targets_priorities, None, None,
+                                                None)._poll_style_listener
+            nl.append(_ListenerThread(_, len(targets_priorities)))
+
+        driver.send(rpc_target(server="Server1"), {"context": "whatever"},
+                    {"msg": "Server1"})
+        driver.send(rpc_target(server="Server2"), {"context": "whatever"},
+                    {"msg": "Server2"})
+        driver.send(rpc_target(fanout=True), {"context": "whatever"},
+                    {"msg": "Fanout"})
+        # FakeBroker should evenly distribute these across the servers
+        driver.send(rpc_target(server=None), {"context": "whatever"},
+                    {"msg": "Anycast1"})
+        driver.send(rpc_target(server=None), {"context": "whatever"},
+                    {"msg": "Anycast2"})
+
+        expected = []
+        for n in targets_priorities:
+            # this is how the notifier creates an address:
+            topic = "%s.%s" % (n[0].topic, n[1])
+            target = oslo_messaging.Target(topic=topic)
+            driver.send_notification(target, {"context": "whatever"},
+                                     {"msg": topic}, 2.0)
+            expected.append(topic)
+
+        for l in rl:
+            l.join(timeout=30)
+
+        # anycast will not evenly distribute an odd number of msgs
+        predicate = lambda: len(expected) == (nl[0].messages.qsize() +
+                                              nl[1].messages.qsize())
+        _wait_until(predicate, 30)
+        for l in nl:
+            l.kill(timeout=30)
+
+        s1_payload = [m.message.get('msg') for m in rl[0].get_messages()]
+        s2_payload = [m.message.get('msg') for m in rl[1].get_messages()]
+
+        self.assertTrue("Server1" in s1_payload
+                        and "Server2" not in s1_payload)
+        self.assertTrue("Server2" in s2_payload
+                        and "Server1" not in s2_payload)
+        self.assertEqual(s1_payload.count("Fanout"), 1)
+        self.assertEqual(s2_payload.count("Fanout"), 1)
+        self.assertEqual((s1_payload + s2_payload).count("Anycast1"), 1)
+        self.assertEqual((s1_payload + s2_payload).count("Anycast2"), 1)
+
+        n1_payload = [m.message.get('msg') for m in nl[0].get_messages()]
+        n2_payload = [m.message.get('msg') for m in nl[1].get_messages()]
+
+        self.assertEqual((n1_payload + n2_payload).sort(), expected.sort())
+
+        driver.cleanup()
+        broker.stop()
+        return broker.message_log
+
+    def test_routable_address(self):
+        # verify routable address mode
+        self.config(addressing_mode='routable', group="oslo_messaging_amqp")
+        _opts = self.conf.oslo_messaging_amqp
+        notifications = [(oslo_messaging.Target(topic="test-topic"), 'info'),
+                         (oslo_messaging.Target(topic="test-topic"), 'error'),
+                         (oslo_messaging.Target(topic="test-topic"), 'debug')]
+
+        msgs = self._address_test(oslo_messaging.Target(exchange="ex",
+                                                        topic="test-topic"),
+                                  notifications)
+        addrs = [m.address for m in msgs]
+
+        notify_addrs = [a for a in addrs
+                        if a.startswith(_opts.notify_address_prefix)]
+        self.assertEqual(len(notify_addrs), len(notifications))
+        # expect all notifications to be 'anycast'
+        self.assertEqual(len(notifications),
+                         len([a for a in notify_addrs
+                              if _opts.anycast_address in a]))
+
+        rpc_addrs = [a for a in addrs
+                     if a.startswith(_opts.rpc_address_prefix)]
+        # 2 anycast messages
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if _opts.anycast_address in a]))
+        # 1 fanout sent
+        self.assertEqual(1,
+                         len([a for a in rpc_addrs
+                              if _opts.multicast_address in a]))
+        # 2 unicast messages (1 for each server)
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if _opts.unicast_address in a]))
+
+    def test_legacy_address(self):
+        # verify legacy address mode
+        self.config(addressing_mode='legacy', group="oslo_messaging_amqp")
+        _opts = self.conf.oslo_messaging_amqp
+        notifications = [(oslo_messaging.Target(topic="test-topic"), 'info'),
+                         (oslo_messaging.Target(topic="test-topic"), 'error'),
+                         (oslo_messaging.Target(topic="test-topic"), 'debug')]
+
+        msgs = self._address_test(oslo_messaging.Target(exchange="ex",
+                                                        topic="test-topic"),
+                                  notifications)
+        addrs = [m.address for m in msgs]
+
+        server_addrs = [a for a in addrs
+                        if a.startswith(_opts.server_request_prefix)]
+        broadcast_addrs = [a for a in addrs
+                           if a.startswith(_opts.broadcast_prefix)]
+        group_addrs = [a for a in addrs
+                       if a.startswith(_opts.group_request_prefix)]
+        # 2 server address messages sent
+        self.assertEqual(len(server_addrs), 2)
+        # 1 fanout address message sent
+        self.assertEqual(len(broadcast_addrs), 1)
+        # group messages: 2 rpc + all notifications
+        self.assertEqual(len(group_addrs),
+                         2 + len(notifications))
+
+    def test_address_options(self):
+        # verify addressing configuration options
+        self.config(addressing_mode='routable', group="oslo_messaging_amqp")
+        self.config(rpc_address_prefix="RPC-PREFIX",
+                    group="oslo_messaging_amqp")
+        self.config(notify_address_prefix="NOTIFY-PREFIX",
+                    group="oslo_messaging_amqp")
+
+        self.config(multicast_address="MULTI-CAST",
+                    group="oslo_messaging_amqp")
+        self.config(unicast_address="UNI-CAST",
+                    group="oslo_messaging_amqp")
+        self.config(anycast_address="ANY-CAST",
+                    group="oslo_messaging_amqp")
+
+        self.config(default_notification_exchange="NOTIFY-EXCHANGE",
+                    group="oslo_messaging_amqp")
+        self.config(default_rpc_exchange="RPC-EXCHANGE",
+                    group="oslo_messaging_amqp")
+
+        notifications = [(oslo_messaging.Target(topic="test-topic"), 'info'),
+                         (oslo_messaging.Target(topic="test-topic"), 'error'),
+                         (oslo_messaging.Target(topic="test-topic"), 'debug')]
+
+        msgs = self._address_test(oslo_messaging.Target(exchange=None,
+                                                        topic="test-topic"),
+                                  notifications)
+        addrs = [m.address for m in msgs]
+
+        notify_addrs = [a for a in addrs
+                        if a.startswith("NOTIFY-PREFIX")]
+        self.assertEqual(len(notify_addrs), len(notifications))
+        # expect all notifications to be 'anycast'
+        self.assertEqual(len(notifications),
+                         len([a for a in notify_addrs
+                              if "ANY-CAST" in a]))
+        # and all should contain the default exchange:
+        self.assertEqual(len(notifications),
+                         len([a for a in notify_addrs
+                              if "NOTIFY-EXCHANGE" in a]))
+
+        rpc_addrs = [a for a in addrs
+                     if a.startswith("RPC-PREFIX")]
+        # 2 RPC anycast messages
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if "ANY-CAST" in a]))
+        # 1 RPC fanout sent
+        self.assertEqual(1,
+                         len([a for a in rpc_addrs
+                              if "MULTI-CAST" in a]))
+        # 2 RPC unicast messages (1 for each server)
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if "UNI-CAST" in a]))
+
+        self.assertEqual(len(rpc_addrs),
+                         len([a for a in rpc_addrs
+                              if "RPC-EXCHANGE" in a]))
+
+    def _dynamic_test(self, product):
+        # return the addresser used when connected to 'product'
+        broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                            product=product)
+        broker.start()
+        url = oslo_messaging.TransportURL.parse(self.conf,
+                                                "amqp://%s:%d" %
+                                                (broker.host, broker.port))
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+
+        # need to send a message to initate the connection to the broker
+        target = oslo_messaging.Target(topic="test-topic",
+                                       server="Server")
+        listener = _ListenerThread(
+            driver.listen(target, None, None)._poll_style_listener, 1)
+        driver.send(target, {"context": True}, {"msg": "value"},
+                    wait_for_reply=False)
+        listener.join(timeout=30)
+
+        addresser = driver._ctrl.addresser
+        driver.cleanup()
+        broker.stop()  # clears the driver's addresser
+        return addresser
+
+    def test_dynamic_addressing(self):
+        # simply check that the correct addresser is provided based on the
+        # identity of the messaging back-end
+        self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
+        self.assertTrue(isinstance(self._dynamic_test("router"),
+                                   RoutableAddresser))
+        self.assertTrue(isinstance(self._dynamic_test("qpid-cpp"),
+                                   LegacyAddresser))
+
+
 class FakeBroker(threading.Thread):
     """A test AMQP message 'broker'."""
 
@@ -1032,7 +1280,7 @@ class FakeBroker(threading.Thread):
         class Connection(pyngus.ConnectionEventHandler):
             """A single AMQP connection."""
 
-            def __init__(self, server, socket_, name,
+            def __init__(self, server, socket_, name, product,
                          sasl_mechanisms, user_credentials,
                          sasl_config_dir, sasl_config_name):
                 """Create a Connection using socket_."""
@@ -1050,6 +1298,8 @@ class FakeBroker(threading.Thread):
                     properties['x-sasl-config-dir'] = sasl_config_dir
                 if sasl_config_name:
                     properties['x-sasl-config-name'] = sasl_config_name
+                if product:
+                    properties['properties'] = {'product': product}
 
                 self.connection = server.container.create_connection(
                     name, self, properties)
@@ -1248,11 +1498,10 @@ class FakeBroker(threading.Thread):
                 if self.link.capacity < 1:
                     self.server.credit_exhausted(self.link)
 
-    def __init__(self, server_prefix="exclusive",
-                 broadcast_prefix="broadcast",
-                 group_prefix="unicast",
-                 address_separator=".",
+    def __init__(self, cfg,
                  sock_addr="", sock_port=0,
+                 product=None,
+                 default_exchange="Test-Exchange",
                  sasl_mechanisms="ANONYMOUS",
                  user_credentials=None,
                  sasl_config_dir=None,
@@ -1261,10 +1510,8 @@ class FakeBroker(threading.Thread):
         if not pyngus:
             raise AssertionError("pyngus module not present")
         threading.Thread.__init__(self)
-        self._server_prefix = server_prefix + address_separator
-        self._broadcast_prefix = broadcast_prefix + address_separator
-        self._group_prefix = group_prefix + address_separator
-        self._address_separator = address_separator
+        self._config = cfg
+        self._product = product
         self._sasl_mechanisms = sasl_mechanisms
         self._sasl_config_dir = sasl_config_dir
         self._sasl_config_name = sasl_config_name
@@ -1275,6 +1522,22 @@ class FakeBroker(threading.Thread):
         self.host, self.port = self._my_socket.getsockname()
         self.container = pyngus.Container("test_server_%s:%d"
                                           % (self.host, self.port))
+
+        # create an addresser using the test client's config and expected
+        # message bus so the broker can parse the message addresses
+        af = AddresserFactory(default_exchange,
+                              cfg.addressing_mode,
+                              legacy_server_prefix=cfg.server_request_prefix,
+                              legacy_broadcast_prefix=cfg.broadcast_prefix,
+                              legacy_group_prefix=cfg.group_request_prefix,
+                              rpc_prefix=cfg.rpc_address_prefix,
+                              notify_prefix=cfg.notify_address_prefix,
+                              multicast=cfg.multicast_address,
+                              unicast=cfg.unicast_address,
+                              anycast=cfg.anycast_address)
+        props = {'product': product} if product else {}
+        self._addresser = af(props)
+
         self._connections = {}
         self._sources = {}
         self._pause = threading.Event()
@@ -1290,6 +1553,8 @@ class FakeBroker(threading.Thread):
         self.receiver_link_count = 0
         self.sender_link_ack_count = 0
         self.sender_link_requeue_count = 0
+        # log of all messages received by the broker
+        self.message_log = []
         # callback hooks
         self.on_sender_active = lambda link: None
         self.on_receiver_active = lambda link: link.add_capacity(10)
@@ -1358,6 +1623,7 @@ class FakeBroker(threading.Thread):
                         # create a new Connection for it:
                         name = str(addr)
                         conn = FakeBroker.Connection(self, sock, name,
+                                                     self._product,
                                                      self._sasl_mechanisms,
                                                      self._user_credentials,
                                                      self._sasl_config_dir,
@@ -1427,6 +1693,7 @@ class FakeBroker(threading.Thread):
 
     def forward_message(self, message, handle, rlink):
         # returns True if message was routed
+        self.message_log.append(message)
         dest = message.address
         if dest not in self._sources:
             # can't forward
@@ -1437,14 +1704,14 @@ class FakeBroker(threading.Thread):
             return
 
         LOG.debug("Forwarding [%s]", dest)
-        # route "behavior" determined by prefix:
-        if dest.startswith(self._broadcast_prefix):
+        # route "behavior" determined by address prefix:
+        if self._addresser._is_multicast(dest):
             self.fanout_count += 1
             for link in self._sources[dest]:
                 self.fanout_sent_count += 1
                 LOG.debug("Broadcast to %s", dest)
                 link.send_message(message)
-        elif dest.startswith(self._group_prefix):
+        elif self._addresser._is_anycast(dest):
             # round-robin:
             self.topic_count += 1
             link = self._sources[dest].pop(0)

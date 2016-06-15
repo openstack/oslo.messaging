@@ -27,7 +27,10 @@ functions scheduled by the Controller.
 import abc
 import collections
 import logging
+import os
+import platform
 import random
+import sys
 import threading
 import time
 import uuid
@@ -38,10 +41,14 @@ from six import iteritems
 from six import itervalues
 from six import moves
 
+from oslo_messaging._drivers.amqp1_driver.addressing import AddresserFactory
+from oslo_messaging._drivers.amqp1_driver.addressing import keyify
+from oslo_messaging._drivers.amqp1_driver.addressing import SERVICE_NOTIFY
+from oslo_messaging._drivers.amqp1_driver.addressing import SERVICE_RPC
 from oslo_messaging._drivers.amqp1_driver import eventloop
 from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
-from oslo_messaging import target
+from oslo_messaging.target import Target
 from oslo_messaging import transport
 
 LOG = logging.getLogger(__name__)
@@ -70,23 +77,17 @@ class SubscribeTask(Task):
     """
     def __init__(self, target, listener, notifications=False):
         super(SubscribeTask, self).__init__()
-        self._target = target
-        self._listener = listener
-        self._notifications = notifications
+        self._target = target()  # mutable - need a copy
+        self._subscriber_id = listener.id
+        self._in_queue = listener.incoming
+        self._service = SERVICE_NOTIFY if notifications else SERVICE_RPC
         self._wakeup = threading.Event()
 
     def wait(self):
         self._wakeup.wait()
 
     def _execute(self, controller):
-        if self._notifications:
-            controller.subscribe_notifications(self._target,
-                                               self._listener.incoming,
-                                               self._listener.id)
-        else:
-            controller.subscribe(self._target,
-                                 self._listener.incoming,
-                                 self._listener.id)
+        controller.subscribe(self)
         self._wakeup.set()
 
 
@@ -95,15 +96,17 @@ class SendTask(Task):
     destination.
     """
     def __init__(self, name, message, target, deadline, retry,
-                 wait_for_ack):
+                 wait_for_ack, notification=False):
         super(SendTask, self).__init__()
         self.name = name
         # note: target can be either a Target class or a string
-        self.target = target
+        # target is mutable - make copy
+        self.target = target() if isinstance(target, Target) else target
         self.message = message
         self.deadline = deadline
         self.retry = retry
         self.wait_for_ack = wait_for_ack
+        self.service = SERVICE_NOTIFY if notification else SERVICE_RPC
         self.timer = None
         self._wakeup = threading.Event()
         self._controller = None
@@ -255,13 +258,14 @@ class MessageDispositionTask(Task):
 
 
 class Sender(pyngus.SenderEventHandler):
-    """A link for sending to a particular address on the message bus.
+    """A link for sending to a particular destination on the message bus.
     """
-    def __init__(self, address, scheduler, delay):
+    def __init__(self, destination, scheduler, delay, service):
         super(Sender, self).__init__()
-        self._address = address
+        self._destination = destination
+        self._service = service
+        self._address = None
         self._link = None
-        self._name = "Producer [target=%s:id=%s]" % (address, uuid.uuid4().hex)
         self._scheduler = scheduler
         self._delay = delay  # for re-connecting
         # holds all pending SendTasks
@@ -275,13 +279,14 @@ class Sender(pyngus.SenderEventHandler):
     def pending_messages(self):
         return len(self._pending_sends)
 
-    def attach(self, connection, reply_link):
+    def attach(self, connection, reply_link, addresser):
         """Open the link. Called by the Controller when the AMQP connection
         becomes active.
         """
-        LOG.debug("Sender %s attached", self._address)
         self._connection = connection
         self._reply_link = reply_link
+        self._address = addresser.resolve(self._destination, self._service)
+        LOG.debug("Sender %s attached", self._address)
         self._link = self._open_link()
 
     def detach(self):
@@ -289,6 +294,7 @@ class Sender(pyngus.SenderEventHandler):
         response to a close requested by the remote.  May be re-attached later
         (after a reset is done)
         """
+        self._address = None
         self._connection = None
         self._reply_link = None
         if self._link:
@@ -299,6 +305,7 @@ class Sender(pyngus.SenderEventHandler):
         resources, abort any in-flight messages, and check the retry limit on
         all pending send requests.
         """
+        self._address = None
         self._connection = None
         self._reply_link = None
         if self._link:
@@ -326,10 +333,9 @@ class Sender(pyngus.SenderEventHandler):
                 except ValueError:
                     pass
                 send_task._on_timeout()
-            send_task.timer = self._scheduler.alarm(timer_callback,
-                                                    send_task.deadline)
+            send_task._timer = self._scheduler.alarm(timer_callback,
+                                                     send_task.deadline)
 
-        send_task.message.address = self._address
         if not self._can_send:
             self._pending_sends.append(send_task)
         elif self._pending_sends:
@@ -405,6 +411,7 @@ class Sender(pyngus.SenderEventHandler):
 
     def _send(self, send_task):
         send_task._prepare(self)
+        send_task.message.address = self._address
         if send_task.wait_for_ack:
             def pyngus_callback(link, handle, state, info):
                 # invoked when the message bus (n)acks this message
@@ -433,7 +440,9 @@ class Sender(pyngus.SenderEventHandler):
                 self._send(self._pending_sends.popleft())
 
     def _open_link(self):
-        link = self._connection.create_sender(name=self._name,
+        name = "openstack.org/om/sender/[%s]/%s" % (self._address,
+                                                    uuid.uuid4().hex)
+        link = self._connection.create_sender(name=name,
                                               source_address=self._address,
                                               target_address=self._address,
                                               event_handler=self)
@@ -456,8 +465,9 @@ class Replies(pyngus.ReceiverEventHandler):
         self._correlation = {}  # map of correlation-id to response queue
         self._on_ready = on_ready
         self._on_down = on_down
-        rname = "RPC_Response-%s:src=[dynamic]:tgt=replies" % uuid.uuid4().hex
-        self._receiver = connection.create_receiver("replies",
+        rname = ("openstack.org/om/receiver/[rpc-response]/%s"
+                 % uuid.uuid4().hex)
+        self._receiver = connection.create_receiver("rpc-response",
                                                     event_handler=self,
                                                     name=rname)
 
@@ -567,12 +577,12 @@ class Server(pyngus.ReceiverEventHandler):
     from a given target.  Messages arriving on the links are placed on the
     'incoming' queue.
     """
-    def __init__(self, addresses, incoming, subscription_id, scheduler, delay):
+    def __init__(self, target, incoming, scheduler, delay):
+        self._target = target
         self._incoming = incoming
-        self._addresses = addresses
+        self._addresses = []
         self._capacity = 500   # credit per link
         self._receivers = []
-        self._id = subscription_id
         self._scheduler = scheduler
         self._delay = delay  # for link re-attach
         self._connection = None
@@ -584,13 +594,14 @@ class Server(pyngus.ReceiverEventHandler):
         """
         self._connection = connection
         for a in self._addresses:
-            name = "Listener-%s:src=%s:tgt=%s" % (uuid.uuid4().hex, a, a)
+            name = "openstack.org/om/receiver/[%s]/%s" % (a, uuid.uuid4().hex)
             r = self._open_link(a, name)
             self._receivers.append(r)
 
     def detach(self):
         """Attempt a clean shutdown of the links"""
         self._connection = None
+        self._addresses = []
         for receiver in self._receivers:
             receiver.close()
 
@@ -599,6 +610,7 @@ class Server(pyngus.ReceiverEventHandler):
         # failing over.  Since links are destroyed, this cannot be called from
         # any of the following ReceiverLink callbacks.
         self._connection = None
+        self._addresses = []
         self._reopen_scheduled = False
         for r in self._receivers:
             r.destroy()
@@ -686,6 +698,37 @@ class Server(pyngus.ReceiverEventHandler):
                     self._receivers[i] = self._open_link(addr, name)
 
 
+class RPCServer(Server):
+    """Subscribes to RPC addresses"""
+    def __init__(self, target, incoming, scheduler, delay):
+        super(RPCServer, self).__init__(target, incoming, scheduler, delay)
+
+    def attach(self, connection, addresser):
+        # Generate the AMQP 1.0 addresses for the base class
+        self._addresses = [
+            addresser.unicast_address(self._target, SERVICE_RPC),
+            addresser.multicast_address(self._target, SERVICE_RPC),
+            addresser.anycast_address(self._target, SERVICE_RPC)
+        ]
+        # now invoke the base class with the generated addresses
+        super(RPCServer, self).attach(connection)
+
+
+class NotificationServer(Server):
+    """Subscribes to Notification addresses"""
+    def __init__(self, target, incoming, scheduler, delay):
+        super(NotificationServer, self).__init__(target, incoming, scheduler,
+                                                 delay)
+
+    def attach(self, connection, addresser):
+        # Generate the AMQP 1.0 addresses for the base class
+        self._addresses = [
+            addresser.anycast_address(self._target, SERVICE_NOTIFY)
+        ]
+        # now invoke the base class with the generated addresses
+        super(NotificationServer, self).attach(connection)
+
+
 class Hosts(object):
     """An order list of TransportHost addresses. Connection failover
     progresses from one host to the next.  username and password come from the
@@ -731,6 +774,9 @@ class Controller(pyngus.ConnectionEventHandler):
     def __init__(self, hosts, default_exchange, config):
         self.processor = None
         self._socket_connection = None
+        self._node = platform.node() or "<UNKNOWN>"
+        self._command = os.path.basename(sys.argv[0])
+        self._pid = os.getpid()
         # queue of drivertask objects to execute on the eventloop thread
         self._tasks = moves.queue.Queue(maxsize=500)
         # limit the number of Task()'s to execute per call to _process_tasks().
@@ -743,11 +789,6 @@ class Controller(pyngus.ConnectionEventHandler):
         # specific ProtonListener's identifier:
         self._servers = {}
 
-        self.server_request_prefix = \
-            config.oslo_messaging_amqp.server_request_prefix
-        self.broadcast_prefix = config.oslo_messaging_amqp.broadcast_prefix
-        self.group_request_prefix = \
-            config.oslo_messaging_amqp.group_request_prefix
         self._container_name = config.oslo_messaging_amqp.container_name
         self.idle_timeout = config.oslo_messaging_amqp.idle_timeout
         self.trace_protocol = config.oslo_messaging_amqp.trace
@@ -773,9 +814,22 @@ class Controller(pyngus.ConnectionEventHandler):
         if self.max_send_retries <= 0:
             self.max_send_retries = None  # None or 0 == forever, like rabbit
 
-        self.separator = "."
-        self.fanout_qualifier = "all"
-        self.default_exchange = default_exchange
+        _opts = config.oslo_messaging_amqp
+        factory_args = {"legacy_server_prefix": _opts.server_request_prefix,
+                        "legacy_broadcast_prefix": _opts.broadcast_prefix,
+                        "legacy_group_prefix": _opts.group_request_prefix,
+                        "rpc_prefix": _opts.rpc_address_prefix,
+                        "notify_prefix": _opts.notify_address_prefix,
+                        "multicast": _opts.multicast_address,
+                        "unicast": _opts.unicast_address,
+                        "anycast": _opts.anycast_address,
+                        "notify_exchange": _opts.default_notification_exchange,
+                        "rpc_exchange": _opts.default_rpc_exchange}
+
+        self.addresser_factory = AddresserFactory(default_exchange,
+                                                  _opts.addressing_mode,
+                                                  **factory_args)
+        self.addresser = None
 
         # cannot send an RPC request until the replies link is active, as we
         # need the peer assigned address, so need to delay sending any RPC
@@ -792,7 +846,8 @@ class Controller(pyngus.ConnectionEventHandler):
 
     def connect(self):
         """Connect to the messaging service."""
-        self.processor = eventloop.Thread(self._container_name)
+        self.processor = eventloop.Thread(self._container_name, self._node,
+                                          self._command, self._pid)
         self.processor.wakeup(lambda: self._do_connect())
 
     def add_task(self, task):
@@ -825,87 +880,56 @@ class Controller(pyngus.ConnectionEventHandler):
         if send_task.deadline and send_task.deadline <= time.time():
             send_task._on_timeout()
             return
-        if isinstance(send_task.target, target.Target):
-            address = self._resolve(send_task.target)
-        else:
-            address = send_task.target
-        LOG.debug("Sending message to %s", address)
+        LOG.debug("Sending message to %s", send_task.target)
         if send_task.retry is None or send_task.retry < 0:
             send_task.retry = self.max_send_retries
-        sender = self._senders.get(address)
+        key = keyify(send_task.target, send_task.service)
+        sender = self._senders.get(key)
         if not sender:
-            sender = Sender(address, self.processor, self.link_retry_delay)
-            self._senders[address] = sender
+            sender = Sender(send_task.target, self.processor,
+                            self.link_retry_delay, send_task.service)
+            self._senders[key] = sender
             if self.reply_link and self.reply_link.active:
                 sender.attach(self._socket_connection.connection,
-                              self.reply_link)
+                              self.reply_link, self.addresser)
         sender.send_message(send_task)
 
-    def subscribe(self, target, in_queue, subscription_id):
-        """Subscribe to messages sent to 'target', place received messages on
-        'in_queue'.
-        """
-        addresses = [
-            self._server_address(target),
-            self._broadcast_address(target),
-            self._group_request_address(target)
-        ]
-        self._subscribe(target, addresses, in_queue, subscription_id)
+    def subscribe(self, subscribe_task):
+        """Subscribe to a given target"""
+        if subscribe_task._service == SERVICE_NOTIFY:
+            t = "notification"
+            server = NotificationServer(subscribe_task._target,
+                                        subscribe_task._in_queue,
+                                        self.processor,
+                                        self.link_retry_delay)
+        else:
+            t = "RPC"
+            server = RPCServer(subscribe_task._target,
+                               subscribe_task._in_queue,
+                               self.processor,
+                               self.link_retry_delay)
 
-    def subscribe_notifications(self, target, in_queue, subscription_id):
-        """Subscribe for notifications on 'target', place received messages on
-        'in_queue'.
-        """
-        addresses = [self._group_request_address(target)]
-        self._subscribe(target, addresses, in_queue, subscription_id)
-
-    def _subscribe(self, target, addresses, in_queue, subscription_id):
-        LOG.debug("Subscribing to %(target)s (%(addresses)s)",
-                  {'target': target, 'addresses': addresses})
-        server = Server(addresses, in_queue, subscription_id,
-                        self.processor,
-                        self.link_retry_delay)
-        servers = self._servers.get(target)
+        LOG.debug("Subscribing to %(type)s target %(target)s",
+                  {'type': t, 'target': subscribe_task._target})
+        key = keyify(subscribe_task._target, subscribe_task._service)
+        servers = self._servers.get(key)
         if servers is None:
             servers = {}
-            self._servers[target] = servers
-        servers[subscription_id] = server
+            self._servers[key] = servers
+        servers[subscribe_task._subscriber_id] = server
         if self._active:
-            server.attach(self._socket_connection.connection)
-
-    def _resolve(self, target):
-        """Return a link address for a given target."""
-        if target.fanout:
-            return self._broadcast_address(target)
-        elif target.server:
-            return self._server_address(target)
-        else:
-            return self._group_request_address(target)
-
-    def _server_address(self, target):
-        return self._concatenate([self.server_request_prefix,
-                                  target.exchange or self.default_exchange,
-                                  target.topic, target.server])
-
-    def _broadcast_address(self, target):
-        return self._concatenate([self.broadcast_prefix,
-                                  target.exchange or self.default_exchange,
-                                  target.topic, self.fanout_qualifier])
-
-    def _group_request_address(self, target):
-        return self._concatenate([self.group_request_prefix,
-                                  target.exchange or self.default_exchange,
-                                  target.topic])
-
-    def _concatenate(self, items):
-        return self.separator.join(filter(bool, items))
+            server.attach(self._socket_connection.connection,
+                          self.addresser)
 
     # commands executed on the processor (eventloop) via 'wakeup()':
 
     def _do_connect(self):
         """Establish connection and reply subscription on processor thread."""
         host = self.hosts.current
-        conn_props = {'hostname': host.hostname}
+        conn_props = {'properties': {u'process': self._command,
+                                     u'pid': self._pid,
+                                     u'node': self._node},
+                      'hostname': host.hostname}
         if self.idle_timeout:
             conn_props["idle-time-out"] = float(self.idle_timeout)
         if self.trace_protocol:
@@ -989,7 +1013,8 @@ class Controller(pyngus.ConnectionEventHandler):
                  {'hostname': self.hosts.current.hostname,
                   'port': self.hosts.current.port})
         for sender in itervalues(self._senders):
-            sender.attach(self._socket_connection.connection, self.reply_link)
+            sender.attach(self._socket_connection.connection,
+                          self.reply_link, self.addresser)
 
     def _reply_link_down(self):
         # Treat it as a recoverable failure because the RPC reply address is
@@ -1028,9 +1053,14 @@ class Controller(pyngus.ConnectionEventHandler):
         LOG.debug("Connection active (%(hostname)s:%(port)s), subscribing...",
                   {'hostname': self.hosts.current.hostname,
                    'port': self.hosts.current.port})
+        # allocate an addresser based on the advertised properties of the
+        # message bus
+        props = connection.remote_properties or {}
+        self.addresser = self.addresser_factory(props)
         for servers in itervalues(self._servers):
             for server in itervalues(servers):
-                server.attach(self._socket_connection.connection)
+                server.attach(self._socket_connection.connection,
+                              self.addresser)
         self.reply_link = Replies(self._socket_connection.connection,
                                   self._reply_link_ready,
                                   self._reply_link_down)
@@ -1078,6 +1108,7 @@ class Controller(pyngus.ConnectionEventHandler):
         """The connection to the messaging service has been lost.  Try to
         reestablish the connection/failover if not shutting down the driver.
         """
+        self.addresser = None
         if self._closing:
             # we're in the middle of shutting down the driver anyways,
             # just consider it done:

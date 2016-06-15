@@ -28,6 +28,7 @@ import time
 import uuid
 
 from oslo_config import cfg
+from oslo_messaging.target import Target
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
@@ -36,7 +37,6 @@ from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
 from oslo_messaging._i18n import _LI, _LW
-from oslo_messaging import target as messaging_target
 
 
 proton = importutils.try_import('proton')
@@ -344,7 +344,7 @@ class ProtonDriver(base.BaseDriver):
         LOG.debug("Send notification to %s", target)
         task = controller.SendTask("Notify", request, target,
                                    time.time() + self._default_notify_timeout,
-                                   retry, wait_for_ack=True)
+                                   retry, wait_for_ack=True, notification=True)
         self._ctrl.add_task(task)
         rc = task.wait()
         if isinstance(rc, Exception):
@@ -374,10 +374,13 @@ class ProtonDriver(base.BaseDriver):
             raise NotImplementedError('"pool" not implemented by '
                                       'this transport driver')
         listener = ProtonListener(self)
+        # this is how the destination target is created by the notifier,
+        # see MessagingDriver.notify in oslo_messaging/notify/messaging.py
         for target, priority in targets_and_priorities:
             topic = '%s.%s' % (target.topic, priority)
-            t = messaging_target.Target(topic=topic)
-            task = controller.SubscribeTask(t, listener, notifications=True)
+            # Sooo... the exchange is simply discarded? (see above comment)
+            task = controller.SubscribeTask(Target(topic=topic),
+                                            listener, notifications=True)
             self._ctrl.add_task(task)
             task.wait()
         return base.PollStyleListenerAdapter(listener, batch_size,

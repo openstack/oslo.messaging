@@ -28,7 +28,6 @@ import logging
 import os
 import select
 import socket
-import sys
 import threading
 import time
 import uuid
@@ -48,18 +47,13 @@ class _SocketConnection(object):
     def __init__(self, name, container, properties, handler):
         self.name = name
         self.socket = None
-        self._properties = properties or {}
-        self._properties["properties"] = self._get_name_and_pid()
+        self._properties = properties
         # The handler is a pyngus ConnectionEventHandler, which is invoked by
         # pyngus on connection-related events (active, closed, error, etc).
         # Currently it is the Controller object.
         self._handler = handler
         self._container = container
         self.connection = None
-
-    def _get_name_and_pid(self):
-        # helps identify the process that is using the connection
-        return {u'process': os.path.basename(sys.argv[0]), u'pid': os.getpid()}
 
     def fileno(self):
         """Allows use of a _SocketConnection in a select() call.
@@ -252,7 +246,7 @@ class Thread(threading.Thread):
     """Manages socket I/O and executes callables queued up by external
     threads.
     """
-    def __init__(self, container_name=None):
+    def __init__(self, container_name, node, command, pid):
         super(Thread, self).__init__()
 
         # callables from other threads:
@@ -262,7 +256,8 @@ class Thread(threading.Thread):
 
         # Configure a container
         if container_name is None:
-            container_name = "Container-" + uuid.uuid4().hex
+            container_name = ("openstack.org/om/container/%s/%s/%s/%s" %
+                              (node, command, pid, uuid.uuid4().hex))
         self._container = pyngus.Container(container_name)
 
         self.name = "Thread for Proton container: %s" % self._container.name
@@ -300,9 +295,9 @@ class Thread(threading.Thread):
         """Invoke request at a particular time"""
         return self._scheduler.alarm(request, deadline)
 
-    def connect(self, host, handler, properties=None, name=None):
+    def connect(self, host, handler, properties):
         """Get a _SocketConnection to a peer represented by url."""
-        key = name or "%s:%i" % (host.hostname, host.port)
+        key = "openstack.org/om/connection/%s:%s/" % (host.hostname, host.port)
         # return pre-existing
         conn = self._container.get_connection(key)
         if conn:
