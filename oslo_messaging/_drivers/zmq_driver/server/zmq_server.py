@@ -62,10 +62,10 @@ class ZmqServer(base.PollStyleListener):
         return message
 
     def stop(self):
-        if self.router_consumer:
-            LOG.info(_LI("Stop server %(address)s:%(port)s"),
-                     {'address': self.router_consumer.address,
-                      'port': self.router_consumer.port})
+        self.poller.close()
+        LOG.info(_LI("Stop server %(target)s"), {'target': self.target})
+        for consumer in self.consumers:
+            consumer.stop()
 
     def cleanup(self):
         self.poller.close()

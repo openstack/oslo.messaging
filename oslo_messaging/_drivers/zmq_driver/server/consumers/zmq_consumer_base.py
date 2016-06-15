@@ -40,6 +40,10 @@ class ConsumerBase(object):
         self.sockets = []
         self.context = zmq.Context()
 
+    def stop(self):
+        """Stop consumer polling/updates"""
+        pass
+
     @abc.abstractmethod
     def receive_message(self, target):
         """Method for poller - receiving message routine"""
@@ -62,6 +66,9 @@ class SingleSocketConsumer(ConsumerBase):
         self.socket = self.subscribe_socket(socket_type)
         self.target_updater = TargetUpdater(
             conf, self.matchmaker, self.target, self.host, socket_type)
+
+    def stop(self):
+        self.target_updater.stop()
 
     def subscribe_socket(self, socket_type):
         try:
@@ -113,3 +120,9 @@ class TargetUpdater(zmq_updater.UpdaterBase):
             self.target, self.host,
             zmq_names.socket_type_str(self.socket_type),
             expire=self.conf.zmq_target_expire)
+
+    def stop(self):
+        super(TargetUpdater, self).stop()
+        self.matchmaker.unregister(
+            self.target, self.host,
+            zmq_names.socket_type_str(self.socket_type))
