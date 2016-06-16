@@ -86,10 +86,8 @@ class CallSender(zmq_publisher_base.QueuedSender):
         self.reply_waiter = reply_waiter
 
     def _do_send_request(self, socket, request):
-        envelope = request.create_envelope()
         # DEALER socket specific envelope empty delimiter
         socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(envelope, zmq.SNDMORE)
         socket.send_pyobj(request)
 
         LOG.debug("Sent message_id %(message)s to a target %(target)s",

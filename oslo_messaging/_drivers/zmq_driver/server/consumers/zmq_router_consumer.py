@@ -57,13 +57,12 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         reply_id = socket.recv()
         empty = socket.recv()
         assert empty == b'', 'Bad format: empty delimiter expected'
-        envelope = socket.recv_pyobj()
         request = socket.recv_pyobj()
-        return request, envelope, reply_id
+        return request, reply_id
 
     def receive_message(self, socket):
         try:
-            request, envelope, reply_id = self._receive_request(socket)
+            request, reply_id = self._receive_request(socket)
             LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s",
                       {"host": self.host,
                        "type": request.msg_type,
@@ -72,7 +71,7 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
             if request.msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingRequest(
-                    socket, reply_id, request, envelope, self.poller)
+                    socket, reply_id, request, self.poller)
             elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
                 return RouterIncomingMessage(
                     request.context, request.message, socket, reply_id,

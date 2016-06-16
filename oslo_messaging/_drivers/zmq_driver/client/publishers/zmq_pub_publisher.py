@@ -55,8 +55,8 @@ class PubPublisherProxy(object):
         assert message_type in (zmq_names.CAST_FANOUT_TYPE,
                                 zmq_names.NOTIFY_TYPE), "Fanout expected!"
         topic_filter = multipart_message.pop(0)
-        message_id = multipart_message.pop(0)
         reply_id = multipart_message.pop(0)
+        message_id = multipart_message.pop(0)
         assert reply_id is not None, "Reply id expected!"
 
         self.socket.send(topic_filter, zmq.SNDMORE)

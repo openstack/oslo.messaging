@@ -47,10 +47,8 @@ class ReplyWaiter(object):
     def receive_method(self, socket):
         empty = socket.recv()
         assert empty == b'', "Empty expected!"
-        envelope = socket.recv_pyobj()
-        assert envelope is not None, "Invalid envelope!"
         reply = socket.recv_pyobj()
-        LOG.debug("Received reply %s", envelope)
+        LOG.debug("Received reply %s", reply.message_id)
         return reply
 
     def run_loop(self):
