@@ -56,10 +56,11 @@ def _wait_until(predicate, timeout):
 
 class _ListenerThread(threading.Thread):
     """Run a blocking listener in a thread."""
-    def __init__(self, listener, msg_count):
+    def __init__(self, listener, msg_count, msg_ack=True):
         super(_ListenerThread, self).__init__()
         self.listener = listener
         self.msg_count = msg_count
+        self._msg_ack = msg_ack
         self.messages = moves.queue.Queue()
         self.daemon = True
         self.started = threading.Event()
@@ -75,9 +76,13 @@ class _ListenerThread(threading.Thread):
                 self.messages.put(in_msg)
                 self.msg_count -= 1
                 self._done = self.msg_count == 0
-                if in_msg.message.get('method') == 'echo':
-                    in_msg.reply(reply={'correlation-id':
-                                        in_msg.message.get('id')})
+                if self._msg_ack:
+                    in_msg.acknowledge()
+                    if in_msg.message.get('method') == 'echo':
+                        in_msg.reply(reply={'correlation-id':
+                                            in_msg.message.get('id')})
+                else:
+                    in_msg.requeue()
 
         LOG.debug("Listener stopped")
 
@@ -162,6 +167,11 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         self.assertEqual(listener.messages.get().message, {"msg": "value"})
+
+        predicate = lambda: (self._broker.sender_link_ack_count == 1)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         driver.cleanup()
 
     def test_send_exchange_with_reply(self):
@@ -265,6 +275,11 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
             self.assertTrue('either-2' in listener1_ids and
                             'either-2' not in listener2_ids and
                             'either-1' in listener2_ids)
+
+        predicate = lambda: (self._broker.sender_link_ack_count == 12)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         driver.cleanup()
 
     def test_send_timeout(self):
@@ -327,6 +342,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                 while not self._done:
                     for in_msg in self.listener.poll(timeout=0.5):
                         time.sleep(self._delay)
+                        in_msg.acknowledge()
                         in_msg.reply(reply={'correlation-id':
                                             in_msg.message.get('id')})
                         self.messages.put(in_msg)
@@ -335,7 +351,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _SlowResponder(
-            driver.listen(target, None, None)._poll_style_listener, 5)
+            driver.listen(target, None, None)._poll_style_listener, 1)
 
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           driver.send, target,
@@ -345,6 +361,11 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           timeout=1.0)
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
+
+        predicate = lambda: (self._broker.sender_link_ack_count == 1)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         driver.cleanup()
 
     def test_call_failed_reply(self):
@@ -409,6 +430,32 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           timeout=3)
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_listener_requeue(self):
+        "Emulate Server requeue on listener incoming messages"
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        driver.require_features(requeue=True)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(
+            driver.listen(target, None, None)._poll_style_listener, 1,
+            msg_ack=False)
+
+        rc = driver.send(target, {"context": True},
+                         {"msg": "value"}, wait_for_reply=False)
+        self.assertIsNone(rc)
+
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+
+        for x in listener.get_messages():
+            x.requeue()
+            self.assertEqual(x.message, {"msg": "value"})
+
+        predicate = lambda: (self._broker.sender_link_requeue_count == 1)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         driver.cleanup()
 
 
@@ -1124,7 +1171,13 @@ class FakeBroker(threading.Thread):
 
             def send_message(self, message):
                 """Send a message over this link."""
-                self.link.send(message)
+                def pyngus_callback(link, handle, state, info):
+                    if state == pyngus.SenderLink.ACCEPTED:
+                        self.server.sender_link_ack_count += 1
+                    elif state == pyngus.SenderLink.RELEASED:
+                        self.server.sender_link_requeue_count += 1
+
+                self.link.send(message, delivery_callback=pyngus_callback)
 
             def _cleanup(self):
                 if self.routed:
@@ -1235,6 +1288,8 @@ class FakeBroker(threading.Thread):
         self.connection_count = 0
         self.sender_link_count = 0
         self.receiver_link_count = 0
+        self.sender_link_ack_count = 0
+        self.sender_link_requeue_count = 0
         # callback hooks
         self.on_sender_active = lambda link: None
         self.on_receiver_active = lambda link: link.add_capacity(10)

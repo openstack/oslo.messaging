@@ -91,11 +91,12 @@ def unmarshal_request(message):
 
 
 class ProtonIncomingMessage(base.RpcIncomingMessage):
-    def __init__(self, listener, ctxt, request, message):
+    def __init__(self, listener, ctxt, request, message, disposition):
         super(ProtonIncomingMessage, self).__init__(ctxt, request)
         self.listener = listener
         self._reply_to = message.reply_to
         self._correlation_id = message.id
+        self._disposition = disposition
 
     def reply(self, reply=None, failure=None):
         """Schedule an RPCReplyTask to send the reply."""
@@ -120,10 +121,22 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
             LOG.debug("Ignoring reply as no reply address available")
 
     def acknowledge(self):
-        pass
+        """Schedule a MessageDispositionTask to send the settlement."""
+        task = controller.MessageDispositionTask(self._disposition,
+                                                 released=False)
+        self.listener.driver._ctrl.add_task(task)
+        rc = task.wait()
+        if rc:
+            LOG.debug("Message acknowledge failed: %s", str(rc))
 
     def requeue(self):
-        pass
+        """Schedule a MessageDispositionTask to release the message"""
+        task = controller.MessageDispositionTask(self._disposition,
+                                                 released=True)
+        self.listener.driver._ctrl.add_task(task)
+        rc = task.wait()
+        if rc:
+            LOG.debug("Message requeue failed: %s", str(rc))
 
 
 class Queue(object):
@@ -167,12 +180,14 @@ class ProtonListener(base.PollStyleListener):
 
     @base.batch_poll_helper
     def poll(self, timeout=None):
-        message = self.incoming.pop(timeout)
-        if message is None:
+        qentry = self.incoming.pop(timeout)
+        if qentry is None:
             return None
+        message = qentry['message']
         request, ctxt = unmarshal_request(message)
+        disposition = qentry['disposition']
         LOG.debug("poll: message received")
-        return ProtonIncomingMessage(self, ctxt, request, message)
+        return ProtonIncomingMessage(self, ctxt, request, message, disposition)
 
 
 class ProtonDriver(base.BaseDriver):
@@ -374,3 +389,6 @@ class ProtonDriver(base.BaseDriver):
             self._ctrl.shutdown()
             self._ctrl = None
         LOG.info(_LI("AMQP 1.0 messaging driver shutdown"))
+
+    def require_features(self, requeue=True):
+        pass

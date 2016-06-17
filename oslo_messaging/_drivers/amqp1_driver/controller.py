@@ -233,6 +233,27 @@ class RPCCallTask(SendTask):
         super(RPCCallTask, self)._cleanup()
 
 
+class MessageDispositionTask(Task):
+    """A task that updates the message disposition as accepted or released
+    for a Server
+    """
+    def __init__(self, disposition, released=False):
+        super(MessageDispositionTask, self).__init__()
+        self._disposition = disposition
+        self._released = released
+        self._wakeup = threading.Event()
+
+    def wait(self):
+        self._wakeup.wait()
+
+    def _execute(self, controller):
+        try:
+            self._disposition(self._released)
+        except Exception:
+            pass
+        self._wakeup.set()
+
+
 class Sender(pyngus.SenderEventHandler):
     """A link for sending to a particular address on the message bus.
     """
@@ -620,12 +641,20 @@ class Server(pyngus.ReceiverEventHandler):
         """This is a Pyngus callback, invoked by Pyngus when a new message
         arrives on this receiver link from the peer.
         """
+        def message_disposition(released=False):
+            if receiver in self._receivers and not receiver.closed:
+                if released:
+                    receiver.message_released(handle)
+                else:
+                    receiver.message_accepted(handle)
+                if receiver.capacity < self._capacity / 2:
+                    receiver.add_capacity(self._capacity - receiver.capacity)
+            else:
+                LOG.debug("Can't find receiver for settlement")
+
         LOG.debug("Message received on: %s", receiver.target_address)
-        if receiver.capacity < self._capacity / 2:
-            receiver.add_capacity(self._capacity - receiver.capacity)
-        self._incoming.put(message)
-        # @TODO(kgiusti): fix me: don't ack here
-        receiver.message_accepted(handle)
+        qentry = {"message": message, "disposition": message_disposition}
+        self._incoming.put(qentry)
 
     def _open_link(self, address, name):
         props = {"snd-settle-mode": "settled"}
