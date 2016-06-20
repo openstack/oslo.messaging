@@ -18,7 +18,6 @@ import select
 import shutil
 import socket
 import subprocess
-import tempfile
 import threading
 import time
 import uuid
@@ -378,58 +377,71 @@ class TestAuthentication(test_utils.BaseTestCase):
 class TestCyrusAuthentication(test_utils.BaseTestCase):
     """Test the driver's Cyrus SASL integration"""
 
-    def setUp(self):
-        """Create a simple SASL configuration. This assumes saslpasswd2 is in
-        the OS path, otherwise the test will be skipped.
-        """
-        super(TestCyrusAuthentication, self).setUp()
+    _conf_dir = None
+
+    # Note: don't add ANONYMOUS or EXTERNAL mechs without updating the
+    # test_authentication_bad_mechs test below
+    _mechs = "DIGEST-MD5 SCRAM-SHA-1 CRAM-MD5 PLAIN"
+
+    @classmethod
+    def setUpClass(cls):
+        # The Cyrus library can only be initialized once per _process_
         # Create a SASL configuration and user database,
         # add a user 'joe' with password 'secret':
-        self._conf_dir = tempfile.mkdtemp()
-        db = os.path.join(self._conf_dir, 'openstack.sasldb')
+        cls._conf_dir = "/tmp/amqp1_tests_%s" % os.getpid()
+        # no, we cannot use tempfile.mkdtemp() as it will 'helpfully' remove
+        # the temp dir after the first test is run (?why?)
+        os.makedirs(cls._conf_dir)
+        db = os.path.join(cls._conf_dir, 'openstack.sasldb')
         _t = "echo secret | saslpasswd2 -c -p -f ${db} joe"
         cmd = Template(_t).substitute(db=db)
         try:
             subprocess.check_call(args=cmd, shell=True)
         except Exception:
-            shutil.rmtree(self._conf_dir, ignore_errors=True)
-            self._conf_dir = None
-            raise self.skip("Cyrus tool saslpasswd2 not installed")
+            shutil.rmtree(cls._conf_dir, ignore_errors=True)
+            cls._conf_dir = None
+            return
 
-        # configure the SASL broker:
-        conf = os.path.join(self._conf_dir, 'openstack.conf')
-        # Note: don't add ANONYMOUS or EXTERNAL without updating the
-        # test_authentication_bad_mechs test below
-        mechs = "DIGEST-MD5 SCRAM-SHA-1 CRAM-MD5 PLAIN"
+        # configure the SASL server:
+        conf = os.path.join(cls._conf_dir, 'openstack.conf')
         t = Template("""sasldb_path: ${db}
 pwcheck_method: auxprop
 auxprop_plugin: sasldb
 mech_list: ${mechs}
 """)
         with open(conf, 'w') as f:
-            f.write(t.substitute(db=db, mechs=mechs))
+            f.write(t.substitute(db=db, mechs=cls._mechs))
 
-        self._broker = FakeBroker(sasl_mechanisms=mechs,
+    @classmethod
+    def tearDownClass(cls):
+        if cls._conf_dir:
+            shutil.rmtree(cls._conf_dir, ignore_errors=True)
+
+    def setUp(self):
+        # fire up a test broker with the SASL config:
+        super(TestCyrusAuthentication, self).setUp()
+        if TestCyrusAuthentication._conf_dir is None:
+            self.skipTest("Cyrus SASL tools not installed")
+        _mechs = TestCyrusAuthentication._mechs
+        _dir = TestCyrusAuthentication._conf_dir
+        self._broker = FakeBroker(sasl_mechanisms=_mechs,
                                   user_credentials=["\0joe\0secret"],
-                                  sasl_config_dir=self._conf_dir,
+                                  sasl_config_dir=_dir,
                                   sasl_config_name="openstack")
         self._broker.start()
         self.messaging_conf.transport_driver = 'amqp'
         self.conf = self.messaging_conf.conf
 
     def tearDown(self):
-        super(TestCyrusAuthentication, self).tearDown()
         if self._broker:
             self._broker.stop()
             self._broker = None
-        if self._conf_dir:
-            shutil.rmtree(self._conf_dir, ignore_errors=True)
+        super(TestCyrusAuthentication, self).tearDown()
 
     def test_authentication_ok(self):
         """Verify that username and password given in TransportHost are
         accepted by the broker.
         """
-
         addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
                                             self._broker.port)
         url = oslo_messaging.TransportURL.parse(self.conf, addr)
