@@ -11,64 +11,77 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
+
+# Following code fixes 2 issues with kafka-python and
+# The current release of eventlet (0.19.0) does not actually remove
+# select.poll [1]. Because of kafka-python.selectors34 selects
+# PollSelector instead of SelectSelector [2]. PollSelector relies on
+# select.poll, which does not work when eventlet/greenlet is used. This
+# bug in evenlet is fixed in the master branch [3], but there's no
+# release of eventlet that includes this fix at this point.
+
+import json
 import threading
+
+import kafka
+from kafka.client_async import selectors
+import kafka.errors
+from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_utils import eventletutils
+import tenacity
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as driver_common
+from oslo_messaging._drivers import kafka_options
 from oslo_messaging._drivers import pool as driver_pool
 from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LW
 from oslo_serialization import jsonutils
 
-import kafka
-from kafka.common import KafkaError
-from oslo_config import cfg
-from oslo_log import log as logging
+if eventletutils.is_monkey_patched('select'):
+    # monkeypatch the vendored SelectSelector._select like eventlet does
+    # https://github.com/eventlet/eventlet/blob/master/eventlet/green/selectors.py#L32
+    from eventlet.green import select
+    selectors.SelectSelector._select = staticmethod(select.select)
 
+    # Force to use the select selectors
+    KAFKA_SELECTOR = selectors.SelectSelector
+else:
+    KAFKA_SELECTOR = selectors.DefaultSelector
 
 LOG = logging.getLogger(__name__)
 
-PURPOSE_SEND = 'send'
-PURPOSE_LISTEN = 'listen'
 
-kafka_opts = [
-    cfg.StrOpt('kafka_default_host', default='localhost',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               help='Default Kafka broker Host'),
-
-    cfg.PortOpt('kafka_default_port', default=9092,
-                deprecated_for_removal=True,
-                deprecated_reason="Replaced by [DEFAULT]/transport_url",
-                help='Default Kafka broker Port'),
-
-    cfg.IntOpt('kafka_max_fetch_bytes', default=1024 * 1024,
-               help='Max fetch bytes of Kafka consumer'),
-
-    cfg.IntOpt('kafka_consumer_timeout', default=1.0,
-               help='Default timeout(s) for Kafka consumers'),
-
-    cfg.IntOpt('pool_size', default=10,
-               help='Pool Size for Kafka Consumers'),
-
-    cfg.IntOpt('conn_pool_min_size', default=2,
-               help='The pool size limit for connections expiration policy'),
-
-    cfg.IntOpt('conn_pool_ttl', default=1200,
-               help='The time-to-live in sec of idle connections in the pool')
-]
-
-CONF = cfg.CONF
+def unpack_message(msg):
+    context = {}
+    message = None
+    try:
+        if msg:
+            msg = json.loads(msg)
+            message = driver_common.deserialize_msg(msg)
+            if 'context' in message:
+                context = message['context']
+                del message['context']
+    except ValueError as e:
+        LOG.info("Invalid format of consumed message: %s" % e)
+    except Exception:
+        LOG.warning(_LW("Exception during message unpacking"))
+    return message, context
 
 
-def pack_context_with_message(ctxt, msg):
+def pack_message(ctxt, msg):
     """Pack context into msg."""
+
     if isinstance(ctxt, dict):
         context_d = ctxt
     else:
         context_d = ctxt.to_dict()
+    msg['context'] = context_d
 
-    return {'message': msg, 'context': context_d}
+    msg = driver_common.serialize_msg(msg)
+
+    return msg
 
 
 def target_to_topic(target, priority=None):
@@ -84,18 +97,67 @@ def target_to_topic(target, priority=None):
     return target.topic + '.' + priority
 
 
+def retry_on_retriable_kafka_error(exc):
+    return (isinstance(exc, kafka.errors.KafkaError) and exc.retriable)
+
+
+def with_reconnect(retries=None):
+    def decorator(func):
+        @tenacity.retry(
+            retry=tenacity.retry_if_exception(retry_on_retriable_kafka_error),
+            wait=tenacity.wait_fixed(1),
+            stop=tenacity.stop_after_attempt(retries),
+            reraise=True
+        )
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+class Producer(object):
+    _producer = None
+    _servers = None
+    _lock = threading.Lock()
+
+    @staticmethod
+    @with_reconnect()
+    def connect(servers, **kwargs):
+        return kafka.KafkaProducer(
+            bootstrap_servers=servers,
+            selector=KAFKA_SELECTOR,
+            **kwargs)
+
+    @classmethod
+    def producer(cls, servers, **kwargs):
+        with cls._lock:
+            if not cls._producer or cls._servers != servers:
+                cls._servers = servers
+                cls._producer = cls.connect(servers, **kwargs)
+        return cls._producer
+
+    @classmethod
+    def cleanup(cls):
+        with cls._lock:
+            if cls._producer:
+                cls._producer.close()
+            cls._producer = None
+
+
 class Connection(object):
 
     def __init__(self, conf, url, purpose):
 
+        self.client = None
         driver_conf = conf.oslo_messaging_kafka
-
+        self.batch_size = driver_conf.producer_batch_size
+        self.linger_ms = driver_conf.producer_batch_timeout * 1000
         self.conf = conf
-        self.kafka_client = None
         self.producer = None
         self.consumer = None
-        self.fetch_messages_max_bytes = driver_conf.kafka_max_fetch_bytes
         self.consumer_timeout = float(driver_conf.kafka_consumer_timeout)
+        self.max_fetch_bytes = driver_conf.kafka_max_fetch_bytes
+        self.group_id = driver_conf.consumer_group
         self.url = url
         self._parse_url()
         # TODO(Support for manual/auto_commit functionality)
@@ -107,7 +169,6 @@ class Connection(object):
 
     def _parse_url(self):
         driver_conf = self.conf.oslo_messaging_kafka
-
         self.hostaddrs = []
 
         for host in self.url.hosts:
@@ -128,82 +189,61 @@ class Connection(object):
         :param msg: messages for publishing
         :param retry: the number of retry
         """
-        message = pack_context_with_message(ctxt, msg)
+
+        message = pack_message(ctxt, msg)
         self._ensure_connection()
         self._send_and_retry(message, topic, retry)
 
     def _send_and_retry(self, message, topic, retry):
-        current_retry = 0
         if not isinstance(message, str):
             message = jsonutils.dumps(message)
-        while message is not None:
-            try:
-                self._send(message, topic)
-                message = None
-            except Exception:
-                LOG.warning(_LW("Failed to publish a message of topic %s"),
-                            topic)
-                current_retry += 1
-                if retry is not None and current_retry >= retry:
-                    LOG.exception(_LE("Failed to retry to send data "
-                                      "with max retry times"))
-                    message = None
+        retry = retry if retry >= 0 else None
 
-    def _send(self, message, topic):
-        self.producer.send_messages(topic, message)
+        @with_reconnect(retries=retry)
+        def _send(topic, message):
+            self.producer.send(topic, message)
+
+        try:
+            _send(topic, message)
+        except Exception:
+            Producer.cleanup()
+            LOG.exception(_LE("Failed to send message"))
+
+    @with_reconnect()
+    def _poll_messages(self, timeout):
+        return self.consumer.poll(timeout)
 
     def consume(self, timeout=None):
         """Receive up to 'max_fetch_messages' messages.
 
         :param timeout: poll timeout in seconds
         """
-        duration = (self.consumer_timeout if timeout is None else timeout)
-        timer = driver_common.DecayingTimer(duration=duration)
-        timer.start()
+        if self._consume_loop_stopped:
+            return None
 
-        def _raise_timeout():
-            LOG.debug('Timed out waiting for Kafka response')
-            raise driver_common.Timeout()
-
-        poll_timeout = (self.consumer_timeout if timeout is None
-                        else min(timeout, self.consumer_timeout))
-
-        while True:
-            if self._consume_loop_stopped:
-                return
-            try:
-                next_timeout = poll_timeout * 1000.0
-                # TODO(use configure() method instead)
-                # Currently KafkaConsumer does not support for
-                # the case of updating only fetch_max_wait_ms parameter
-                self.consumer._config['fetch_max_wait_ms'] = next_timeout
-                messages = list(self.consumer.fetch_messages())
-            except Exception as e:
-                LOG.exception(_LE("Failed to consume messages: %s"), e)
-                messages = None
-
-            if not messages:
-                poll_timeout = timer.check_return(
-                    _raise_timeout, maximum=self.consumer_timeout)
-                continue
-
-            return messages
+        timeout = timeout if timeout >= 0 else self.consumer_timeout
+        try:
+            messages = self._poll_messages(timeout)
+        except kafka.errors.ConsumerTimeout as e:
+            raise driver_common.Timeout(e.message)
+        except Exception:
+            LOG.exception(_LE("Failed to consume messages"))
+            messages = None
+        return messages
 
     def stop_consuming(self):
         self._consume_loop_stopped = True
 
     def reset(self):
         """Reset a connection so it can be used again."""
-        if self.consumer:
-            self.consumer.close()
-        self.consumer = None
+        pass
 
     def close(self):
-        if self.kafka_client:
-            self.kafka_client.close()
-        self.kafka_client = None
         if self.producer:
-            self.producer.stop()
+            self.producer.close()
+        self.producer = None
+        if self.consumer:
+            self.consumer.close()
         self.consumer = None
 
     def commit(self):
@@ -218,25 +258,22 @@ class Connection(object):
         self.consumer.commit()
 
     def _ensure_connection(self):
-        if self.kafka_client:
-            return
         try:
-            self.kafka_client = kafka.KafkaClient(
-                self.hostaddrs)
-            self.producer = kafka.SimpleProducer(self.kafka_client)
-        except KafkaError as e:
-            LOG.exception(_LE("Kafka Connection is not available: %s"), e)
-            self.kafka_client = None
+            self.producer = Producer.producer(self.hostaddrs,
+                                              linger_ms=self.linger_ms,
+                                              batch_size=self.batch_size)
+        except kafka.errors.KafkaError as e:
+            LOG.exception(_LE("KafkaProducer could not be initialized: %s"), e)
+            raise
 
+    @with_reconnect()
     def declare_topic_consumer(self, topics, group=None):
-        self._ensure_connection()
-        for topic in topics:
-            self.kafka_client.ensure_topic_exists(topic)
         self.consumer = kafka.KafkaConsumer(
-            *topics, group_id=group,
+            *topics, group_id=(group or self.group_id),
             bootstrap_servers=self.hostaddrs,
-            fetch_message_max_bytes=self.fetch_messages_max_bytes)
-        self._consume_loop_stopped = False
+            max_partition_fetch_bytes=self.max_fetch_bytes,
+            selector=KAFKA_SELECTOR
+        )
 
 
 class OsloKafkaMessage(base.RpcIncomingMessage):
@@ -261,19 +298,25 @@ class KafkaListener(base.PollStyleListener):
 
     @base.batch_poll_helper
     def poll(self, timeout=None):
+        # TODO(sileht): use batch capability of kafka
         while not self._stopped.is_set():
             if self.incoming_queue:
                 return self.incoming_queue.pop(0)
             try:
                 messages = self.conn.consume(timeout=timeout)
-                for msg in messages:
-                    message = msg.value
-                    LOG.debug('poll got message : %s', message)
-                    message = jsonutils.loads(message)
-                    self.incoming_queue.append(OsloKafkaMessage(
-                        ctxt=message['context'], message=message['message']))
+                if messages:
+                    self._put_messages_to_queue(messages)
             except driver_common.Timeout:
                 return None
+
+    def _put_messages_to_queue(self, messages):
+        for topic, records in messages.items():
+            if records:
+                for record in records:
+                    message, context = unpack_message(record.value)
+                    if message:
+                        self.incoming_queue.append(
+                            OsloKafkaMessage(ctxt=context, message=message))
 
     def stop(self):
         self._stopped.set()
@@ -302,7 +345,7 @@ class KafkaDriver(base.BaseDriver):
         opt_group = cfg.OptGroup(name='oslo_messaging_kafka',
                                  title='Kafka driver options')
         conf.register_group(opt_group)
-        conf.register_opts(kafka_opts, group=opt_group)
+        conf.register_opts(kafka_options.KAFKA_OPTS, group=opt_group)
 
         super(KafkaDriver, self).__init__(
             conf, url, default_exchange, allowed_remote_exmods)
@@ -344,7 +387,7 @@ class KafkaDriver(base.BaseDriver):
                       N means N retries
         :type retry: int
         """
-        with self._get_connection(purpose=PURPOSE_SEND) as conn:
+        with self._get_connection(purpose=driver_common.PURPOSE_SEND) as conn:
             conn.notify_send(target_to_topic(target), ctxt, message, retry)
 
     def listen(self, target, batch_size, batch_timeout):
@@ -363,7 +406,7 @@ class KafkaDriver(base.BaseDriver):
         :param pool: consumer group of Kafka consumers
         :type pool: string
         """
-        conn = self._get_connection(purpose=PURPOSE_LISTEN)
+        conn = self._get_connection(purpose=driver_common.PURPOSE_LISTEN)
         topics = set()
         for target, priority in targets_and_priorities:
             topics.add(target_to_topic(target, priority))
