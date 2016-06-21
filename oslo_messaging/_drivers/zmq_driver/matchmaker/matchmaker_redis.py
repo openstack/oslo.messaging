@@ -171,7 +171,6 @@ class RedisMatchMaker(base.MatchMakerBase):
         return self._redis.smembers(key)
 
     def register(self, target, hostname, listener_type, expire=-1):
-
         if target.topic and target.server:
             key = zmq_address.target_to_key(target, listener_type)
             self._add_key_with_expire(key, hostname, expire)
@@ -191,11 +190,14 @@ class RedisMatchMaker(base.MatchMakerBase):
 
     def get_hosts(self, target, listener_type):
         LOG.debug("[Redis] get_hosts for target %s", target)
-        hosts = []
-        key = zmq_address.target_to_key(target, listener_type)
-        hosts.extend(self._get_hosts_by_key(key))
 
-        if (not hosts or target.fanout) and target.topic and target.server:
+        hosts = []
+
+        if target.topic and target.server:
+            key = zmq_address.target_to_key(target, listener_type)
+            hosts.extend(self._get_hosts_by_key(key))
+
+        if not hosts and target.topic:
             key = zmq_address.prefix_str(target.topic, listener_type)
             hosts.extend(self._get_hosts_by_key(key))
 

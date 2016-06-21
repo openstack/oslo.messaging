@@ -55,7 +55,10 @@ class DealerPublisherProxy(object):
                 zmq_address.target_to_subscribe_filter(request.target)
             self._do_send_request(request, routing_key)
         else:
-            routing_keys = self.routing_table.get_all_hosts(request.target)
+            routing_keys = \
+                [self.routing_table.get_routable_host(request.target)] \
+                if request.msg_type in zmq_names.DIRECT_TYPES else \
+                self.routing_table.get_all_hosts(request.target)
             for routing_key in routing_keys:
                 self._do_send_request(request, routing_key)
 
