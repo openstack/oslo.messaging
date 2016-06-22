@@ -15,14 +15,13 @@
 
 from oslo_messaging._drivers import common
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
-    import zmq_dealer_call_publisher
-from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_proxy
-from oslo_messaging._drivers.zmq_driver.client.publishers \
-    import zmq_publisher_base
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
+from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
+from oslo_messaging._drivers.zmq_driver.client import zmq_senders
+from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -46,25 +45,34 @@ class ZmqClientMixDirectPubSub(zmq_client_base.ZmqClientBase):
         if conf.use_router_proxy or not conf.use_pub_sub:
             raise WrongClientException()
 
-        self.sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+        self.sockets_manager = zmq_sockets_manager.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER
+        )
+
+        sender_proxy = zmq_senders.RequestSenderProxy(conf)
+        sender_direct = zmq_senders.RequestSenderDirect(conf)
+
+        receiver_direct = zmq_receivers.ReplyReceiverDirect(conf)
 
         fanout_publisher = zmq_dealer_publisher_proxy.DealerPublisherProxy(
-            conf, matchmaker, self.sockets_manager.get_socket_to_publishers())
+            self.sockets_manager, sender_proxy
+        )
 
         super(ZmqClientMixDirectPubSub, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
                 zmq_names.CALL_TYPE:
-                    zmq_dealer_call_publisher.DealerCallPublisher(
-                        conf, matchmaker, self.sockets_manager),
+                    zmq_dealer_publisher.DealerCallPublisher(
+                        self.sockets_manager, sender_direct, receiver_direct
+                    ),
 
                 zmq_names.CAST_FANOUT_TYPE: fanout_publisher,
 
                 zmq_names.NOTIFY_TYPE: fanout_publisher,
 
-                "default": zmq_dealer_publisher.DealerPublisherAsync(
-                    conf, matchmaker)
+                "default":
+                    zmq_dealer_publisher.DealerPublisher(self.sockets_manager,
+                                                         sender_direct)
             }
         )
 
@@ -82,18 +90,25 @@ class ZmqClientDirect(zmq_client_base.ZmqClientBase):
         if conf.use_pub_sub or conf.use_router_proxy:
             raise WrongClientException()
 
-        self.sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+        self.sockets_manager = zmq_sockets_manager.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER
+        )
+
+        sender = zmq_senders.RequestSenderDirect(conf)
+
+        receiver = zmq_receivers.ReplyReceiverDirect(conf)
 
         super(ZmqClientDirect, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
                 zmq_names.CALL_TYPE:
-                    zmq_dealer_call_publisher.DealerCallPublisher(
-                        conf, matchmaker, self.sockets_manager),
+                    zmq_dealer_publisher.DealerCallPublisher(
+                        self.sockets_manager, sender, receiver
+                    ),
 
-                "default": zmq_dealer_publisher.DealerPublisher(
-                    conf, matchmaker)
+                "default":
+                    zmq_dealer_publisher.DealerPublisher(self.sockets_manager,
+                                                         sender)
             }
         )
 
@@ -113,18 +128,25 @@ class ZmqClientProxy(zmq_client_base.ZmqClientBase):
         if not conf.use_router_proxy:
             raise WrongClientException()
 
-        self.sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+        self.sockets_manager = zmq_sockets_manager.SocketsManager(
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER
+        )
+
+        sender = zmq_senders.RequestSenderProxy(conf)
+
+        receiver = zmq_receivers.ReplyReceiverProxy(conf)
 
         super(ZmqClientProxy, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
                 zmq_names.CALL_TYPE:
                     zmq_dealer_publisher_proxy.DealerCallPublisherProxy(
-                        conf, matchmaker, self.sockets_manager),
+                        self.sockets_manager, sender, receiver
+                    ),
 
-                "default": zmq_dealer_publisher_proxy.DealerPublisherProxy(
-                        conf, matchmaker,
-                        self.sockets_manager.get_socket_to_publishers())
+                "default":
+                    zmq_dealer_publisher_proxy.DealerPublisherProxy(
+                        self.sockets_manager, sender
+                    )
             }
         )

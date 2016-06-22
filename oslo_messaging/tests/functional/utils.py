@@ -300,6 +300,8 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         zmq_redis_port = os.environ.get('ZMQ_REDIS_PORT')
         if zmq_redis_port:
             self.config(port=zmq_redis_port, group="matchmaker_redis")
+            self.config(check_timeout=10000, group="matchmaker_redis")
+            self.config(wait_timeout=1000, group="matchmaker_redis")
         zmq_use_pub_sub = os.environ.get('ZMQ_USE_PUB_SUB')
         if zmq_use_pub_sub:
             self.config(use_pub_sub=zmq_use_pub_sub)

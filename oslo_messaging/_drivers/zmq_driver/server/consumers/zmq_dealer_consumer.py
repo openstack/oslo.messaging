@@ -14,15 +14,12 @@
 
 import logging
 
-import six
-
-from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers.zmq_driver.client.publishers\
-    import zmq_publisher_base
-from oslo_messaging._drivers.zmq_driver.client import zmq_response
-from oslo_messaging._drivers.zmq_driver.server.consumers\
+from oslo_messaging._drivers.zmq_driver.client import zmq_senders
+from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
+from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
+from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
@@ -33,54 +30,11 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class DealerIncomingMessage(base.RpcIncomingMessage):
-
-    def __init__(self, context, message):
-        super(DealerIncomingMessage, self).__init__(context, message)
-
-    def reply(self, reply=None, failure=None):
-        """Reply is not needed for non-call messages"""
-
-    def acknowledge(self):
-        """Not sending acknowledge"""
-
-    def requeue(self):
-        """Requeue is not supported"""
-
-
-class DealerIncomingRequest(base.RpcIncomingMessage):
-
-    def __init__(self, socket, reply_id, message_id, context, message):
-        super(DealerIncomingRequest, self).__init__(context, message)
-        self.reply_socket = socket
-        self.reply_id = reply_id
-        self.message_id = message_id
-
-    def reply(self, reply=None, failure=None):
-        if failure is not None:
-            failure = rpc_common.serialize_remote_exception(failure)
-        response = zmq_response.Response(type=zmq_names.REPLY_TYPE,
-                                         message_id=self.message_id,
-                                         reply_id=self.reply_id,
-                                         reply_body=reply,
-                                         failure=failure)
-
-        LOG.debug("Replying %s", self.message_id)
-
-        self.reply_socket.send(b'', zmq.SNDMORE)
-        self.reply_socket.send(six.b(str(zmq_names.REPLY_TYPE)), zmq.SNDMORE)
-        self.reply_socket.send(self.reply_id, zmq.SNDMORE)
-        self.reply_socket.send(self.message_id, zmq.SNDMORE)
-        self.reply_socket.send_pyobj(response)
-
-    def requeue(self):
-        """Requeue is not supported"""
-
-
 class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        self.sockets_manager = zmq_publisher_base.SocketsManager(
+        self.sender = zmq_senders.ReplySenderProxy(conf)
+        self.sockets_manager = zmq_sockets_manager.SocketsManager(
             conf, server.matchmaker, zmq.ROUTER, zmq.DEALER)
         self.host = None
         super(DealerConsumer, self).__init__(conf, poller, server, zmq.DEALER)
@@ -91,6 +45,7 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
     def subscribe_socket(self, socket_type):
         try:
             socket = self.sockets_manager.get_socket_to_routers()
+            self.sockets.append(socket)
             self.host = socket.handle.identity
             self.poller.register(socket, self.receive_message)
             return socket
@@ -110,10 +65,12 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
             LOG.debug("[%(host)s] Received message %(id)s",
                       {"host": self.host, "id": message_id})
             if message_type == zmq_names.CALL_TYPE:
-                return DealerIncomingRequest(
-                    socket, reply_id, message_id, context, message)
+                return zmq_incoming_message.ZmqIncomingMessage(
+                    context, message, reply_id, message_id, socket, self.sender
+                )
             elif message_type in zmq_names.NON_BLOCKING_TYPES:
-                return DealerIncomingMessage(context, message)
+                return zmq_incoming_message.ZmqIncomingMessage(context,
+                                                               message)
             else:
                 LOG.error(_LE("Unknown message type: %s"),
                           zmq_names.message_type_str(message_type))
@@ -122,6 +79,7 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
+        self.connection_updater.cleanup()
         super(DealerConsumer, self).cleanup()
 
 

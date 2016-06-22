@@ -21,38 +21,41 @@ from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
-
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
-class ZmqIncomingRequest(base.RpcIncomingMessage):
+class ZmqIncomingMessage(base.RpcIncomingMessage):
 
-    def __init__(self, socket, rep_id, request, poller):
-        super(ZmqIncomingRequest, self).__init__(request.context,
-                                                 request.message)
-        self.reply_socket = socket
-        self.reply_id = rep_id
-        self.request = request
-        self.received = None
-        self.poller = poller
+    def __init__(self, context, message, reply_id=None, message_id=None,
+                 socket=None, sender=None):
+
+        if sender is not None:
+            assert socket is not None, "Valid socket expected!"
+            assert message_id is not None, "Valid message ID expected!"
+            assert reply_id is not None, "Valid reply ID expected!"
+
+        super(ZmqIncomingMessage, self).__init__(context, message)
+
+        self.reply_id = reply_id
+        self.message_id = message_id
+        self.socket = socket
+        self.sender = sender
+
+    def acknowledge(self):
+        """Not sending acknowledge"""
 
     def reply(self, reply=None, failure=None):
-        if failure is not None:
-            failure = rpc_common.serialize_remote_exception(failure)
-        response = zmq_response.Response(type=zmq_names.REPLY_TYPE,
-                                         message_id=self.request.message_id,
-                                         reply_id=self.reply_id,
-                                         reply_body=reply,
-                                         failure=failure)
-
-        LOG.debug("Replying %s", (str(self.request.message_id)))
-
-        self.received = True
-        self.reply_socket.send(self.reply_id, zmq.SNDMORE)
-        self.reply_socket.send(b'', zmq.SNDMORE)
-        self.reply_socket.send_pyobj(response)
+        if self.sender is not None:
+            if failure is not None:
+                failure = rpc_common.serialize_remote_exception(failure)
+            reply = zmq_response.Response(type=zmq_names.REPLY_TYPE,
+                                          message_id=self.message_id,
+                                          reply_id=self.reply_id,
+                                          reply_body=reply,
+                                          failure=failure)
+            self.sender.send(self.socket, reply)
 
     def requeue(self):
         """Requeue is not supported"""

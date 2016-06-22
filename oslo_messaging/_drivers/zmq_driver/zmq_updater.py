@@ -31,6 +31,8 @@ class UpdaterBase(object):
         self.conf = conf
         self.matchmaker = matchmaker
         self.update_method = update_method
+        # make first update immediately
+        self.update_method()
         self.executor = zmq_async.get_executor(method=self._update_loop)
         self.executor.execute()
 
