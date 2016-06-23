@@ -189,16 +189,16 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
                                                  'kombu+memory:////')
         self.addCleanup(transport.cleanup)
 
-        transport._driver._get_connection()
+        connection = transport._driver._get_connection()
         connection_klass.assert_called_once_with(
             'memory:///', transport_options={
                 'client_properties': {
                     'capabilities': {
                         'connection.blocked': True,
                         'consumer_cancel_notify': True,
-                        'authentication_failure_close': True
-                    }
-                },
+                        'authentication_failure_close': True,
+                    },
+                    'connection_name': connection.name},
                 'confirm_publish': True,
                 'on_blocked': mock.ANY,
                 'on_unblocked': mock.ANY},
