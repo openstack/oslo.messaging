@@ -36,15 +36,15 @@ HOST_CONNECTION_LAST_TRY_TIME = "last_try_time"
 HOST_CONNECTION_LAST_SUCCESS_TRY_TIME = "last_success_try_time"
 
 pika_opts = [
-    cfg.IntOpt('channel_max', default=None,
+    cfg.IntOpt('channel_max',
                help='Maximum number of channels to allow'),
-    cfg.IntOpt('frame_max', default=None,
+    cfg.IntOpt('frame_max',
                help='The maximum byte size for an AMQP frame'),
     cfg.IntOpt('heartbeat_interval', default=3,
                help="How often to send heartbeats for consumer's connections"),
-    cfg.BoolOpt('ssl', default=None,
+    cfg.BoolOpt('ssl',
                 help='Enable SSL'),
-    cfg.DictOpt('ssl_options', default=None,
+    cfg.DictOpt('ssl_options',
                 help='Arguments passed to ssl.wrap_socket'),
     cfg.FloatOpt('socket_timeout', default=0.25,
                  help="Set socket timeout in seconds for connection's socket"),

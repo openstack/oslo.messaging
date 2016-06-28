@@ -32,7 +32,6 @@ amqp1_opts = [
                help="address prefix when sending to any server in group"),
 
     cfg.StrOpt('container_name',
-               default=None,
                deprecated_group='amqp1',
                help='Name for the AMQP container'),
 
@@ -62,7 +61,6 @@ amqp1_opts = [
                help='Private key PEM file used to sign cert_file certificate'),
 
     cfg.StrOpt('ssl_key_password',
-               default=None,
                deprecated_group='amqp1',
                secret=True,
                help='Password for decrypting ssl_key_file (if encrypted)'),
