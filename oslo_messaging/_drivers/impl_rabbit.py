@@ -156,6 +156,7 @@ rabbit_opts = [
                     'Default is 30 seconds.'),
     cfg.IntOpt('rabbit_max_retries',
                default=0,
+               deprecated_for_removal=True,
                deprecated_group='DEFAULT',
                help='Maximum number of RabbitMQ connection retries. '
                     'Default is 0 (infinite retry count).'),
