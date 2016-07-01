@@ -221,10 +221,11 @@ class ProtonDriver(base.BaseDriver):
         self._pid = None
         self._lock = threading.Lock()
 
-        # TODO(kgiusti): make configurable:
-        self._default_reply_timeout = 30
-        self._default_send_timeout = 60
-        self._default_notify_timeout = 60
+        # timeout for message acknowledgement
+        opt_name = conf.oslo_messaging_amqp
+        self._default_reply_timeout = opt_name.default_reply_timeout
+        self._default_send_timeout = opt_name.default_send_timeout
+        self._default_notify_timeout = opt_name.default_notify_timeout
 
     def _ensure_connect_called(func):
         """Causes a new controller to be created when the messaging service is

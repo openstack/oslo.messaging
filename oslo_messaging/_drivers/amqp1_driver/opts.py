@@ -103,7 +103,7 @@ amqp1_opts = [
                help='Maximum limit for connection_retry_interval'
                     ' + connection_retry_backoff'),
 
-    # Message send retry options
+    # Message send retry and timeout options
 
     cfg.IntOpt('max_send_retries',
                default=0,
@@ -117,6 +117,24 @@ amqp1_opts = [
                min=1,
                help='Time to pause between re-connecting an AMQP 1.0 link that'
                ' failed due to a recoverable error.'),
+
+    cfg.IntOpt('default_reply_timeout',
+               default=30,
+               min=5,
+               help='The deadline for an rpc reply message delivery.'
+               ' Only used when caller does not provide a timeout expiry.'),
+
+    cfg.IntOpt('default_send_timeout',
+               default=60,
+               min=5,
+               help='The deadline for an rpc cast or call message delivery.'
+               ' Only used when caller does not provide a timeout expiry.'),
+
+    cfg.IntOpt('default_notify_timeout',
+               default=60,
+               min=5,
+               help='The deadline for a sent notification message delivery.'
+               ' Only used when caller does not provide a timeout expiry.'),
 
     # Addressing:
 
