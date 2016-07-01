@@ -1,0 +1,61 @@
+# Translations template for oslo.messaging.
+# Copyright (C) 2015 ORGANIZATION
+# This file is distributed under the same license as the oslo.messaging
+# project.
+#
+# Translators:
+# Andi Chandler <andi@gowling.com>, 2014-2015
+# Andi Chandler <andi@gowling.com>, 2016. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+msgid ""
+msgstr ""
+"Project-Id-Version: oslo.messaging 5.5.1.dev3\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-07-01 03:41+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2016-06-28 05:52+0000\n"
+"Last-Translator: Andi Chandler <andi@gowling.com>\n"
+"Language: en-GB\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Generated-By: Babel 2.0\n"
+"X-Generator: Zanata 3.7.3\n"
+"Language-Team: English (United Kingdom)\n"
+
+#, python-format
+msgid "An exception occurred processing the API call: %s "
+msgstr "An exception occurred processing the API call: %s "
+
+msgid "Can not acknowledge message. Skip processing"
+msgstr "Can not acknowledge message. Skip processing"
+
+msgid "Can not send reply for message"
+msgstr "Can not send reply for message"
+
+#, python-format
+msgid "Could not send notification to %(topic)s. Payload=%(message)s"
+msgstr "Could not send notification to %(topic)s. Payload=%(message)s"
+
+msgid "Exception during message handling"
+msgstr "Exception during message handling"
+
+msgid "Exception during message handling."
+msgstr "Exception during message handling."
+
+msgid "Exception during messages handling."
+msgstr "Exception during messages handling."
+
+msgid "Fail to ack/requeue message."
+msgstr "Fail to ack/requeue message."
+
+#, python-format
+msgid ""
+"Problem '%(e)s' attempting to send to notification system. Payload="
+"%(payload)s"
+msgstr ""
+"Problem '%(e)s' attempting to send to notification system. Payload="
+"%(payload)s"
+
+msgid "Unexpected exception occurred."
+msgstr "Unexpected exception occurred."
