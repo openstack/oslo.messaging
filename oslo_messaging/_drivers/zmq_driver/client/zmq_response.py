@@ -17,23 +17,18 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 
 class Response(object):
 
-    def __init__(self, id=None, type=None, message_id=None,
+    def __init__(self, msg_type=None, message_id=None,
                  reply_id=None, reply_body=None, failure=None):
 
-        self._id = id
-        self._type = type
+        self._msg_type = msg_type
         self._message_id = message_id
         self._reply_id = reply_id
         self._reply_body = reply_body
         self._failure = failure
 
     @property
-    def id_(self):
-        return self._id
-
-    @property
-    def type_(self):
-        return self._type
+    def msg_type(self):
+        return self._msg_type
 
     @property
     def message_id(self):
@@ -52,11 +47,10 @@ class Response(object):
         return self._failure
 
     def to_dict(self):
-        return {zmq_names.FIELD_ID: self._id,
-                zmq_names.FIELD_TYPE: self._type,
+        return {zmq_names.FIELD_MSG_TYPE: self._msg_type,
                 zmq_names.FIELD_MSG_ID: self._message_id,
                 zmq_names.FIELD_REPLY_ID: self._reply_id,
-                zmq_names.FIELD_REPLY: self._reply_body,
+                zmq_names.FIELD_REPLY_BODY: self._reply_body,
                 zmq_names.FIELD_FAILURE: self._failure}
 
     def __str__(self):

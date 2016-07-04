@@ -100,7 +100,12 @@ zmq_opts = [
     cfg.IntOpt('rpc_zmq_bind_port_retries',
                default=100,
                help='Number of retries to find free port number before '
-                    'fail with ZMQBindError.')
+                    'fail with ZMQBindError.'),
+
+    cfg.StrOpt('rpc_zmq_serialization', default='json',
+               choices=('json', 'msgpack'),
+               help='Default serialization mechanism for '
+                    'serializing/deserializing outgoing/incoming messages')
 ]
 
 

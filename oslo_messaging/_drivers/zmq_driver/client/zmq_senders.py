@@ -44,8 +44,8 @@ class RequestSenderProxy(SenderBase):
         socket.send(six.b(str(request.msg_type)), zmq.SNDMORE)
         socket.send(six.b(request.routing_key), zmq.SNDMORE)
         socket.send(six.b(request.message_id), zmq.SNDMORE)
-        socket.send_pyobj(request.context, zmq.SNDMORE)
-        socket.send_pyobj(request.message)
+        socket.send_dumped(request.context, zmq.SNDMORE)
+        socket.send_dumped(request.message)
 
         LOG.debug("->[proxy:%(addr)s] Sending %(msg_type)s message "
                   "%(msg_id)s to target %(target)s",
@@ -60,20 +60,23 @@ class ReplySenderProxy(SenderBase):
     def send(self, socket, reply):
         LOG.debug("Replying to %s", reply.message_id)
 
-        assert reply.type_ == zmq_names.REPLY_TYPE, "Reply expected!"
+        assert reply.msg_type == zmq_names.REPLY_TYPE, "Reply expected!"
 
         socket.send(b'', zmq.SNDMORE)
-        socket.send(six.b(str(reply.type_)), zmq.SNDMORE)
+        socket.send(six.b(str(reply.msg_type)), zmq.SNDMORE)
         socket.send(reply.reply_id, zmq.SNDMORE)
         socket.send(reply.message_id, zmq.SNDMORE)
-        socket.send_pyobj(reply)
+        socket.send_dumped(reply.to_dict())
 
 
 class RequestSenderDirect(SenderBase):
 
     def send(self, socket, request):
         socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(request)
+        socket.send(six.b(str(request.msg_type)), zmq.SNDMORE)
+        socket.send_string(request.message_id, zmq.SNDMORE)
+        socket.send_dumped(request.context, zmq.SNDMORE)
+        socket.send_dumped(request.message)
 
         LOG.debug("Sending %(msg_type)s message %(msg_id)s to "
                   "target %(target)s",
@@ -87,8 +90,8 @@ class ReplySenderDirect(SenderBase):
     def send(self, socket, reply):
         LOG.debug("Replying to %s", reply.message_id)
 
-        assert reply.type_ == zmq_names.REPLY_TYPE, "Reply expected!"
+        assert reply.msg_type == zmq_names.REPLY_TYPE, "Reply expected!"
 
         socket.send(reply.reply_id, zmq.SNDMORE)
         socket.send(b'', zmq.SNDMORE)
-        socket.send_pyobj(reply)
+        socket.send_dumped(reply.to_dict())

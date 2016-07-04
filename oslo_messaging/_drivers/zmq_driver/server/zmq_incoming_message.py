@@ -50,7 +50,7 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
         if self.sender is not None:
             if failure is not None:
                 failure = rpc_common.serialize_remote_exception(failure)
-            reply = zmq_response.Response(type=zmq_names.REPLY_TYPE,
+            reply = zmq_response.Response(msg_type=zmq_names.REPLY_TYPE,
                                           message_id=self.message_id,
                                           reply_id=self.reply_id,
                                           reply_body=reply,

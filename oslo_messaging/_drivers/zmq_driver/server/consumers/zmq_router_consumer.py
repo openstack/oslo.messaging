@@ -15,7 +15,7 @@
 import logging
 
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
-from oslo_messaging._drivers.zmq_driver.server.consumers\
+from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_async
@@ -38,29 +38,31 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         reply_id = socket.recv()
         empty = socket.recv()
         assert empty == b'', 'Bad format: empty delimiter expected'
-        request = socket.recv_pyobj()
-        return request, reply_id
+        msg_type = int(socket.recv())
+        message_id = socket.recv_string()
+        context = socket.recv_loaded()
+        message = socket.recv_loaded()
+        return reply_id, msg_type, message_id, context, message
 
     def receive_message(self, socket):
         try:
-            request, reply_id = self._receive_request(socket)
-            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s",
+            reply_id, msg_type, message_id, context, message = \
+                self._receive_request(socket)
+            LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
                       {"host": self.host,
-                       "type": request.msg_type,
-                       "id": request.message_id,
-                       "target": request.target})
+                       "msg_type": zmq_names.message_type_str(msg_type),
+                       "msg_id": message_id})
 
-            if request.msg_type == zmq_names.CALL_TYPE:
+            if msg_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingMessage(
-                    request.context, request.message, reply_id,
-                    request.message_id, socket, self.sender
+                    context, message, reply_id, message_id, socket, self.sender
                 )
-            elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
-                return zmq_incoming_message.ZmqIncomingMessage(request.context,
-                                                               request.message)
+            elif msg_type in zmq_names.NON_BLOCKING_TYPES:
+                return zmq_incoming_message.ZmqIncomingMessage(context,
+                                                               message)
             else:
                 LOG.error(_LE("Unknown message type: %s"),
-                          zmq_names.message_type_str(request.msg_type))
+                          zmq_names.message_type_str(msg_type))
         except (zmq.ZMQError, AssertionError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
 

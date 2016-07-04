@@ -23,6 +23,8 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE, _LI
 from oslo_messaging import exceptions
+from oslo_serialization.serializer import json_serializer
+from oslo_serialization.serializer import msgpack_serializer
 
 LOG = logging.getLogger(__name__)
 
@@ -30,6 +32,11 @@ zmq = zmq_async.import_zmq()
 
 
 class ZmqSocket(object):
+
+    SERIALIZERS = {
+        'json': json_serializer.JSONSerializer(),
+        'msgpack': msgpack_serializer.MessagePackSerializer()
+    }
 
     def __init__(self, conf, context, socket_type, high_watermark=0):
         self.conf = conf
@@ -44,6 +51,14 @@ class ZmqSocket(object):
         self.handle.setsockopt(zmq.LINGER, self.close_linger)
         self.handle.identity = six.b(str(uuid.uuid4()))
         self.connections = set()
+
+    def _get_serializer(self, serialization):
+        serializer = self.SERIALIZERS.get(serialization, None)
+        if serializer is None:
+            raise NotImplementedError(
+                "Serialization '{}' is not supported".format(serialization)
+            )
+        return serializer
 
     def type_name(self):
         return zmq_names.socket_type_str(self.socket_type)
@@ -77,6 +92,13 @@ class ZmqSocket(object):
     def send_multipart(self, *args, **kwargs):
         self.handle.send_multipart(*args, **kwargs)
 
+    def send_dumped(self, obj, *args, **kwargs):
+        serialization = kwargs.pop('serialization',
+                                   self.conf.rpc_zmq_serialization)
+        serializer = self._get_serializer(serialization)
+        s = serializer.dump_as_bytes(obj)
+        self.handle.send(s, *args, **kwargs)
+
     def recv(self, *args, **kwargs):
         return self.handle.recv(*args, **kwargs)
 
@@ -92,6 +114,14 @@ class ZmqSocket(object):
     def recv_multipart(self, *args, **kwargs):
         return self.handle.recv_multipart(*args, **kwargs)
 
+    def recv_loaded(self, *args, **kwargs):
+        serialization = kwargs.pop('serialization',
+                                   self.conf.rpc_zmq_serialization)
+        serializer = self._get_serializer(serialization)
+        s = self.handle.recv(*args, **kwargs)
+        obj = serializer.load_from_bytes(s)
+        return obj
+
     def close(self, *args, **kwargs):
         self.handle.close(*args, **kwargs)
 
@@ -106,10 +136,10 @@ class ZmqSocket(object):
                       "address": address})
             self.connect(address)
         except zmq.ZMQError as e:
-            errmsg = _LE("Failed connecting %(stype) to %(address)s: %(e)s")\
-                % (stype, address, e)
-            LOG.error(_LE("Failed connecting %(stype) to %(address)s: %(e)s"),
-                      (stype, address, e))
+            errmsg = _LE("Failed connecting %(stype)s to %(address)s: %(e)s") \
+                % {"stype": stype, "address": address, "e": e}
+            LOG.error(_LE("Failed connecting %(stype)s to %(address)s: %(e)s"),
+                      {"stype": stype, "address": address, "e": e})
             raise rpc_common.RPCException(errmsg)
 
     def connect_to_host(self, host):

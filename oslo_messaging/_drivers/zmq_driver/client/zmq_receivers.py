@@ -19,6 +19,7 @@ import threading
 import futurist
 import six
 
+from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
@@ -118,9 +119,11 @@ class ReplyReceiverProxy(ReplyReceiver):
         reply_id = socket.recv()
         assert reply_id is not None, "Reply ID expected!"
         message_type = int(socket.recv())
-        assert message_type == zmq_names.REPLY_TYPE, "Reply is expected!"
+        assert message_type == zmq_names.REPLY_TYPE, "Reply expected!"
         message_id = socket.recv()
-        reply = socket.recv_pyobj()
+        raw_reply = socket.recv_loaded()
+        assert isinstance(raw_reply, dict), "Dict expected!"
+        reply = zmq_response.Response(**raw_reply)
         LOG.debug("Received reply for %s", message_id)
         return reply_id, message_type, message_id, reply
 
@@ -130,9 +133,11 @@ class ReplyReceiverDirect(ReplyReceiver):
     def recv_response(self, socket):
         empty = socket.recv()
         assert empty == b'', "Empty expected!"
-        reply = socket.recv_pyobj()
+        raw_reply = socket.recv_loaded()
+        assert isinstance(raw_reply, dict), "Dict expected!"
+        reply = zmq_response.Response(**raw_reply)
         LOG.debug("Received reply for %s", reply.message_id)
-        return reply.reply_id, reply.type_, reply.message_id, reply
+        return reply.reply_id, reply.msg_type, reply.message_id, reply
 
 
 class AckAndReplyReceiver(ReceiverBase):

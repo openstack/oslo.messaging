@@ -17,15 +17,11 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 zmq = zmq_async.import_zmq()
 
 
-FIELD_TYPE = 'type'
-FIELD_FAILURE = 'failure'
-FIELD_REPLY = 'reply'
-FIELD_ID = 'id'
-FIELD_MSG_ID = 'message_id'
 FIELD_MSG_TYPE = 'msg_type'
+FIELD_MSG_ID = 'message_id'
 FIELD_REPLY_ID = 'reply_id'
-FIELD_TARGET = 'target'
-FIELD_ROUTING_KEY = 'routing_key'
+FIELD_REPLY_BODY = 'reply_body'
+FIELD_FAILURE = 'failure'
 
 
 IDX_REPLY_TYPE = 1

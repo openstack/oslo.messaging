@@ -60,10 +60,12 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
             reply_id = socket.recv()
             message_type = int(socket.recv())
             message_id = socket.recv()
-            context = socket.recv_pyobj()
-            message = socket.recv_pyobj()
-            LOG.debug("[%(host)s] Received message %(id)s",
-                      {"host": self.host, "id": message_id})
+            context = socket.recv_loaded()
+            message = socket.recv_loaded()
+            LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
+                      {"host": self.host,
+                       "msg_type": zmq_names.message_type_str(message_type),
+                       "msg_id": message_id})
             if message_type == zmq_names.CALL_TYPE:
                 return zmq_incoming_message.ZmqIncomingMessage(
                     context, message, reply_id, message_id, socket, self.sender
