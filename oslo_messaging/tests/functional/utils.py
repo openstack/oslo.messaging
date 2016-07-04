@@ -122,7 +122,7 @@ class RpcServerFixture(fixtures.Fixture):
 
 class RpcServerGroupFixture(fixtures.Fixture):
     def __init__(self, conf, url, topic=None, names=None, exchange=None,
-                 use_fanout_ctrl=False):
+                 use_fanout_ctrl=False, endpoint=None):
         self.conf = conf
         self.url = url
         # NOTE(sileht): topic and servier_name must be uniq
@@ -133,6 +133,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]
         self.use_fanout_ctrl = use_fanout_ctrl
+        self.endpoint = endpoint
 
     def setUp(self):
         super(RpcServerGroupFixture, self).setUp()
@@ -149,6 +150,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         if self.use_fanout_ctrl:
             ctrl = self._target(fanout=True)
         server = RpcServerFixture(self.conf, self.url, target,
+                                  endpoint=self.endpoint,
                                   ctrl_target=ctrl)
         return server
 
@@ -277,7 +279,15 @@ class IsValidDistributionOf(object):
 class SkipIfNoTransportURL(test_utils.BaseTestCase):
     def setUp(self, conf=cfg.CONF):
         super(SkipIfNoTransportURL, self).setUp(conf=conf)
-        self.url = os.environ.get('TRANSPORT_URL')
+
+        driver = os.environ.get("TRANSPORT_DRIVER")
+        if driver:
+            self.url = os.environ.get('PIFPAF_URL')
+            if driver == "pika" and self.url:
+                self.url = self.url.replace("rabbit://", "pika://")
+        else:
+            self.url = os.environ.get('TRANSPORT_URL')
+
         if not self.url:
             self.skipTest("No transport url configured")
 
