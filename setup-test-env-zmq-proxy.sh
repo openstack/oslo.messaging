@@ -11,7 +11,7 @@ export ZMQ_MATCHMAKER=redis
 export ZMQ_REDIS_PORT=65123
 export ZMQ_IPC_DIR=${DATADIR}
 export ZMQ_USE_PUB_SUB=false
-export ZMQ_USE_ROUTER_PROXY=false
+export ZMQ_USE_ROUTER_PROXY=true
 
 cat > ${DATADIR}/zmq.conf <<EOF
 [DEFAULT]
