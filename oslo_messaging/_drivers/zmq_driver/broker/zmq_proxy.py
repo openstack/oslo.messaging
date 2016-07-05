@@ -48,7 +48,7 @@ class ZmqProxy(object):
        2. Routers should be transparent for clients and servers. Which means
           it doesn't change the way of messaging between client and the final
           target by hiding the target from a client.
-       3. Router may be restarted or get down at any time loosing all messages
+       3. Router may be restarted or shut down at any time losing all messages
           in its queue. Smart retrying (based on acknowledgements from server
           side) and load balancing between other Router instances from the
           client side should handle the situation.
