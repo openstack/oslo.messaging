@@ -63,8 +63,7 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
     def _receive_request(socket):
         topic_filter = socket.recv()
         message_id = socket.recv()
-        context = socket.recv_loaded()
-        message = socket.recv_loaded()
+        context, message = socket.recv_loaded()
         LOG.debug("Received %(topic_filter)s topic message %(id)s",
                   {'id': message_id, 'topic_filter': topic_filter})
         return context, message

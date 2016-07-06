@@ -30,7 +30,8 @@ zmq = zmq_async.import_zmq()
 class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        self.sender = zmq_senders.ReplySenderDirect(conf)
+        self.ack_sender = zmq_senders.AckSenderDirect(conf)
+        self.reply_sender = zmq_senders.ReplySenderDirect(conf)
         super(RouterConsumer, self).__init__(conf, poller, server, zmq.ROUTER)
         LOG.info(_LI("[%s] Run ROUTER consumer"), self.host)
 
@@ -40,26 +41,29 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         assert empty == b'', 'Bad format: empty delimiter expected'
         msg_type = int(socket.recv())
         message_id = socket.recv_string()
-        context = socket.recv_loaded()
-        message = socket.recv_loaded()
+        context, message = socket.recv_loaded()
         return reply_id, msg_type, message_id, context, message
 
     def receive_message(self, socket):
         try:
             reply_id, msg_type, message_id, context, message = \
                 self._receive_request(socket)
+
             LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
                       {"host": self.host,
                        "msg_type": zmq_names.message_type_str(msg_type),
                        "msg_id": message_id})
 
-            if msg_type == zmq_names.CALL_TYPE:
+            if msg_type == zmq_names.CALL_TYPE or \
+                    msg_type in zmq_names.NON_BLOCKING_TYPES:
+                ack_sender = self.ack_sender \
+                    if self.conf.oslo_messaging_zmq.rpc_use_acks else None
+                reply_sender = self.reply_sender \
+                    if msg_type == zmq_names.CALL_TYPE else None
                 return zmq_incoming_message.ZmqIncomingMessage(
-                    context, message, reply_id, message_id, socket, self.sender
+                    context, message, reply_id, message_id, socket,
+                    ack_sender, reply_sender
                 )
-            elif msg_type in zmq_names.NON_BLOCKING_TYPES:
-                return zmq_incoming_message.ZmqIncomingMessage(context,
-                                                               message)
             else:
                 LOG.error(_LE("Unknown message type: %s"),
                           zmq_names.message_type_str(msg_type))

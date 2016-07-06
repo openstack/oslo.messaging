@@ -113,10 +113,41 @@ zmq_opts = [
                     'serializing/deserializing outgoing/incoming messages')
 ]
 
+zmq_ack_retry_opts = [
+    cfg.IntOpt('rpc_thread_pool_size', default=100,
+               help='Maximum number of (green) threads to work concurrently.'),
+
+    cfg.IntOpt('rpc_message_ttl', default=300,
+               help='Expiration timeout in seconds of a sent/received message '
+                    'after which it is not tracked anymore by a '
+                    'client/server.'),
+
+    cfg.BoolOpt('rpc_use_acks', default=True,
+                help='Wait for message acknowledgements from receivers. '
+                     'This mechanism works only via proxy without PUB/SUB.'),
+
+    cfg.IntOpt('rpc_ack_timeout_base', default=10,
+               help='Number of seconds to wait for an ack from a cast/call. '
+                    'After each retry attempt this timeout is multiplied by '
+                    'some specified multiplier.'),
+
+    cfg.IntOpt('rpc_ack_timeout_multiplier', default=2,
+               help='Number to multiply base ack timeout by after each retry '
+                    'attempt.'),
+
+    cfg.IntOpt('rpc_retry_attempts', default=3,
+               help='Default number of message sending attempts in case '
+                    'of any problems occurred: positive value N means '
+                    'at most N retries, 0 means no retries, None or -1 '
+                    '(or any other negative values) mean to retry forever. '
+                    'This option is used only if acknowledgments are enabled.')
+]
+
 
 def register_opts(conf):
     opt_group = cfg.OptGroup(name='oslo_messaging_zmq',
                              title='ZeroMQ driver options')
     conf.register_opts(zmq_opts, group=opt_group)
+    conf.register_opts(zmq_ack_retry_opts, group=opt_group)
     conf.register_opts(server._pool_opts)
     conf.register_opts(base.base_opts)

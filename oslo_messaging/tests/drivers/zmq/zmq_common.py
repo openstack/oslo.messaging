@@ -91,15 +91,20 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
 
         self.listener = TestServerListener(self.driver)
 
-        self.addCleanup(StopRpc(self.__dict__))
+        self.addCleanup(
+            StopRpc(self, [('listener', 'stop'), ('driver', 'cleanup')])
+        )
 
 
 class StopRpc(object):
-    def __init__(self, attrs):
-        self.attrs = attrs
+    def __init__(self, obj, attrs_and_stops):
+        self.obj = obj
+        self.attrs_and_stops = attrs_and_stops
 
     def __call__(self):
-        if self.attrs['driver']:
-            self.attrs['driver'].cleanup()
-        if self.attrs['listener']:
-            self.attrs['listener'].stop()
+        for attr, stop in self.attrs_and_stops:
+            if hasattr(self.obj, attr):
+                obj_attr = getattr(self.obj, attr)
+                if hasattr(obj_attr, stop):
+                    obj_attr_stop = getattr(obj_attr, stop)
+                    obj_attr_stop()
