@@ -1321,8 +1321,13 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         self.prefetch_size = (
             conf.oslo_messaging_rabbit.rabbit_qos_prefetch_count)
 
+        # the pool configuration properties
+        max_size = conf.oslo_messaging_rabbit.rpc_conn_pool_size
+        min_size = conf.oslo_messaging_rabbit.conn_pool_min_size
+        ttl = conf.oslo_messaging_rabbit.conn_pool_ttl
+
         connection_pool = pool.ConnectionPool(
-            conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
+            conf, max_size, min_size, ttl,
             url, Connection)
 
         super(RabbitDriver, self).__init__(

@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    | Idle connections in the pool will be expired and closed.
+    | Default ttl is 1200s. Next configuration params was added
+
+    * *conn_pool_ttl* (defaul 1200)
+    * *conn_pool_min_size* (default 2)
