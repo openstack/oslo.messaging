@@ -143,7 +143,10 @@ class ZmqSocket(object):
             raise rpc_common.RPCException(errmsg)
 
     def connect_to_host(self, host):
-        address = zmq_address.get_tcp_direct_address(host)
+        address = zmq_address.get_tcp_direct_address(
+            host.decode('utf-8') if six.PY3 and
+            isinstance(host, six.binary_type) else host
+        )
         self.connect_to_address(address)
 
 
