@@ -132,7 +132,7 @@ class TestDispatcher(test_utils.BaseTestCase):
         dispatcher = notify_dispatcher.NotificationDispatcher(
             [mock.Mock()], None)
         res = dispatcher.dispatch(mock.Mock(ctxt={}, message=msg))
-        self.assertEqual(None, res)
+        self.assertIsNone(res)
         mylog.warning.assert_called_once_with('Unknown priority "%s"',
                                               'what???')
 
