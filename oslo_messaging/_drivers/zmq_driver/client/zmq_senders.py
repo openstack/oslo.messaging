@@ -37,7 +37,15 @@ class SenderBase(object):
         pass
 
 
-class RequestSenderProxy(SenderBase):
+class RequestSender(SenderBase):
+    pass
+
+
+class ReplySender(SenderBase):
+    pass
+
+
+class RequestSenderProxy(RequestSender):
 
     def send(self, socket, request):
         socket.send(b'', zmq.SNDMORE)
@@ -55,7 +63,7 @@ class RequestSenderProxy(SenderBase):
                    "target": request.target})
 
 
-class ReplySenderProxy(SenderBase):
+class ReplySenderProxy(ReplySender):
 
     def send(self, socket, reply):
         LOG.debug("Replying to %s", reply.message_id)
@@ -69,7 +77,7 @@ class ReplySenderProxy(SenderBase):
         socket.send_dumped(reply.to_dict())
 
 
-class RequestSenderDirect(SenderBase):
+class RequestSenderDirect(RequestSender):
 
     def send(self, socket, request):
         socket.send(b'', zmq.SNDMORE)
@@ -85,7 +93,7 @@ class RequestSenderDirect(SenderBase):
                    "target": request.target})
 
 
-class ReplySenderDirect(SenderBase):
+class ReplySenderDirect(ReplySender):
 
     def send(self, socket, reply):
         LOG.debug("Replying to %s", reply.message_id)

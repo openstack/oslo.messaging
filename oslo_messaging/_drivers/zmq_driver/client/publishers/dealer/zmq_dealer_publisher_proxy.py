@@ -17,10 +17,10 @@ import logging
 import retrying
 
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
-    import zmq_dealer_publisher
-from oslo_messaging._drivers.zmq_driver.client.publishers \
-    import zmq_publisher_base
+    import zmq_dealer_publisher_base
+from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
 from oslo_messaging._drivers.zmq_driver.client import zmq_routing_table
+from oslo_messaging._drivers.zmq_driver.client import zmq_senders
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -31,16 +31,30 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class DealerPublisherProxy(zmq_publisher_base.PublisherBase):
-    """Non-CALL publisher via proxy."""
+class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
+    """DEALER-publisher via proxy."""
 
-    def __init__(self, sockets_manager, sender):
-        super(DealerPublisherProxy, self).__init__(sockets_manager, sender)
-        self.socket = sockets_manager.get_socket_to_publishers()
+    def __init__(self, conf, matchmaker):
+        sender = zmq_senders.RequestSenderProxy(conf)
+        receiver = zmq_receivers.ReplyReceiverProxy(conf)
+        super(DealerPublisherProxy, self).__init__(conf, matchmaker, sender,
+                                                   receiver)
+        self.socket = self.sockets_manager.get_socket_to_publishers()
         self.routing_table = zmq_routing_table.RoutingTable(self.conf,
                                                             self.matchmaker)
         self.connection_updater = \
             PublisherConnectionUpdater(self.conf, self.matchmaker, self.socket)
+
+    def _connect_socket(self, request):
+        return self.socket
+
+    def send_call(self, request):
+        try:
+            request.routing_key = \
+                self.routing_table.get_routable_host(request.target)
+        except retrying.RetryError:
+            self._raise_timeout(request)
+        return super(DealerPublisherProxy, self).send_call(request)
 
     def _get_routing_keys(self, request):
         try:
@@ -54,48 +68,14 @@ class DealerPublisherProxy(zmq_publisher_base.PublisherBase):
         except retrying.RetryError:
             return []
 
-    def send_request(self, request):
-        if request.msg_type == zmq_names.CALL_TYPE:
-            raise zmq_publisher_base.UnsupportedSendPattern(
-                zmq_names.message_type_str(request.msg_type)
-            )
+    def _send_non_blocking(self, request):
         for routing_key in self._get_routing_keys(request):
             request.routing_key = routing_key
             self.sender.send(self.socket, request)
 
     def cleanup(self):
-        self.connection_updater.stop()
-        self.socket.close()
         super(DealerPublisherProxy, self).cleanup()
-
-
-class DealerCallPublisherProxy(zmq_dealer_publisher.DealerCallPublisher):
-    """CALL publisher via proxy."""
-
-    def __init__(self, sockets_manager, sender, reply_waiter):
-        super(DealerCallPublisherProxy, self).__init__(
-            sockets_manager, sender, reply_waiter
-        )
-        self.socket = self.sockets_manager.get_socket_to_publishers()
-        self.routing_table = zmq_routing_table.RoutingTable(self.conf,
-                                                            self.matchmaker)
-        self.connection_updater = \
-            PublisherConnectionUpdater(self.conf, self.matchmaker, self.socket)
-
-    def send_request(self, request):
-        try:
-            request.routing_key = \
-                self.routing_table.get_routable_host(request.target)
-        except retrying.RetryError:
-            self._raise_timeout(request)
-        return super(DealerCallPublisherProxy, self).send_request(request)
-
-    def _connect_socket(self, target):
-        return self.socket
-
-    def cleanup(self):
         self.connection_updater.stop()
-        super(DealerCallPublisherProxy, self).cleanup()
         self.socket.close()
 
 
