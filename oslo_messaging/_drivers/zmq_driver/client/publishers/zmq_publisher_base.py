@@ -53,29 +53,42 @@ class PublisherBase(object):
     Publisher can send request objects from zmq_request.
     """
 
-    def __init__(self, sockets_manager, sender):
+    def __init__(self, sockets_manager, sender, receiver):
 
         """Construct publisher
 
-        Accept configuration object and Name Service interface object.
-        Create zmq.Context and connected sockets dictionary.
+        Accept sockets manager, sender and receiver objects.
 
-        :param conf: configuration object
-        :type conf: oslo_config.CONF
+        :param sockets_manager: sockets manager object
+        :type sockets_manager: zmq_sockets_manager.SocketsManager
+        :param senders: request sender object
+        :type senders: zmq_senders.RequestSender
+        :param receiver: reply receiver object
+        :type receiver: zmq_receivers.ReplyReceiver
         """
         self.sockets_manager = sockets_manager
         self.conf = sockets_manager.conf
         self.matchmaker = sockets_manager.matchmaker
         self.sender = sender
+        self.receiver = receiver
 
     @abc.abstractmethod
-    def send_request(self, request):
-        """Send request to consumer
+    def send_call(self, request):
+        pass
 
-        :param request: Message data and destination container object
-        :type request: zmq_request.Request
-        """
+    @abc.abstractmethod
+    def send_cast(self, request):
+        pass
+
+    @abc.abstractmethod
+    def send_fanout(self, request):
+        pass
+
+    @abc.abstractmethod
+    def send_notify(self, request):
+        pass
 
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""
+        self.receiver.stop()
         self.sockets_manager.cleanup()
