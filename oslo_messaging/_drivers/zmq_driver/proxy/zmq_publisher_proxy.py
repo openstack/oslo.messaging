@@ -14,7 +14,6 @@
 
 import logging
 
-from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
@@ -24,7 +23,7 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class PubPublisherProxy(object):
+class PublisherProxy(object):
     """PUB/SUB based request publisher
 
         The publisher intended to be used for Fanout and Notify
@@ -39,16 +38,20 @@ class PubPublisherProxy(object):
     """
 
     def __init__(self, conf, matchmaker):
-        super(PubPublisherProxy, self).__init__()
+        super(PublisherProxy, self).__init__()
         self.conf = conf
         self.zmq_context = zmq.Context()
         self.matchmaker = matchmaker
 
-        self.socket = zmq_socket.ZmqRandomPortSocket(
-            self.conf, self.zmq_context, zmq.PUB)
+        port = conf.zmq_proxy_opts.publisher_port
 
-        self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
-                                                self.socket.port)
+        self.socket = zmq_socket.ZmqFixedPortSocket(
+            self.conf, self.zmq_context, zmq.PUB, conf.zmq_proxy_opts.host,
+            port) if port != 0 else \
+            zmq_socket.ZmqRandomPortSocket(
+                self.conf, self.zmq_context, zmq.PUB, conf.zmq_proxy_opts.host)
+
+        self.host = self.socket.connect_address
 
     def send_request(self, multipart_message):
         message_type = multipart_message.pop(0)

@@ -150,23 +150,50 @@ class ZmqSocket(object):
         self.connect_to_address(address)
 
 
-class ZmqPortRangeExceededException(exceptions.MessagingException):
-    """Raised by ZmqRandomPortSocket - wrapping zmq.ZMQBindError"""
+class ZmqPortBusy(exceptions.MessagingException):
+    """Raised when binding to a port failure"""
+
+    def __init__(self, port_number):
+        super(ZmqPortBusy, self).__init__()
+        self.port_number = port_number
 
 
 class ZmqRandomPortSocket(ZmqSocket):
 
-    def __init__(self, conf, context, socket_type, high_watermark=0):
+    def __init__(self, conf, context, socket_type, host=None,
+                 high_watermark=0):
         super(ZmqRandomPortSocket, self).__init__(conf, context, socket_type,
                                                   high_watermark)
         self.bind_address = zmq_address.get_tcp_random_address(self.conf)
-
+        if host is None:
+            host = conf.rpc_zmq_host
         try:
             self.port = self.handle.bind_to_random_port(
                 self.bind_address,
                 min_port=conf.rpc_zmq_min_port,
                 max_port=conf.rpc_zmq_max_port,
                 max_tries=conf.rpc_zmq_bind_port_retries)
+            self.connect_address = zmq_address.combine_address(host, self.port)
         except zmq.ZMQBindError:
             LOG.error(_LE("Random ports range exceeded!"))
-            raise ZmqPortRangeExceededException()
+            raise ZmqPortBusy(port_number=0)
+
+
+class ZmqFixedPortSocket(ZmqSocket):
+
+    def __init__(self, conf, context, socket_type, host, port,
+                 high_watermark=0):
+        super(ZmqFixedPortSocket, self).__init__(conf, context, socket_type,
+                                                 high_watermark)
+        self.connect_address = zmq_address.combine_address(host, port)
+        self.bind_address = zmq_address.get_tcp_direct_address(
+            zmq_address.combine_address(conf.rpc_zmq_bind_address, port))
+        self.host = host
+        self.port = port
+
+        try:
+            self.handle.bind(self.bind_address)
+        except zmq.ZMQError as e:
+            LOG.exception(e)
+            LOG.error(_LE("Chosen port %d is being busy.") % self.port)
+            raise ZmqPortBusy(port_number=port)

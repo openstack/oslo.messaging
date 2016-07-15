@@ -13,6 +13,8 @@ export ZMQ_IPC_DIR=${DATADIR}
 export ZMQ_USE_PUB_SUB=false
 export ZMQ_USE_ROUTER_PROXY=true
 
+export ZMQ_PROXY_HOST=127.0.0.1
+
 cat > ${DATADIR}/zmq.conf <<EOF
 [DEFAULT]
 transport_url=${TRANSPORT_URL}
@@ -22,6 +24,9 @@ use_pub_sub=${ZMQ_USE_PUB_SUB}
 use_router_proxy=${ZMQ_USE_ROUTER_PROXY}
 [matchmaker_redis]
 port=${ZMQ_REDIS_PORT}
+
+[zmq_proxy_opts]
+host=${ZMQ_PROXY_HOST}
 EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
