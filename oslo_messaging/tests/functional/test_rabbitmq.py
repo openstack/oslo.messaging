@@ -34,11 +34,15 @@ class ConnectedPortMatcher(object):
 
 
 class RabbitMQFailoverTests(test_utils.BaseTestCase):
+    DRIVERS = [
+        "rabbit",
+    ]
+
     def test_failover_scenario(self):
-        # NOTE(sileht): run this test only if functionnal suite run of a driver
+        # NOTE(sileht): run this test only if functional suite run of a driver
         # that use rabbitmq as backend
         self.driver = os.environ.get('TRANSPORT_DRIVER')
-        if self.driver not in ["pika", "rabbit"]:
+        if self.driver not in self.DRIVERS:
             self.skipTest("TRANSPORT_DRIVER is not set to a rabbit driver")
 
         # NOTE(sileht): Allow only one response at a time, to
@@ -51,7 +55,6 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
                     rabbit_retry_backoff=0,
                     group='oslo_messaging_rabbit')
 
-        # 
         self.pifpaf = self.useFixture(rabbitmq.RabbitMQDriver(cluster=True,
                                                               port=5692))
 
@@ -59,6 +62,10 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         self.n1 = self.pifpaf.env["PIFPAF_RABBITMQ_NODENAME1"]
         self.n2 = self.pifpaf.env["PIFPAF_RABBITMQ_NODENAME2"]
         self.n3 = self.pifpaf.env["PIFPAF_RABBITMQ_NODENAME3"]
+
+        # NOTE(gdavoian): additional tweak for pika driver
+        if self.driver == "pika":
+            self.url = self.url.replace("rabbit", "pika")
 
         # ensure connections will be establish to the first node
         self.pifpaf.stop_node(self.n2)
@@ -118,7 +125,7 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         rpc_server = self.servers.servers[0].server
         # FIXME(sileht): Check other connections
         connections = [
-            rpc_server.listener._poll_style_listener._connection
+            rpc_server.listener._connection
         ]
         for conn in connections:
             self.assertEqual(
