@@ -49,14 +49,14 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             m(req)
             # Check first notification with only 'request'
             call_args = notify.call_args_list[0][0]
-            self.assertEqual(call_args[1], 'http.request')
-            self.assertEqual(call_args[3], 'INFO')
-            self.assertEqual(set(call_args[2].keys()),
-                             set(['request']))
+            self.assertEqual('http.request', call_args[1])
+            self.assertEqual('INFO', call_args[3])
+            self.assertEqual(set(['request']),
+                             set(call_args[2].keys()))
 
             request = call_args[2]['request']
-            self.assertEqual(request['PATH_INFO'], '/foo/bar')
-            self.assertEqual(request['REQUEST_METHOD'], 'GET')
+            self.assertEqual('/foo/bar', request['PATH_INFO'])
+            self.assertEqual('GET', request['REQUEST_METHOD'])
             self.assertIn('HTTP_X_SERVICE_NAME', request)
             self.assertNotIn('HTTP_X_AUTH_TOKEN', request)
             self.assertFalse(any(map(lambda s: s.startswith('wsgi.'),
@@ -65,14 +65,14 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
 
             # Check second notification with request + response
             call_args = notify.call_args_list[1][0]
-            self.assertEqual(call_args[1], 'http.response')
-            self.assertEqual(call_args[3], 'INFO')
-            self.assertEqual(set(call_args[2].keys()),
-                             set(['request', 'response']))
+            self.assertEqual('http.response', call_args[1])
+            self.assertEqual('INFO', call_args[3])
+            self.assertEqual(set(['request', 'response']),
+                             set(call_args[2].keys()))
 
             request = call_args[2]['request']
-            self.assertEqual(request['PATH_INFO'], '/foo/bar')
-            self.assertEqual(request['REQUEST_METHOD'], 'GET')
+            self.assertEqual('/foo/bar', request['PATH_INFO'])
+            self.assertEqual('GET', request['REQUEST_METHOD'])
             self.assertIn('HTTP_X_SERVICE_NAME', request)
             self.assertNotIn('HTTP_X_AUTH_TOKEN', request)
             self.assertFalse(any(map(lambda s: s.startswith('wsgi.'),
@@ -80,8 +80,8 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
                              "WSGI fields are filtered out")
 
             response = call_args[2]['response']
-            self.assertEqual(response['status'], '200 OK')
-            self.assertEqual(response['headers']['content-length'], '13')
+            self.assertEqual('200 OK', response['status'])
+            self.assertEqual('13', response['headers']['content-length'])
 
     def test_notification_response_failure(self):
         m = middleware.RequestNotifier(FakeFailingApp())
@@ -97,14 +97,14 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
                 pass
             # Check first notification with only 'request'
             call_args = notify.call_args_list[0][0]
-            self.assertEqual(call_args[1], 'http.request')
-            self.assertEqual(call_args[3], 'INFO')
-            self.assertEqual(set(call_args[2].keys()),
-                             set(['request']))
+            self.assertEqual('http.request', call_args[1])
+            self.assertEqual('INFO', call_args[3])
+            self.assertEqual(set(['request']),
+                             set(call_args[2].keys()))
 
             request = call_args[2]['request']
-            self.assertEqual(request['PATH_INFO'], '/foo/bar')
-            self.assertEqual(request['REQUEST_METHOD'], 'GET')
+            self.assertEqual('/foo/bar', request['PATH_INFO'])
+            self.assertEqual('GET', request['REQUEST_METHOD'])
             self.assertIn('HTTP_X_SERVICE_NAME', request)
             self.assertNotIn('HTTP_X_AUTH_TOKEN', request)
             self.assertFalse(any(map(lambda s: s.startswith('wsgi.'),
@@ -113,14 +113,14 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
 
             # Check second notification with 'request' and 'exception'
             call_args = notify.call_args_list[1][0]
-            self.assertEqual(call_args[1], 'http.response')
-            self.assertEqual(call_args[3], 'INFO')
-            self.assertEqual(set(call_args[2].keys()),
-                             set(['request', 'exception']))
+            self.assertEqual('http.response', call_args[1])
+            self.assertEqual('INFO', call_args[3])
+            self.assertEqual(set(['request', 'exception']),
+                             set(call_args[2].keys()))
 
             request = call_args[2]['request']
-            self.assertEqual(request['PATH_INFO'], '/foo/bar')
-            self.assertEqual(request['REQUEST_METHOD'], 'GET')
+            self.assertEqual('/foo/bar', request['PATH_INFO'])
+            self.assertEqual('GET', request['REQUEST_METHOD'])
             self.assertIn('HTTP_X_SERVICE_NAME', request)
             self.assertNotIn('HTTP_X_AUTH_TOKEN', request)
             self.assertFalse(any(map(lambda s: s.startswith('wsgi.'),
@@ -130,7 +130,7 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             exception = call_args[2]['exception']
             self.assertIn('middleware.py', exception['traceback'][0])
             self.assertIn('It happens!', exception['traceback'][-1])
-            self.assertEqual(exception['value'], "Exception('It happens!',)")
+            self.assertEqual("Exception('It happens!',)", exception['value'])
 
     def test_process_request_fail(self):
         def notify_error(context, publisher_id, event_type,
@@ -168,23 +168,23 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             # Check GET request does not send notification
             m(req)
             m(req1)
-            self.assertEqual(len(notify.call_args_list), 0)
+            self.assertEqual(0, len(notify.call_args_list))
 
             # Check non-GET request does send notification
             m(req2)
-            self.assertEqual(len(notify.call_args_list), 2)
+            self.assertEqual(2, len(notify.call_args_list))
             call_args = notify.call_args_list[0][0]
-            self.assertEqual(call_args[1], 'http.request')
-            self.assertEqual(call_args[3], 'INFO')
-            self.assertEqual(set(call_args[2].keys()),
-                             set(['request']))
+            self.assertEqual('http.request', call_args[1])
+            self.assertEqual('INFO', call_args[3])
+            self.assertEqual(set(['request']),
+                             set(call_args[2].keys()))
 
             request = call_args[2]['request']
-            self.assertEqual(request['PATH_INFO'], '/accept/foo')
-            self.assertEqual(request['REQUEST_METHOD'], 'POST')
+            self.assertEqual('/accept/foo', request['PATH_INFO'])
+            self.assertEqual('POST', request['REQUEST_METHOD'])
 
             call_args = notify.call_args_list[1][0]
-            self.assertEqual(call_args[1], 'http.response')
-            self.assertEqual(call_args[3], 'INFO')
-            self.assertEqual(set(call_args[2].keys()),
-                             set(['request', 'response']))
+            self.assertEqual('http.response', call_args[1])
+            self.assertEqual('INFO', call_args[3])
+            self.assertEqual(set(['request', 'response']),
+                             set(call_args[2].keys()))

@@ -654,7 +654,7 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         # Verify the _send_reply was not invoked by driver:
         with mock.patch.object(msgs[2], '_send_reply') as method:
             msgs[2].reply({'rx_id': 2})
-            self.assertEqual(method.call_count, 0)
+            self.assertEqual(0, method.call_count)
 
         # Wait for the 3rd thread to finish
         senders[2].join()

@@ -66,8 +66,8 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
     def test_register(self):
         self.test_matcher.register(self.target, self.host1, "test")
 
-        self.assertEqual(self.test_matcher.get_hosts(self.target, "test"),
-                         [self.host1])
+        self.assertEqual([self.host1],
+                         self.test_matcher.get_hosts(self.target, "test"))
 
     def test_register_two_hosts(self):
         self.test_matcher.register(self.target, self.host1, "test")
@@ -89,8 +89,8 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         self.test_matcher.register(self.target, self.host1, "test")
         self.test_matcher.register(self.target, self.host1, "test")
 
-        self.assertEqual(self.test_matcher.get_hosts(self.target, "test"),
-                         [self.host1])
+        self.assertEqual([self.host1],
+                         self.test_matcher.get_hosts(self.target, "test"))
 
     def test_get_hosts_wrong_topic(self):
         target = oslo_messaging.Target(topic="no_such_topic")
@@ -99,4 +99,4 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
             hosts = self.test_matcher.get_hosts(target, "test")
         except (timeout.TimeoutException, retrying.RetryError):
             pass
-        self.assertEqual(hosts, [])
+        self.assertEqual([], hosts)
