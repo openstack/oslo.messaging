@@ -109,7 +109,6 @@ class SendTask(Task):
         self.service = SERVICE_NOTIFY if notification else SERVICE_RPC
         self.timer = None
         self._wakeup = threading.Event()
-        self._controller = None
         self._error = None
 
     def wait(self):
@@ -117,7 +116,6 @@ class SendTask(Task):
         return self._error
 
     def _execute(self, controller):
-        self._controller = controller
         controller.send(self)
 
     def _prepare(self, sender):
@@ -333,8 +331,8 @@ class Sender(pyngus.SenderEventHandler):
                 except ValueError:
                     pass
                 send_task._on_timeout()
-            send_task._timer = self._scheduler.alarm(timer_callback,
-                                                     send_task.deadline)
+            send_task.timer = self._scheduler.alarm(timer_callback,
+                                                    send_task.deadline)
 
         if not self._can_send:
             self._pending_sends.append(send_task)
