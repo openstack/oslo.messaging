@@ -16,9 +16,7 @@ import logging
 
 import six
 
-from oslo_messaging._drivers.zmq_driver.client.publishers \
-    import zmq_pub_publisher
-from oslo_messaging._drivers.zmq_driver import zmq_address
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_publisher_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
@@ -38,27 +36,31 @@ class UniversalQueueProxy(object):
         self.matchmaker = matchmaker
         self.poller = zmq_async.get_poller()
 
-        self.fe_router_socket = zmq_socket.ZmqRandomPortSocket(
-            conf, context, zmq.ROUTER)
-        self.be_router_socket = zmq_socket.ZmqRandomPortSocket(
-            conf, context, zmq.ROUTER)
+        port = conf.zmq_proxy_opts.frontend_port
+        host = conf.zmq_proxy_opts.host
+        self.fe_router_socket = zmq_socket.ZmqFixedPortSocket(
+            conf, context, zmq.ROUTER, host,
+            conf.zmq_proxy_opts.frontend_port) if port != 0 else \
+            zmq_socket.ZmqRandomPortSocket(conf, context, zmq.ROUTER, host)
+
+        port = conf.zmq_proxy_opts.backend_port
+        self.be_router_socket = zmq_socket.ZmqFixedPortSocket(
+            conf, context, zmq.ROUTER, host,
+            conf.zmq_proxy_opts.backend_port) if port != 0 else \
+            zmq_socket.ZmqRandomPortSocket(conf, context, zmq.ROUTER, host)
 
         self.poller.register(self.fe_router_socket.handle,
                              self._receive_in_request)
         self.poller.register(self.be_router_socket.handle,
                              self._receive_in_request)
 
-        self.fe_router_address = zmq_address.combine_address(
-            self.conf.rpc_zmq_host, self.fe_router_socket.port)
-        self.be_router_address = zmq_address.combine_address(
-            self.conf.rpc_zmq_host, self.be_router_socket.port)
-
-        self.pub_publisher = zmq_pub_publisher.PubPublisherProxy(
+        self.pub_publisher = zmq_publisher_proxy.PublisherProxy(
             conf, matchmaker)
 
         self._router_updater = RouterUpdater(
-            conf, matchmaker, self.pub_publisher.host, self.fe_router_address,
-            self.be_router_address)
+            conf, matchmaker, self.pub_publisher.host,
+            self.fe_router_socket.connect_address,
+            self.be_router_socket.connect_address)
 
     def run(self):
         message, socket = self.poller.poll()
@@ -102,16 +104,17 @@ class UniversalQueueProxy(object):
         socket.send(b'', zmq.SNDMORE)
         socket.send(reply_id, zmq.SNDMORE)
         socket.send(six.b(str(message_type)), zmq.SNDMORE)
-        LOG.debug("Dispatching message %s" % message_id)
+        LOG.debug("Dispatching %(msg_type)s message %(msg_id)s - to %(rkey)s" %
+                  {"msg_type": zmq_names.message_type_str(message_type),
+                   "msg_id": message_id,
+                   "rkey": routing_key})
         socket.send_multipart(multipart_message)
 
     def cleanup(self):
         self.fe_router_socket.close()
         self.be_router_socket.close()
         self.pub_publisher.cleanup()
-        self.matchmaker.unregister_publisher(
-            (self.pub_publisher.host, self.fe_router_address))
-        self.matchmaker.unregister_router(self.be_router_address)
+        self._router_updater.cleanup()
 
 
 class RouterUpdater(zmq_updater.UpdaterBase):
@@ -138,3 +141,10 @@ class RouterUpdater(zmq_updater.UpdaterBase):
                                         expire=self.conf.zmq_target_expire)
         LOG.info(_LI("[Backend ROUTER:%(router)s] Update ROUTER"),
                  {"router": self.be_router_address})
+
+    def cleanup(self):
+        super(RouterUpdater, self).cleanup()
+        self.matchmaker.unregister_publisher(
+            (self.publisher_address, self.fe_router_address))
+        self.matchmaker.unregister_router(
+            self.be_router_address)

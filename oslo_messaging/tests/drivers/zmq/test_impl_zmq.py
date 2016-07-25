@@ -45,7 +45,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
                 target = oslo_messaging.Target(topic='testtopic_' + str(i))
                 new_listener = self.driver.listen(target, None, None)
                 listeners.append(new_listener)
-            except zmq_socket.ZmqPortRangeExceededException:
+            except zmq_socket.ZmqPortBusy:
                 pass
 
         self.assertLessEqual(len(listeners), 5)

@@ -13,14 +13,32 @@
 #    under the License.
 
 import logging
+import socket
 
 from stevedore import driver
 
+from oslo_config import cfg
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 
 zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
+
+
+zmq_proxy_opts = [
+    cfg.StrOpt('host', default=socket.gethostname(),
+               help='Hostname (FQDN) of current proxy'
+                    ' an ethernet interface, or IP address.'),
+
+    cfg.IntOpt('frontend_port', default=0,
+               help='Front-end ROUTER port number. Zero means random.'),
+
+    cfg.IntOpt('backend_port', default=0,
+               help='Back-end ROUTER port number. Zero means random.'),
+
+    cfg.IntOpt('publisher_port', default=0,
+               help='Publisher port number. Zero means random.'),
+]
 
 
 class ZmqProxy(object):

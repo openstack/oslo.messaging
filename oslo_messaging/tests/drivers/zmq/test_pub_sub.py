@@ -13,15 +13,17 @@
 #    under the License.
 
 import json
-import msgpack
 import time
 
+import msgpack
 import six
 import testscenarios
 
+from oslo_config import cfg
+
 import oslo_messaging
-from oslo_messaging._drivers.zmq_driver.client.publishers \
-    import zmq_pub_publisher
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_publisher_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -30,6 +32,10 @@ from oslo_messaging.tests.drivers.zmq import zmq_common
 load_tests = testscenarios.load_tests_apply_scenarios
 
 zmq = zmq_async.import_zmq()
+
+opt_group = cfg.OptGroup(name='zmq_proxy_opts',
+                         title='ZeroMQ proxy options')
+cfg.CONF.register_opts(zmq_proxy.zmq_proxy_opts, group=opt_group)
 
 
 class TestPubSub(zmq_common.ZmqBaseTestCase):
@@ -50,7 +56,10 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
                   'rpc_zmq_serialization': self.serialization}
         self.config(**kwargs)
 
-        self.publisher = zmq_pub_publisher.PubPublisherProxy(
+        self.config(host="127.0.0.1", group="zmq_proxy_opts")
+        self.config(publisher_port="0", group="zmq_proxy_opts")
+
+        self.publisher = zmq_publisher_proxy.PublisherProxy(
             self.conf, self.driver.matchmaker)
         self.driver.matchmaker.register_publisher(
             (self.publisher.host, ""))
@@ -58,6 +67,12 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         self.listeners = []
         for i in range(self.LISTENERS_COUNT):
             self.listeners.append(zmq_common.TestServerListener(self.driver))
+
+    def tearDown(self):
+        super(TestPubSub, self).tearDown()
+        self.publisher.cleanup()
+        for listener in self.listeners:
+            listener.stop()
 
     def _send_request(self, target):
         #  Needed only in test env to give listener a chance to connect
