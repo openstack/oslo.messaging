@@ -844,6 +844,11 @@ class Connection(object):
         """Close/release this connection."""
         self._heartbeat_stop()
         if self.connection:
+            for consumer, tag in self._consumers.items():
+                if consumer.type == 'fanout':
+                    LOG.debug('[connection close] Deleting fanout '
+                              'queue: %s ' % consumer.queue.name)
+                    consumer.queue.delete()
             self._set_current_channel(None)
             self.connection.release()
             self.connection = None
@@ -852,7 +857,6 @@ class Connection(object):
         """Reset a connection so it can be used again."""
         recoverable_errors = (self.connection.recoverable_channel_errors +
                               self.connection.recoverable_connection_errors)
-
         with self._connection_lock:
             try:
                 for consumer, tag in self._consumers.items():
