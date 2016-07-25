@@ -669,7 +669,7 @@ class Server(pyngus.ReceiverEventHandler):
         self._incoming.put(qentry)
 
     def _open_link(self, address, name):
-        props = {"snd-settle-mode": "settled"}
+        props = {"snd-settle-mode": "mixed"}
         r = self._connection.create_receiver(source_address=address,
                                              target_address=address,
                                              event_handler=self,
