@@ -510,8 +510,11 @@ class Replies(pyngus.ReceiverEventHandler):
         """Abort waiting for the response message corresponding to msg_id.
         This can be used if the request fails and no reply is expected.
         """
-        if msg_id in self._correlation:
-            del self._correlation[msg_id]
+        if self._correlation:
+            try:
+                del self._correlation[msg_id]
+            except KeyError:
+                pass
 
     @property
     def active(self):
