@@ -90,7 +90,7 @@ class UniversalQueueProxy(object):
             payload.insert(0, routing_key)
             payload.insert(0, msg_type)
             return payload
-        except (AssertionError, zmq.ZMQError):
+        except (AssertionError, ValueError, zmq.ZMQError):
             LOG.error("Received message with wrong format")
             return None
 

@@ -76,7 +76,7 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
             else:
                 LOG.error(_LE("Unknown message type: %s"),
                           zmq_names.message_type_str(message_type))
-        except (zmq.ZMQError, AssertionError) as e:
+        except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failure: %s"), str(e))
 
     def cleanup(self):
