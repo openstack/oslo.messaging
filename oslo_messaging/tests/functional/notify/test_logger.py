@@ -68,12 +68,12 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         log_method('Test logging at priority: %s' % self.priority)
 
         events = listener.get_events(timeout=1)
-        self.assertEqual(len(events), 1)
+        self.assertEqual(1, len(events))
 
         info_event = events[0]
 
-        self.assertEqual(info_event[0], self.priority)
-        self.assertEqual(info_event[1], 'logrecord')
+        self.assertEqual(self.priority, info_event[0])
+        self.assertEqual('logrecord', info_event[1])
 
         for key in ['name', 'thread', 'extra', 'process', 'funcName',
                     'levelno', 'processName', 'pathname', 'lineno',

@@ -41,7 +41,7 @@ class TestRequestContextSerializer(test_utils.BaseTestCase):
 
         entity = self.serializer.serialize_entity(self.context, self.entity)
         self.assertFalse(self.serializer._base.serialize_entity.called)
-        self.assertEqual(entity, self.entity)
+        self.assertEqual(self.entity, entity)
 
     def test_deserialize_entity(self):
         self.serializer.deserialize_entity(self.context, self.entity)
@@ -56,12 +56,12 @@ class TestRequestContextSerializer(test_utils.BaseTestCase):
 
         entity = self.serializer.deserialize_entity(self.context, self.entity)
         self.assertFalse(self.serializer._base.serialize_entity.called)
-        self.assertEqual(entity, self.entity)
+        self.assertEqual(self.entity, entity)
 
     def test_serialize_context(self):
         new_context = self.serializer.serialize_context(self.context)
 
-        self.assertEqual(new_context, self.context.to_dict())
+        self.assertEqual(self.context.to_dict(), new_context)
 
     @mock.patch.object(common_context.RequestContext, 'from_dict',
                        return_value='foobar')
@@ -70,6 +70,6 @@ class TestRequestContextSerializer(test_utils.BaseTestCase):
 
         mock_to_dict.assert_called_with(self.context)
         self.assertEqual(
-            new_context,
-            common_context.RequestContext.from_dict(self.context)
+            common_context.RequestContext.from_dict(self.context),
+            new_context
         )

@@ -144,7 +144,7 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         self.assertIsNone(rc)
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
-        self.assertEqual(listener.messages.get().message, {"msg": "value"})
+        self.assertEqual({"msg": "value"}, listener.messages.get().message)
         driver.cleanup()
 
     def test_send_exchange_with_reply(self):
@@ -161,14 +161,14 @@ class TestAmqpSend(_AmqpBrokerTestCase):
                          wait_for_reply=True,
                          timeout=30)
         self.assertIsNotNone(rc)
-        self.assertEqual(rc.get('correlation-id'), 'e1')
+        self.assertEqual('e1', rc.get('correlation-id'))
 
         rc = driver.send(target2, {"context": "whatever"},
                          {"method": "echo", "id": "e2"},
                          wait_for_reply=True,
                          timeout=30)
         self.assertIsNotNone(rc)
-        self.assertEqual(rc.get('correlation-id'), 'e2')
+        self.assertEqual('e2', rc.get('correlation-id'))
 
         listener1.join(timeout=30)
         self.assertFalse(listener1.isAlive())
@@ -193,15 +193,15 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver.send(shared_target, {"context": "whatever"},
                     {"method": "echo", "id": "either-1"},
                     wait_for_reply=True)
-        self.assertEqual(self._broker.topic_count, 1)
-        self.assertEqual(self._broker.direct_count, 1)  # reply
+        self.assertEqual(1, self._broker.topic_count)
+        self.assertEqual(1, self._broker.direct_count)  # reply
 
         # this should go to the other server:
         driver.send(shared_target, {"context": "whatever"},
                     {"method": "echo", "id": "either-2"},
                     wait_for_reply=True)
-        self.assertEqual(self._broker.topic_count, 2)
-        self.assertEqual(self._broker.direct_count, 2)  # reply
+        self.assertEqual(2, self._broker.topic_count)
+        self.assertEqual(2, self._broker.direct_count)  # reply
 
         # these should only go to listener1:
         driver.send(target1, {"context": "whatever"},
@@ -211,13 +211,13 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         driver.send(target1, {"context": "whatever"},
                     {"method": "echo", "id": "server1-2"},
                     wait_for_reply=True)
-        self.assertEqual(self._broker.direct_count, 6)  # 2X(send+reply)
+        self.assertEqual(6, self._broker.direct_count)  # 2X(send+reply)
 
         # this should only go to listener2:
         driver.send(target2, {"context": "whatever"},
                     {"method": "echo", "id": "server2"},
                     wait_for_reply=True)
-        self.assertEqual(self._broker.direct_count, 8)
+        self.assertEqual(8, self._broker.direct_count)
 
         # both listeners should get a copy:
         driver.send(fanout_target, {"context": "whatever"},
@@ -227,7 +227,7 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         self.assertFalse(listener1.isAlive())
         listener2.join(timeout=30)
         self.assertFalse(listener2.isAlive())
-        self.assertEqual(self._broker.fanout_count, 1)
+        self.assertEqual(1, self._broker.fanout_count)
 
         listener1_ids = [x.message.get('id') for x in listener1.get_messages()]
         listener2_ids = [x.message.get('id') for x in listener2.get_messages()]
@@ -306,13 +306,13 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         topics = [x.message.get('target') for x in listener.get_messages()]
-        self.assertEqual(len(topics), msg_count)
-        self.assertEqual(topics.count('topic-1.info'), 2)
-        self.assertEqual(topics.count('topic-1.error'), 2)
-        self.assertEqual(topics.count('topic-2.debug'), 2)
-        self.assertEqual(self._broker.dropped_count, 4)
-        self.assertEqual(excepted_targets.count('topic-1.bad'), 0)
-        self.assertEqual(excepted_targets.count('bad-topic.debug'), 0)
+        self.assertEqual(msg_count, len(topics))
+        self.assertEqual(2, topics.count('topic-1.info'))
+        self.assertEqual(2, topics.count('topic-1.error'))
+        self.assertEqual(2, topics.count('topic-2.debug'))
+        self.assertEqual(4, self._broker.dropped_count)
+        self.assertEqual(0, excepted_targets.count('topic-1.bad'))
+        self.assertEqual(0, excepted_targets.count('bad-topic.debug'))
         driver.cleanup()
 
 
@@ -567,11 +567,11 @@ class TestFailover(test_utils.BaseTestCase):
                          wait_for_reply=True,
                          timeout=30)
         self.assertIsNotNone(rc)
-        self.assertEqual(rc.get('correlation-id'), 'echo-1')
+        self.assertEqual('echo-1', rc.get('correlation-id'))
 
         # 1 request msg, 1 response:
-        self.assertEqual(self._brokers[self._primary].topic_count, 1)
-        self.assertEqual(self._brokers[self._primary].direct_count, 1)
+        self.assertEqual(1, self._brokers[self._primary].topic_count)
+        self.assertEqual(1, self._brokers[self._primary].direct_count)
 
         # invoke failover method
         fail_broker(self._brokers[self._primary])
@@ -588,11 +588,11 @@ class TestFailover(test_utils.BaseTestCase):
                          wait_for_reply=True,
                          timeout=2)
         self.assertIsNotNone(rc)
-        self.assertEqual(rc.get('correlation-id'), 'echo-2')
+        self.assertEqual('echo-2', rc.get('correlation-id'))
 
         # 1 request msg, 1 response:
-        self.assertEqual(self._brokers[self._backup].topic_count, 1)
-        self.assertEqual(self._brokers[self._backup].direct_count, 1)
+        self.assertEqual(1, self._brokers[self._backup].topic_count)
+        self.assertEqual(1, self._brokers[self._backup].direct_count)
 
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())

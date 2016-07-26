@@ -145,10 +145,12 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         transport_ = oslo_messaging.get_transport(self.conf, **kwargs)
 
         if self.aliases is not None:
-            self.assertEqual(fake_logger.warning.mock_calls,
-                             [mock.call('legacy "rpc_backend" is deprecated, '
-                                        '"testfoo" must be replaced by '
-                                        '"%s"' % self.aliases.get('testfoo'))])
+            self.assertEqual(
+                [mock.call('legacy "rpc_backend" is deprecated, '
+                           '"testfoo" must be replaced by '
+                           '"%s"' % self.aliases.get('testfoo'))],
+                fake_logger.warning.mock_calls
+            )
 
         self.assertIsNotNone(transport_)
         self.assertIs(transport_.conf, self.conf)
@@ -354,10 +356,10 @@ class TestTransportUrlCustomisation(test_utils.BaseTestCase):
         self.assertNotEqual(self.url1, self.url4)
 
     def test_query(self):
-        self.assertEqual(self.url1.query, {'x': '1', 'y': '2', 'z': '3'})
-        self.assertEqual(self.url2.query, {'foo': 'bar'})
-        self.assertEqual(self.url3.query, {'l': '1,2,3'})
-        self.assertEqual(self.url4.query, {'d': 'x:1,y:2,z:3'})
+        self.assertEqual({'x': '1', 'y': '2', 'z': '3'}, self.url1.query)
+        self.assertEqual({'foo': 'bar'}, self.url2.query)
+        self.assertEqual({'l': '1,2,3'}, self.url3.query)
+        self.assertEqual({'d': 'x:1,y:2,z:3'}, self.url4.query)
 
 
 class TestTransportHostCustomisation(test_utils.BaseTestCase):

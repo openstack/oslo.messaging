@@ -49,10 +49,10 @@ class PikaIncomingMessageTestCase(unittest.TestCase):
             self._body
         )
 
-        self.assertEqual(message.ctxt.get("key_context", None),
-                         "context_value")
-        self.assertEqual(message.message.get("payload_key", None),
-                         "payload_value")
+        self.assertEqual("context_value",
+                         message.ctxt.get("key_context", None))
+        self.assertEqual("payload_value",
+                         message.message.get("payload_key", None))
 
     def test_message_acknowledge(self):
         message = pika_drv_msg.PikaIncomingMessage(
@@ -129,13 +129,13 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             self._body
         )
 
-        self.assertEqual(message.ctxt.get("key_context", None),
-                         "context_value")
-        self.assertEqual(message.msg_id, 123456789)
-        self.assertEqual(message.reply_q, "reply_queue")
+        self.assertEqual("context_value",
+                         message.ctxt.get("key_context", None))
+        self.assertEqual(123456789, message.msg_id)
+        self.assertEqual("reply_queue", message.reply_q)
 
-        self.assertEqual(message.message.get("payload_key", None),
-                         "payload_value")
+        self.assertEqual("payload_value",
+                         message.message.get("payload_key", None))
 
     def test_cast_message_body_parsing(self):
         message = pika_drv_msg.RpcPikaIncomingMessage(
@@ -143,13 +143,13 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             self._body
         )
 
-        self.assertEqual(message.ctxt.get("key_context", None),
-                         "context_value")
-        self.assertEqual(message.msg_id, None)
-        self.assertEqual(message.reply_q, None)
+        self.assertEqual("context_value",
+                         message.ctxt.get("key_context", None))
+        self.assertEqual(None, message.msg_id)
+        self.assertEqual(None, message.reply_q)
 
-        self.assertEqual(message.message.get("payload_key", None),
-                         "payload_value")
+        self.assertEqual("payload_value",
+                         message.message.get("payload_key", None))
 
     @patch(("oslo_messaging._drivers.pika_driver.pika_message."
             "PikaOutgoingMessage.send"))
@@ -159,17 +159,17 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             self._body
         )
 
-        self.assertEqual(message.ctxt.get("key_context", None),
-                         "context_value")
-        self.assertEqual(message.msg_id, None)
-        self.assertEqual(message.reply_q, None)
+        self.assertEqual("context_value",
+                         message.ctxt.get("key_context", None))
+        self.assertEqual(None, message.msg_id)
+        self.assertEqual(None, message.reply_q)
 
-        self.assertEqual(message.message.get("payload_key", None),
-                         "payload_value")
+        self.assertEqual("payload_value",
+                         message.message.get("payload_key", None))
 
         message.reply(reply=object())
 
-        self.assertEqual(send_reply_mock.call_count, 0)
+        self.assertEqual(0, send_reply_mock.call_count)
 
     @patch("oslo_messaging._drivers.pika_driver.pika_message."
            "RpcReplyPikaOutgoingMessage")
@@ -185,13 +185,13 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             self._body
         )
 
-        self.assertEqual(message.ctxt.get("key_context", None),
-                         "context_value")
-        self.assertEqual(message.msg_id, 123456789)
-        self.assertEqual(message.reply_q, "reply_queue")
+        self.assertEqual("context_value",
+                         message.ctxt.get("key_context", None))
+        self.assertEqual(123456789, message.msg_id)
+        self.assertEqual("reply_queue", message.reply_q)
 
-        self.assertEqual(message.message.get("payload_key", None),
-                         "payload_value")
+        self.assertEqual("payload_value",
+                         message.message.get("payload_key", None))
         reply = "all_fine"
         message.reply(reply=reply)
 
@@ -221,13 +221,13 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             self._body
         )
 
-        self.assertEqual(message.ctxt.get("key_context", None),
-                         "context_value")
-        self.assertEqual(message.msg_id, 123456789)
-        self.assertEqual(message.reply_q, "reply_queue")
+        self.assertEqual("context_value",
+                         message.ctxt.get("key_context", None))
+        self.assertEqual(123456789, message.msg_id)
+        self.assertEqual("reply_queue", message.reply_q)
 
-        self.assertEqual(message.message.get("payload_key", None),
-                         "payload_value")
+        self.assertEqual("payload_value",
+                         message.message.get("payload_key", None))
 
         failure_info = object()
         message.reply(failure=failure_info)
@@ -277,9 +277,9 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
             body
         )
 
-        self.assertEqual(message.msg_id, 123456789)
+        self.assertEqual(123456789, message.msg_id)
         self.assertIsNone(message.failure)
-        self.assertEqual(message.result, "all fine")
+        self.assertEqual("all fine", message.result)
 
     def test_negative_reply_message_body_parsing(self):
 
@@ -297,12 +297,12 @@ class RpcReplyPikaIncomingMessageTestCase(unittest.TestCase):
             body
         )
 
-        self.assertEqual(message.msg_id, 123456789)
+        self.assertEqual(123456789, message.msg_id)
         self.assertIsNone(message.result)
         self.assertEqual(
-            str(message.failure),
             'Error message\n'
-            'TRACE HERE'
+            'TRACE HERE',
+            str(message.failure)
         )
         self.assertIsInstance(message.failure,
                               oslo_messaging.MessagingException)
@@ -359,12 +359,12 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual(props.content_encoding, 'utf-8')
-        self.assertEqual(props.content_type, 'application/json')
-        self.assertEqual(props.delivery_mode, 2)
+        self.assertEqual('utf-8', props.content_encoding)
+        self.assertEqual('application/json', props.content_type)
+        self.assertEqual(2, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration) <
                         100)
-        self.assertEqual(props.headers, {'version': '1.0'})
+        self.assertEqual({'version': '1.0'}, props.headers)
         self.assertTrue(props.message_id)
 
     @patch("oslo_serialization.jsonutils.dumps",
@@ -404,12 +404,12 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_without_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual(props.content_encoding, 'utf-8')
-        self.assertEqual(props.content_type, 'application/json')
-        self.assertEqual(props.delivery_mode, 1)
+        self.assertEqual('utf-8', props.content_encoding)
+        self.assertEqual('application/json', props.content_type)
+        self.assertEqual(1, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration)
                         < 100)
-        self.assertEqual(props.headers, {'version': '1.0'})
+        self.assertEqual({'version': '1.0'}, props.headers)
         self.assertTrue(props.message_id)
 
 
@@ -463,11 +463,11 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual(props.content_encoding, 'utf-8')
-        self.assertEqual(props.content_type, 'application/json')
-        self.assertEqual(props.delivery_mode, 1)
+        self.assertEqual('utf-8', props.content_encoding)
+        self.assertEqual('application/json', props.content_type)
+        self.assertEqual(1, props.delivery_mode)
         self.assertTrue(expiration * 1000 - float(props.expiration) < 100)
-        self.assertEqual(props.headers, {'version': '1.0'})
+        self.assertEqual({'version': '1.0'}, props.headers)
         self.assertIsNone(props.correlation_id)
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
@@ -521,13 +521,13 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual(props.content_encoding, 'utf-8')
-        self.assertEqual(props.content_type, 'application/json')
-        self.assertEqual(props.delivery_mode, 1)
+        self.assertEqual('utf-8', props.content_encoding)
+        self.assertEqual('application/json', props.content_type)
+        self.assertEqual(1, props.delivery_mode)
         self.assertTrue(expiration * 1000 - float(props.expiration) < 100)
-        self.assertEqual(props.headers, {'version': '1.0'})
-        self.assertEqual(props.correlation_id, message.msg_id)
-        self.assertEqual(props.reply_to, reply_queue_name)
+        self.assertEqual({'version': '1.0'}, props.headers)
+        self.assertEqual(message.msg_id, props.correlation_id)
+        self.assertEqual(reply_queue_name, props.reply_to)
         self.assertTrue(props.message_id)
 
 
@@ -567,13 +567,13 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual(props.content_encoding, 'utf-8')
-        self.assertEqual(props.content_type, 'application/json')
-        self.assertEqual(props.delivery_mode, 1)
+        self.assertEqual('utf-8', props.content_encoding)
+        self.assertEqual('application/json', props.content_type)
+        self.assertEqual(1, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration) <
                         100)
-        self.assertEqual(props.headers, {'version': '1.0'})
-        self.assertEqual(props.correlation_id, message.msg_id)
+        self.assertEqual({'version': '1.0'}, props.headers)
+        self.assertEqual(message.msg_id, props.correlation_id)
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
 
@@ -612,12 +612,12 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         props = self._pika_engine.connection_with_confirmation_pool.acquire(
         ).__enter__().channel.publish.call_args[1]["properties"]
 
-        self.assertEqual(props.content_encoding, 'utf-8')
-        self.assertEqual(props.content_type, 'application/json')
-        self.assertEqual(props.delivery_mode, 1)
+        self.assertEqual('utf-8', props.content_encoding)
+        self.assertEqual('application/json', props.content_type)
+        self.assertEqual(1, props.delivery_mode)
         self.assertTrue(self._expiration * 1000 - float(props.expiration) <
                         100)
-        self.assertEqual(props.headers, {'version': '1.0'})
-        self.assertEqual(props.correlation_id, message.msg_id)
+        self.assertEqual({'version': '1.0'}, props.headers)
+        self.assertEqual(message.msg_id, props.correlation_id)
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
