@@ -50,6 +50,12 @@ kafka_opts = [
 
     cfg.IntOpt('pool_size', default=10,
                help='Pool Size for Kafka Consumers'),
+
+    cfg.IntOpt('conn_pool_min_size', default=2,
+               help='The pool size limit for connections expiration policy'),
+
+    cfg.IntOpt('conn_pool_ttl', default=1200,
+               help='The time-to-live in sec of idle connections in the pool')
 ]
 
 CONF = cfg.CONF
@@ -301,8 +307,13 @@ class KafkaDriver(base.BaseDriver):
         super(KafkaDriver, self).__init__(
             conf, url, default_exchange, allowed_remote_exmods)
 
+        # the pool configuration properties
+        max_size = self.conf.oslo_messaging_kafka.pool_size
+        min_size = self.conf.oslo_messaging_kafka.conn_pool_min_size
+        ttl = self.conf.oslo_messaging_kafka.conn_pool_ttl
+
         self.connection_pool = driver_pool.ConnectionPool(
-            self.conf, self.conf.oslo_messaging_kafka.pool_size,
+            self.conf, max_size, min_size, ttl,
             self._url, Connection)
         self.listeners = []
 
