@@ -59,7 +59,7 @@ A simple example of a notification listener with multiple endpoints might be::
 
     transport = oslo_messaging.get_notification_transport(cfg.CONF)
     targets = [
-        oslo_messaging.Target(topic='notifications')
+        oslo_messaging.Target(topic='notifications'),
         oslo_messaging.Target(topic='notifications_bis')
     ]
     endpoints = [
