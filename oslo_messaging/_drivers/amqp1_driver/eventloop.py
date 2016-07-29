@@ -25,11 +25,12 @@ the background thread via callables.
 import errno
 import heapq
 import logging
+import math
+from monotonic import monotonic as now  # noqa
 import os
 import select
 import socket
 import threading
-import time
 import uuid
 
 import pyngus
@@ -37,6 +38,12 @@ from six import moves
 
 from oslo_messaging._i18n import _LE, _LI, _LW
 LOG = logging.getLogger(__name__)
+
+
+def compute_timeout(offset):
+    # minimize the timer granularity to one second so we don't have to track
+    # too many timers
+    return math.ceil(now() + offset)
 
 
 class _SocketConnection(object):
@@ -65,7 +72,7 @@ class _SocketConnection(object):
         while True:
             try:
                 rc = pyngus.read_socket_input(self.connection, self.socket)
-                self.connection.process(time.time())
+                self.connection.process(now())
                 return rc
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
@@ -79,7 +86,7 @@ class _SocketConnection(object):
         while True:
             try:
                 rc = pyngus.write_socket_output(self.connection, self.socket)
-                self.connection.process(time.time())
+                self.connection.process(now())
                 return rc
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
@@ -161,52 +168,70 @@ class Scheduler(object):
     """Schedule callables to be run in the future.
     """
     class Event(object):
-        def __init__(self, callback, deadline):
-            self._callback = callback
-            self._deadline = deadline
+        # simply hold a reference to a callback that can be set to None if the
+        # alarm is canceled
+        def __init__(self, callback):
+            self.callback = callback
 
         def cancel(self):
             # quicker than rebalancing the tree
-            self._callback = None
-
-        def __lt__(self, other):
-            return self._deadline < other._deadline
+            self.callback = None
 
     def __init__(self):
-        self._entries = []
+        self._callbacks = {}
+        self._deadlines = []
 
     def alarm(self, request, deadline):
         """Request a callable be executed at a specific time
         """
-        entry = Scheduler.Event(request, deadline)
-        heapq.heappush(self._entries, entry)
+        try:
+            callbacks = self._callbacks[deadline]
+        except KeyError:
+            callbacks = list()
+            self._callbacks[deadline] = callbacks
+            heapq.heappush(self._deadlines, deadline)
+        entry = Scheduler.Event(request)
+        callbacks.append(entry)
         return entry
 
     def defer(self, request, delay):
         """Request a callable be executed after delay seconds
         """
-        return self.alarm(request, time.time() + delay)
+        return self.alarm(request, compute_timeout(delay))
+
+    @property
+    def _next_deadline(self):
+        """The timestamp of the next expiring event or None
+        """
+        return self._deadlines[0] if self._deadlines else None
 
     def _get_delay(self, max_delay=None):
         """Get the delay in milliseconds until the next callable needs to be
         run, or 'max_delay' if no outstanding callables or the delay to the
         next callable is > 'max_delay'.
         """
-        due = self._entries[0]._deadline if self._entries else None
+        due = self._deadlines[0] if self._deadlines else None
         if due is None:
             return max_delay
-        now = time.time()
-        if due <= now:
+        _now = now()
+        if due <= _now:
             return 0
         else:
-            return min(due - now, max_delay) if max_delay else due - now
+            return min(due - _now, max_delay) if max_delay else due - _now
 
     def _process(self):
         """Invoke all expired callables."""
-        while self._entries and self._entries[0]._deadline <= time.time():
-            callback = heapq.heappop(self._entries)._callback
-            if callback:
-                callback()
+        if self._deadlines:
+            _now = now()
+            try:
+                while self._deadlines[0] <= _now:
+                    deadline = heapq.heappop(self._deadlines)
+                    callbacks = self._callbacks[deadline]
+                    del self._callbacks[deadline]
+                    for cb in callbacks:
+                        cb.callback and cb.callback()
+            except IndexError:
+                pass
 
 
 class Requests(object):
@@ -325,15 +350,17 @@ class Thread(threading.Thread):
             readfds.append(self._requests)
             writefds = [c.user_context for c in writers]
 
-            timeout = None
-            if timers:
-                deadline = timers[0].deadline  # 0 == next expiring timer
-                now = time.time()
-                timeout = 0 if deadline <= now else deadline - now
+            # force select to return in time to service the next expiring timer
+            d1 = self._scheduler._next_deadline
+            d2 = timers[0].deadline if timers else None
+            deadline = min(d1, d2) if d1 and d2 else d1 if not d2 else d2
+            if deadline:
+                _now = now()
+                timeout = 0 if deadline <= _now else (deadline - _now)
+            else:
+                timeout = None
 
-            # adjust timeout for any deferred requests
-            timeout = self._scheduler._get_delay(timeout)
-
+            # and now we wait...
             try:
                 results = select.select(readfds, writefds, [], timeout)
             except select.error as serror:
@@ -348,10 +375,12 @@ class Thread(threading.Thread):
             for r in readable:
                 r.read()
 
-            for t in timers:
-                if t.deadline > time.time():
-                    break
-                t.process(time.time())
+            if timers:
+                _now = now()
+                for t in timers:
+                    if t.deadline > _now:
+                        break
+                    t.process(_now)
 
             for w in writable:
                 w.write()

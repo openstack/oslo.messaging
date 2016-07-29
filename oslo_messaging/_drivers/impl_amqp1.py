@@ -24,7 +24,6 @@ import collections
 import logging
 import os
 import threading
-import time
 import uuid
 
 from oslo_config import cfg
@@ -33,6 +32,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
+from oslo_messaging._drivers.amqp1_driver.eventloop import compute_timeout
 from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
@@ -105,14 +105,14 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
             response.correlation_id = self._correlation_id
             LOG.debug("Sending RPC reply to %s (%s)", self._reply_to,
                       self._correlation_id)
-            now = time.time()
-            deadline = now + self.listener.driver._default_reply_timeout
+            driver = self.listener.driver
+            deadline = compute_timeout(driver._default_reply_timeout)
             task = controller.SendTask("RPC Reply", response, self._reply_to,
                                        # analogous to kombu missing dest t/o:
                                        deadline,
                                        retry=0,
                                        wait_for_ack=True)
-            self.listener.driver._ctrl.add_task(task)
+            driver._ctrl.add_task(task)
             rc = task.wait()
             if rc:
                 # something failed.  Not much we can do at this point but log
@@ -289,7 +289,7 @@ class ProtonDriver(base.BaseDriver):
         request = marshal_request(message, ctxt, envelope)
         expire = 0
         if timeout:
-            expire = time.time() + timeout  # when the caller times out
+            expire = compute_timeout(timeout)  # when the caller times out
             # amqp uses millisecond time values, timeout is seconds
             request.ttl = int(timeout * 1000)
             request.expiry_time = int(expire * 1000)
@@ -297,7 +297,7 @@ class ProtonDriver(base.BaseDriver):
             # no timeout provided by application.  If the backend is queueless
             # this could lead to a hang - provide a default to prevent this
             # TODO(kgiusti) only do this if brokerless backend
-            expire = time.time() + self._default_send_timeout
+            expire = compute_timeout(self._default_send_timeout)
         LOG.debug("Sending message to %s", target)
         if wait_for_reply:
             task = controller.RPCCallTask(target, request, expire, retry)
@@ -343,9 +343,10 @@ class ProtonDriver(base.BaseDriver):
         # this
         # TODO(kgiusti) should raise NotImplemented if not broker backend
         LOG.debug("Send notification to %s", target)
+        deadline = compute_timeout(self._default_notify_timeout)
         task = controller.SendTask("Notify", request, target,
-                                   time.time() + self._default_notify_timeout,
-                                   retry, wait_for_ack=True, notification=True)
+                                   deadline, retry, wait_for_ack=True,
+                                   notification=True)
         self._ctrl.add_task(task)
         rc = task.wait()
         if isinstance(rc, Exception):

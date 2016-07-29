@@ -357,7 +357,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _SlowResponder(
-            driver.listen(target, None, None)._poll_style_listener, 1)
+            driver.listen(target, None, None)._poll_style_listener, 3)
 
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           driver.send, target,
