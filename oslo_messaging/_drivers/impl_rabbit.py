@@ -86,7 +86,7 @@ rabbit_opts = [
     cfg.IntOpt('kombu_missing_consumer_retry_timeout',
                deprecated_name="kombu_reconnect_timeout",
                default=60,
-               help='How long to wait a missing client beforce abandoning to '
+               help='How long to wait a missing client before abandoning to '
                     'send it its replies. This value should not be longer '
                     'than rpc_response_timeout.'),
     cfg.StrOpt('kombu_failover_strategy',
