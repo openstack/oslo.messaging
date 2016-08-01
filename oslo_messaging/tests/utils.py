@@ -39,6 +39,9 @@ class BaseTestCase(base.BaseTestCase):
         self.messaging_conf.transport_driver = 'fake'
         self.conf = self.messaging_conf.conf
 
+        self.conf.project = 'project'
+        self.conf.prog = 'prog'
+
         moxfixture = self.useFixture(moxstubout.MoxStubout())
         self.mox = moxfixture.mox
         self.stubs = moxfixture.stubs
