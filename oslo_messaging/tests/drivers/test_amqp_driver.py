@@ -464,6 +464,29 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
         driver.cleanup()
 
+    def test_sender_minimal_credit(self):
+        # ensure capacity is replenished when only 1 credit is configured
+        self.config(reply_link_credit=1,
+                    rpc_server_credit=1,
+                    group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic", server="server")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   4)
+        for i in range(4):
+            threading.Thread(target=driver.send,
+                             args=(target,
+                                   {"context": "whatever"},
+                                   {"method": "echo"}),
+                             kwargs={'wait_for_reply': True}).start()
+        predicate = lambda: (self._broker.direct_count == 8)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+        listener.join(timeout=30)
+        driver.cleanup()
+
 
 class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
     """Test sending and receiving notifications."""
@@ -999,7 +1022,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
 
         def _on_active(link):
             # refuse granting credit for the broadcast link
-            if link.source_address.startswith("broadcast"):
+            if self._broker._addresser._is_multicast(link.source_address):
                 self._blocked_links.add(link)
             else:
                 # unblock all link when RPC call is made
@@ -1019,13 +1042,17 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         target.fanout = True
         target.server = None
         # these threads will share the same link
+        th = []
         for i in range(3):
-            threading.Thread(target=driver.send,
-                             args=(target, {"context": "whatever"},
-                                   {"msg": "n=%d" % i}),
-                             kwargs={'wait_for_reply': False}).start()
-
-        time.sleep(0.5)
+            t = threading.Thread(target=driver.send,
+                                 args=(target, {"context": "whatever"},
+                                       {"msg": "n=%d" % i}),
+                                 kwargs={'wait_for_reply': False})
+            t.start()
+            t.join(timeout=1)
+            self.assertTrue(t.isAlive())
+            th.append(t)
+        self.assertEqual(self._broker.fanout_sent_count, 0)
         # this will trigger the release of credit for the previous links
         target.fanout = False
         rc = driver.send(target, {"context": "whatever"},
@@ -1036,6 +1063,9 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         listener.join(timeout=30)
         self.assertTrue(self._broker.fanout_count == 3)
         self.assertFalse(listener.isAlive())
+        for t in th:
+            t.join(timeout=30)
+            self.assertFalse(t.isAlive())
         driver.cleanup()
 
 
@@ -1496,7 +1526,7 @@ class FakeBroker(threading.Thread):
                 """Forward this message out the proper sending link."""
                 self.server.forward_message(message, handle, receiver_link)
                 if self.link.capacity < 1:
-                    self.server.credit_exhausted(self.link)
+                    self.server.on_credit_exhausted(self.link)
 
     def __init__(self, cfg,
                  sock_addr="", sock_port=0,
