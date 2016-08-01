@@ -811,9 +811,6 @@ class Controller(pyngus.ConnectionEventHandler):
         self.conn_retry_interval_max = \
             config.oslo_messaging_amqp.connection_retry_interval_max
         self.link_retry_delay = config.oslo_messaging_amqp.link_retry_delay
-        self.max_send_retries = config.oslo_messaging_amqp.max_send_retries
-        if self.max_send_retries <= 0:
-            self.max_send_retries = None  # None or 0 == forever, like rabbit
 
         _opts = config.oslo_messaging_amqp
         factory_args = {"legacy_server_prefix": _opts.server_request_prefix,
@@ -883,7 +880,7 @@ class Controller(pyngus.ConnectionEventHandler):
             return
         LOG.debug("Sending message to %s", send_task.target)
         if send_task.retry is None or send_task.retry < 0:
-            send_task.retry = self.max_send_retries
+            send_task.retry = None
         key = keyify(send_task.target, send_task.service)
         sender = self._senders.get(key)
         if not sender:

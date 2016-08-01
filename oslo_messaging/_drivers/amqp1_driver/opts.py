@@ -105,13 +105,6 @@ amqp1_opts = [
 
     # Message send retry and timeout options
 
-    cfg.IntOpt('max_send_retries',
-               default=0,
-               min=0,
-               help='Maximum attempts to re-send a message that failed due to'
-               ' a recoverable error. Default is 0 (retry forever or until'
-               ' timeout expires).'),
-
     cfg.IntOpt('link_retry_delay',
                default=10,
                min=1,
