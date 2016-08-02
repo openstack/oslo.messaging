@@ -67,7 +67,7 @@ class SocketsManager(object):
             socket = self._check_for_new_hosts(target)
         else:
             socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                          self.socket_type)
+                                          self.socket_type, immediate=False)
             self._get_hosts_and_connect(socket, target)
         return socket
 
