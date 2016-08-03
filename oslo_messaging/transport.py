@@ -34,6 +34,7 @@ import six
 from six.moves.urllib import parse
 from stevedore import driver
 
+from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
@@ -372,8 +373,9 @@ class TransportURL(object):
         Netloc is parsed following the sequence bellow:
 
         * It is first split by ',' in order to support multiple hosts
-        * Username and password should be specified for each host, in
-          case of lack of specification they will be omitted::
+        * All hosts should be specified with username/password or not
+          at the same time. In case of lack of specification, username and
+          password will be omitted::
 
             user:pass@host1:port1,host2:port2
 
@@ -416,6 +418,8 @@ class TransportURL(object):
         if url.path.startswith('/'):
             virtual_host = parse.unquote(url.path[1:])
 
+        hosts_with_credentials = []
+        hosts_without_credentials = []
         hosts = []
 
         for host in url.netloc.split(','):
@@ -454,9 +458,23 @@ class TransportURL(object):
                 hostname, port = hostname.split(':', 1)
                 port = int(port)
 
+            if username is None or password is None:
+                hosts_without_credentials.append(hostname)
+            else:
+                hosts_with_credentials.append(hostname)
+
             hosts.append(TransportHost(hostname=hostname,
                                        port=port,
                                        username=username,
                                        password=password))
 
+        if (len(hosts_with_credentials) > 0 and
+                len(hosts_without_credentials) > 0):
+            LOG.warning(_LW("All hosts must be set with username/password or "
+                            "not at the same time. Hosts with credentials "
+                            "are: %(hosts_with_credentials)s. Hosts without "
+                            "credentials are %(hosts_without_credentials)s."),
+                        {'hosts_with_credentials': hosts_with_credentials,
+                         'hosts_without_credentials':
+                         hosts_without_credentials})
         return cls(conf, transport, virtual_host, hosts, aliases, query)
