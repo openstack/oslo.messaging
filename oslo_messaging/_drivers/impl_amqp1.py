@@ -198,8 +198,6 @@ class ProtonDriver(base.BaseDriver):
 
     def __init__(self, conf, url,
                  default_exchange=None, allowed_remote_exmods=[]):
-        # TODO(kgiusti) Remove once driver fully stabilizes:
-        LOG.warning(_LW("Support for the 'amqp' transport is EXPERIMENTAL."))
         if proton is None or controller is None:
             raise NotImplementedError("Proton AMQP C libraries not installed")
 

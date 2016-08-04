@@ -33,7 +33,9 @@ that traffic can be partitioned based on its use.
 """
 
 import abc
+import logging
 
+from oslo_messaging._i18n import _LW
 from oslo_messaging.target import Target
 
 __all__ = [
@@ -45,6 +47,8 @@ __all__ = [
 
 SERVICE_RPC = 0
 SERVICE_NOTIFY = 1
+
+LOG = logging.getLogger(__name__)
 
 
 def keyify(address, service=SERVICE_RPC):
@@ -256,6 +260,16 @@ class AddresserFactory(object):
         # to qpidd or we cannot identify the message bus.  This can be
         # overridden via the configuration.
         product = remote_properties.get('product', 'qpid-cpp')
+
+        # TODO(kgiusti): Router support was added in Newton.  Remove this
+        # warning post Newton, once the driver has stabilized.
+        if product == "qpid-dispatch-router":
+            w = _LW("This is the initial release of support for message"
+                    " routing technology. Be aware that messages are not"
+                    " queued and may be discarded if there are no consumers"
+                    " present.")
+            LOG.warning(w)
+
         if self._mode == 'legacy' or (self._mode == 'dynamic'
                                       and product == 'qpid-cpp'):
             return LegacyAddresser(self._default_exchange,
