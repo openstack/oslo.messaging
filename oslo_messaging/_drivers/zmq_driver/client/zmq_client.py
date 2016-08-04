@@ -39,7 +39,8 @@ class ZmqClientMixDirectPubSub(zmq_client_base.ZmqClientBase):
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
 
-        if conf.use_router_proxy or not conf.use_pub_sub:
+        if conf.oslo_messaging_zmq.use_router_proxy or not \
+                conf.oslo_messaging_zmq.use_pub_sub:
             raise WrongClientException()
 
         publisher_direct = \
@@ -68,7 +69,8 @@ class ZmqClientDirect(zmq_client_base.ZmqClientBase):
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
 
-        if conf.use_pub_sub or conf.use_router_proxy:
+        if conf.oslo_messaging_zmq.use_pub_sub or \
+                conf.oslo_messaging_zmq.use_router_proxy:
             raise WrongClientException()
 
         publisher = \
@@ -92,7 +94,7 @@ class ZmqClientProxy(zmq_client_base.ZmqClientBase):
 
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None):
 
-        if not conf.use_router_proxy:
+        if not conf.oslo_messaging_zmq.use_router_proxy:
             raise WrongClientException()
 
         publisher = \

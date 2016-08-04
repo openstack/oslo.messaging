@@ -684,7 +684,7 @@ def main():
     if args.mode == 'rpc-server':
         target = messaging.Target(topic=args.topic, server=args.server)
         if args.url.startswith('zmq'):
-            cfg.CONF.rpc_zmq_matchmaker = "redis"
+            cfg.CONF.oslo_messaging_zmq.rpc_zmq_matchmaker = "redis"
 
         endpoint = rpc_server(TRANSPORT, target, args.wait_before_answer,
                               args.executor, args.duration)

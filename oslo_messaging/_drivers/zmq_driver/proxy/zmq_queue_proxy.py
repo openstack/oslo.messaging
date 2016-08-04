@@ -68,8 +68,9 @@ class UniversalQueueProxy(object):
             return
 
         msg_type = message[0]
-        if self.conf.use_pub_sub and msg_type in (zmq_names.CAST_FANOUT_TYPE,
-                                                  zmq_names.NOTIFY_TYPE):
+        if self.conf.oslo_messaging_zmq.use_pub_sub and \
+                msg_type in (zmq_names.CAST_FANOUT_TYPE,
+                             zmq_names.NOTIFY_TYPE):
             self.pub_publisher.send_request(message)
         else:
             self._redirect_message(self.be_router_socket.handle
@@ -133,12 +134,13 @@ class RouterUpdater(zmq_updater.UpdaterBase):
     def _update_records(self):
         self.matchmaker.register_publisher(
             (self.publisher_address, self.fe_router_address),
-            expire=self.conf.zmq_target_expire)
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
         LOG.info(_LI("[PUB:%(pub)s, ROUTER:%(router)s] Update PUB publisher"),
                  {"pub": self.publisher_address,
                   "router": self.fe_router_address})
-        self.matchmaker.register_router(self.be_router_address,
-                                        expire=self.conf.zmq_target_expire)
+        self.matchmaker.register_router(
+            self.be_router_address,
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
         LOG.info(_LI("[Backend ROUTER:%(router)s] Update ROUTER"),
                  {"router": self.be_router_address})
 

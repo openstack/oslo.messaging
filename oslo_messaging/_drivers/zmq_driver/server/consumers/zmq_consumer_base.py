@@ -79,8 +79,8 @@ class SingleSocketConsumer(ConsumerBase):
                       {"stype": zmq_names.socket_type_str(socket_type),
                        "addr": socket.bind_address,
                        "port": socket.port})
-            self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
-                                                    socket.port)
+            self.host = zmq_address.combine_address(
+                self.conf.oslo_messaging_zmq.rpc_zmq_host, socket.port)
             self.poller.register(socket, self.receive_message)
             return socket
         except zmq.ZMQError as e:
@@ -119,7 +119,7 @@ class TargetUpdater(zmq_updater.UpdaterBase):
         self.matchmaker.register(
             self.target, self.host,
             zmq_names.socket_type_str(self.socket_type),
-            expire=self.conf.zmq_target_expire)
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
 
     def stop(self):
         super(TargetUpdater, self).stop()

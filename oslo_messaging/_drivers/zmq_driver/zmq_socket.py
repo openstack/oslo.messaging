@@ -47,8 +47,9 @@ class ZmqSocket(object):
         self.handle.set_hwm(high_watermark)
 
         self.close_linger = -1
-        if self.conf.rpc_cast_timeout > 0:
-            self.close_linger = self.conf.rpc_cast_timeout * 1000
+        if self.conf.oslo_messaging_zmq.rpc_cast_timeout > 0:
+            self.close_linger = \
+                self.conf.oslo_messaging_zmq.rpc_cast_timeout * 1000
         self.handle.setsockopt(zmq.LINGER, self.close_linger)
         # Put messages to only connected queues
         self.handle.setsockopt(zmq.IMMEDIATE, 1 if immediate else 0)
@@ -96,8 +97,9 @@ class ZmqSocket(object):
         self.handle.send_multipart(*args, **kwargs)
 
     def send_dumped(self, obj, *args, **kwargs):
-        serialization = kwargs.pop('serialization',
-                                   self.conf.rpc_zmq_serialization)
+        serialization = kwargs.pop(
+            'serialization',
+            self.conf.oslo_messaging_zmq.rpc_zmq_serialization)
         serializer = self._get_serializer(serialization)
         s = serializer.dump_as_bytes(obj)
         self.handle.send(s, *args, **kwargs)
@@ -118,8 +120,9 @@ class ZmqSocket(object):
         return self.handle.recv_multipart(*args, **kwargs)
 
     def recv_loaded(self, *args, **kwargs):
-        serialization = kwargs.pop('serialization',
-                                   self.conf.rpc_zmq_serialization)
+        serialization = kwargs.pop(
+            'serialization',
+            self.conf.oslo_messaging_zmq.rpc_zmq_serialization)
         serializer = self._get_serializer(serialization)
         s = self.handle.recv(*args, **kwargs)
         obj = serializer.load_from_bytes(s)
@@ -170,13 +173,13 @@ class ZmqRandomPortSocket(ZmqSocket):
             high_watermark=high_watermark)
         self.bind_address = zmq_address.get_tcp_random_address(self.conf)
         if host is None:
-            host = conf.rpc_zmq_host
+            host = conf.oslo_messaging_zmq.rpc_zmq_host
         try:
             self.port = self.handle.bind_to_random_port(
                 self.bind_address,
-                min_port=conf.rpc_zmq_min_port,
-                max_port=conf.rpc_zmq_max_port,
-                max_tries=conf.rpc_zmq_bind_port_retries)
+                min_port=conf.oslo_messaging_zmq.rpc_zmq_min_port,
+                max_port=conf.oslo_messaging_zmq.rpc_zmq_max_port,
+                max_tries=conf.oslo_messaging_zmq.rpc_zmq_bind_port_retries)
             self.connect_address = zmq_address.combine_address(host, self.port)
         except zmq.ZMQBindError:
             LOG.error(_LE("Random ports range exceeded!"))
@@ -192,7 +195,8 @@ class ZmqFixedPortSocket(ZmqSocket):
             high_watermark=high_watermark)
         self.connect_address = zmq_address.combine_address(host, port)
         self.bind_address = zmq_address.get_tcp_direct_address(
-            zmq_address.combine_address(conf.rpc_zmq_bind_address, port))
+            zmq_address.combine_address(
+                conf.oslo_messaging_zmq.rpc_zmq_bind_address, port))
         self.host = host
         self.port = port
 

@@ -57,7 +57,8 @@ class SocketsManager(object):
     def _check_for_new_hosts(self, target):
         key = self._key_from_target(target)
         socket, tm = self.outbound_sockets[key]
-        if 0 <= self.conf.zmq_target_expire <= time.time() - tm:
+        if 0 <= self.conf.oslo_messaging_zmq.zmq_target_expire \
+                <= time.time() - tm:
             self._get_hosts_and_connect(socket, target)
         return socket
 

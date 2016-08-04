@@ -35,7 +35,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
         # Set config values
         kwargs = {'rpc_zmq_min_port': 5555,
                   'rpc_zmq_max_port': 5560}
-        self.config(**kwargs)
+        self.config(group='oslo_messaging_zmq', **kwargs)
 
     def test_ports_range(self):
         listeners = []

@@ -85,12 +85,14 @@ Configuration
 Enabling (mandatory)
 --------------------
 
-To enable the driver, in the section [DEFAULT] of the conf file,
-the 'rpc_backend' flag must be set to 'zmq' and the 'rpc_zmq_host' flag
+To enable the driver the 'transport_url' option must be set to 'zmq://'
+in the section [DEFAULT] of the conf file, the 'rpc_zmq_host' flag
 must be set to the hostname of the current node. ::
 
         [DEFAULT]
-        rpc_backend = zmq
+        transport_url = "zmq://"
+
+        [oslo_messaging_zmq]
         rpc_zmq_host = {hostname}
 
 
@@ -110,27 +112,17 @@ RedisMatchMaker: loads the hash table from a remote Redis server, supports
 dynamic host/topic registrations, host expiration, and hooks for consuming
 applications to acknowledge or neg-acknowledge topic.host service availability.
 
-To set the MatchMaker class, use option 'rpc_zmq_matchmaker' in [DEFAULT]. ::
+For ZeroMQ driver Redis is configured in transport_url also. For using Redis
+specify the URL as follows::
 
-        rpc_zmq_matchmaker = dummy
-
-or::
-
-        rpc_zmq_matchmaker = redis
-
-To specify the Redis server for RedisMatchMaker, use options in
-[matchmaker_redis] of each project. ::
-
-        [matchmaker_redis]
-        host = 127.0.0.1
-        port = 6379
+        [DEFAULT]
+        transport_url = "zmq+redis://127.0.0.1:6379"
 
 In order to cleanup redis storage from expired records (e.g. target listener
 goes down) TTL may be applied for keys. Configure 'zmq_target_expire' option
 which is 120 (seconds) by default. The option is related not specifically to
-redis so it is also defined in [DEFAULT] section. If option value is <= 0
-then keys don't expire and live forever in the storage.
-
+redis so it is also defined in [oslo_messaging_zmq] section. If option value
+is <= 0 then keys don't expire and live forever in the storage.
 
 MatchMaker Data Source (mandatory)
 ----------------------------------
@@ -159,11 +151,10 @@ we use Sentinel solution and redis master-slave-slave configuration (if we have
 3 controllers and run Redis on each of them).
 
 To deploy redis with HA follow the `sentinel-install`_ instructions. From the
-messaging driver's side you will need to setup following configuration which
-is different from a single-node redis deployment ::
+messaging driver's side you will need to setup following configuration ::
 
-        [matchmaker_redis]
-        sentinel_hosts=host1:26379, host2:26379, host3:26379
+        [DEFAULT]
+        transport_url = "zmq+redis://host1:26379,host2:26379,host3:26379"
 
 
 Restrict the number of TCP sockets on controller
@@ -174,7 +165,7 @@ controller node in directly connected configuration. To solve the issue
 ROUTER proxy may be used.
 
 In order to configure driver to use ROUTER proxy set up the 'use_router_proxy'
-option to true in [DEFAULT] section (false is set by default).
+option to true in [oslo_messaging_zmq] section (false is set by default).
 
 For example::
 
@@ -198,7 +189,7 @@ direct DEALER/ROUTER unicast which is possible but less efficient and therefore
 is not recommended. In a case of direct DEALER/ROUTER unicast proxy is not
 needed.
 
-This option can be set in [DEFAULT] section.
+This option can be set in [oslo_messaging_zmq] section.
 
 For example::
 
@@ -218,7 +209,7 @@ All services bind to an IP address or Ethernet adapter. By default, all services
 bind to '*', effectively binding to 0.0.0.0. This may be changed with the option
 'rpc_zmq_bind_address' which accepts a wildcard, IP address, or Ethernet adapter.
 
-This configuration can be set in [DEFAULT] section.
+This configuration can be set in [oslo_messaging_zmq] section.
 
 For example::
 

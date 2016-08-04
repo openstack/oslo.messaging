@@ -41,7 +41,7 @@ class UpdaterBase(object):
 
     def _update_loop(self):
         self.update_method()
-        time.sleep(self.conf.zmq_target_update)
+        time.sleep(self.conf.oslo_messaging_zmq.zmq_target_update)
 
     def cleanup(self):
         self.executor.stop()

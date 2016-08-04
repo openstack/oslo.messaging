@@ -85,7 +85,7 @@ class ZmqProxy(object):
         self.conf = conf
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
-            self.conf.rpc_zmq_matchmaker,
+            self.conf.oslo_messaging_zmq.rpc_zmq_matchmaker,
         ).driver(self.conf)
         self.context = zmq.Context()
         self.proxy = proxy_cls(conf, self.context, self.matchmaker)

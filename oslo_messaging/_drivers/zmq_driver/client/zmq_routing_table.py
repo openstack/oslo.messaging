@@ -46,7 +46,8 @@ class RoutingTable(object):
         return host
 
     def _is_tm_expired(self, tm):
-        return 0 <= self.conf.zmq_target_expire <= time.time() - tm
+        return 0 <= self.conf.oslo_messaging_zmq.zmq_target_expire \
+            <= time.time() - tm
 
     def _update_routing_table(self, target):
         routing_record = self.routing_table.get(str(target))
