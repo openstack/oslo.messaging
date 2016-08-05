@@ -24,11 +24,11 @@ def get_tcp_direct_address(host):
 
 
 def get_tcp_random_address(conf):
-    return "tcp://%s" % conf.rpc_zmq_bind_address
+    return "tcp://%s" % conf.oslo_messaging_zmq.rpc_zmq_bind_address
 
 
 def get_broker_address(conf):
-    return "ipc://%s/zmq-broker" % conf.rpc_zmq_ipc_dir
+    return "ipc://%s/zmq-broker" % conf.oslo_messaging_zmq.rpc_zmq_ipc_dir
 
 
 def prefix_str(key, listener_type):

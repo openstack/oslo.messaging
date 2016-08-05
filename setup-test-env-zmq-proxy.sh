@@ -18,6 +18,7 @@ export ZMQ_PROXY_HOST=127.0.0.1
 cat > ${DATADIR}/zmq.conf <<EOF
 [DEFAULT]
 transport_url=${TRANSPORT_URL}
+[oslo_messaging_zmq]
 rpc_zmq_matchmaker=${ZMQ_MATCHMAKER}
 rpc_zmq_ipc_dir=${ZMQ_IPC_DIR}
 use_pub_sub=${ZMQ_USE_PUB_SUB}

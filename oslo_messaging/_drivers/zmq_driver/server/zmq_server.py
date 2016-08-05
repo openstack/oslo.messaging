@@ -41,11 +41,14 @@ class ZmqServer(base.PollStyleListener):
         self.poller = poller or zmq_async.get_poller()
 
         self.router_consumer = zmq_router_consumer.RouterConsumer(
-            conf, self.poller, self) if not conf.use_router_proxy else None
+            conf, self.poller, self) \
+            if not conf.oslo_messaging_zmq.use_router_proxy else None
         self.dealer_consumer = zmq_dealer_consumer.DealerConsumer(
-            conf, self.poller, self) if conf.use_router_proxy else None
+            conf, self.poller, self) \
+            if conf.oslo_messaging_zmq.use_router_proxy else None
         self.sub_consumer = zmq_sub_consumer.SubConsumer(
-            conf, self.poller, self) if conf.use_pub_sub else None
+            conf, self.poller, self) \
+            if conf.oslo_messaging_zmq.use_pub_sub else None
 
         self.consumers = []
         if self.router_consumer is not None:
@@ -58,7 +61,7 @@ class ZmqServer(base.PollStyleListener):
     @base.batch_poll_helper
     def poll(self, timeout=None):
         message, socket = self.poller.poll(
-            timeout or self.conf.rpc_poll_timeout)
+            timeout or self.conf.oslo_messaging_zmq.rpc_poll_timeout)
         return message
 
     def stop(self):
@@ -94,7 +97,7 @@ class ZmqNotificationServer(base.PollStyleListener):
     @base.batch_poll_helper
     def poll(self, timeout=None):
         message, socket = self.poller.poll(
-            timeout or self.conf.rpc_poll_timeout)
+            timeout or self.conf.oslo_messaging_zmq.rpc_poll_timeout)
         return message
 
     def stop(self):

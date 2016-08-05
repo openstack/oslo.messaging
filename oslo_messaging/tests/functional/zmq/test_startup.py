@@ -30,10 +30,10 @@ class StartupOrderTestCase(multiproc_utils.MutliprocTestCase):
         self.conf.prog = "test_prog"
         self.conf.project = "test_project"
 
-        kwargs = {'rpc_response_timeout': 30}
-        self.config(**kwargs)
+        self.config(rpc_response_timeout=30)
 
-        log_path = self.conf.rpc_zmq_ipc_dir + "/" + str(os.getpid()) + ".log"
+        log_path = os.path.join(self.conf.oslo_messaging_zmq.rpc_zmq_ipc_dir,
+                                str(os.getpid()) + ".log")
         sys.stdout = open(log_path, "w", buffering=0)
 
     def test_call_server_before_client(self):

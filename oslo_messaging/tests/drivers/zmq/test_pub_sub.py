@@ -54,7 +54,7 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
 
         kwargs = {'use_pub_sub': True,
                   'rpc_zmq_serialization': self.serialization}
-        self.config(**kwargs)
+        self.config(group='oslo_messaging_zmq', **kwargs)
 
         self.config(host="127.0.0.1", group="zmq_proxy_opts")
         self.config(publisher_port="0", group="zmq_proxy_opts")

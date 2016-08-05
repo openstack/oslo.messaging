@@ -70,7 +70,8 @@ def listener_configurer(conf):
                           '%(levelname)-8s %(message)s')
     h.setFormatter(f)
     root.addHandler(h)
-    log_path = conf.rpc_zmq_ipc_dir + "/" + "zmq_multiproc.log"
+    log_path = conf.oslo_messaging_zmq.rpc_zmq_ipc_dir + \
+        "/" + "zmq_multiproc.log"
     file_handler = logging.StreamHandler(open(log_path, 'w'))
     file_handler.setFormatter(f)
     root.addHandler(file_handler)

@@ -87,7 +87,8 @@ class ReceiverBase(object):
             return self._requests.pop((message_id, message_type), None)
 
     def _run_loop(self):
-        data, socket = self._poller.poll(timeout=self.conf.rpc_poll_timeout)
+        data, socket = self._poller.poll(
+            timeout=self.conf.oslo_messaging_zmq.rpc_poll_timeout)
         if data is None:
             return
         reply_id, message_type, message_id, response = data

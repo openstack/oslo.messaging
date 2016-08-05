@@ -63,7 +63,7 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
             else:
                 return \
                     [zmq_address.target_to_subscribe_filter(request.target)] \
-                    if self.conf.use_pub_sub else \
+                    if self.conf.oslo_messaging_zmq.use_pub_sub else \
                     self.routing_table.get_all_hosts(request.target)
         except retrying.RetryError:
             return []

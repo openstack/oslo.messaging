@@ -17,12 +17,13 @@ import logging
 
 from oslo_config import cfg
 
-from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_queue_proxy
+from oslo_messaging._drivers.zmq_driver import zmq_options
 
 CONF = cfg.CONF
-CONF.register_opts(impl_zmq.zmq_opts)
+
+zmq_options.register_opts(CONF)
 
 opt_group = cfg.OptGroup(name='zmq_proxy_opts',
                          title='ZeroMQ proxy options')
