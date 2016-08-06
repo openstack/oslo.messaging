@@ -903,8 +903,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
 
         self._broker.on_receiver_active = on_active
         self._broker.start()
-        self.config(max_send_retries=retries,
-                    link_retry_delay=1,
+        self.config(link_retry_delay=1,
                     group="oslo_messaging_amqp")
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
@@ -915,7 +914,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         try:
             rc = driver.send(target, {"context": "whatever"},
                              {"method": "echo", "id": "e1"},
-                             wait_for_reply=True)
+                             wait_for_reply=True, retry=retries)
             self.assertIsNotNone(rc)
             self.assertEqual(rc.get('correlation-id'), 'e1')
         except Exception:

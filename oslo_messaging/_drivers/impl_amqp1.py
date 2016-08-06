@@ -278,8 +278,7 @@ class ProtonDriver(base.BaseDriver):
         :param envelope: Encapsulate message in an envelope
         :type envelope: bool
         :param retry: (optional) maximum re-send attempts on recoverable error
-                      None or -1 means to use value of max_send_retries
-                      configuration option
+                      None or -1 means to retry forever
                       0 means no retry
                       N means N retries
         :type retry: int
@@ -329,8 +328,7 @@ class ProtonDriver(base.BaseDriver):
         :param version: message envelope version
         :type version: float
         :param retry: (optional) maximum re-send attempts on recoverable error
-                      None or -1 means to use value of max_send_retries
-                      configuration option
+                      None or -1 means to retry forever
                       0 means no retry
                       N means N retries
         :type retry: int
