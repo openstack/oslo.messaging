@@ -16,8 +16,9 @@ import testtools
 
 import oslo_messaging
 from oslo_messaging._drivers import common
-from oslo_messaging._drivers.zmq_driver.matchmaker.base import DummyMatchMaker
-from oslo_messaging._drivers.zmq_driver.matchmaker import matchmaker_redis
+from oslo_messaging._drivers.zmq_driver.matchmaker.zmq_matchmaker_base \
+    import MatchmakerDummy
+from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_redis
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging.tests import utils as test_utils
 
@@ -39,7 +40,7 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
 
     def test_empty_url(self):
         driver, url = self.setup_url("zmq:///")
-        self.assertIs(matchmaker_redis.RedisMatchMaker,
+        self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq', driver.matchmaker.url.transport)
 
@@ -48,19 +49,19 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
 
     def test_dummy_url(self):
         driver, url = self.setup_url("zmq+dummy:///")
-        self.assertIs(DummyMatchMaker,
+        self.assertIs(MatchmakerDummy,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+dummy', driver.matchmaker.url.transport)
 
     def test_redis_url(self):
         driver, url = self.setup_url("zmq+redis:///")
-        self.assertIs(matchmaker_redis.RedisMatchMaker,
+        self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+redis', driver.matchmaker.url.transport)
 
     def test_redis_url_no_creds(self):
         driver, url = self.setup_url("zmq+redis://host:65123/")
-        self.assertIs(matchmaker_redis.RedisMatchMaker,
+        self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+redis', driver.matchmaker.url.transport)
         self.assertEqual("host", driver.matchmaker.standalone_redis["host"])
@@ -68,7 +69,7 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
 
     def test_redis_url_no_port(self):
         driver, url = self.setup_url("zmq+redis://:p12@host:65123/")
-        self.assertIs(matchmaker_redis.RedisMatchMaker,
+        self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+redis', driver.matchmaker.url.transport)
         self.assertEqual("host", driver.matchmaker.standalone_redis["host"])
@@ -78,7 +79,7 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
     def test_sentinel_multiple_hosts_url(self):
         driver, url = self.setup_url(
             "zmq+redis://sentinel1:20001,sentinel2:20001,sentinel3:20001/")
-        self.assertIs(matchmaker_redis.RedisMatchMaker,
+        self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+redis', driver.matchmaker.url.transport)
         self.assertEqual(3, len(driver.matchmaker.sentinel_hosts))

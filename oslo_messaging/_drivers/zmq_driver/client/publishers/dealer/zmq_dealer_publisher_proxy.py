@@ -14,8 +14,6 @@
 
 import logging
 
-import retrying
-
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_base
 from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
@@ -25,6 +23,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
+from oslo_messaging._i18n import _LW
 
 LOG = logging.getLogger(__name__)
 
@@ -52,27 +51,29 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
         return self.socket
 
     def send_call(self, request):
-        try:
-            request.routing_key = \
-                self.routing_table.get_routable_host(request.target)
-        except retrying.RetryError:
+        request.routing_key = \
+            self.routing_table.get_routable_host(request.target)
+        if request.routing_key is None:
             self._raise_timeout(request)
         return super(DealerPublisherProxy, self).send_call(request)
 
     def _get_routing_keys(self, request):
-        try:
-            if request.msg_type in zmq_names.DIRECT_TYPES:
-                return [self.routing_table.get_routable_host(request.target)]
-            else:
-                return \
-                    [zmq_address.target_to_subscribe_filter(request.target)] \
-                    if self.conf.oslo_messaging_zmq.use_pub_sub else \
-                    self.routing_table.get_all_hosts(request.target)
-        except retrying.RetryError:
-            return []
+        if request.msg_type in zmq_names.DIRECT_TYPES:
+            return [self.routing_table.get_routable_host(request.target)]
+        else:
+            return \
+                [zmq_address.target_to_subscribe_filter(request.target)] \
+                if self.conf.oslo_messaging_zmq.use_pub_sub else \
+                self.routing_table.get_all_hosts(request.target)
 
     def _send_non_blocking(self, request):
         for routing_key in self._get_routing_keys(request):
+            if routing_key is None:
+                LOG.warning(_LW("Matchmaker contains no record for specified "
+                                "target %(target)s. Dropping message %(id)s.")
+                            % {"target": request.target,
+                               "id": request.message_id})
+                continue
             request.routing_key = routing_key
             self.sender.send(self.socket, request)
 
