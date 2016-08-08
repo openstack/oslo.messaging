@@ -22,6 +22,7 @@ from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_socket
+from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -38,14 +39,9 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         self.socket = zmq_socket.ZmqSocket(self.conf, self.context, zmq.SUB)
         self.sockets.append(self.socket)
         self._subscribe_on_target(self.target)
-        self.on_publishers(self.matchmaker.get_publishers())
+        self.connection_updater = SubscriberConnectionUpdater(
+            conf, self.matchmaker, self.socket)
         self.poller.register(self.socket, self.receive_message)
-
-    def on_publishers(self, publishers):
-        for host, sync in publishers:
-            self.socket.connect(zmq_address.get_tcp_direct_address(host))
-        LOG.debug("[%s] SUB consumer connected to publishers %s",
-                  self.socket.handle.identity, publishers)
 
     def _subscribe_on_target(self, target):
         topic_filter = zmq_address.target_to_subscribe_filter(target)
@@ -78,4 +74,15 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
             LOG.error(_LE("Receiving message failed: %s"), str(e))
 
     def cleanup(self):
+        self.connection_updater.cleanup()
         super(SubConsumer, self).cleanup()
+
+
+class SubscriberConnectionUpdater(zmq_updater.ConnectionUpdater):
+
+    def _update_connection(self):
+        publishers = self.matchmaker.get_publishers()
+        for host, sync in publishers:
+            self.socket.connect(zmq_address.get_tcp_direct_address(host))
+        LOG.debug("[%s] SUB consumer connected to publishers %s",
+                  self.socket.handle.identity, publishers)
