@@ -81,7 +81,7 @@ rabbit_opts = [
                       'AMQP consumer cancel notification.'),
     cfg.StrOpt('kombu_compression',
                help="EXPERIMENTAL: Possible values are: gzip, bz2. If not "
-                    "set compression will not be used. This option may not"
+                    "set compression will not be used. This option may not "
                     "be available in future versions."),
     cfg.IntOpt('kombu_missing_consumer_retry_timeout',
                deprecated_name="kombu_reconnect_timeout",
