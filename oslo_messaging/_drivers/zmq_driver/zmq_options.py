@@ -117,10 +117,8 @@ zmq_opts = [
                      'True means not keeping a queue when server side '
                      'disconnects. False means to keep queue and messages '
                      'even if server is disconnected, when the server '
-                     'appears we send all accumulated messages to it.')
-]
+                     'appears we send all accumulated messages to it.'),
 
-zmq_ack_retry_opts = [
     cfg.IntOpt('rpc_thread_pool_size', default=100,
                help='Maximum number of (green) threads to work concurrently.'),
 
@@ -133,7 +131,7 @@ zmq_ack_retry_opts = [
                 help='Wait for message acknowledgements from receivers. '
                      'This mechanism works only via proxy without PUB/SUB.'),
 
-    cfg.IntOpt('rpc_ack_timeout_base', default=10,
+    cfg.IntOpt('rpc_ack_timeout_base', default=15,
                help='Number of seconds to wait for an ack from a cast/call. '
                     'After each retry attempt this timeout is multiplied by '
                     'some specified multiplier.'),
@@ -155,6 +153,5 @@ def register_opts(conf):
     opt_group = cfg.OptGroup(name='oslo_messaging_zmq',
                              title='ZeroMQ driver options')
     conf.register_opts(zmq_opts, group=opt_group)
-    conf.register_opts(zmq_ack_retry_opts, group=opt_group)
     conf.register_opts(server._pool_opts)
     conf.register_opts(base.base_opts)

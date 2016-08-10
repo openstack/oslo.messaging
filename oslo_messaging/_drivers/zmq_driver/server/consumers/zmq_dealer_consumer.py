@@ -40,7 +40,7 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
     def __init__(self, conf, poller, server):
         self.ack_sender = zmq_senders.AckSenderProxy(conf)
         self.reply_sender = zmq_senders.ReplySenderProxy(conf)
-        self.received_messages = zmq_ttl_cache.TTLCache(
+        self.messages_cache = zmq_ttl_cache.TTLCache(
             ttl=conf.oslo_messaging_zmq.rpc_message_ttl
         )
         self.sockets_manager = zmq_sockets_manager.SocketsManager(
@@ -92,11 +92,11 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
                 message = zmq_incoming_message.ZmqIncomingMessage(
                     context, message, reply_id, message_id, socket,
-                    ack_sender, reply_sender
+                    ack_sender, reply_sender, self.messages_cache
                 )
 
-                # drop duplicate message
-                if message_id in self.received_messages:
+                # drop a duplicate message
+                if message_id in self.messages_cache:
                     LOG.warning(
                         _LW("[%(host)s] Dropping duplicate %(msg_type)s "
                             "message %(msg_id)s"),
@@ -104,10 +104,16 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
                          "msg_type": zmq_names.message_type_str(msg_type),
                          "msg_id": message_id}
                     )
+                    # NOTE(gdavoian): send yet another ack for the non-CALL
+                    # message, since the old one might be lost;
+                    # for the CALL message also try to resend its reply
+                    # (of course, if it was already obtained and cached).
                     message.acknowledge()
+                    if msg_type == zmq_names.CALL_TYPE:
+                        message.reply_from_cache()
                     return None
 
-                self.received_messages.add(message_id)
+                self.messages_cache.add(message_id)
                 LOG.debug(
                     "[%(host)s] Received %(msg_type)s message %(msg_id)s",
                     {"host": self.host,
@@ -124,7 +130,7 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
-        self.received_messages.cleanup()
+        self.messages_cache.cleanup()
         self.connection_updater.cleanup()
         super(DealerConsumer, self).cleanup()
 

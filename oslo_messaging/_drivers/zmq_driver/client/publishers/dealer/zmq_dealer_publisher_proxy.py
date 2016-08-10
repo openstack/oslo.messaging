@@ -55,15 +55,11 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
         return six.b(self.conf.oslo_messaging_zmq.rpc_zmq_host + "/" +
                      str(uuid.uuid4()))
 
-    def connect_socket(self, request):
-        return self.socket
-
-    def send_call(self, request):
-        request.routing_key = \
-            self.routing_table.get_routable_host(request.target)
-        if request.routing_key is None:
-            self._raise_timeout(request)
-        return super(DealerPublisherProxy, self).send_call(request)
+    def _check_received_data(self, reply_id, reply, request):
+        super(DealerPublisherProxy, self)._check_received_data(reply_id, reply,
+                                                               request)
+        assert reply_id == request.routing_key, \
+            "Reply from recipient expected!"
 
     def _get_routing_keys(self, request):
         if request.msg_type in zmq_names.DIRECT_TYPES:
@@ -74,16 +70,20 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
                 if self.conf.oslo_messaging_zmq.use_pub_sub else \
                 self.routing_table.get_all_hosts(request.target)
 
-    def _send_non_blocking(self, request):
-        for routing_key in self._get_routing_keys(request):
-            if routing_key is None:
-                LOG.warning(_LW("Matchmaker contains no record for specified "
-                                "target %(target)s. Dropping message %(id)s.")
-                            % {"target": request.target,
-                               "id": request.message_id})
-                continue
+    def _send_request(self, request):
+        routing_keys = [routing_key
+                        for routing_key in self._get_routing_keys(request)
+                        if routing_key is not None]
+        if not routing_keys:
+            LOG.warning(_LW("Matchmaker contains no records for specified "
+                            "target %(target)s. Dropping message %(msg_id)s.")
+                        % {"target": request.target,
+                           "msg_id": request.message_id})
+            return None
+        for routing_key in routing_keys:
             request.routing_key = routing_key
             self.sender.send(self.socket, request)
+        return self.socket
 
     def cleanup(self):
         super(DealerPublisherProxy, self).cleanup()

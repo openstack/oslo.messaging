@@ -24,9 +24,11 @@ zmq = zmq_async.import_zmq()
 
 class TTLCache(object):
 
+    _UNDEFINED = object()
+
     def __init__(self, ttl=None):
         self._lock = threading.Lock()
-        self._expiration_times = {}
+        self._cache = {}
         self._executor = None
 
         if not (ttl is None or isinstance(ttl, (int, float))):
@@ -47,30 +49,31 @@ class TTLCache(object):
     def _is_expired(expiration_time, current_time):
         return expiration_time <= current_time
 
-    def add(self, item):
+    def add(self, key, value=None):
         with self._lock:
-            self._expiration_times[item] = time.time() + self._ttl
+            expiration_time = time.time() + self._ttl
+            self._cache[key] = (value, expiration_time)
 
-    def discard(self, item):
+    def get(self, key, default=None):
         with self._lock:
-            self._expiration_times.pop(item, None)
-
-    def __contains__(self, item):
-        with self._lock:
-            expiration_time = self._expiration_times.get(item)
-            if expiration_time is None:
-                return False
+            data = self._cache.get(key)
+            if data is None:
+                return default
+            value, expiration_time = data
             if self._is_expired(expiration_time, time.time()):
-                self._expiration_times.pop(item)
-                return False
-            return True
+                del self._cache[key]
+                return default
+            return value
+
+    def __contains__(self, key):
+        return self.get(key, self._UNDEFINED) is not self._UNDEFINED
 
     def _update_cache(self):
         with self._lock:
             current_time = time.time()
-            self._expiration_times = \
-                {item: expiration_time for
-                 item, expiration_time in six.iteritems(self._expiration_times)
+            self._cache = \
+                {key: (value, expiration_time) for
+                 key, (value, expiration_time) in six.iteritems(self._cache)
                  if not self._is_expired(expiration_time, current_time)}
         time.sleep(self._ttl)
 

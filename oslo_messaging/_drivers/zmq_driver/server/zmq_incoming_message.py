@@ -25,9 +25,14 @@ zmq = zmq_async.import_zmq()
 
 
 class ZmqIncomingMessage(base.RpcIncomingMessage):
+    """Base class for RPC-messages via ZMQ-driver.
+    Each message may send either acks/replies or just nothing
+    (if acks are disabled and replies are not supported).
+    """
 
     def __init__(self, context, message, reply_id=None, message_id=None,
-                 socket=None, ack_sender=None, reply_sender=None):
+                 socket=None, ack_sender=None, reply_sender=None,
+                 replies_cache=None):
 
         if ack_sender is not None or reply_sender is not None:
             assert socket is not None, "Valid socket expected!"
@@ -41,6 +46,7 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
         self.socket = socket
         self.ack_sender = ack_sender
         self.reply_sender = reply_sender
+        self.replies_cache = replies_cache
 
     def acknowledge(self):
         if self.ack_sender is not None:
@@ -57,6 +63,14 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
                                        reply_body=reply,
                                        failure=failure)
             self.reply_sender.send(self.socket, reply)
+            if self.replies_cache is not None:
+                self.replies_cache.add(self.message_id, reply)
+
+    def reply_from_cache(self):
+        if self.reply_sender is not None and self.replies_cache is not None:
+            reply = self.replies_cache.get(self.message_id)
+            if reply is not None:
+                self.reply_sender.send(self.socket, reply)
 
     def requeue(self):
         """Requeue is not supported"""

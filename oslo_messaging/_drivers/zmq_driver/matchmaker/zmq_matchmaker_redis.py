@@ -239,8 +239,6 @@ class MatchmakerRedis(zmq_matchmaker_base.MatchmakerBase):
 
     @redis_connection_warn
     def get_hosts_fanout(self, target, listener_type):
-        LOG.debug("[Redis] get_hosts for target %s", target)
-
         hosts = []
 
         if target.topic and target.server:
@@ -250,18 +248,19 @@ class MatchmakerRedis(zmq_matchmaker_base.MatchmakerBase):
         key = zmq_address.prefix_str(target.topic, listener_type)
         hosts.extend(self._get_hosts_by_key(key))
 
+        LOG.debug("[Redis] get_hosts_fanout for target %(target)s: %(hosts)s",
+                  {"target": target, "hosts": hosts})
+
         return hosts
 
     def get_hosts_fanout_retry(self, target, listener_type):
         return self._retry_method(target, listener_type, self.get_hosts_fanout)
 
     def _retry_method(self, target, listener_type, method):
-        conf = self.conf
-
         @retry(retry_on_result=retry_if_empty,
                wrap_exception=True,
-               wait_fixed=conf.matchmaker_redis.wait_timeout,
-               stop_max_delay=conf.matchmaker_redis.check_timeout)
+               wait_fixed=self.conf.matchmaker_redis.wait_timeout,
+               stop_max_delay=self.conf.matchmaker_redis.check_timeout)
         def _get_hosts_retry(target, listener_type):
             return method(target, listener_type)
         return _get_hosts_retry(target, listener_type)

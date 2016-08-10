@@ -63,9 +63,12 @@ class ReceiverBase(object):
         a dict of futures for monitoring all types of responses.
         """
         futures = {}
+        message_id = request.message_id
         for message_type in self.message_types:
-            future = futurist.Future()
-            self._set_future(request.message_id, message_type, future)
+            future = self._get_future(message_id, message_type)
+            if future is None:
+                future = futurist.Future()
+                self._set_future(message_id, message_type, future)
             futures[message_type] = future
         return futures
 
@@ -92,7 +95,8 @@ class ReceiverBase(object):
 
     def _run_loop(self):
         data, socket = self._poller.poll(
-            timeout=self.conf.oslo_messaging_zmq.rpc_poll_timeout)
+            timeout=self.conf.oslo_messaging_zmq.rpc_poll_timeout
+        )
         if data is None:
             return
         reply_id, message_type, message_id, response = data
