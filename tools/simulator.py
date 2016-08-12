@@ -125,6 +125,9 @@ class MessageStatsCollector(object):
     def monitor(self):
         global IS_RUNNING
         if IS_RUNNING:
+            # NOTE(kbespalov): this way not properly works
+            # because the monitor starting with range 1sec +-150 ms
+            # due to high threading contention between rpc clients
             threading.Timer(1.0, self.monitor).start()
         now = time.time()
 
@@ -187,8 +190,14 @@ class MessageStatsCollector(object):
         for point in itertools.chain(*(c.get_series() for c in collectors)):
             count += point['count']
             size += point['size']
-            start = min(start, point['timestamp'])
-            end = max(end, point['timestamp'])
+            if point['count']:
+                # NOTE(kbespalov):
+                # we except the start and end time as time of
+                # first and last processed message, no reason
+                # to set boundaries if server was idle before
+                # running of clients and after.
+                start = min(start, point['timestamp'])
+                end = max(end, point['timestamp'])
 
             if 'latency' in point:
                 sum_latencies += point['latency'] * point['count']
