@@ -20,10 +20,11 @@ from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
 from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
+from oslo_messaging._drivers.zmq_driver.server import zmq_ttl_cache
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LE, _LI, _LW
 
 LOG = logging.getLogger(__name__)
 
@@ -33,7 +34,11 @@ zmq = zmq_async.import_zmq()
 class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        self.sender = zmq_senders.ReplySenderProxy(conf)
+        self.ack_sender = zmq_senders.AckSenderProxy(conf)
+        self.reply_sender = zmq_senders.ReplySenderProxy(conf)
+        self.received_messages = zmq_ttl_cache.TTLCache(
+            ttl=conf.oslo_messaging_zmq.rpc_message_ttl
+        )
         self.sockets_manager = zmq_sockets_manager.SocketsManager(
             conf, server.matchmaker, zmq.ROUTER, zmq.DEALER)
         self.host = None
@@ -53,34 +58,63 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
             LOG.error(_LE("Failed connecting to ROUTER socket %(e)s") % e)
             raise rpc_common.RPCException(str(e))
 
+    def _receive_request(self, socket):
+        empty = socket.recv()
+        assert empty == b'', 'Bad format: empty delimiter expected'
+        reply_id = socket.recv()
+        msg_type = int(socket.recv())
+        message_id = socket.recv_string()
+        context, message = socket.recv_loaded()
+        return reply_id, msg_type, message_id, context, message
+
     def receive_message(self, socket):
         try:
-            empty = socket.recv()
-            assert empty == b'', 'Bad format: empty delimiter expected'
-            reply_id = socket.recv()
-            message_type = int(socket.recv())
-            message_id = socket.recv()
-            context = socket.recv_loaded()
-            message = socket.recv_loaded()
-            LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
-                      {"host": self.host,
-                       "msg_type": zmq_names.message_type_str(message_type),
-                       "msg_id": message_id})
-            if message_type == zmq_names.CALL_TYPE:
-                return zmq_incoming_message.ZmqIncomingMessage(
-                    context, message, reply_id, message_id, socket, self.sender
+            reply_id, msg_type, message_id, context, message = \
+                self._receive_request(socket)
+
+            if msg_type == zmq_names.CALL_TYPE or \
+                    msg_type in zmq_names.NON_BLOCKING_TYPES:
+
+                ack_sender = self.ack_sender \
+                    if self.conf.oslo_messaging_zmq.rpc_use_acks else None
+                reply_sender = self.reply_sender \
+                    if msg_type == zmq_names.CALL_TYPE else None
+
+                message = zmq_incoming_message.ZmqIncomingMessage(
+                    context, message, reply_id, message_id, socket,
+                    ack_sender, reply_sender
                 )
-            elif message_type in zmq_names.NON_BLOCKING_TYPES:
-                return zmq_incoming_message.ZmqIncomingMessage(context,
-                                                               message)
+
+                # drop duplicate message
+                if message_id in self.received_messages:
+                    LOG.warning(
+                        _LW("[%(host)s] Dropping duplicate %(msg_type)s "
+                            "message %(msg_id)s"),
+                        {"host": self.host,
+                         "msg_type": zmq_names.message_type_str(msg_type),
+                         "msg_id": message_id}
+                    )
+                    message.acknowledge()
+                    return None
+
+                self.received_messages.add(message_id)
+                LOG.debug(
+                    "[%(host)s] Received %(msg_type)s message %(msg_id)s",
+                    {"host": self.host,
+                     "msg_type": zmq_names.message_type_str(msg_type),
+                     "msg_id": message_id}
+                )
+                return message
+
             else:
                 LOG.error(_LE("Unknown message type: %s"),
-                          zmq_names.message_type_str(message_type))
+                          zmq_names.message_type_str(msg_type))
         except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failure: %s"), str(e))
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
+        self.received_messages.cleanup()
         self.connection_updater.cleanup()
         super(DealerConsumer, self).cleanup()
 

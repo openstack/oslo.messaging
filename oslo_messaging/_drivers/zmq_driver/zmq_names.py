@@ -17,7 +17,6 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 zmq = zmq_async.import_zmq()
 
 
-FIELD_MSG_TYPE = 'msg_type'
 FIELD_MSG_ID = 'message_id'
 FIELD_REPLY_ID = 'reply_id'
 FIELD_REPLY_BODY = 'reply_body'

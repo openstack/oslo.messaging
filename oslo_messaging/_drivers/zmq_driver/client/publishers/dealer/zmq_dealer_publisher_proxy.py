@@ -36,7 +36,10 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
 
     def __init__(self, conf, matchmaker):
         sender = zmq_senders.RequestSenderProxy(conf)
-        receiver = zmq_receivers.ReplyReceiverProxy(conf)
+        if conf.oslo_messaging_zmq.rpc_use_acks:
+            receiver = zmq_receivers.AckAndReplyReceiverProxy(conf)
+        else:
+            receiver = zmq_receivers.ReplyReceiverProxy(conf)
         super(DealerPublisherProxy, self).__init__(conf, matchmaker, sender,
                                                    receiver)
         self.socket = self.sockets_manager.get_socket_to_publishers()
@@ -45,7 +48,7 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
         self.connection_updater = \
             PublisherConnectionUpdater(self.conf, self.matchmaker, self.socket)
 
-    def _connect_socket(self, request):
+    def connect_socket(self, request):
         return self.socket
 
     def send_call(self, request):

@@ -86,8 +86,7 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
              zmq_address.target_to_subscribe_filter(target),
              b"message",
              b"0000-0000",
-             self.dumps(context),
-             self.dumps(message)])
+             self.dumps([context, message])])
 
     def _check_listener(self, listener):
         listener._received.wait(timeout=5)

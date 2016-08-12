@@ -35,12 +35,12 @@ class RoutingTable(object):
 
     def get_all_hosts(self, target):
         self._update_routing_table(target)
-        return list(self.routable_hosts.get(str(target)) or [])
+        return list(self.routable_hosts.get(str(target), []))
 
     def get_routable_host(self, target):
         self._update_routing_table(target)
         hosts_for_target = self.routable_hosts[str(target)]
-        host = hosts_for_target.pop(0)
+        host = hosts_for_target.pop()
         if not hosts_for_target:
             self._renew_routable_hosts(target)
         return host

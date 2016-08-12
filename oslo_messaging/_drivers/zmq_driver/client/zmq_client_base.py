@@ -37,6 +37,13 @@ class ZmqClientBase(object):
         self.notify_publisher = publishers.get(zmq_names.NOTIFY_TYPE,
                                                publishers["default"])
 
+    @staticmethod
+    def create_publisher(conf, matchmaker, publisher_cls, ack_manager_cls):
+        publisher = publisher_cls(conf, matchmaker)
+        if conf.oslo_messaging_zmq.rpc_use_acks:
+            publisher = ack_manager_cls(publisher)
+        return publisher
+
     def send_call(self, target, context, message, timeout=None, retry=None):
         request = zmq_request.CallRequest(
             target, context=context, message=message, retry=retry,

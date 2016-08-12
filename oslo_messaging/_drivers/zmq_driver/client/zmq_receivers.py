@@ -42,11 +42,15 @@ class ReceiverBase(object):
 
     @abc.abstractproperty
     def message_types(self):
-        """A list of supported incoming response types."""
+        """A set of supported incoming response types."""
 
     def register_socket(self, socket):
         """Register a socket for receiving data."""
         self._poller.register(socket, recv_method=self.recv_response)
+
+    def unregister_socket(self, socket):
+        """Unregister a socket from receiving data."""
+        self._poller.unregister(socket)
 
     @abc.abstractmethod
     def recv_response(self, socket):
@@ -56,13 +60,13 @@ class ReceiverBase(object):
 
     def track_request(self, request):
         """Track a request via already registered sockets and return
-        a list of futures for monitoring all types of responses.
+        a dict of futures for monitoring all types of responses.
         """
-        futures = []
+        futures = {}
         for message_type in self.message_types:
             future = futurist.Future()
             self._set_future(request.message_id, message_type, future)
-            futures.append(future)
+            futures[message_type] = future
         return futures
 
     def untrack_request(self, request):
@@ -102,14 +106,9 @@ class ReceiverBase(object):
             future.set_result((reply_id, response))
 
 
-class AckReceiver(ReceiverBase):
-
-    message_types = (zmq_names.ACK_TYPE,)
-
-
 class ReplyReceiver(ReceiverBase):
 
-    message_types = (zmq_names.REPLY_TYPE,)
+    message_types = {zmq_names.REPLY_TYPE}
 
 
 class ReplyReceiverProxy(ReplyReceiver):
@@ -121,11 +120,12 @@ class ReplyReceiverProxy(ReplyReceiver):
         assert reply_id is not None, "Reply ID expected!"
         message_type = int(socket.recv())
         assert message_type == zmq_names.REPLY_TYPE, "Reply expected!"
-        message_id = socket.recv()
-        raw_reply = socket.recv_loaded()
-        assert isinstance(raw_reply, dict), "Dict expected!"
-        reply = zmq_response.Response(**raw_reply)
-        LOG.debug("Received reply for %s", message_id)
+        message_id = socket.recv_string()
+        reply_body, failure = socket.recv_loaded()
+        reply = zmq_response.Reply(
+            message_id=message_id, reply_id=reply_id,
+            reply_body=reply_body, failure=failure
+        )
         return reply_id, message_type, message_id, reply
 
 
@@ -136,11 +136,45 @@ class ReplyReceiverDirect(ReplyReceiver):
         assert empty == b'', "Empty expected!"
         raw_reply = socket.recv_loaded()
         assert isinstance(raw_reply, dict), "Dict expected!"
-        reply = zmq_response.Response(**raw_reply)
-        LOG.debug("Received reply for %s", reply.message_id)
+        reply = zmq_response.Reply(**raw_reply)
         return reply.reply_id, reply.msg_type, reply.message_id, reply
 
 
 class AckAndReplyReceiver(ReceiverBase):
 
-    message_types = (zmq_names.ACK_TYPE, zmq_names.REPLY_TYPE)
+    message_types = {zmq_names.ACK_TYPE, zmq_names.REPLY_TYPE}
+
+
+class AckAndReplyReceiverProxy(AckAndReplyReceiver):
+
+    def recv_response(self, socket):
+        empty = socket.recv()
+        assert empty == b'', "Empty expected!"
+        reply_id = socket.recv()
+        assert reply_id is not None, "Reply ID expected!"
+        message_type = int(socket.recv())
+        assert message_type in (zmq_names.ACK_TYPE, zmq_names.REPLY_TYPE), \
+            "Ack or reply expected!"
+        message_id = socket.recv_string()
+        if message_type == zmq_names.REPLY_TYPE:
+            reply_body, failure = socket.recv_loaded()
+            reply = zmq_response.Reply(
+                message_id=message_id, reply_id=reply_id,
+                reply_body=reply_body, failure=failure
+            )
+            response = reply
+        else:
+            response = None
+        return reply_id, message_type, message_id, response
+
+
+class AckAndReplyReceiverDirect(AckAndReplyReceiver):
+
+    def recv_response(self, socket):
+        # acks are not supported yet
+        empty = socket.recv()
+        assert empty == b'', "Empty expected!"
+        raw_reply = socket.recv_loaded()
+        assert isinstance(raw_reply, dict), "Dict expected!"
+        reply = zmq_response.Reply(**raw_reply)
+        return reply.reply_id, reply.msg_type, reply.message_id, reply

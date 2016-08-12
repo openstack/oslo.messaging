@@ -33,17 +33,22 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
 
     def __init__(self, conf, matchmaker):
         sender = zmq_senders.RequestSenderDirect(conf)
-        receiver = zmq_receivers.ReplyReceiverDirect(conf)
+        if conf.oslo_messaging_zmq.rpc_use_acks:
+            receiver = zmq_receivers.AckAndReplyReceiverDirect(conf)
+        else:
+            receiver = zmq_receivers.ReplyReceiverDirect(conf)
         super(DealerPublisherDirect, self).__init__(conf, matchmaker, sender,
                                                     receiver)
 
-    def _connect_socket(self, request):
-        return self.sockets_manager.get_socket(request.target)
+    def connect_socket(self, request):
+        try:
+            return self.sockets_manager.get_socket(request.target)
+        except retrying.RetryError:
+            return None
 
     def _send_non_blocking(self, request):
-        try:
-            socket = self._connect_socket(request)
-        except retrying.RetryError:
+        socket = self.connect_socket(request)
+        if not socket:
             return
 
         if request.msg_type in zmq_names.MULTISEND_TYPES:

@@ -18,6 +18,7 @@ from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_direct
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_proxy
+from oslo_messaging._drivers.zmq_driver.client import zmq_ack_manager
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -43,11 +44,17 @@ class ZmqClientMixDirectPubSub(zmq_client_base.ZmqClientBase):
                 conf.oslo_messaging_zmq.use_pub_sub:
             raise WrongClientException()
 
-        publisher_direct = \
-            zmq_dealer_publisher_direct.DealerPublisherDirect(conf, matchmaker)
+        publisher_direct = self.create_publisher(
+            conf, matchmaker,
+            zmq_dealer_publisher_direct.DealerPublisherDirect,
+            zmq_ack_manager.AckManagerDirect
+        )
 
-        publisher_proxy = \
-            zmq_dealer_publisher_proxy.DealerPublisherProxy(conf, matchmaker)
+        publisher_proxy = self.create_publisher(
+            conf, matchmaker,
+            zmq_dealer_publisher_proxy.DealerPublisherProxy,
+            zmq_ack_manager.AckManagerProxy
+        )
 
         super(ZmqClientMixDirectPubSub, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
@@ -73,8 +80,11 @@ class ZmqClientDirect(zmq_client_base.ZmqClientBase):
                 conf.oslo_messaging_zmq.use_router_proxy:
             raise WrongClientException()
 
-        publisher = \
-            zmq_dealer_publisher_direct.DealerPublisherDirect(conf, matchmaker)
+        publisher = self.create_publisher(
+            conf, matchmaker,
+            zmq_dealer_publisher_direct.DealerPublisherDirect,
+            zmq_ack_manager.AckManagerDirect
+        )
 
         super(ZmqClientDirect, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
@@ -97,8 +107,11 @@ class ZmqClientProxy(zmq_client_base.ZmqClientBase):
         if not conf.oslo_messaging_zmq.use_router_proxy:
             raise WrongClientException()
 
-        publisher = \
-            zmq_dealer_publisher_proxy.DealerPublisherProxy(conf, matchmaker)
+        publisher = self.create_publisher(
+            conf, matchmaker,
+            zmq_dealer_publisher_proxy.DealerPublisherProxy,
+            zmq_ack_manager.AckManagerProxy
+        )
 
         super(ZmqClientProxy, self).__init__(
             conf, matchmaker, allowed_remote_exmods,

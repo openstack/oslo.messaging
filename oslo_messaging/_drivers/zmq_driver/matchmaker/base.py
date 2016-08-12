@@ -28,7 +28,7 @@ class MatchMakerBase(object):
         self.url = kwargs.get('url')
 
     @abc.abstractmethod
-    def register_publisher(self, hostname):
+    def register_publisher(self, hostname, expire=-1):
         """Register publisher on nameserver.
 
         This works for PUB-SUB only
@@ -36,6 +36,8 @@ class MatchMakerBase(object):
        :param hostname: host for the topic in "host:port" format
                         host for back-chatter in "host:port" format
        :type hostname: tuple
+       :param expire: record expiration timeout
+       :type expire: int
        """
 
     @abc.abstractmethod
@@ -57,13 +59,15 @@ class MatchMakerBase(object):
        """
 
     @abc.abstractmethod
-    def register_router(self, hostname):
+    def register_router(self, hostname, expire=-1):
         """Register router on the nameserver.
 
         This works for ROUTER proxy only
 
        :param hostname: host for the topic in "host:port" format
-       :type hostname: string
+       :type hostname: str
+       :param expire: record expiration timeout
+       :type expire: int
        """
 
     @abc.abstractmethod
@@ -73,7 +77,7 @@ class MatchMakerBase(object):
         This works for ROUTER proxy only
 
        :param hostname: host for the topic in "host:port" format
-       :type hostname: string
+       :type hostname: str
        """
 
     @abc.abstractmethod
@@ -92,10 +96,10 @@ class MatchMakerBase(object):
        :param target: the target for host
        :type target: Target
        :param hostname: host for the topic in "host:port" format
-       :type hostname: String
-       :param listener_type: Listener socket type ROUTER, SUB etc.
-       :type listener_type: String
-       :param expire: Record expiration timeout
+       :type hostname: str
+       :param listener_type: listener socket type ROUTER, SUB etc.
+       :type listener_type: str
+       :param expire: record expiration timeout
        :type expire: int
        """
 
@@ -106,9 +110,9 @@ class MatchMakerBase(object):
        :param target: the target for host
        :type target: Target
        :param hostname: host for the topic in "host:port" format
-       :type hostname: String
-       :param listener_type: Listener socket type ROUTER, SUB etc.
-       :type listener_type: String
+       :type hostname: str
+       :param listener_type: listener socket type ROUTER, SUB etc.
+       :type listener_type: str
        """
 
     @abc.abstractmethod
@@ -117,6 +121,8 @@ class MatchMakerBase(object):
 
        :param target: the default target for invocations
        :type target: Target
+       :param listener_type: listener socket type ROUTER, SUB etc.
+       :type listener_type: str
        :returns: a list of "hostname:port" hosts
        """
 
@@ -130,7 +136,7 @@ class DummyMatchMaker(MatchMakerBase):
         self._publishers = set()
         self._routers = set()
 
-    def register_publisher(self, hostname):
+    def register_publisher(self, hostname, expire=-1):
         if hostname not in self._publishers:
             self._publishers.add(hostname)
 
@@ -141,7 +147,7 @@ class DummyMatchMaker(MatchMakerBase):
     def get_publishers(self):
         return list(self._publishers)
 
-    def register_router(self, hostname):
+    def register_router(self, hostname, expire=-1):
         if hostname not in self._routers:
             self._routers.add(hostname)
 

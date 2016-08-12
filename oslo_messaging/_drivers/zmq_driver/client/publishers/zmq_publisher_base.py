@@ -73,6 +73,12 @@ class PublisherBase(object):
         self.receiver = receiver
 
     @abc.abstractmethod
+    def connect_socket(self, request):
+        """Get connected socket ready for sending given request
+        or None otherwise (i.e. if connection can't be established).
+        """
+
+    @abc.abstractmethod
     def send_call(self, request):
         pass
 

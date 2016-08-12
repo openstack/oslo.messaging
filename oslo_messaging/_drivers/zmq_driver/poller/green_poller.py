@@ -31,6 +31,11 @@ class GreenPoller(zmq_poller.ZmqPoller):
             self.thread_by_socket[socket] = self.green_pool.spawn(
                 self._socket_receive, socket, recv_method)
 
+    def unregister(self, socket):
+        thread = self.thread_by_socket.pop(socket, None)
+        if thread:
+            thread.kill()
+
     def _socket_receive(self, socket, recv_method=None):
         while True:
             if recv_method:
