@@ -208,5 +208,22 @@ amqp1_opts = [
                "Target.exchange if set\n"
                "else default_rpc_exchange if set\n"
                "else control_exchange if set\n"
-               "else 'rpc'")
+               "else 'rpc'"),
+
+    # Message Credit Levels
+
+    cfg.IntOpt('reply_link_credit',
+               default=200,
+               min=1,
+               help='Window size for incoming RPC Reply messages.'),
+
+    cfg.IntOpt('rpc_server_credit',
+               default=100,
+               min=1,
+               help='Window size for incoming RPC Request messages'),
+
+    cfg.IntOpt('notify_server_credit',
+               default=100,
+               min=1,
+               help='Window size for incoming Notification messages')
 ]
