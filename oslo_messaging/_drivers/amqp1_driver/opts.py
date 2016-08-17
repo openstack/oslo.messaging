@@ -118,13 +118,13 @@ amqp1_opts = [
                ' Only used when caller does not provide a timeout expiry.'),
 
     cfg.IntOpt('default_send_timeout',
-               default=60,
+               default=30,
                min=5,
                help='The deadline for an rpc cast or call message delivery.'
                ' Only used when caller does not provide a timeout expiry.'),
 
     cfg.IntOpt('default_notify_timeout',
-               default=60,
+               default=30,
                min=5,
                help='The deadline for a sent notification message delivery.'
                ' Only used when caller does not provide a timeout expiry.'),

@@ -27,12 +27,12 @@ functions scheduled by the Controller.
 import abc
 import collections
 import logging
+from monotonic import monotonic as now  # noqa
 import os
 import platform
 import random
 import sys
 import threading
-import time
 import uuid
 
 import proton
@@ -870,7 +870,7 @@ class Controller(pyngus.ConnectionEventHandler):
     # methods executed by Tasks created by the driver:
 
     def send(self, send_task):
-        if send_task.deadline and send_task.deadline <= time.time():
+        if send_task.deadline and send_task.deadline <= now():
             send_task._on_timeout()
             return
         LOG.debug("Sending message to %s", send_task.target)
