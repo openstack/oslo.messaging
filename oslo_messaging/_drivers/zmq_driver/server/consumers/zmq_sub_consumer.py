@@ -35,7 +35,8 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         super(SubConsumer, self).__init__(conf, poller, server)
         self.matchmaker = server.matchmaker
         self.target = server.target
-        self.socket = zmq_socket.ZmqSocket(self.conf, self.context, zmq.SUB)
+        self.socket = zmq_socket.ZmqSocket(self.conf, self.context, zmq.SUB,
+                                           immediate=False)
         self.sockets.append(self.socket)
         self._subscribe_on_target(self.target)
         self.on_publishers(self.matchmaker.get_publishers())

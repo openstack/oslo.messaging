@@ -38,7 +38,7 @@ class ZmqSocket(object):
         'msgpack': msgpack_serializer.MessagePackSerializer()
     }
 
-    def __init__(self, conf, context, socket_type, immediate=True,
+    def __init__(self, conf, context, socket_type, immediate,
                  high_watermark=0):
         self.conf = conf
         self.context = context

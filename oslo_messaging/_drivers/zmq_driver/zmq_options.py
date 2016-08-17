@@ -110,7 +110,14 @@ zmq_opts = [
                choices=('json', 'msgpack'),
                deprecated_group='DEFAULT',
                help='Default serialization mechanism for '
-                    'serializing/deserializing outgoing/incoming messages')
+                    'serializing/deserializing outgoing/incoming messages'),
+
+    cfg.BoolOpt('zmq_immediate', default=False,
+                help='This option configures round-robin mode in zmq socket. '
+                     'True means not keeping a queue when server side '
+                     'disconnects. False means to keep queue and messages '
+                     'even if server is disconnected, when the server '
+                     'appears we send all accumulated messages to it.')
 ]
 
 zmq_ack_retry_opts = [
