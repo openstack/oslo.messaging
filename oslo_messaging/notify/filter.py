@@ -15,6 +15,8 @@
 
 import re
 
+import six
+
 
 class NotificationFilter(object):
 
@@ -31,7 +33,7 @@ class NotificationFilter(object):
     filter_rule =  NotificationFilter(
          publisher_id='^compute.*',
          context={'tenant_id': '^5f643cfc-664b-4c69-8000-ce2ed7b08216$',
-                  'roles='private'},
+                  'roles': 'private'},
          event_type='^compute\.instance\..*',
          metadata={'timestamp': 'Aug'},
          payload={'state': '^active$')
@@ -58,14 +60,26 @@ class NotificationFilter(object):
         return dict((k, re.compile(regex_list[k])) for k in regex_list)
 
     @staticmethod
-    def _check_for_mismatch(data, regex):
-        if isinstance(regex, dict):
-            for k in regex:
-                if (k not in data or not regex[k].match(data[k])):
-                    return True
-        elif regex is not None and not regex.match(data):
+    def _check_for_single_mismatch(data, regex):
+        if regex is None:
+            return False
+        if not isinstance(data, six.string_types):
+            return True
+        if not regex.match(data):
             return True
         return False
+
+    @classmethod
+    def _check_for_mismatch(cls, data, regex):
+        if isinstance(regex, dict):
+            for k in regex:
+                if k not in data:
+                    return True
+                if cls._check_for_single_mismatch(data[k], regex[k]):
+                    return True
+            return False
+        else:
+            return cls._check_for_single_mismatch(data, regex)
 
     def match(self, context, publisher_id, event_type, metadata, payload):
         if (self._check_for_mismatch(publisher_id, self._regex_publisher_id) or
