@@ -29,7 +29,7 @@ from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
-# Stolen from openstack.common.logging
+# Stolen from oslo.log
 logging.AUDIT = logging.INFO + 1
 logging.addLevelName(logging.AUDIT, 'AUDIT')
 

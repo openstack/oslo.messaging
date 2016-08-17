@@ -16,11 +16,10 @@
 #    under the License.
 
 """
-Shared code between AMQP based openstack.common.rpc implementations.
+Utilities for drivers based on the AMQPDriverBase.
 
-The code in this module is shared between the rpc implementations based on
-AMQP. Specifically, this includes impl_kombu.  impl_carrot also
-uses AMQP, but is deprecated and predates this code.
+This module contains utility code used by drivers based on the AMQPDriverBase
+class. Specifically this includes the impl_rabbit driver.
 """
 
 import collections
