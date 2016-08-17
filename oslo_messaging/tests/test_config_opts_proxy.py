@@ -53,25 +53,19 @@ class TestConfigOptsProxy(test_utils.BaseTestCase):
                           'unknown_group')
         self.assertTrue(isinstance(getattr(conf, group),
                                    conf.GroupAttrProxy))
-        self.assertEqual(conf.oslo_messaging_rabbit.rabbit_retry_interval,
-                         1)
-        self.assertEqual(conf.oslo_messaging_rabbit.rabbit_qos_prefetch_count,
-                         2)
-        self.assertEqual(conf.oslo_messaging_rabbit.rabbit_max_retries,
-                         3)
+        self.assertEqual(1, conf.oslo_messaging_rabbit.rabbit_retry_interval)
+        self.assertEqual(2,
+                         conf.oslo_messaging_rabbit.rabbit_qos_prefetch_count)
+        self.assertEqual(3, conf.oslo_messaging_rabbit.rabbit_max_retries)
         self.assertRaises(cfg.NoSuchOptError,
                           conf.oslo_messaging_rabbit.__getattr__,
                           'unknown_opt')
         self.assertRaises(ValueError,
                           conf.oslo_messaging_rabbit.__getattr__,
                           'kombu_reconnect_delay')
-        self.assertEqual(conf.oslo_messaging_rabbit.list_str,
-                         ['1', '2', '3'])
-        self.assertEqual(conf.oslo_messaging_rabbit.list_int,
-                         [1, 2, 3])
-        self.assertEqual(conf.oslo_messaging_rabbit.dict,
-                         {'x': '1', 'y': '2', 'z': '3'})
-        self.assertEqual(conf.oslo_messaging_rabbit.bool,
-                         True)
-        self.assertEqual(conf.oslo_messaging_rabbit.str,
-                         'default')
+        self.assertEqual(['1', '2', '3'], conf.oslo_messaging_rabbit.list_str)
+        self.assertEqual([1, 2, 3], conf.oslo_messaging_rabbit.list_int)
+        self.assertEqual({'x': '1', 'y': '2', 'z': '3'},
+                         conf.oslo_messaging_rabbit.dict)
+        self.assertEqual(True, conf.oslo_messaging_rabbit.bool)
+        self.assertEqual('default', conf.oslo_messaging_rabbit.str)

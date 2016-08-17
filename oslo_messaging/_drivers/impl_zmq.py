@@ -14,10 +14,8 @@
 
 import logging
 import os
-import socket
 import threading
 
-from oslo_config import cfg
 from stevedore import driver
 
 from oslo_messaging._drivers import base
@@ -25,83 +23,12 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client import zmq_client
 from oslo_messaging._drivers.zmq_driver.server import zmq_server
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging._i18n import _LE
-from oslo_messaging import server
 
 
 RPCException = rpc_common.RPCException
-_MATCHMAKER_BACKENDS = ('redis', 'dummy')
-_MATCHMAKER_DEFAULT = 'redis'
 LOG = logging.getLogger(__name__)
-
-
-zmq_opts = [
-    cfg.StrOpt('rpc_zmq_bind_address', default='*',
-               help='ZeroMQ bind address. Should be a wildcard (*), '
-                    'an ethernet interface, or IP. '
-                    'The "host" option should point or resolve to this '
-                    'address.'),
-
-    cfg.StrOpt('rpc_zmq_matchmaker', default=_MATCHMAKER_DEFAULT,
-               choices=_MATCHMAKER_BACKENDS,
-               help='MatchMaker driver.'),
-
-    cfg.IntOpt('rpc_zmq_contexts', default=1,
-               help='Number of ZeroMQ contexts, defaults to 1.'),
-
-    cfg.IntOpt('rpc_zmq_topic_backlog',
-               help='Maximum number of ingress messages to locally buffer '
-                    'per topic. Default is unlimited.'),
-
-    cfg.StrOpt('rpc_zmq_ipc_dir', default='/var/run/openstack',
-               help='Directory for holding IPC sockets.'),
-
-    cfg.StrOpt('rpc_zmq_host', default=socket.gethostname(),
-               sample_default='localhost',
-               help='Name of this node. Must be a valid hostname, FQDN, or '
-                    'IP address. Must match "host" option, if running Nova.'),
-
-    cfg.IntOpt('rpc_cast_timeout', default=-1,
-               help='Seconds to wait before a cast expires (TTL). '
-                    'The default value of -1 specifies an infinite linger '
-                    'period. The value of 0 specifies no linger period. '
-                    'Pending messages shall be discarded immediately '
-                    'when the socket is closed. Only supported by impl_zmq.'),
-
-    cfg.IntOpt('rpc_poll_timeout', default=1,
-               help='The default number of seconds that poll should wait. '
-                    'Poll raises timeout exception when timeout expired.'),
-
-    cfg.IntOpt('zmq_target_expire', default=300,
-               help='Expiration timeout in seconds of a name service record '
-                    'about existing target ( < 0 means no timeout).'),
-
-    cfg.IntOpt('zmq_target_update', default=180,
-               help='Update period in seconds of a name service record '
-                    'about existing target.'),
-
-    cfg.BoolOpt('use_pub_sub', default=True,
-                help='Use PUB/SUB pattern for fanout methods. '
-                     'PUB/SUB always uses proxy.'),
-
-    cfg.BoolOpt('use_router_proxy', default=True,
-                help='Use ROUTER remote proxy.'),
-
-    cfg.PortOpt('rpc_zmq_min_port',
-                default=49153,
-                help='Minimal port number for random ports range.'),
-
-    cfg.IntOpt('rpc_zmq_max_port',
-               min=1,
-               max=65536,
-               default=65536,
-               help='Maximal port number for random ports range.'),
-
-    cfg.IntOpt('rpc_zmq_bind_port_retries',
-               default=100,
-               help='Number of retries to find free port number before '
-                    'fail with ZMQBindError.')
-]
 
 
 class LazyDriverItem(object):
@@ -169,9 +96,7 @@ class ZmqDriver(base.BaseDriver):
         if zmq is None:
             raise ImportError(_LE("ZeroMQ is not available!"))
 
-        conf.register_opts(zmq_opts)
-        conf.register_opts(server._pool_opts)
-        conf.register_opts(base.base_opts)
+        zmq_options.register_opts(conf)
         self.conf = conf
         self.allowed_remote_exmods = allowed_remote_exmods
 
@@ -181,9 +106,11 @@ class ZmqDriver(base.BaseDriver):
         ).driver(self.conf, url=url)
 
         client_cls = zmq_client.ZmqClientProxy
-        if conf.use_pub_sub and not conf.use_router_proxy:
+        if conf.oslo_messaging_zmq.use_pub_sub and not \
+                conf.oslo_messaging_zmq.use_router_proxy:
             client_cls = zmq_client.ZmqClientMixDirectPubSub
-        elif not conf.use_pub_sub and not conf.use_router_proxy:
+        elif not conf.oslo_messaging_zmq.use_pub_sub and not \
+                conf.oslo_messaging_zmq.use_router_proxy:
             client_cls = zmq_client.ZmqClientDirect
 
         self.client = LazyDriverItem(
@@ -201,13 +128,13 @@ class ZmqDriver(base.BaseDriver):
         zmq_transport, p, matchmaker_backend = url.transport.partition('+')
         assert zmq_transport == 'zmq', "Needs to be zmq for this transport!"
         if not matchmaker_backend:
-            return self.conf.rpc_zmq_matchmaker
-        elif matchmaker_backend not in _MATCHMAKER_BACKENDS:
+            return self.conf.oslo_messaging_zmq.rpc_zmq_matchmaker
+        elif matchmaker_backend not in zmq_options.MATCHMAKER_BACKENDS:
             raise rpc_common.RPCException(
                 _LE("Incorrect matchmaker backend name %(backend_name)s!"
                     "Available names are: %(available_names)s") %
                 {"backend_name": matchmaker_backend,
-                 "available_names": _MATCHMAKER_BACKENDS})
+                 "available_names": zmq_options.MATCHMAKER_BACKENDS})
         return matchmaker_backend
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,

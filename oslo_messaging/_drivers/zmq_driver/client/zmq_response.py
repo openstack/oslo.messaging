@@ -12,28 +12,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import abc
+
+import six
+
 from oslo_messaging._drivers.zmq_driver import zmq_names
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Response(object):
 
-    def __init__(self, id=None, type=None, message_id=None,
-                 reply_id=None, reply_body=None, failure=None):
+    def __init__(self, message_id=None, reply_id=None):
 
-        self._id = id
-        self._type = type
         self._message_id = message_id
         self._reply_id = reply_id
-        self._reply_body = reply_body
-        self._failure = failure
 
-    @property
-    def id_(self):
-        return self._id
-
-    @property
-    def type_(self):
-        return self._type
+    @abc.abstractproperty
+    def msg_type(self):
+        pass
 
     @property
     def message_id(self):
@@ -42,6 +38,29 @@ class Response(object):
     @property
     def reply_id(self):
         return self._reply_id
+
+    def to_dict(self):
+        return {zmq_names.FIELD_MSG_ID: self._message_id,
+                zmq_names.FIELD_REPLY_ID: self._reply_id}
+
+    def __str__(self):
+        return str(self.to_dict())
+
+
+class Ack(Response):
+
+    msg_type = zmq_names.ACK_TYPE
+
+
+class Reply(Response):
+
+    msg_type = zmq_names.REPLY_TYPE
+
+    def __init__(self, message_id=None, reply_id=None, reply_body=None,
+                 failure=None):
+        super(Reply, self).__init__(message_id, reply_id)
+        self._reply_body = reply_body
+        self._failure = failure
 
     @property
     def reply_body(self):
@@ -52,12 +71,7 @@ class Response(object):
         return self._failure
 
     def to_dict(self):
-        return {zmq_names.FIELD_ID: self._id,
-                zmq_names.FIELD_TYPE: self._type,
-                zmq_names.FIELD_MSG_ID: self._message_id,
-                zmq_names.FIELD_REPLY_ID: self._reply_id,
-                zmq_names.FIELD_REPLY: self._reply_body,
-                zmq_names.FIELD_FAILURE: self._failure}
-
-    def __str__(self):
-        return str(self.to_dict())
+        dict_ = super(Reply, self).to_dict()
+        dict_.update({zmq_names.FIELD_REPLY_BODY: self._reply_body,
+                      zmq_names.FIELD_FAILURE: self._failure})
+        return dict_

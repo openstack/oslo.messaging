@@ -98,9 +98,9 @@ class PikaPollerTestCase(unittest.TestCase):
             unused, method, properties, body
         )
 
-        self.assertEqual(len(res), 1)
+        self.assertEqual(1, len(res))
 
-        self.assertEqual(res[0], [incoming_message_class_mock.return_value])
+        self.assertEqual([incoming_message_class_mock.return_value], res[0])
         incoming_message_class_mock.assert_called_once_with(
             self._pika_engine, self._poller_channel_mock, method, properties,
             body
@@ -139,16 +139,16 @@ class PikaPollerTestCase(unittest.TestCase):
                 *params[i]
             )
 
-        self.assertEqual(len(res), 1)
-        self.assertEqual(len(res[0]), 10)
-        self.assertEqual(incoming_message_class_mock.call_count, n)
+        self.assertEqual(1, len(res))
+        self.assertEqual(10, len(res[0]))
+        self.assertEqual(n, incoming_message_class_mock.call_count)
 
         for i in range(n):
-            self.assertEqual(res[0][i],
-                             incoming_message_class_mock.return_value)
+            self.assertEqual(incoming_message_class_mock.return_value,
+                             res[0][i])
             self.assertEqual(
-                incoming_message_class_mock.call_args_list[i][0],
-                (self._pika_engine, self._poller_channel_mock) + params[i][1:]
+                (self._pika_engine, self._poller_channel_mock) + params[i][1:],
+                incoming_message_class_mock.call_args_list[i][0]
             )
 
         self.assertTrue(self._pika_engine.create_connection.called)
@@ -193,16 +193,16 @@ class PikaPollerTestCase(unittest.TestCase):
 
         self.assertTrue(evt.wait(timeout * 2))
 
-        self.assertEqual(len(res), 1)
-        self.assertEqual(len(res[0]), success_count)
-        self.assertEqual(incoming_message_class_mock.call_count, success_count)
+        self.assertEqual(1, len(res))
+        self.assertEqual(success_count, len(res[0]))
+        self.assertEqual(success_count, incoming_message_class_mock.call_count)
 
         for i in range(success_count):
-            self.assertEqual(res[0][i],
-                             incoming_message_class_mock.return_value)
+            self.assertEqual(incoming_message_class_mock.return_value,
+                             res[0][i])
             self.assertEqual(
-                incoming_message_class_mock.call_args_list[i][0],
-                (self._pika_engine, self._poller_channel_mock) + params[i][1:]
+                (self._pika_engine, self._poller_channel_mock) + params[i][1:],
+                incoming_message_class_mock.call_args_list[i][0]
             )
 
         self.assertTrue(self._pika_engine.create_connection.called)
@@ -255,7 +255,7 @@ class RpcServicePikaPollerTestCase(unittest.TestCase):
         )
 
         self.assertEqual(
-            declare_queue_binding_by_channel_mock.call_count, 6
+            6, declare_queue_binding_by_channel_mock.call_count
         )
 
         declare_queue_binding_by_channel_mock.assert_has_calls((
@@ -345,7 +345,7 @@ class RpcReplyServicePikaPollerTestCase(unittest.TestCase):
         )
 
         self.assertEqual(
-            declare_queue_binding_by_channel_mock.call_count, 1
+            1, declare_queue_binding_by_channel_mock.call_count
         )
 
         declare_queue_binding_by_channel_mock.assert_called_once_with(
@@ -399,7 +399,7 @@ class NotificationPikaPollerTestCase(unittest.TestCase):
         )
 
         self.assertEqual(
-            declare_queue_binding_by_channel_mock.call_count, 3
+            3, declare_queue_binding_by_channel_mock.call_count
         )
 
         declare_queue_binding_by_channel_mock.assert_has_calls((
@@ -448,7 +448,7 @@ class NotificationPikaPollerTestCase(unittest.TestCase):
         )
 
         self.assertEqual(
-            declare_queue_binding_by_channel_mock.call_count, 3
+            3, declare_queue_binding_by_channel_mock.call_count
         )
 
         declare_queue_binding_by_channel_mock.assert_has_calls((

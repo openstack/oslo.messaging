@@ -86,7 +86,7 @@ rabbit_opts = [
     cfg.IntOpt('kombu_missing_consumer_retry_timeout',
                deprecated_name="kombu_reconnect_timeout",
                default=60,
-               help='How long to wait a missing client beforce abandoning to '
+               help='How long to wait a missing client before abandoning to '
                     'send it its replies. This value should not be longer '
                     'than rpc_response_timeout.'),
     cfg.StrOpt('kombu_failover_strategy',
@@ -156,6 +156,7 @@ rabbit_opts = [
                     'Default is 30 seconds.'),
     cfg.IntOpt('rabbit_max_retries',
                default=0,
+               deprecated_for_removal=True,
                deprecated_group='DEFAULT',
                help='Maximum number of RabbitMQ connection retries. '
                     'Default is 0 (infinite retry count).'),
@@ -294,8 +295,8 @@ class Consumer(object):
             queue_arguments=self.queue_arguments)
 
         try:
-            LOG.trace('ConsumerBase.declare: '
-                      'queue %s', self.queue_name)
+            LOG.debug('[%s] Queue.declare: %s',
+                      conn.connection_id, self.queue_name)
             self.queue.declare()
         except conn.connection.channel_errors as exc:
             # NOTE(jrosenboom): This exception may be triggered by a race
@@ -537,6 +538,10 @@ class Connection(object):
         else:
             self._connection_lock = DummyConnectionLock()
 
+        self.connection_id = str(uuid.uuid4())
+        self.name = "%s:%d:%s" % (os.path.basename(sys.argv[0]),
+                                  os.getpid(),
+                                  self.connection_id)
         self.connection = kombu.connection.Connection(
             self._url, ssl=self._fetch_ssl_params(),
             login_method=self.login_method,
@@ -544,17 +549,21 @@ class Connection(object):
             failover_strategy=self.kombu_failover_strategy,
             transport_options={
                 'confirm_publish': True,
-                'client_properties': {'capabilities': {
-                    'authentication_failure_close': True,
-                    'connection.blocked': True,
-                    'consumer_cancel_notify': True}},
+                'client_properties': {
+                    'capabilities': {
+                        'authentication_failure_close': True,
+                        'connection.blocked': True,
+                        'consumer_cancel_notify': True
+                    },
+                    'connection_name': self.name},
                 'on_blocked': self._on_connection_blocked,
                 'on_unblocked': self._on_connection_unblocked,
             },
         )
 
-        LOG.debug('Connecting to AMQP server on %(hostname)s:%(port)s',
-                  self.connection.info())
+        LOG.debug('[%(connection_id)s] Connecting to AMQP server on'
+                  ' %(hostname)s:%(port)s',
+                  self._get_connection_info())
 
         # NOTE(sileht): kombu recommend to run heartbeat_check every
         # seconds, but we use a lock around the kombu connection
@@ -579,9 +588,10 @@ class Connection(object):
         if purpose == rpc_common.PURPOSE_SEND:
             self._heartbeat_start()
 
-        LOG.debug('Connected to AMQP server on %(hostname)s:%(port)s '
-                  'via [%(transport)s] client',
-                  self.connection.info())
+        LOG.debug('[%(connection_id)s] Connected to AMQP server on '
+                  '%(hostname)s:%(port)s via [%(transport)s] client with'
+                  ' port %(client_port)s.',
+                  self._get_connection_info())
 
         # NOTE(sileht): value chosen according the best practice from kombu
         # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
@@ -697,7 +707,8 @@ class Connection(object):
             retry = None
 
         def on_error(exc, interval):
-            LOG.debug("Received recoverable error from kombu:",
+            LOG.debug("[%s] Received recoverable error from kombu:"
+                      % self.connection_id,
                       exc_info=True)
 
             recoverable_error_callback and recoverable_error_callback(exc)
@@ -707,16 +718,19 @@ class Connection(object):
                         else interval)
 
             info = {'err_str': exc, 'sleep_time': interval}
-            info.update(self.connection.info())
+            info.update(self._get_connection_info())
 
             if 'Socket closed' in six.text_type(exc):
-                LOG.error(_LE('AMQP server %(hostname)s:%(port)s closed'
+                LOG.error(_LE('[%(connection_id)s] AMQP server'
+                              ' %(hostname)s:%(port)s closed'
                               ' the connection. Check login credentials:'
                               ' %(err_str)s'), info)
             else:
-                LOG.error(_LE('AMQP server on %(hostname)s:%(port)s is '
-                              'unreachable: %(err_str)s. Trying again in '
-                              '%(sleep_time)d seconds.'), info)
+                LOG.error(_LE('[%(connection_id)s] AMQP server on '
+                              '%(hostname)s:%(port)s is unreachable: '
+                              '%(err_str)s. Trying again in '
+                              '%(sleep_time)d seconds. Client port: '
+                              '%(client_port)s'), info)
 
             # XXX(nic): when reconnecting to a RabbitMQ cluster
             # with mirrored queues in use, the attempt to release the
@@ -743,9 +757,10 @@ class Connection(object):
             for consumer in self._consumers:
                 consumer.declare(self)
 
-            LOG.info(_LI('Reconnected to AMQP server on '
-                         '%(hostname)s:%(port)s via [%(transport)s] client'),
-                     self.connection.info())
+            LOG.info(_LI('[%(connection_id)s] Reconnected to AMQP server on '
+                         '%(hostname)s:%(port)s via [%(transport)s] client'
+                         'with port %(client_port)s.'),
+                     self._get_connection_info())
 
         def execute_method(channel):
             self._set_current_channel(channel)
@@ -829,6 +844,11 @@ class Connection(object):
         """Close/release this connection."""
         self._heartbeat_stop()
         if self.connection:
+            for consumer, tag in self._consumers.items():
+                if consumer.type == 'fanout':
+                    LOG.debug('[connection close] Deleting fanout '
+                              'queue: %s ' % consumer.queue.name)
+                    consumer.queue.delete()
             self._set_current_channel(None)
             self.connection.release()
             self.connection = None
@@ -837,7 +857,6 @@ class Connection(object):
         """Reset a connection so it can be used again."""
         recoverable_errors = (self.connection.recoverable_channel_errors +
                               self.connection.recoverable_connection_errors)
-
         with self._connection_lock:
             try:
                 for consumer, tag in self._consumers.items():
@@ -885,7 +904,8 @@ class Connection(object):
             sock = self.channel.connection.sock
         except AttributeError as e:
             # Level is set to debug because otherwise we would spam the logs
-            LOG.debug('Failed to get socket attribute: %s' % str(e))
+            LOG.debug('[%s] Failed to get socket attribute: %s'
+                      % (self.connection_id, str(e)))
         else:
             sock.settimeout(timeout)
             # TCP_USER_TIMEOUT is not defined on Windows and Mac OS X
@@ -1141,6 +1161,15 @@ class Connection(object):
         with self._connection_lock:
             self.ensure(method, retry=retry, error_callback=_error_callback)
 
+    def _get_connection_info(self):
+        info = self.connection.info()
+        client_port = None
+        if self.channel and hasattr(self.channel.connection, 'sock'):
+            client_port = self.channel.connection.sock.getsockname()[1]
+        info.update({'client_port': client_port,
+                     'connection_id': self.connection_id})
+        return info
+
     def _publish(self, exchange, msg, routing_key=None, timeout=None):
         """Publish a message."""
 
@@ -1296,8 +1325,13 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         self.prefetch_size = (
             conf.oslo_messaging_rabbit.rabbit_qos_prefetch_count)
 
+        # the pool configuration properties
+        max_size = conf.oslo_messaging_rabbit.rpc_conn_pool_size
+        min_size = conf.oslo_messaging_rabbit.conn_pool_min_size
+        ttl = conf.oslo_messaging_rabbit.conn_pool_ttl
+
         connection_pool = pool.ConnectionPool(
-            conf, conf.oslo_messaging_rabbit.rpc_conn_pool_size,
+            conf, max_size, min_size, ttl,
             url, Connection)
 
         super(RabbitDriver, self).__init__(

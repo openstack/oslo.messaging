@@ -14,8 +14,8 @@
 
 import logging
 
-from oslo_messaging._drivers import base
-from oslo_messaging._drivers.zmq_driver.server.consumers\
+from oslo_messaging._drivers.zmq_driver.client import zmq_senders
+from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_async
@@ -27,29 +27,11 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class RouterIncomingMessage(base.RpcIncomingMessage):
-
-    def __init__(self, context, message, socket, reply_id, msg_id,
-                 poller):
-        super(RouterIncomingMessage, self).__init__(context, message)
-        self.socket = socket
-        self.reply_id = reply_id
-        self.msg_id = msg_id
-        self.message = message
-
-    def reply(self, reply=None, failure=None):
-        """Reply is not needed for non-call messages"""
-
-    def acknowledge(self):
-        LOG.debug("Not sending acknowledge for %s", self.msg_id)
-
-    def requeue(self):
-        """Requeue is not supported"""
-
-
 class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
+        self.ack_sender = zmq_senders.AckSenderDirect(conf)
+        self.reply_sender = zmq_senders.ReplySenderDirect(conf)
         super(RouterConsumer, self).__init__(conf, poller, server, zmq.ROUTER)
         LOG.info(_LI("[%s] Run ROUTER consumer"), self.host)
 
@@ -57,28 +39,37 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
         reply_id = socket.recv()
         empty = socket.recv()
         assert empty == b'', 'Bad format: empty delimiter expected'
-        envelope = socket.recv_pyobj()
-        request = socket.recv_pyobj()
-        return request, envelope, reply_id
+        msg_type = int(socket.recv())
+        message_id = socket.recv_string()
+        context, message = socket.recv_loaded()
+        return reply_id, msg_type, message_id, context, message
 
     def receive_message(self, socket):
         try:
-            request, envelope, reply_id = self._receive_request(socket)
-            LOG.debug("[%(host)s] Received %(type)s, %(id)s, %(target)s",
+            reply_id, msg_type, message_id, context, message = \
+                self._receive_request(socket)
+
+            LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
                       {"host": self.host,
-                       "type": request.msg_type,
-                       "id": request.message_id,
-                       "target": request.target})
+                       "msg_type": zmq_names.message_type_str(msg_type),
+                       "msg_id": message_id})
 
-            if request.msg_type == zmq_names.CALL_TYPE:
-                return zmq_incoming_message.ZmqIncomingRequest(
-                    socket, reply_id, request, envelope, self.poller)
-            elif request.msg_type in zmq_names.NON_BLOCKING_TYPES:
-                return RouterIncomingMessage(
-                    request.context, request.message, socket, reply_id,
-                    request.message_id, self.poller)
+            if msg_type == zmq_names.CALL_TYPE or \
+                    msg_type in zmq_names.NON_BLOCKING_TYPES:
+                ack_sender = self.ack_sender \
+                    if self.conf.oslo_messaging_zmq.rpc_use_acks else None
+                reply_sender = self.reply_sender \
+                    if msg_type == zmq_names.CALL_TYPE else None
+                return zmq_incoming_message.ZmqIncomingMessage(
+                    context, message, reply_id, message_id, socket,
+                    ack_sender, reply_sender
+                )
             else:
-                LOG.error(_LE("Unknown message type: %s"), request.msg_type)
-
-        except (zmq.ZMQError, AssertionError) as e:
+                LOG.error(_LE("Unknown message type: %s"),
+                          zmq_names.message_type_str(msg_type))
+        except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
+
+    def cleanup(self):
+        LOG.info(_LI("[%s] Destroy ROUTER consumer"), self.host)
+        super(RouterConsumer, self).cleanup()

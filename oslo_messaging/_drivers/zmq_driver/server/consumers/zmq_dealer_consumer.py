@@ -14,114 +14,109 @@
 
 import logging
 
-import six
-
-from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._drivers.zmq_driver.client.publishers\
-    import zmq_publisher_base
-from oslo_messaging._drivers.zmq_driver.client import zmq_response
-from oslo_messaging._drivers.zmq_driver.server.consumers\
+from oslo_messaging._drivers.zmq_driver.client import zmq_senders
+from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
+from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
+from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
+from oslo_messaging._drivers.zmq_driver.server import zmq_ttl_cache
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LE, _LI, _LW
 
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
-class DealerIncomingMessage(base.RpcIncomingMessage):
-
-    def __init__(self, context, message):
-        super(DealerIncomingMessage, self).__init__(context, message)
-
-    def reply(self, reply=None, failure=None):
-        """Reply is not needed for non-call messages"""
-
-    def acknowledge(self):
-        """Not sending acknowledge"""
-
-    def requeue(self):
-        """Requeue is not supported"""
-
-
-class DealerIncomingRequest(base.RpcIncomingMessage):
-
-    def __init__(self, socket, reply_id, message_id, context, message):
-        super(DealerIncomingRequest, self).__init__(context, message)
-        self.reply_socket = socket
-        self.reply_id = reply_id
-        self.message_id = message_id
-
-    def reply(self, reply=None, failure=None):
-        if failure is not None:
-            failure = rpc_common.serialize_remote_exception(failure)
-        response = zmq_response.Response(type=zmq_names.REPLY_TYPE,
-                                         message_id=self.message_id,
-                                         reply_id=self.reply_id,
-                                         reply_body=reply,
-                                         failure=failure)
-
-        LOG.debug("Replying %s", self.message_id)
-
-        self.reply_socket.send(b'', zmq.SNDMORE)
-        self.reply_socket.send(six.b(str(zmq_names.REPLY_TYPE)), zmq.SNDMORE)
-        self.reply_socket.send(self.reply_id, zmq.SNDMORE)
-        self.reply_socket.send(self.message_id, zmq.SNDMORE)
-        self.reply_socket.send_pyobj(response)
-
-    def requeue(self):
-        """Requeue is not supported"""
-
-
-class DealerConsumer(zmq_consumer_base.ConsumerBase):
+class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        super(DealerConsumer, self).__init__(conf, poller, server)
-        self.matchmaker = server.matchmaker
-        self.target = server.target
-        self.sockets_manager = zmq_publisher_base.SocketsManager(
-            conf, self.matchmaker, zmq.ROUTER, zmq.DEALER)
-        self.socket = self.sockets_manager.get_socket_to_routers()
-        self.poller.register(self.socket, self.receive_message)
-        self.host = self.socket.handle.identity
-        self.target_updater = zmq_consumer_base.TargetUpdater(
-            conf, self.matchmaker, self.target, self.host,
-            zmq.DEALER)
+        self.ack_sender = zmq_senders.AckSenderProxy(conf)
+        self.reply_sender = zmq_senders.ReplySenderProxy(conf)
+        self.received_messages = zmq_ttl_cache.TTLCache(
+            ttl=conf.oslo_messaging_zmq.rpc_message_ttl
+        )
+        self.sockets_manager = zmq_sockets_manager.SocketsManager(
+            conf, server.matchmaker, zmq.ROUTER, zmq.DEALER)
+        self.host = None
+        super(DealerConsumer, self).__init__(conf, poller, server, zmq.DEALER)
         self.connection_updater = ConsumerConnectionUpdater(
             conf, self.matchmaker, self.socket)
         LOG.info(_LI("[%s] Run DEALER consumer"), self.host)
 
+    def subscribe_socket(self, socket_type):
+        try:
+            socket = self.sockets_manager.get_socket_to_routers()
+            self.sockets.append(socket)
+            self.host = socket.handle.identity
+            self.poller.register(socket, self.receive_message)
+            return socket
+        except zmq.ZMQError as e:
+            LOG.error(_LE("Failed connecting to ROUTER socket %(e)s") % e)
+            raise rpc_common.RPCException(str(e))
+
+    def _receive_request(self, socket):
+        empty = socket.recv()
+        assert empty == b'', 'Bad format: empty delimiter expected'
+        reply_id = socket.recv()
+        msg_type = int(socket.recv())
+        message_id = socket.recv_string()
+        context, message = socket.recv_loaded()
+        return reply_id, msg_type, message_id, context, message
+
     def receive_message(self, socket):
         try:
-            empty = socket.recv()
-            assert empty == b'', 'Bad format: empty delimiter expected'
-            reply_id = socket.recv()
-            message_type = int(socket.recv())
-            message_id = socket.recv()
-            context = socket.recv_pyobj()
-            message = socket.recv_pyobj()
-            LOG.debug("[%(host)s] Received message %(id)s",
-                      {"host": self.host, "id": message_id})
-            if message_type == zmq_names.CALL_TYPE:
-                return DealerIncomingRequest(
-                    socket, reply_id, message_id, context, message)
-            elif message_type in zmq_names.NON_BLOCKING_TYPES:
-                return DealerIncomingMessage(context, message)
+            reply_id, msg_type, message_id, context, message = \
+                self._receive_request(socket)
+
+            if msg_type == zmq_names.CALL_TYPE or \
+                    msg_type in zmq_names.NON_BLOCKING_TYPES:
+
+                ack_sender = self.ack_sender \
+                    if self.conf.oslo_messaging_zmq.rpc_use_acks else None
+                reply_sender = self.reply_sender \
+                    if msg_type == zmq_names.CALL_TYPE else None
+
+                message = zmq_incoming_message.ZmqIncomingMessage(
+                    context, message, reply_id, message_id, socket,
+                    ack_sender, reply_sender
+                )
+
+                # drop duplicate message
+                if message_id in self.received_messages:
+                    LOG.warning(
+                        _LW("[%(host)s] Dropping duplicate %(msg_type)s "
+                            "message %(msg_id)s"),
+                        {"host": self.host,
+                         "msg_type": zmq_names.message_type_str(msg_type),
+                         "msg_id": message_id}
+                    )
+                    message.acknowledge()
+                    return None
+
+                self.received_messages.add(message_id)
+                LOG.debug(
+                    "[%(host)s] Received %(msg_type)s message %(msg_id)s",
+                    {"host": self.host,
+                     "msg_type": zmq_names.message_type_str(msg_type),
+                     "msg_id": message_id}
+                )
+                return message
+
             else:
                 LOG.error(_LE("Unknown message type: %s"),
-                          zmq_names.message_type_str(message_type))
-        except (zmq.ZMQError, AssertionError) as e:
+                          zmq_names.message_type_str(msg_type))
+        except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failure: %s"), str(e))
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
+        self.received_messages.cleanup()
+        self.connection_updater.cleanup()
         super(DealerConsumer, self).cleanup()
-        self.matchmaker.unregister(self.target, self.host,
-                                   zmq_names.socket_type_str(zmq.DEALER))
 
 
 class ConsumerConnectionUpdater(zmq_updater.ConnectionUpdater):

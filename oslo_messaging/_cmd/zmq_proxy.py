@@ -17,15 +17,17 @@ import logging
 
 from oslo_config import cfg
 
-from oslo_messaging._drivers import impl_zmq
-from oslo_messaging._drivers.zmq_driver.broker import zmq_proxy
-from oslo_messaging._drivers.zmq_driver.broker import zmq_queue_proxy
-from oslo_messaging import server
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_queue_proxy
+from oslo_messaging._drivers.zmq_driver import zmq_options
 
 CONF = cfg.CONF
-CONF.register_opts(impl_zmq.zmq_opts)
-CONF.register_opts(server._pool_opts)
-CONF.rpc_zmq_native = True
+
+zmq_options.register_opts(CONF)
+
+opt_group = cfg.OptGroup(name='zmq_proxy_opts',
+                         title='ZeroMQ proxy options')
+CONF.register_opts(zmq_proxy.zmq_proxy_opts, group=opt_group)
 
 
 USAGE = """ Usage: ./zmq-proxy.py [-h] [] ...
@@ -42,9 +44,20 @@ def main():
 
     parser.add_argument('--config-file', dest='config_file', type=str,
                         help='Path to configuration file')
+
+    parser.add_argument('--host', dest='host', type=str,
+                        help='Host FQDN for current proxy')
+    parser.add_argument('--frontend-port', dest='frontend_port', type=int,
+                        help='Front-end ROUTER port number')
+    parser.add_argument('--backend-port', dest='backend_port', type=int,
+                        help='Back-end ROUTER port number')
+    parser.add_argument('--publisher-port', dest='publisher_port', type=int,
+                        help='Back-end PUBLISHER port number')
+
     parser.add_argument('-d', '--debug', dest='debug', type=bool,
                         default=False,
                         help="Turn on DEBUG logging level instead of INFO")
+
     args = parser.parse_args()
 
     if args.config_file:
@@ -56,6 +69,18 @@ def main():
     logging.basicConfig(level=log_level,
                         format='%(asctime)s %(name)s '
                                '%(levelname)-8s %(message)s')
+
+    if args.host:
+        CONF.zmq_proxy_opts.host = args.host
+    if args.frontend_port:
+        CONF.set_override('frontend_port', args.frontend_port,
+                          group='zmq_proxy_opts')
+    if args.backend_port:
+        CONF.set_override('backend_port', args.backend_port,
+                          group='zmq_proxy_opts')
+    if args.publisher_port:
+        CONF.set_override('publisher_port', args.publisher_port,
+                          group='zmq_proxy_opts')
 
     reactor = zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.UniversalQueueProxy)
 

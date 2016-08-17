@@ -24,45 +24,51 @@ class ZmqClientBase(object):
     def __init__(self, conf, matchmaker=None, allowed_remote_exmods=None,
                  publishers=None):
         self.conf = conf
-        self.context = zmq.Context()
         self.matchmaker = matchmaker
         self.allowed_remote_exmods = allowed_remote_exmods or []
 
         self.publishers = publishers
-        self.call_publisher = publishers.get(zmq_names.CALL_TYPE) \
-            or publishers["default"]
-        self.cast_publisher = publishers.get(zmq_names.CAST_TYPE) \
-            or publishers["default"]
-        self.fanout_publisher = publishers.get(zmq_names.CAST_FANOUT_TYPE) \
-            or publishers["default"]
-        self.notify_publisher = publishers.get(zmq_names.NOTIFY_TYPE) \
-            or publishers["default"]
+        self.call_publisher = publishers.get(zmq_names.CALL_TYPE,
+                                             publishers["default"])
+        self.cast_publisher = publishers.get(zmq_names.CAST_TYPE,
+                                             publishers["default"])
+        self.fanout_publisher = publishers.get(zmq_names.CAST_FANOUT_TYPE,
+                                               publishers["default"])
+        self.notify_publisher = publishers.get(zmq_names.NOTIFY_TYPE,
+                                               publishers["default"])
+
+    @staticmethod
+    def create_publisher(conf, matchmaker, publisher_cls, ack_manager_cls):
+        publisher = publisher_cls(conf, matchmaker)
+        if conf.oslo_messaging_zmq.rpc_use_acks:
+            publisher = ack_manager_cls(publisher)
+        return publisher
 
     def send_call(self, target, context, message, timeout=None, retry=None):
         request = zmq_request.CallRequest(
             target, context=context, message=message, retry=retry,
             timeout=timeout, allowed_remote_exmods=self.allowed_remote_exmods
         )
-        return self.call_publisher.send_request(request)
+        return self.call_publisher.send_call(request)
 
     def send_cast(self, target, context, message, retry=None):
         request = zmq_request.CastRequest(
             target, context=context, message=message, retry=retry
         )
-        self.cast_publisher.send_request(request)
+        self.cast_publisher.send_cast(request)
 
     def send_fanout(self, target, context, message, retry=None):
         request = zmq_request.FanoutRequest(
             target, context=context, message=message, retry=retry
         )
-        self.fanout_publisher.send_request(request)
+        self.fanout_publisher.send_fanout(request)
 
     def send_notify(self, target, context, message, version, retry=None):
         request = zmq_request.NotificationRequest(
             target, context=context, message=message, retry=retry,
             version=version
         )
-        self.notify_publisher.send_request(request)
+        self.notify_publisher.send_notify(request)
 
     def cleanup(self):
         cleaned = set()

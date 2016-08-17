@@ -1,0 +1,5 @@
+---
+deprecations:
+  - The rabbitmq driver option ``DEFAULT/max_retries`` has been deprecated
+    for removal (at a later point in the future) as it did not make logical
+    sense for notifications and for RPC.

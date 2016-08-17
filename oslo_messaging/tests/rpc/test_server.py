@@ -604,8 +604,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         self.server.stop()
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 1)
-        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(1, len(self.executors))
+        self.assertEqual(['shutdown'], self.executors[0]._calls)
         self.assertTrue(self.server.listener.cleanup.called)
 
     def test_reversed_order(self):
@@ -624,8 +624,8 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         self.server.wait()
 
-        self.assertEqual(len(self.executors), 1)
-        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(1, len(self.executors))
+        self.assertEqual(['shutdown'], self.executors[0]._calls)
 
     def test_wait_for_running_task(self):
         # Test that if 2 threads call a method simultaneously, both will wait,
@@ -675,7 +675,7 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # We haven't signalled completion yet, so submit shouldn't have run
         self.assertEqual(1, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, [])
+        self.assertEqual([], self.executors[0]._calls)
         self.assertFalse(waiter_finished.is_set())
 
         # Let the runner complete
@@ -687,7 +687,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # and execute ran
         self.assertTrue(waiter_finished.is_set())
         self.assertEqual(1, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, [])
+        self.assertEqual([], self.executors[0]._calls)
 
     def test_start_stop_wait_stop_wait(self):
         # Test that we behave correctly when calling stop/wait more than once.
@@ -700,7 +700,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         self.server.wait()
 
         self.assertEqual(len(self.executors), 1)
-        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(['shutdown'], self.executors[0]._calls)
         self.assertTrue(self.server.listener.cleanup.called)
 
     def test_state_wrapping(self):
@@ -736,7 +736,7 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # The server should have started, but stop should not have been called
         self.assertEqual(1, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, [])
+        self.assertEqual([], self.executors[0]._calls)
         self.assertFalse(thread1_finished.is_set())
 
         self.server.stop()
@@ -745,7 +745,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # We should have gone through all the states, and thread1 should still
         # be waiting
         self.assertEqual(1, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['shutdown'])
+        self.assertEqual(['shutdown'], self.executors[0]._calls)
         self.assertFalse(thread1_finished.is_set())
 
         # Start again
@@ -753,8 +753,8 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # We should now record 4 executors (2 for each server)
         self.assertEqual(2, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, [])
+        self.assertEqual(['shutdown'], self.executors[0]._calls)
+        self.assertEqual([], self.executors[1]._calls)
         self.assertFalse(thread1_finished.is_set())
 
         # Allow thread1 to complete
@@ -764,8 +764,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         # thread1 should now have finished, and stop should not have been
         # called again on either the first or second executor
         self.assertEqual(2, len(self.executors))
-        self.assertEqual(self.executors[0]._calls, ['shutdown'])
-        self.assertEqual(self.executors[1]._calls, [])
+        self.assertEqual(['shutdown'], self.executors[0]._calls)
+        self.assertEqual([], self.executors[1]._calls)
         self.assertTrue(thread1_finished.is_set())
 
     @mock.patch.object(server_module, 'DEFAULT_LOG_AFTER', 1)

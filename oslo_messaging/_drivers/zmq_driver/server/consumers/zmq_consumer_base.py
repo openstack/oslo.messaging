@@ -40,6 +40,10 @@ class ConsumerBase(object):
         self.sockets = []
         self.context = zmq.Context()
 
+    def stop(self):
+        """Stop consumer polling/updates"""
+        pass
+
     @abc.abstractmethod
     def receive_message(self, target):
         """Method for poller - receiving message routine"""
@@ -63,6 +67,9 @@ class SingleSocketConsumer(ConsumerBase):
         self.target_updater = TargetUpdater(
             conf, self.matchmaker, self.target, self.host, socket_type)
 
+    def stop(self):
+        self.target_updater.stop()
+
     def subscribe_socket(self, socket_type):
         try:
             socket = zmq_socket.ZmqRandomPortSocket(
@@ -72,8 +79,8 @@ class SingleSocketConsumer(ConsumerBase):
                       {"stype": zmq_names.socket_type_str(socket_type),
                        "addr": socket.bind_address,
                        "port": socket.port})
-            self.host = zmq_address.combine_address(self.conf.rpc_zmq_host,
-                                                    socket.port)
+            self.host = zmq_address.combine_address(
+                self.conf.oslo_messaging_zmq.rpc_zmq_host, socket.port)
             self.poller.register(socket, self.receive_message)
             return socket
         except zmq.ZMQError as e:
@@ -112,4 +119,10 @@ class TargetUpdater(zmq_updater.UpdaterBase):
         self.matchmaker.register(
             self.target, self.host,
             zmq_names.socket_type_str(self.socket_type),
-            expire=self.conf.zmq_target_expire)
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
+
+    def stop(self):
+        super(TargetUpdater, self).stop()
+        self.matchmaker.unregister(
+            self.target, self.host,
+            zmq_names.socket_type_str(self.socket_type))

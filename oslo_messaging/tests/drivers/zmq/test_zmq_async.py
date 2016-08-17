@@ -57,37 +57,16 @@ class TestGetPoller(test_utils.BaseTestCase):
     def test_when_eventlet_is_available_then_return_GreenPoller(self):
         zmq_async.eventletutils.is_monkey_patched = lambda _: True
 
-        actual = zmq_async.get_poller()
+        poller = zmq_async.get_poller()
 
-        self.assertTrue(isinstance(actual, green_poller.GreenPoller))
-
-    def test_when_eventlet_is_unavailable_then_return_ThreadingPoller(self):
-        zmq_async.eventletutils.is_monkey_patched = lambda _: False
-
-        actual = zmq_async.get_poller()
-
-        self.assertTrue(isinstance(actual, threading_poller.ThreadingPoller))
-
-
-class TestGetReplyPoller(test_utils.BaseTestCase):
-
-    @testtools.skipIf(zmq is None, "zmq not available")
-    def setUp(self):
-        super(TestGetReplyPoller, self).setUp()
-
-    def test_when_eventlet_is_available_then_return_HoldReplyPoller(self):
-        zmq_async.eventletutils.is_monkey_patched = lambda _: True
-
-        actual = zmq_async.get_poller()
-
-        self.assertTrue(isinstance(actual, green_poller.GreenPoller))
+        self.assertTrue(isinstance(poller, green_poller.GreenPoller))
 
     def test_when_eventlet_is_unavailable_then_return_ThreadingPoller(self):
         zmq_async.eventletutils.is_monkey_patched = lambda _: False
 
-        actual = zmq_async.get_poller()
+        poller = zmq_async.get_poller()
 
-        self.assertTrue(isinstance(actual, threading_poller.ThreadingPoller))
+        self.assertTrue(isinstance(poller, threading_poller.ThreadingPoller))
 
 
 class TestGetExecutor(test_utils.BaseTestCase):

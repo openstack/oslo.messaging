@@ -12,32 +12,54 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import pickle
+import json
 import time
 
+import msgpack
+import six
+import testscenarios
+
+from oslo_config import cfg
+
 import oslo_messaging
-from oslo_messaging._drivers.zmq_driver.client.publishers \
-    import zmq_pub_publisher
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_publisher_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging.tests.drivers.zmq import zmq_common
 
+load_tests = testscenarios.load_tests_apply_scenarios
 
 zmq = zmq_async.import_zmq()
+
+opt_group = cfg.OptGroup(name='zmq_proxy_opts',
+                         title='ZeroMQ proxy options')
+cfg.CONF.register_opts(zmq_proxy.zmq_proxy_opts, group=opt_group)
 
 
 class TestPubSub(zmq_common.ZmqBaseTestCase):
 
     LISTENERS_COUNT = 3
 
+    scenarios = [
+        ('json', {'serialization': 'json',
+                  'dumps': lambda obj: six.b(json.dumps(obj))}),
+        ('msgpack', {'serialization': 'msgpack',
+                     'dumps': msgpack.dumps})
+    ]
+
     def setUp(self):
         super(TestPubSub, self).setUp()
 
-        kwargs = {'use_pub_sub': True}
-        self.config(**kwargs)
+        kwargs = {'use_pub_sub': True,
+                  'rpc_zmq_serialization': self.serialization}
+        self.config(group='oslo_messaging_zmq', **kwargs)
 
-        self.publisher = zmq_pub_publisher.PubPublisherProxy(
+        self.config(host="127.0.0.1", group="zmq_proxy_opts")
+        self.config(publisher_port="0", group="zmq_proxy_opts")
+
+        self.publisher = zmq_publisher_proxy.PublisherProxy(
             self.conf, self.driver.matchmaker)
         self.driver.matchmaker.register_publisher(
             (self.publisher.host, ""))
@@ -45,6 +67,12 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         self.listeners = []
         for i in range(self.LISTENERS_COUNT):
             self.listeners.append(zmq_common.TestServerListener(self.driver))
+
+    def tearDown(self):
+        super(TestPubSub, self).tearDown()
+        self.publisher.cleanup()
+        for listener in self.listeners:
+            listener.stop()
 
     def _send_request(self, target):
         #  Needed only in test env to give listener a chance to connect
@@ -58,8 +86,7 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
              zmq_address.target_to_subscribe_filter(target),
              b"message",
              b"0000-0000",
-             pickle.dumps(context),
-             pickle.dumps(message)])
+             self.dumps([context, message])])
 
     def _check_listener(self, listener):
         listener._received.wait(timeout=5)

@@ -18,7 +18,6 @@ import uuid
 
 import six
 
-from oslo_messaging._drivers.zmq_driver.client import zmq_envelope
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE
@@ -70,14 +69,6 @@ class Request(object):
 
         self.message_id = str(uuid.uuid1())
 
-    def create_envelope(self, routing_key=None, reply_id=None):
-        envelope = zmq_envelope.Envelope(msg_type=self.msg_type,
-                                         message_id=self.message_id,
-                                         target=self.target,
-                                         routing_key=routing_key)
-        envelope.reply_id = reply_id
-        return envelope
-
     @abc.abstractproperty
     def msg_type(self):
         """ZMQ message type"""
@@ -111,12 +102,6 @@ class CallRequest(RpcRequest):
                 .format(type(self.timeout)))
 
         super(CallRequest, self).__init__(*args, **kwargs)
-
-    def create_envelope(self, routing_key=None, reply_id=None):
-        envelope = super(CallRequest, self).create_envelope(
-            routing_key, reply_id)
-        envelope.set('timeout', self.timeout)
-        return envelope
 
 
 class CastRequest(RpcRequest):

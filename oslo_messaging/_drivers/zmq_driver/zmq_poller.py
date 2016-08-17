@@ -62,6 +62,13 @@ class ZmqPoller(object):
                             Should return received message object
         :type recv_method: callable
         """
+    @abc.abstractmethod
+    def unregister(self, socket):
+        """Unregister socket from poll
+
+        :param socket: Socket to unsubscribe from polling
+        :type socket: zmq.Socket
+        """
 
     @abc.abstractmethod
     def poll(self, timeout=None):

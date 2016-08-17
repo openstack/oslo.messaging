@@ -35,7 +35,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
         # Set config values
         kwargs = {'rpc_zmq_min_port': 5555,
                   'rpc_zmq_max_port': 5560}
-        self.config(**kwargs)
+        self.config(group='oslo_messaging_zmq', **kwargs)
 
     def test_ports_range(self):
         listeners = []
@@ -45,7 +45,7 @@ class ZmqTestPortsRange(zmq_common.ZmqBaseTestCase):
                 target = oslo_messaging.Target(topic='testtopic_' + str(i))
                 new_listener = self.driver.listen(target, None, None)
                 listeners.append(new_listener)
-            except zmq_socket.ZmqPortRangeExceededException:
+            except zmq_socket.ZmqPortBusy:
                 pass
 
         self.assertLessEqual(len(listeners), 5)

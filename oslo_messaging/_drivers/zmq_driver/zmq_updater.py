@@ -31,12 +31,17 @@ class UpdaterBase(object):
         self.conf = conf
         self.matchmaker = matchmaker
         self.update_method = update_method
+        # make first update immediately
+        self.update_method()
         self.executor = zmq_async.get_executor(method=self._update_loop)
         self.executor.execute()
 
+    def stop(self):
+        self.executor.stop()
+
     def _update_loop(self):
         self.update_method()
-        time.sleep(self.conf.zmq_target_update)
+        time.sleep(self.conf.oslo_messaging_zmq.zmq_target_update)
 
     def cleanup(self):
         self.executor.stop()

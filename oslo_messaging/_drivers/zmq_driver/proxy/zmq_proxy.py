@@ -13,14 +13,32 @@
 #    under the License.
 
 import logging
+import socket
 
 from stevedore import driver
 
+from oslo_config import cfg
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 
 zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
+
+
+zmq_proxy_opts = [
+    cfg.StrOpt('host', default=socket.gethostname(),
+               help='Hostname (FQDN) of current proxy'
+                    ' an ethernet interface, or IP address.'),
+
+    cfg.IntOpt('frontend_port', default=0,
+               help='Front-end ROUTER port number. Zero means random.'),
+
+    cfg.IntOpt('backend_port', default=0,
+               help='Back-end ROUTER port number. Zero means random.'),
+
+    cfg.IntOpt('publisher_port', default=0,
+               help='Publisher port number. Zero means random.'),
+]
 
 
 class ZmqProxy(object):
@@ -48,7 +66,7 @@ class ZmqProxy(object):
        2. Routers should be transparent for clients and servers. Which means
           it doesn't change the way of messaging between client and the final
           target by hiding the target from a client.
-       3. Router may be restarted or get down at any time loosing all messages
+       3. Router may be restarted or shut down at any time losing all messages
           in its queue. Smart retrying (based on acknowledgements from server
           side) and load balancing between other Router instances from the
           client side should handle the situation.
@@ -67,7 +85,7 @@ class ZmqProxy(object):
         self.conf = conf
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
-            self.conf.rpc_zmq_matchmaker,
+            self.conf.oslo_messaging_zmq.rpc_zmq_matchmaker,
         ).driver(self.conf)
         self.context = zmq.Context()
         self.proxy = proxy_cls(conf, self.context, self.matchmaker)

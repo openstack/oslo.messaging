@@ -42,6 +42,15 @@ def get_executor(method):
     return threading_poller.ThreadingExecutor(method)
 
 
+def get_pool(size):
+    import futurist
+
+    if eventletutils.is_monkey_patched('thread'):
+        return futurist.GreenThreadPoolExecutor(size)
+
+    return futurist.ThreadPoolExecutor(size)
+
+
 def get_queue():
     if eventletutils.is_monkey_patched('thread'):
         import eventlet

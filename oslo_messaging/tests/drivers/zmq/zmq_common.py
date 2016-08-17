@@ -20,6 +20,7 @@ import testtools
 
 import oslo_messaging
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging._i18n import _LE
 from oslo_messaging.tests import utils as test_utils
 
@@ -71,17 +72,18 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
     def setUp(self):
         super(ZmqBaseTestCase, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
+        zmq_options.register_opts(self.conf)
 
         # Set config values
         self.internal_ipc_dir = self.useFixture(fixtures.TempDir()).path
         kwargs = {'rpc_zmq_bind_address': '127.0.0.1',
                   'rpc_zmq_host': '127.0.0.1',
-                  'rpc_response_timeout': 5,
                   'rpc_zmq_ipc_dir': self.internal_ipc_dir,
                   'use_pub_sub': False,
                   'use_router_proxy': False,
                   'rpc_zmq_matchmaker': 'dummy'}
-        self.config(**kwargs)
+        self.config(group='oslo_messaging_zmq', **kwargs)
+        self.config(rpc_response_timeout=5)
 
         # Get driver
         transport = oslo_messaging.get_transport(self.conf)
@@ -89,15 +91,20 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
 
         self.listener = TestServerListener(self.driver)
 
-        self.addCleanup(StopRpc(self.__dict__))
+        self.addCleanup(
+            StopRpc(self, [('listener', 'stop'), ('driver', 'cleanup')])
+        )
 
 
 class StopRpc(object):
-    def __init__(self, attrs):
-        self.attrs = attrs
+    def __init__(self, obj, attrs_and_stops):
+        self.obj = obj
+        self.attrs_and_stops = attrs_and_stops
 
     def __call__(self):
-        if self.attrs['driver']:
-            self.attrs['driver'].cleanup()
-        if self.attrs['listener']:
-            self.attrs['listener'].stop()
+        for attr, stop in self.attrs_and_stops:
+            if hasattr(self.obj, attr):
+                obj_attr = getattr(self.obj, attr)
+                if hasattr(obj_attr, stop):
+                    obj_attr_stop = getattr(obj_attr, stop)
+                    obj_attr_stop()

@@ -122,7 +122,7 @@ class RpcServerFixture(fixtures.Fixture):
 
 class RpcServerGroupFixture(fixtures.Fixture):
     def __init__(self, conf, url, topic=None, names=None, exchange=None,
-                 use_fanout_ctrl=False):
+                 use_fanout_ctrl=False, endpoint=None):
         self.conf = conf
         self.url = url
         # NOTE(sileht): topic and servier_name must be uniq
@@ -133,6 +133,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]
         self.use_fanout_ctrl = use_fanout_ctrl
+        self.endpoint = endpoint
 
     def setUp(self):
         super(RpcServerGroupFixture, self).setUp()
@@ -149,6 +150,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         if self.use_fanout_ctrl:
             ctrl = self._target(fanout=True)
         server = RpcServerFixture(self.conf, self.url, target,
+                                  endpoint=self.endpoint,
                                   ctrl_target=ctrl)
         return server
 
@@ -277,19 +279,39 @@ class IsValidDistributionOf(object):
 class SkipIfNoTransportURL(test_utils.BaseTestCase):
     def setUp(self, conf=cfg.CONF):
         super(SkipIfNoTransportURL, self).setUp(conf=conf)
-        self.url = os.environ.get('TRANSPORT_URL')
+
+        driver = os.environ.get("TRANSPORT_DRIVER")
+        if driver:
+            self.url = os.environ.get('PIFPAF_URL')
+            if driver == "pika" and self.url:
+                self.url = self.url.replace("rabbit://", "pika://")
+        else:
+            self.url = os.environ.get('TRANSPORT_URL')
+
         if not self.url:
             self.skipTest("No transport url configured")
 
         zmq_matchmaker = os.environ.get('ZMQ_MATCHMAKER')
         if zmq_matchmaker:
-            self.config(rpc_zmq_matchmaker=zmq_matchmaker)
+            self.config(rpc_zmq_matchmaker=zmq_matchmaker,
+                        group="oslo_messaging_zmq")
         zmq_ipc_dir = os.environ.get('ZMQ_IPC_DIR')
         if zmq_ipc_dir:
-            self.config(rpc_zmq_ipc_dir=zmq_ipc_dir)
+            self.config(group="oslo_messaging_zmq",
+                        rpc_zmq_ipc_dir=zmq_ipc_dir)
         zmq_redis_port = os.environ.get('ZMQ_REDIS_PORT')
         if zmq_redis_port:
             self.config(port=zmq_redis_port, group="matchmaker_redis")
+            self.config(check_timeout=10000, group="matchmaker_redis")
+            self.config(wait_timeout=1000, group="matchmaker_redis")
+        zmq_use_pub_sub = os.environ.get('ZMQ_USE_PUB_SUB')
+        if zmq_use_pub_sub:
+            self.config(use_pub_sub=zmq_use_pub_sub,
+                        group='oslo_messaging_zmq')
+        zmq_use_router_proxy = os.environ.get('ZMQ_USE_ROUTER_PROXY')
+        if zmq_use_router_proxy:
+            self.config(use_router_proxy=zmq_use_router_proxy,
+                        group='oslo_messaging_zmq')
 
 
 class NotificationFixture(fixtures.Fixture):
