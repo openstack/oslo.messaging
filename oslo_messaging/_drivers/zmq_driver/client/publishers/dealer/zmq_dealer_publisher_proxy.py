@@ -13,6 +13,9 @@
 #    under the License.
 
 import logging
+import uuid
+
+import six
 
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_base
@@ -41,11 +44,16 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
             receiver = zmq_receivers.ReplyReceiverProxy(conf)
         super(DealerPublisherProxy, self).__init__(conf, matchmaker, sender,
                                                    receiver)
-        self.socket = self.sockets_manager.get_socket_to_publishers()
+        self.socket = self.sockets_manager.get_socket_to_publishers(
+            self._generate_identity())
         self.routing_table = zmq_routing_table.RoutingTable(self.conf,
                                                             self.matchmaker)
         self.connection_updater = \
             PublisherConnectionUpdater(self.conf, self.matchmaker, self.socket)
+
+    def _generate_identity(self):
+        return six.b(self.conf.oslo_messaging_zmq.rpc_zmq_host + "/" +
+                     str(uuid.uuid4()))
 
     def connect_socket(self, request):
         return self.socket
