@@ -25,12 +25,12 @@ the background thread via callables.
 import errno
 import heapq
 import logging
+import math
+from monotonic import monotonic as now  # noqa
 import os
 import select
 import socket
-import sys
 import threading
-import time
 import uuid
 
 import pyngus
@@ -38,6 +38,12 @@ from six import moves
 
 from oslo_messaging._i18n import _LE, _LI, _LW
 LOG = logging.getLogger(__name__)
+
+
+def compute_timeout(offset):
+    # minimize the timer granularity to one second so we don't have to track
+    # too many timers
+    return math.ceil(now() + offset)
 
 
 class _SocketConnection(object):
@@ -48,18 +54,13 @@ class _SocketConnection(object):
     def __init__(self, name, container, properties, handler):
         self.name = name
         self.socket = None
-        self._properties = properties or {}
-        self._properties["properties"] = self._get_name_and_pid()
+        self._properties = properties
         # The handler is a pyngus ConnectionEventHandler, which is invoked by
         # pyngus on connection-related events (active, closed, error, etc).
         # Currently it is the Controller object.
         self._handler = handler
         self._container = container
         self.connection = None
-
-    def _get_name_and_pid(self):
-        # helps identify the process that is using the connection
-        return {u'process': os.path.basename(sys.argv[0]), u'pid': os.getpid()}
 
     def fileno(self):
         """Allows use of a _SocketConnection in a select() call.
@@ -71,7 +72,7 @@ class _SocketConnection(object):
         while True:
             try:
                 rc = pyngus.read_socket_input(self.connection, self.socket)
-                self.connection.process(time.time())
+                self.connection.process(now())
                 return rc
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
@@ -85,7 +86,7 @@ class _SocketConnection(object):
         while True:
             try:
                 rc = pyngus.write_socket_output(self.connection, self.socket)
-                self.connection.process(time.time())
+                self.connection.process(now())
                 return rc
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
@@ -140,7 +141,6 @@ class _SocketConnection(object):
                 pn_sasl.plain(host.username, password)
             else:
                 pn_sasl.mechanisms("ANONYMOUS")
-                # TODO(kgiusti): server if accepting inbound connections
                 pn_sasl.client()
 
         self.connection.open()
@@ -164,37 +164,74 @@ class _SocketConnection(object):
             self.socket = None
 
 
-class Schedule(object):
-    """A list of callables (requests). Each callable may have a delay (in
-    milliseconds) which causes the callable to be scheduled to run after the
-    delay passes.
+class Scheduler(object):
+    """Schedule callables to be run in the future.
     """
+    class Event(object):
+        # simply hold a reference to a callback that can be set to None if the
+        # alarm is canceled
+        def __init__(self, callback):
+            self.callback = callback
+
+        def cancel(self):
+            # quicker than rebalancing the tree
+            self.callback = None
+
     def __init__(self):
-        self._entries = []
+        self._callbacks = {}
+        self._deadlines = []
 
-    def schedule(self, request, delay):
-        """Request a callable be executed after delay."""
-        entry = (time.time() + delay, request)
-        heapq.heappush(self._entries, entry)
+    def alarm(self, request, deadline):
+        """Request a callable be executed at a specific time
+        """
+        try:
+            callbacks = self._callbacks[deadline]
+        except KeyError:
+            callbacks = list()
+            self._callbacks[deadline] = callbacks
+            heapq.heappush(self._deadlines, deadline)
+        entry = Scheduler.Event(request)
+        callbacks.append(entry)
+        return entry
 
-    def get_delay(self, max_delay=None):
+    def defer(self, request, delay):
+        """Request a callable be executed after delay seconds
+        """
+        return self.alarm(request, compute_timeout(delay))
+
+    @property
+    def _next_deadline(self):
+        """The timestamp of the next expiring event or None
+        """
+        return self._deadlines[0] if self._deadlines else None
+
+    def _get_delay(self, max_delay=None):
         """Get the delay in milliseconds until the next callable needs to be
         run, or 'max_delay' if no outstanding callables or the delay to the
         next callable is > 'max_delay'.
         """
-        due = self._entries[0][0] if self._entries else None
+        due = self._deadlines[0] if self._deadlines else None
         if due is None:
             return max_delay
-        now = time.time()
-        if due < now:
+        _now = now()
+        if due <= _now:
             return 0
         else:
-            return min(due - now, max_delay) if max_delay else due - now
+            return min(due - _now, max_delay) if max_delay else due - _now
 
-    def process(self):
+    def _process(self):
         """Invoke all expired callables."""
-        while self._entries and self._entries[0][0] < time.time():
-            heapq.heappop(self._entries)[1]()
+        if self._deadlines:
+            _now = now()
+            try:
+                while self._deadlines[0] <= _now:
+                    deadline = heapq.heappop(self._deadlines)
+                    callbacks = self._callbacks[deadline]
+                    del self._callbacks[deadline]
+                    for cb in callbacks:
+                        cb.callback and cb.callback()
+            except IndexError:
+                pass
 
 
 class Requests(object):
@@ -234,17 +271,18 @@ class Thread(threading.Thread):
     """Manages socket I/O and executes callables queued up by external
     threads.
     """
-    def __init__(self, container_name=None):
+    def __init__(self, container_name, node, command, pid):
         super(Thread, self).__init__()
 
         # callables from other threads:
         self._requests = Requests()
         # delayed callables (only used on this thread for now):
-        self._schedule = Schedule()
+        self._scheduler = Scheduler()
 
         # Configure a container
         if container_name is None:
-            container_name = "Container-" + uuid.uuid4().hex
+            container_name = ("openstack.org/om/container/%s/%s/%s/%s" %
+                              (node, command, pid, uuid.uuid4().hex))
         self._container = pyngus.Container(container_name)
 
         self.name = "Thread for Proton container: %s" % self._container.name
@@ -274,13 +312,17 @@ class Thread(threading.Thread):
     # the following methods are not thread safe - they must be run from the
     # eventloop thread
 
-    def schedule(self, request, delay):
+    def defer(self, request, delay):
         """Invoke request after delay seconds."""
-        self._schedule.schedule(request, delay)
+        return self._scheduler.defer(request, delay)
 
-    def connect(self, host, handler, properties=None, name=None):
+    def alarm(self, request, deadline):
+        """Invoke request at a particular time"""
+        return self._scheduler.alarm(request, deadline)
+
+    def connect(self, host, handler, properties):
         """Get a _SocketConnection to a peer represented by url."""
-        key = name or "%s:%i" % (host.hostname, host.port)
+        key = "openstack.org/om/connection/%s:%s/" % (host.hostname, host.port)
         # return pre-existing
         conn = self._container.get_connection(key)
         if conn:
@@ -308,15 +350,17 @@ class Thread(threading.Thread):
             readfds.append(self._requests)
             writefds = [c.user_context for c in writers]
 
-            timeout = None
-            if timers:
-                deadline = timers[0].deadline  # 0 == next expiring timer
-                now = time.time()
-                timeout = 0 if deadline <= now else deadline - now
+            # force select to return in time to service the next expiring timer
+            d1 = self._scheduler._next_deadline
+            d2 = timers[0].deadline if timers else None
+            deadline = min(d1, d2) if d1 and d2 else d1 if not d2 else d2
+            if deadline:
+                _now = now()
+                timeout = 0 if deadline <= _now else (deadline - _now)
+            else:
+                timeout = None
 
-            # adjust timeout for any deferred requests
-            timeout = self._schedule.get_delay(timeout)
-
+            # and now we wait...
             try:
                 results = select.select(readfds, writefds, [], timeout)
             except select.error as serror:
@@ -331,15 +375,17 @@ class Thread(threading.Thread):
             for r in readable:
                 r.read()
 
-            for t in timers:
-                if t.deadline > time.time():
-                    break
-                t.process(time.time())
+            if timers:
+                _now = now()
+                for t in timers:
+                    if t.deadline > _now:
+                        break
+                    t.process(_now)
 
             for w in writable:
                 w.write()
 
-            self._schedule.process()  # run any deferred requests
+            self._scheduler._process()  # run any deferred requests
 
         LOG.info(_LI("eventloop thread exiting, container=%s"),
                  self._container.name)
