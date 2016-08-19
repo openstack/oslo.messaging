@@ -18,6 +18,7 @@ import select
 import shutil
 import socket
 import subprocess
+import sys
 import threading
 import time
 import uuid
@@ -35,6 +36,12 @@ from oslo_messaging.tests import utils as test_utils
 # are available in the base repos for all supported platforms.
 pyngus = importutils.try_import("pyngus")
 if pyngus:
+    from oslo_messaging._drivers.amqp1_driver.addressing \
+        import AddresserFactory
+    from oslo_messaging._drivers.amqp1_driver.addressing \
+        import LegacyAddresser
+    from oslo_messaging._drivers.amqp1_driver.addressing \
+        import RoutableAddresser
     import oslo_messaging._drivers.impl_amqp1 as amqp_driver
 
 # The Cyrus-based SASL tests can only be run if the installed version of proton
@@ -54,26 +61,34 @@ def _wait_until(predicate, timeout):
 
 class _ListenerThread(threading.Thread):
     """Run a blocking listener in a thread."""
-    def __init__(self, listener, msg_count):
+    def __init__(self, listener, msg_count, msg_ack=True):
         super(_ListenerThread, self).__init__()
         self.listener = listener
         self.msg_count = msg_count
+        self._msg_ack = msg_ack
         self.messages = moves.queue.Queue()
         self.daemon = True
         self.started = threading.Event()
+        self._done = False
         self.start()
         self.started.wait()
 
     def run(self):
         LOG.debug("Listener started")
         self.started.set()
-        while self.msg_count > 0:
-            in_msg = self.listener.poll()[0]
-            self.messages.put(in_msg)
-            self.msg_count -= 1
-            if in_msg.message.get('method') == 'echo':
-                in_msg.reply(reply={'correlation-id':
-                                    in_msg.message.get('id')})
+        while not self._done:
+            for in_msg in self.listener.poll(timeout=0.5):
+                self.messages.put(in_msg)
+                self.msg_count -= 1
+                self._done = self.msg_count == 0
+                if self._msg_ack:
+                    in_msg.acknowledge()
+                    if in_msg.message.get('method') == 'echo':
+                        in_msg.reply(reply={'correlation-id':
+                                            in_msg.message.get('id')})
+                else:
+                    in_msg.requeue()
+
         LOG.debug("Listener stopped")
 
     def get_messages(self):
@@ -86,6 +101,10 @@ class _ListenerThread(threading.Thread):
         except moves.queue.Empty:
             pass
         return msgs
+
+    def kill(self, timeout=30):
+        self._done = True
+        self.join(timeout)
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
@@ -102,23 +121,31 @@ class TestProtonDriverLoad(test_utils.BaseTestCase):
 
 
 class _AmqpBrokerTestCase(test_utils.BaseTestCase):
-
+    """Creates a single FakeBroker for use by the tests"""
     @testtools.skipUnless(pyngus, "proton modules not present")
     def setUp(self):
         super(_AmqpBrokerTestCase, self).setUp()
-        self._broker = FakeBroker()
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp)
         self._broker_addr = "amqp://%s:%d" % (self._broker.host,
                                               self._broker.port)
         self._broker_url = oslo_messaging.TransportURL.parse(
             self.conf, self._broker_addr)
-        self._broker.start()
 
     def tearDown(self):
         super(_AmqpBrokerTestCase, self).tearDown()
-        self._broker.stop()
+        if self._broker:
+            self._broker.stop()
 
 
-class TestAmqpSend(_AmqpBrokerTestCase):
+class _AmqpBrokerTestCaseAuto(_AmqpBrokerTestCase):
+    """Like _AmqpBrokerTestCase, but starts the broker"""
+    @testtools.skipUnless(pyngus, "proton modules not present")
+    def setUp(self):
+        super(_AmqpBrokerTestCaseAuto, self).setUp()
+        self._broker.start()
+
+
+class TestAmqpSend(_AmqpBrokerTestCaseAuto):
     """Test sending and receiving messages."""
 
     def test_driver_unconnected_cleanup(self):
@@ -145,6 +172,11 @@ class TestAmqpSend(_AmqpBrokerTestCase):
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         self.assertEqual({"msg": "value"}, listener.messages.get().message)
+
+        predicate = lambda: (self._broker.sender_link_ack_count == 1)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         driver.cleanup()
 
     def test_send_exchange_with_reply(self):
@@ -248,6 +280,11 @@ class TestAmqpSend(_AmqpBrokerTestCase):
             self.assertTrue('either-2' in listener1_ids and
                             'either-2' not in listener2_ids and
                             'either-1' in listener2_ids)
+
+        predicate = lambda: (self._broker.sender_link_ack_count == 12)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
         driver.cleanup()
 
     def test_send_timeout(self):
@@ -258,22 +295,199 @@ class TestAmqpSend(_AmqpBrokerTestCase):
             driver.listen(target, None, None)._poll_style_listener, 1)
 
         # the listener will drop this message:
-        try:
-            driver.send(target,
-                        {"context": "whatever"},
-                        {"method": "drop"},
-                        wait_for_reply=True,
-                        timeout=1.0)
-        except Exception as ex:
-            self.assertIsInstance(ex, oslo_messaging.MessagingTimeout, ex)
-        else:
-            self.assertTrue(False, "No Exception raised!")
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send, target,
+                          {"context": "whatever"},
+                          {"method": "drop"},
+                          wait_for_reply=True,
+                          timeout=1.0)
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         driver.cleanup()
 
+    def test_released_send(self):
+        """Verify exception thrown if send Nacked."""
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="no listener")
 
-class TestAmqpNotification(_AmqpBrokerTestCase):
+        # the broker will send a nack:
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          driver.send, target,
+                          {"context": "whatever"},
+                          {"method": "drop"},
+                          wait_for_reply=True,
+                          timeout=1.0)
+        driver.cleanup()
+
+    def test_send_not_acked(self):
+        """Verify exception thrown if send Nacked."""
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        # TODO(kgiusti): update when in config:
+        driver._default_send_timeout = 2
+        target = oslo_messaging.Target(topic="!no-ack!")
+
+        # the broker will silently discard:
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          driver.send, target,
+                          {"context": "whatever"},
+                          {"method": "drop"},
+                          wait_for_reply=False)
+        driver.cleanup()
+
+    def test_call_late_reply(self):
+        """What happens if reply arrives after timeout?"""
+
+        class _SlowResponder(_ListenerThread):
+            def __init__(self, listener, delay):
+                self._delay = delay
+                super(_SlowResponder, self).__init__(listener, 1)
+
+            def run(self):
+                self.started.set()
+                while not self._done:
+                    for in_msg in self.listener.poll(timeout=0.5):
+                        time.sleep(self._delay)
+                        in_msg.acknowledge()
+                        in_msg.reply(reply={'correlation-id':
+                                            in_msg.message.get('id')})
+                        self.messages.put(in_msg)
+                        self._done = True
+
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _SlowResponder(
+            driver.listen(target, None, None)._poll_style_listener, 3)
+
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send, target,
+                          {"context": "whatever"},
+                          {"method": "echo", "id": "???"},
+                          wait_for_reply=True,
+                          timeout=1.0)
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+
+        predicate = lambda: (self._broker.sender_link_ack_count == 1)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        driver.cleanup()
+
+    def test_call_failed_reply(self):
+        """Send back an exception"""
+        class _FailedResponder(_ListenerThread):
+            def __init__(self, listener):
+                super(_FailedResponder, self).__init__(listener, 1)
+
+            def run(self):
+                self.started.set()
+                while not self._done:
+                    for in_msg in self.listener.poll(timeout=0.5):
+                        try:
+                            raise RuntimeError("Oopsie!")
+                        except RuntimeError:
+                            in_msg.reply(reply=None,
+                                         failure=sys.exc_info())
+                        self._done = True
+
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _FailedResponder(
+            driver.listen(target, None, None)._poll_style_listener)
+
+        self.assertRaises(RuntimeError,
+                          driver.send, target,
+                          {"context": "whatever"},
+                          {"method": "echo"},
+                          wait_for_reply=True,
+                          timeout=5.0)
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_call_reply_timeout(self):
+        """What happens if the replier times out?"""
+        class _TimeoutListener(_ListenerThread):
+            def __init__(self, listener):
+                super(_TimeoutListener, self).__init__(listener, 1)
+
+            def run(self):
+                self.started.set()
+                while not self._done:
+                    for in_msg in self.listener.poll(timeout=0.5):
+                        # reply will never be acked:
+                        in_msg._reply_to = "!no-ack!"
+                        in_msg.reply(reply={'correlation-id':
+                                            in_msg.message.get("id")})
+                        self._done = True
+
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        driver._default_reply_timeout = 1
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _TimeoutListener(
+            driver.listen(target, None, None)._poll_style_listener)
+
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send, target,
+                          {"context": "whatever"},
+                          {"method": "echo"},
+                          wait_for_reply=True,
+                          timeout=3)
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_listener_requeue(self):
+        "Emulate Server requeue on listener incoming messages"
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        driver.require_features(requeue=True)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(
+            driver.listen(target, None, None)._poll_style_listener, 1,
+            msg_ack=False)
+
+        rc = driver.send(target, {"context": True},
+                         {"msg": "value"}, wait_for_reply=False)
+        self.assertIsNone(rc)
+
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+
+        for x in listener.get_messages():
+            x.requeue()
+            self.assertEqual(x.message, {"msg": "value"})
+
+        predicate = lambda: (self._broker.sender_link_requeue_count == 1)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+
+        driver.cleanup()
+
+    def test_sender_minimal_credit(self):
+        # ensure capacity is replenished when only 1 credit is configured
+        self.config(reply_link_credit=1,
+                    rpc_server_credit=1,
+                    group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic", server="server")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   4)
+        for i in range(4):
+            threading.Thread(target=driver.send,
+                             args=(target,
+                                   {"context": "whatever"},
+                                   {"method": "echo"}),
+                             kwargs={'wait_for_reply': True}).start()
+        predicate = lambda: (self._broker.direct_count == 8)
+        _wait_until(predicate, 30)
+        self.assertTrue(predicate())
+        listener.join(timeout=30)
+        driver.cleanup()
+
+
+class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
     """Test sending and receiving notifications."""
 
     def test_notification(self):
@@ -311,8 +525,28 @@ class TestAmqpNotification(_AmqpBrokerTestCase):
         self.assertEqual(2, topics.count('topic-1.error'))
         self.assertEqual(2, topics.count('topic-2.debug'))
         self.assertEqual(4, self._broker.dropped_count)
-        self.assertEqual(0, excepted_targets.count('topic-1.bad'))
-        self.assertEqual(0, excepted_targets.count('bad-topic.debug'))
+        self.assertEqual(2, excepted_targets.count('topic-1.bad'))
+        self.assertEqual(2, excepted_targets.count('bad-topic.debug'))
+        driver.cleanup()
+
+    def test_released_notification(self):
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          driver.send_notification,
+                          oslo_messaging.Target(topic="bad address"),
+                          "context", {'target': "bad address"},
+                          2.0)
+        driver.cleanup()
+
+    def test_notification_not_acked(self):
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        # TODO(kgiusti): update when in config:
+        driver._default_notify_timeout = 2
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          driver.send_notification,
+                          oslo_messaging.Target(topic="!no-ack!"),
+                          "context", {'target': "!no-ack!"},
+                          2.0)
         driver.cleanup()
 
 
@@ -325,7 +559,8 @@ class TestAuthentication(test_utils.BaseTestCase):
         # for simplicity, encode the credentials as they would appear 'on the
         # wire' in a SASL frame - username and password prefixed by zero.
         user_credentials = ["\0joe\0secret"]
-        self._broker = FakeBroker(sasl_mechanisms="PLAIN",
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sasl_mechanisms="PLAIN",
                                   user_credentials=user_credentials)
         self._broker.start()
 
@@ -390,7 +625,7 @@ class TestCyrusAuthentication(test_utils.BaseTestCase):
         # add a user 'joe' with password 'secret':
         cls._conf_dir = "/tmp/amqp1_tests_%s" % os.getpid()
         # no, we cannot use tempfile.mkdtemp() as it will 'helpfully' remove
-        # the temp dir after the first test is run (?why?)
+        # the temp dir after the first test is run
         os.makedirs(cls._conf_dir)
         db = os.path.join(cls._conf_dir, 'openstack.sasldb')
         _t = "echo secret | saslpasswd2 -c -p -f ${db} joe"
@@ -424,7 +659,8 @@ mech_list: ${mechs}
             self.skipTest("Cyrus SASL tools not installed")
         _mechs = TestCyrusAuthentication._mechs
         _dir = TestCyrusAuthentication._conf_dir
-        self._broker = FakeBroker(sasl_mechanisms=_mechs,
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sasl_mechanisms=_mechs,
                                   user_credentials=["\0joe\0secret"],
                                   sasl_config_dir=_dir,
                                   sasl_config_name="openstack")
@@ -523,7 +759,13 @@ class TestFailover(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestFailover, self).setUp()
-        self._brokers = [FakeBroker(), FakeBroker()]
+        # configure different addressing modes on the brokers to test failing
+        # over from one type of backend to another
+        self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
+        self._brokers = [FakeBroker(self.conf.oslo_messaging_amqp,
+                                    product="qpid-cpp"),
+                         FakeBroker(self.conf.oslo_messaging_amqp,
+                                    product="routable")]
         self._primary = 0
         self._backup = 1
         hosts = []
@@ -681,6 +923,397 @@ class TestFailover(test_utils.BaseTestCase):
         self._brokers[1].stop()
 
 
+@testtools.skipUnless(pyngus, "proton modules not present")
+class TestLinkRecovery(_AmqpBrokerTestCase):
+
+    def _send_retry(self, reject, retries):
+        self._reject = reject
+
+        def on_active(link):
+            if self._reject > 0:
+                link.close()
+                self._reject -= 1
+            else:
+                link.add_capacity(10)
+
+        self._broker.on_receiver_active = on_active
+        self._broker.start()
+        self.config(link_retry_delay=1,
+                    group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   1)
+        try:
+            rc = driver.send(target, {"context": "whatever"},
+                             {"method": "echo", "id": "e1"},
+                             wait_for_reply=True, retry=retries)
+            self.assertIsNotNone(rc)
+            self.assertEqual(rc.get('correlation-id'), 'e1')
+        except Exception:
+            listener.kill()
+            driver.cleanup()
+            raise
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        self.assertEqual(listener.messages.get().message.get('method'), "echo")
+        driver.cleanup()
+
+    def test_send_retry_ok(self):
+        # verify sender with retry=3 survives 2 link failures:
+        self._send_retry(reject=2, retries=3)
+
+    def test_send_retry_fail(self):
+        # verify sender fails if retries exhausted
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          self._send_retry,
+                          reject=3,
+                          retries=2)
+
+    def test_listener_recovery(self):
+        # verify a listener recovers if all links fail:
+        self._addrs = {'unicast.test-topic': 2,
+                       'broadcast.test-topic.all': 2,
+                       'exclusive.test-topic.server': 2}
+        self._recovered = threading.Event()
+        self._count = 0
+
+        def _on_active(link):
+            t = link.target_address
+            if t in self._addrs:
+                if self._addrs[t] > 0:
+                    link.close()
+                    self._addrs[t] -= 1
+                else:
+                    self._count += 1
+                    if self._count == len(self._addrs):
+                        self._recovered.set()
+
+        self._broker.on_sender_active = _on_active
+        self._broker.start()
+        self.config(link_retry_delay=1, group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic",
+                                       server="server")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   3)
+        # wait for recovery
+        self.assertTrue(self._recovered.wait(timeout=30))
+        # verify server RPC:
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "e1"},
+                         wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'e1')
+        # verify balanced RPC:
+        target.server = None
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "e2"},
+                         wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'e2')
+        # verify fanout:
+        target.fanout = True
+        driver.send(target, {"context": "whatever"},
+                    {"msg": "value"},
+                    wait_for_reply=False)
+        listener.join(timeout=30)
+        self.assertTrue(self._broker.fanout_count == 1)
+        self.assertFalse(listener.isAlive())
+        self.assertEqual(listener.messages.get().message.get('method'), "echo")
+        driver.cleanup()
+
+    def test_sender_credit_blocked(self):
+        # ensure send requests resume once credit is provided
+        self._blocked_links = set()
+
+        def _on_active(link):
+            # refuse granting credit for the broadcast link
+            if self._broker._addresser._is_multicast(link.source_address):
+                self._blocked_links.add(link)
+            else:
+                # unblock all link when RPC call is made
+                link.add_capacity(10)
+                for l in self._blocked_links:
+                    l.add_capacity(10)
+
+        self._broker.on_receiver_active = _on_active
+        self._broker.on_credit_exhausted = lambda link: None
+        self._broker.start()
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic", server="server")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   4)
+        target.fanout = True
+        target.server = None
+        # these threads will share the same link
+        th = []
+        for i in range(3):
+            t = threading.Thread(target=driver.send,
+                                 args=(target, {"context": "whatever"},
+                                       {"msg": "n=%d" % i}),
+                                 kwargs={'wait_for_reply': False})
+            t.start()
+            t.join(timeout=1)
+            self.assertTrue(t.isAlive())
+            th.append(t)
+        self.assertEqual(self._broker.fanout_sent_count, 0)
+        # this will trigger the release of credit for the previous links
+        target.fanout = False
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "e1"},
+                         wait_for_reply=True)
+        self.assertIsNotNone(rc)
+        self.assertEqual(rc.get('correlation-id'), 'e1')
+        listener.join(timeout=30)
+        self.assertTrue(self._broker.fanout_count == 3)
+        self.assertFalse(listener.isAlive())
+        for t in th:
+            t.join(timeout=30)
+            self.assertFalse(t.isAlive())
+        driver.cleanup()
+
+
+@testtools.skipUnless(pyngus, "proton modules not present")
+class TestAddressing(test_utils.BaseTestCase):
+    # Verify the addressing modes supported by the driver
+    def _address_test(self, rpc_target, targets_priorities):
+        # verify proper messaging semantics for a given addressing mode
+        broker = FakeBroker(self.conf.oslo_messaging_amqp)
+        broker.start()
+        url = oslo_messaging.TransportURL.parse(self.conf,
+                                                "amqp://%s:%d" %
+                                                (broker.host, broker.port))
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+
+        rl = []
+        for server in ["Server1", "Server2"]:
+            _ = driver.listen(rpc_target(server=server), None,
+                              None)._poll_style_listener
+            # 3 == 1 msg to server + 1 fanout msg + 1 anycast msg
+            rl.append(_ListenerThread(_, 3))
+
+        nl = []
+        for n in range(2):
+            _ = driver.listen_for_notifications(targets_priorities, None, None,
+                                                None)._poll_style_listener
+            nl.append(_ListenerThread(_, len(targets_priorities)))
+
+        driver.send(rpc_target(server="Server1"), {"context": "whatever"},
+                    {"msg": "Server1"})
+        driver.send(rpc_target(server="Server2"), {"context": "whatever"},
+                    {"msg": "Server2"})
+        driver.send(rpc_target(fanout=True), {"context": "whatever"},
+                    {"msg": "Fanout"})
+        # FakeBroker should evenly distribute these across the servers
+        driver.send(rpc_target(server=None), {"context": "whatever"},
+                    {"msg": "Anycast1"})
+        driver.send(rpc_target(server=None), {"context": "whatever"},
+                    {"msg": "Anycast2"})
+
+        expected = []
+        for n in targets_priorities:
+            # this is how the notifier creates an address:
+            topic = "%s.%s" % (n[0].topic, n[1])
+            target = oslo_messaging.Target(topic=topic)
+            driver.send_notification(target, {"context": "whatever"},
+                                     {"msg": topic}, 2.0)
+            expected.append(topic)
+
+        for l in rl:
+            l.join(timeout=30)
+
+        # anycast will not evenly distribute an odd number of msgs
+        predicate = lambda: len(expected) == (nl[0].messages.qsize() +
+                                              nl[1].messages.qsize())
+        _wait_until(predicate, 30)
+        for l in nl:
+            l.kill(timeout=30)
+
+        s1_payload = [m.message.get('msg') for m in rl[0].get_messages()]
+        s2_payload = [m.message.get('msg') for m in rl[1].get_messages()]
+
+        self.assertTrue("Server1" in s1_payload
+                        and "Server2" not in s1_payload)
+        self.assertTrue("Server2" in s2_payload
+                        and "Server1" not in s2_payload)
+        self.assertEqual(s1_payload.count("Fanout"), 1)
+        self.assertEqual(s2_payload.count("Fanout"), 1)
+        self.assertEqual((s1_payload + s2_payload).count("Anycast1"), 1)
+        self.assertEqual((s1_payload + s2_payload).count("Anycast2"), 1)
+
+        n1_payload = [m.message.get('msg') for m in nl[0].get_messages()]
+        n2_payload = [m.message.get('msg') for m in nl[1].get_messages()]
+
+        self.assertEqual((n1_payload + n2_payload).sort(), expected.sort())
+
+        driver.cleanup()
+        broker.stop()
+        return broker.message_log
+
+    def test_routable_address(self):
+        # verify routable address mode
+        self.config(addressing_mode='routable', group="oslo_messaging_amqp")
+        _opts = self.conf.oslo_messaging_amqp
+        notifications = [(oslo_messaging.Target(topic="test-topic"), 'info'),
+                         (oslo_messaging.Target(topic="test-topic"), 'error'),
+                         (oslo_messaging.Target(topic="test-topic"), 'debug')]
+
+        msgs = self._address_test(oslo_messaging.Target(exchange="ex",
+                                                        topic="test-topic"),
+                                  notifications)
+        addrs = [m.address for m in msgs]
+
+        notify_addrs = [a for a in addrs
+                        if a.startswith(_opts.notify_address_prefix)]
+        self.assertEqual(len(notify_addrs), len(notifications))
+        # expect all notifications to be 'anycast'
+        self.assertEqual(len(notifications),
+                         len([a for a in notify_addrs
+                              if _opts.anycast_address in a]))
+
+        rpc_addrs = [a for a in addrs
+                     if a.startswith(_opts.rpc_address_prefix)]
+        # 2 anycast messages
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if _opts.anycast_address in a]))
+        # 1 fanout sent
+        self.assertEqual(1,
+                         len([a for a in rpc_addrs
+                              if _opts.multicast_address in a]))
+        # 2 unicast messages (1 for each server)
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if _opts.unicast_address in a]))
+
+    def test_legacy_address(self):
+        # verify legacy address mode
+        self.config(addressing_mode='legacy', group="oslo_messaging_amqp")
+        _opts = self.conf.oslo_messaging_amqp
+        notifications = [(oslo_messaging.Target(topic="test-topic"), 'info'),
+                         (oslo_messaging.Target(topic="test-topic"), 'error'),
+                         (oslo_messaging.Target(topic="test-topic"), 'debug')]
+
+        msgs = self._address_test(oslo_messaging.Target(exchange="ex",
+                                                        topic="test-topic"),
+                                  notifications)
+        addrs = [m.address for m in msgs]
+
+        server_addrs = [a for a in addrs
+                        if a.startswith(_opts.server_request_prefix)]
+        broadcast_addrs = [a for a in addrs
+                           if a.startswith(_opts.broadcast_prefix)]
+        group_addrs = [a for a in addrs
+                       if a.startswith(_opts.group_request_prefix)]
+        # 2 server address messages sent
+        self.assertEqual(len(server_addrs), 2)
+        # 1 fanout address message sent
+        self.assertEqual(len(broadcast_addrs), 1)
+        # group messages: 2 rpc + all notifications
+        self.assertEqual(len(group_addrs),
+                         2 + len(notifications))
+
+    def test_address_options(self):
+        # verify addressing configuration options
+        self.config(addressing_mode='routable', group="oslo_messaging_amqp")
+        self.config(rpc_address_prefix="RPC-PREFIX",
+                    group="oslo_messaging_amqp")
+        self.config(notify_address_prefix="NOTIFY-PREFIX",
+                    group="oslo_messaging_amqp")
+
+        self.config(multicast_address="MULTI-CAST",
+                    group="oslo_messaging_amqp")
+        self.config(unicast_address="UNI-CAST",
+                    group="oslo_messaging_amqp")
+        self.config(anycast_address="ANY-CAST",
+                    group="oslo_messaging_amqp")
+
+        self.config(default_notification_exchange="NOTIFY-EXCHANGE",
+                    group="oslo_messaging_amqp")
+        self.config(default_rpc_exchange="RPC-EXCHANGE",
+                    group="oslo_messaging_amqp")
+
+        notifications = [(oslo_messaging.Target(topic="test-topic"), 'info'),
+                         (oslo_messaging.Target(topic="test-topic"), 'error'),
+                         (oslo_messaging.Target(topic="test-topic"), 'debug')]
+
+        msgs = self._address_test(oslo_messaging.Target(exchange=None,
+                                                        topic="test-topic"),
+                                  notifications)
+        addrs = [m.address for m in msgs]
+
+        notify_addrs = [a for a in addrs
+                        if a.startswith("NOTIFY-PREFIX")]
+        self.assertEqual(len(notify_addrs), len(notifications))
+        # expect all notifications to be 'anycast'
+        self.assertEqual(len(notifications),
+                         len([a for a in notify_addrs
+                              if "ANY-CAST" in a]))
+        # and all should contain the default exchange:
+        self.assertEqual(len(notifications),
+                         len([a for a in notify_addrs
+                              if "NOTIFY-EXCHANGE" in a]))
+
+        rpc_addrs = [a for a in addrs
+                     if a.startswith("RPC-PREFIX")]
+        # 2 RPC anycast messages
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if "ANY-CAST" in a]))
+        # 1 RPC fanout sent
+        self.assertEqual(1,
+                         len([a for a in rpc_addrs
+                              if "MULTI-CAST" in a]))
+        # 2 RPC unicast messages (1 for each server)
+        self.assertEqual(2,
+                         len([a for a in rpc_addrs
+                              if "UNI-CAST" in a]))
+
+        self.assertEqual(len(rpc_addrs),
+                         len([a for a in rpc_addrs
+                              if "RPC-EXCHANGE" in a]))
+
+    def _dynamic_test(self, product):
+        # return the addresser used when connected to 'product'
+        broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                            product=product)
+        broker.start()
+        url = oslo_messaging.TransportURL.parse(self.conf,
+                                                "amqp://%s:%d" %
+                                                (broker.host, broker.port))
+        driver = amqp_driver.ProtonDriver(self.conf, url)
+
+        # need to send a message to initate the connection to the broker
+        target = oslo_messaging.Target(topic="test-topic",
+                                       server="Server")
+        listener = _ListenerThread(
+            driver.listen(target, None, None)._poll_style_listener, 1)
+        driver.send(target, {"context": True}, {"msg": "value"},
+                    wait_for_reply=False)
+        listener.join(timeout=30)
+
+        addresser = driver._ctrl.addresser
+        driver.cleanup()
+        broker.stop()  # clears the driver's addresser
+        return addresser
+
+    def test_dynamic_addressing(self):
+        # simply check that the correct addresser is provided based on the
+        # identity of the messaging back-end
+        self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
+        self.assertTrue(isinstance(self._dynamic_test("router"),
+                                   RoutableAddresser))
+        self.assertTrue(isinstance(self._dynamic_test("qpid-cpp"),
+                                   LegacyAddresser))
+
+
 class FakeBroker(threading.Thread):
     """A test AMQP message 'broker'."""
 
@@ -688,7 +1321,7 @@ class FakeBroker(threading.Thread):
         class Connection(pyngus.ConnectionEventHandler):
             """A single AMQP connection."""
 
-            def __init__(self, server, socket_, name,
+            def __init__(self, server, socket_, name, product,
                          sasl_mechanisms, user_credentials,
                          sasl_config_dir, sasl_config_name):
                 """Create a Connection using socket_."""
@@ -706,6 +1339,8 @@ class FakeBroker(threading.Thread):
                     properties['x-sasl-config-dir'] = sasl_config_dir
                 if sasl_config_name:
                     properties['x-sasl-config-name'] = sasl_config_name
+                if product:
+                    properties['properties'] = {'product': product}
 
                 self.connection = server.container.create_connection(
                     name, self, properties)
@@ -827,7 +1462,13 @@ class FakeBroker(threading.Thread):
 
             def send_message(self, message):
                 """Send a message over this link."""
-                self.link.send(message)
+                def pyngus_callback(link, handle, state, info):
+                    if state == pyngus.SenderLink.ACCEPTED:
+                        self.server.sender_link_ack_count += 1
+                    elif state == pyngus.SenderLink.RELEASED:
+                        self.server.sender_link_requeue_count += 1
+
+                self.link.send(message, delivery_callback=pyngus_callback)
 
             def _cleanup(self):
                 if self.routed:
@@ -842,6 +1483,7 @@ class FakeBroker(threading.Thread):
                 self.server.sender_link_count += 1
                 self.server.add_route(self.link.source_address, self)
                 self.routed = True
+                self.server.on_sender_active(sender_link)
 
             def sender_remote_closed(self, sender_link, error):
                 self.link.close()
@@ -864,7 +1506,6 @@ class FakeBroker(threading.Thread):
                                                 event_handler=self)
                 conn.receiver_links.add(self)
                 self.link.open()
-                self.link.add_capacity(10)
 
             def destroy(self):
                 """Destroy the link."""
@@ -880,6 +1521,7 @@ class FakeBroker(threading.Thread):
 
             def receiver_active(self, receiver_link):
                 self.server.receiver_link_count += 1
+                self.server.on_receiver_active(receiver_link)
 
             def receiver_remote_closed(self, receiver_link, error):
                 self.link.close()
@@ -893,19 +1535,14 @@ class FakeBroker(threading.Thread):
 
             def message_received(self, receiver_link, message, handle):
                 """Forward this message out the proper sending link."""
-                if self.server.forward_message(message):
-                    self.link.message_accepted(handle)
-                else:
-                    self.link.message_rejected(handle)
-
+                self.server.forward_message(message, handle, receiver_link)
                 if self.link.capacity < 1:
-                    self.link.add_capacity(10)
+                    self.server.on_credit_exhausted(self.link)
 
-    def __init__(self, server_prefix="exclusive",
-                 broadcast_prefix="broadcast",
-                 group_prefix="unicast",
-                 address_separator=".",
+    def __init__(self, cfg,
                  sock_addr="", sock_port=0,
+                 product=None,
+                 default_exchange="Test-Exchange",
                  sasl_mechanisms="ANONYMOUS",
                  user_credentials=None,
                  sasl_config_dir=None,
@@ -914,10 +1551,8 @@ class FakeBroker(threading.Thread):
         if not pyngus:
             raise AssertionError("pyngus module not present")
         threading.Thread.__init__(self)
-        self._server_prefix = server_prefix + address_separator
-        self._broadcast_prefix = broadcast_prefix + address_separator
-        self._group_prefix = group_prefix + address_separator
-        self._address_separator = address_separator
+        self._config = cfg
+        self._product = product
         self._sasl_mechanisms = sasl_mechanisms
         self._sasl_config_dir = sasl_config_dir
         self._sasl_config_name = sasl_config_name
@@ -928,6 +1563,22 @@ class FakeBroker(threading.Thread):
         self.host, self.port = self._my_socket.getsockname()
         self.container = pyngus.Container("test_server_%s:%d"
                                           % (self.host, self.port))
+
+        # create an addresser using the test client's config and expected
+        # message bus so the broker can parse the message addresses
+        af = AddresserFactory(default_exchange,
+                              cfg.addressing_mode,
+                              legacy_server_prefix=cfg.server_request_prefix,
+                              legacy_broadcast_prefix=cfg.broadcast_prefix,
+                              legacy_group_prefix=cfg.group_request_prefix,
+                              rpc_prefix=cfg.rpc_address_prefix,
+                              notify_prefix=cfg.notify_address_prefix,
+                              multicast=cfg.multicast_address,
+                              unicast=cfg.unicast_address,
+                              anycast=cfg.anycast_address)
+        props = {'product': product} if product else {}
+        self._addresser = af(props)
+
         self._connections = {}
         self._sources = {}
         self._pause = threading.Event()
@@ -941,6 +1592,14 @@ class FakeBroker(threading.Thread):
         self.connection_count = 0
         self.sender_link_count = 0
         self.receiver_link_count = 0
+        self.sender_link_ack_count = 0
+        self.sender_link_requeue_count = 0
+        # log of all messages received by the broker
+        self.message_log = []
+        # callback hooks
+        self.on_sender_active = lambda link: None
+        self.on_receiver_active = lambda link: link.add_capacity(10)
+        self.on_credit_exhausted = lambda link: link.add_capacity(10)
 
     def start(self):
         """Start the server."""
@@ -955,6 +1614,9 @@ class FakeBroker(threading.Thread):
     def pause(self):
         self._pause.clear()
         os.write(self._wakeup_pipe[1], b'!')
+
+    def unpause(self):
+        self._pause.set()
 
     def stop(self, clean=False):
         """Stop the server."""
@@ -1002,6 +1664,7 @@ class FakeBroker(threading.Thread):
                         # create a new Connection for it:
                         name = str(addr)
                         conn = FakeBroker.Connection(self, sock, name,
+                                                     self._product,
                                                      self._sasl_mechanisms,
                                                      self._user_credentials,
                                                      self._sasl_config_dir,
@@ -1069,21 +1732,27 @@ class FakeBroker(threading.Thread):
                 if not self._sources[address]:
                     del self._sources[address]
 
-    def forward_message(self, message):
+    def forward_message(self, message, handle, rlink):
         # returns True if message was routed
+        self.message_log.append(message)
         dest = message.address
         if dest not in self._sources:
+            # can't forward
             self.dropped_count += 1
-            return False
+            # observe magic "don't ack" address
+            if '!no-ack!' not in dest:
+                rlink.message_released(handle)
+            return
+
         LOG.debug("Forwarding [%s]", dest)
-        # route "behavior" determined by prefix:
-        if dest.startswith(self._broadcast_prefix):
+        # route "behavior" determined by address prefix:
+        if self._addresser._is_multicast(dest):
             self.fanout_count += 1
             for link in self._sources[dest]:
                 self.fanout_sent_count += 1
                 LOG.debug("Broadcast to %s", dest)
                 link.send_message(message)
-        elif dest.startswith(self._group_prefix):
+        elif self._addresser._is_anycast(dest):
             # round-robin:
             self.topic_count += 1
             link = self._sources[dest].pop(0)
@@ -1095,4 +1764,4 @@ class FakeBroker(threading.Thread):
             self.direct_count += 1
             LOG.debug("Unicast to %s", dest)
             self._sources[dest][0].send_message(message)
-        return True
+        rlink.message_accepted(handle)
