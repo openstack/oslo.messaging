@@ -34,7 +34,7 @@ class SocketsManager(object):
         self.socket_to_routers = None
 
     def get_hosts(self, target):
-        return self.matchmaker.get_hosts(
+        return self.matchmaker.get_hosts_retry(
             target, zmq_names.socket_type_str(self.listener_type))
 
     @staticmethod

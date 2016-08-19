@@ -18,12 +18,13 @@ import logging
 import six
 
 from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-from oslo_messaging._i18n import _LE
+from oslo_messaging._i18n import _LE, _LI, _LW
 
 LOG = logging.getLogger(__name__)
 
@@ -116,10 +117,25 @@ class TargetUpdater(zmq_updater.UpdaterBase):
                                             self._update_target)
 
     def _update_target(self):
-        self.matchmaker.register(
-            self.target, self.host,
-            zmq_names.socket_type_str(self.socket_type),
-            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
+        try:
+            self.matchmaker.register(
+                self.target, self.host,
+                zmq_names.socket_type_str(self.socket_type),
+                expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
+
+            if self._sleep_for != \
+                    self.conf.oslo_messaging_zmq.zmq_target_update:
+                self._sleep_for = \
+                    self.conf.oslo_messaging_zmq.zmq_target_update
+                LOG.info(_LI("Falling back to the normal update %d sec")
+                         % self._sleep_for)
+
+        except zmq_matchmaker_base.MatchmakerUnavailable:
+            # Update target frequently until first successful update
+            # After matchmaker is back update normally as of config
+            self._sleep_for = 10
+            LOG.warning(_LW("Failed connecting to the Matchmaker, "
+                            "update each %d sec") % self._sleep_for)
 
     def stop(self):
         super(TargetUpdater, self).stop()

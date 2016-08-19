@@ -20,6 +20,7 @@ from oslo_config import cfg
 from six import moves
 
 import oslo_messaging
+from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging.notify import notifier
 from oslo_messaging.tests import utils as test_utils
 
@@ -291,6 +292,8 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         if not self.url:
             self.skipTest("No transport url configured")
 
+        zmq_options.register_opts(conf)
+
         zmq_matchmaker = os.environ.get('ZMQ_MATCHMAKER')
         if zmq_matchmaker:
             self.config(rpc_zmq_matchmaker=zmq_matchmaker,
@@ -305,13 +308,14 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
             self.config(check_timeout=10000, group="matchmaker_redis")
             self.config(wait_timeout=1000, group="matchmaker_redis")
         zmq_use_pub_sub = os.environ.get('ZMQ_USE_PUB_SUB')
-        if zmq_use_pub_sub:
-            self.config(use_pub_sub=zmq_use_pub_sub,
-                        group='oslo_messaging_zmq')
+        self.config(use_pub_sub=zmq_use_pub_sub,
+                    group='oslo_messaging_zmq')
         zmq_use_router_proxy = os.environ.get('ZMQ_USE_ROUTER_PROXY')
-        if zmq_use_router_proxy:
-            self.config(use_router_proxy=zmq_use_router_proxy,
-                        group='oslo_messaging_zmq')
+        self.config(use_router_proxy=zmq_use_router_proxy,
+                    group='oslo_messaging_zmq')
+        zmq_use_acks = os.environ.get('ZMQ_USE_ACKS')
+        self.config(rpc_use_acks=zmq_use_acks,
+                    group='oslo_messaging_zmq')
 
 
 class NotificationFixture(fixtures.Fixture):

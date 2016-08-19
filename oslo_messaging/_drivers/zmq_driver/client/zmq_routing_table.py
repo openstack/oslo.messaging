@@ -12,12 +12,18 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+import retrying
 import time
 
+from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._i18n import _LW
 
 zmq = zmq_async.import_zmq()
+
+LOG = logging.getLogger(__name__)
 
 
 class RoutingTable(object):
@@ -34,13 +40,22 @@ class RoutingTable(object):
         self.routable_hosts = {}
 
     def get_all_hosts(self, target):
-        self._update_routing_table(target)
-        return list(self.routable_hosts.get(str(target), []))
+        self._update_routing_table(
+            target,
+            get_hosts=self.matchmaker.get_hosts_fanout,
+            get_hosts_retry=self.matchmaker.get_hosts_fanout_retry)
+        return self.routable_hosts.get(str(target), [])
 
     def get_routable_host(self, target):
-        self._update_routing_table(target)
-        hosts_for_target = self.routable_hosts[str(target)]
-        host = hosts_for_target.pop()
+        self._update_routing_table(
+            target,
+            get_hosts=self.matchmaker.get_hosts,
+            get_hosts_retry=self.matchmaker.get_hosts_retry)
+        hosts_for_target = self.routable_hosts.get(str(target))
+        if not hosts_for_target:
+            # Matchmaker doesn't contain any target
+            return None
+        host = hosts_for_target.pop(0)
         if not hosts_for_target:
             self._renew_routable_hosts(target)
         return host
@@ -49,18 +64,37 @@ class RoutingTable(object):
         return 0 <= self.conf.oslo_messaging_zmq.zmq_target_expire \
             <= time.time() - tm
 
-    def _update_routing_table(self, target):
+    def _update_routing_table(self, target, get_hosts, get_hosts_retry):
         routing_record = self.routing_table.get(str(target))
         if routing_record is None:
-            self._fetch_hosts(target)
+            self._fetch_hosts(target, get_hosts, get_hosts_retry)
             self._renew_routable_hosts(target)
         elif self._is_tm_expired(routing_record[1]):
-            self._fetch_hosts(target)
+            self._fetch_hosts(target, get_hosts, get_hosts_retry)
 
-    def _fetch_hosts(self, target):
-        self.routing_table[str(target)] = (self.matchmaker.get_hosts(
-            target, zmq_names.socket_type_str(zmq.DEALER)), time.time())
+    def _fetch_hosts(self, target, get_hosts, get_hosts_retry):
+        key = str(target)
+        if key not in self.routing_table:
+            try:
+                self.routing_table[key] = (get_hosts_retry(
+                    target, zmq_names.socket_type_str(zmq.DEALER)),
+                    time.time())
+            except retrying.RetryError:
+                LOG.warning(_LW("Matchmaker contains no hosts for target %s")
+                            % key)
+        else:
+            try:
+                hosts = get_hosts(
+                    target, zmq_names.socket_type_str(zmq.DEALER))
+                self.routing_table[key] = (hosts, time.time())
+            except zmq_matchmaker_base.MatchmakerUnavailable:
+                LOG.warning(_LW("Matchmaker contains no hosts for target %s")
+                            % key)
 
     def _renew_routable_hosts(self, target):
-        hosts, _ = self.routing_table[str(target)]
-        self.routable_hosts[str(target)] = list(hosts)
+        key = str(target)
+        try:
+            hosts, _ = self.routing_table[key]
+            self.routable_hosts[key] = list(hosts)
+        except KeyError:
+            self.routable_hosts[key] = []
