@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -16,6 +15,7 @@
 import testscenarios
 
 import oslo_messaging
+from oslo_messaging import rpc
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
@@ -24,92 +24,161 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class _FakeEndpoint(object):
-
     def __init__(self, target=None):
         self.target = target
 
     def foo(self, ctxt, **kwargs):
         pass
 
+    @rpc.expose
     def bar(self, ctxt, **kwargs):
+        pass
+
+    def _foobar(self, ctxt, **kwargs):
         pass
 
 
 class TestDispatcher(test_utils.BaseTestCase):
-
     scenarios = [
         ('no_endpoints',
          dict(endpoints=[],
+              access_policy=None,
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo'),
+              exposed_methods=['foo', 'bar', '_foobar'],
               success=False, ex=oslo_messaging.UnsupportedVersion)),
         ('default_target',
          dict(endpoints=[{}],
+              access_policy=None,
               dispatch_to=dict(endpoint=0, method='foo'),
               ctxt={}, msg=dict(method='foo'),
+              exposed_methods=['foo', 'bar', '_foobar'],
               success=True, ex=None)),
         ('default_target_ctxt_and_args',
          dict(endpoints=[{}],
+              access_policy=oslo_messaging.LegacyRPCAccessPolicy,
               dispatch_to=dict(endpoint=0, method='bar'),
               ctxt=dict(user='bob'), msg=dict(method='bar',
                                               args=dict(blaa=True)),
+              exposed_methods=['foo', 'bar', '_foobar'],
               success=True, ex=None)),
         ('default_target_namespace',
          dict(endpoints=[{}],
+              access_policy=oslo_messaging.LegacyRPCAccessPolicy,
               dispatch_to=dict(endpoint=0, method='foo'),
               ctxt={}, msg=dict(method='foo', namespace=None),
+              exposed_methods=['foo', 'bar', '_foobar'],
               success=True, ex=None)),
         ('default_target_version',
          dict(endpoints=[{}],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=dict(endpoint=0, method='foo'),
               ctxt={}, msg=dict(method='foo', version='1.0'),
+              exposed_methods=['foo', 'bar'],
               success=True, ex=None)),
         ('default_target_no_such_method',
          dict(endpoints=[{}],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=None,
               ctxt={}, msg=dict(method='foobar'),
+              exposed_methods=['foo', 'bar'],
               success=False, ex=oslo_messaging.NoSuchMethod)),
         ('namespace',
          dict(endpoints=[{}, dict(namespace='testns')],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=dict(endpoint=1, method='foo'),
               ctxt={}, msg=dict(method='foo', namespace='testns'),
+              exposed_methods=['foo', 'bar'],
               success=True, ex=None)),
         ('namespace_mismatch',
          dict(endpoints=[{}, dict(namespace='testns')],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo', namespace='nstest'),
+              exposed_methods=['foo', 'bar'],
               success=False, ex=oslo_messaging.UnsupportedVersion)),
         ('version',
          dict(endpoints=[dict(version='1.5'), dict(version='3.4')],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=dict(endpoint=1, method='foo'),
               ctxt={}, msg=dict(method='foo', version='3.2'),
+              exposed_methods=['foo', 'bar'],
               success=True, ex=None)),
         ('version_mismatch',
          dict(endpoints=[dict(version='1.5'), dict(version='3.0')],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo', version='3.2'),
+              exposed_methods=['foo', 'bar'],
               success=False, ex=oslo_messaging.UnsupportedVersion)),
         ('message_in_null_namespace_with_multiple_namespaces',
          dict(endpoints=[dict(namespace='testns',
                               legacy_namespaces=[None])],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=dict(endpoint=0, method='foo'),
               ctxt={}, msg=dict(method='foo', namespace=None),
+              exposed_methods=['foo', 'bar'],
               success=True, ex=None)),
         ('message_in_wrong_namespace_with_multiple_namespaces',
          dict(endpoints=[dict(namespace='testns',
                               legacy_namespaces=['second', None])],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
               dispatch_to=None,
               ctxt={}, msg=dict(method='foo', namespace='wrong'),
+              exposed_methods=['foo', 'bar'],
               success=False, ex=oslo_messaging.UnsupportedVersion)),
+        ('message_with_endpoint_no_private_and_public_method',
+         dict(endpoints=[dict(namespace='testns',
+                              legacy_namespaces=['second', None])],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
+              dispatch_to=dict(endpoint=0, method='foo'),
+              ctxt={}, msg=dict(method='foo', namespace='testns'),
+              exposed_methods=['foo', 'bar'],
+              success=True, ex=None)),
+        ('message_with_endpoint_no_private_and_private_method',
+         dict(endpoints=[dict(namespace='testns',
+                              legacy_namespaces=['second', None], )],
+              access_policy=oslo_messaging.DefaultRPCAccessPolicy,
+              dispatch_to=dict(endpoint=0, method='_foobar'),
+              ctxt={}, msg=dict(method='_foobar', namespace='testns'),
+              exposed_methods=['foo', 'bar'],
+              success=False, ex=oslo_messaging.NoSuchMethod)),
+        ('message_with_endpoint_explicitly_exposed_without_exposed_method',
+         dict(endpoints=[dict(namespace='testns',
+                              legacy_namespaces=['second', None], )],
+              access_policy=oslo_messaging.ExplicitRPCAccessPolicy,
+              dispatch_to=dict(endpoint=0, method='foo'),
+              ctxt={}, msg=dict(method='foo', namespace='testns'),
+              exposed_methods=['bar'],
+              success=False, ex=oslo_messaging.NoSuchMethod)),
+        ('message_with_endpoint_explicitly_exposed_with_exposed_method',
+         dict(endpoints=[dict(namespace='testns',
+                              legacy_namespaces=['second', None], )],
+              access_policy=oslo_messaging.ExplicitRPCAccessPolicy,
+              dispatch_to=dict(endpoint=0, method='bar'),
+              ctxt={}, msg=dict(method='bar', namespace='testns'),
+              exposed_methods=['bar'],
+              success=True, ex=None)),
     ]
 
     def test_dispatcher(self):
-        endpoints = [mock.Mock(spec=_FakeEndpoint,
-                               target=oslo_messaging.Target(**e))
-                     for e in self.endpoints]
+
+        def _set_endpoint_mock_properties(endpoint):
+            endpoint.foo = mock.Mock(spec=dir(_FakeEndpoint.foo))
+            # mock doesn't pick up the decorated method.
+            endpoint.bar = mock.Mock(spec=dir(_FakeEndpoint.bar))
+            endpoint.bar.exposed = mock.PropertyMock(return_value=True)
+            endpoint._foobar = mock.Mock(spec=dir(_FakeEndpoint._foobar))
+
+            return endpoint
+
+        endpoints = [_set_endpoint_mock_properties(mock.Mock(
+            spec=_FakeEndpoint, target=oslo_messaging.Target(**e)))
+            for e in self.endpoints]
 
         serializer = None
-        dispatcher = oslo_messaging.RPCDispatcher(endpoints, serializer)
+        dispatcher = oslo_messaging.RPCDispatcher(endpoints, serializer,
+                                                  self.access_policy)
 
         incoming = mock.Mock(ctxt=self.ctxt, message=self.msg)
 
@@ -130,22 +199,23 @@ class TestDispatcher(test_utils.BaseTestCase):
                     self.assertEqual(self.msg.get('method'), ex.method)
         else:
             self.assertTrue(self.success,
-                            "Not expected success of operation durung testing")
+                            "Unexpected success of operation during testing")
             self.assertIsNotNone(res)
 
         for n, endpoint in enumerate(endpoints):
-            for method_name in ['foo', 'bar']:
+            for method_name in self.exposed_methods:
                 method = getattr(endpoint, method_name)
                 if self.dispatch_to and n == self.dispatch_to['endpoint'] and \
-                        method_name == self.dispatch_to['method']:
+                        method_name == self.dispatch_to['method'] and \
+                        method_name in self.exposed_methods:
                     method.assert_called_once_with(
                         self.ctxt, **self.msg.get('args', {}))
                 else:
-                    self.assertEqual(0, method.call_count)
+                    self.assertEqual(0, method.call_count,
+                                     'method: {}'.format(method))
 
 
 class TestSerializer(test_utils.BaseTestCase):
-
     scenarios = [
         ('no_args_or_retval',
          dict(ctxt={}, dctxt={}, args={}, retval=None)),
@@ -174,7 +244,7 @@ class TestSerializer(test_utils.BaseTestCase):
         for arg in self.args:
             serializer.deserialize_entity(self.dctxt, arg).AndReturn('d' + arg)
 
-        serializer.serialize_entity(self.dctxt, self.retval).\
+        serializer.serialize_entity(self.dctxt, self.retval). \
             AndReturn('s' + self.retval if self.retval else None)
 
         self.mox.ReplayAll()

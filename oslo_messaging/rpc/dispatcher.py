@@ -18,17 +18,24 @@
 
 __all__ = [
     'NoSuchMethod',
+    'RPCAccessPolicyBase',
+    'LegacyRPCAccessPolicy',
+    'DefaultRPCAccessPolicy',
+    'ExplicitRPCAccessPolicy',
     'RPCDispatcher',
     'RPCDispatcherError',
     'UnsupportedVersion',
     'ExpectedException',
 ]
 
+from abc import ABCMeta
+from abc import abstractmethod
 import logging
 import sys
 
 import six
 
+from debtcollector.updating import updated_kwarg_default_value
 from oslo_messaging import _utils as utils
 from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
@@ -74,6 +81,52 @@ class UnsupportedVersion(RPCDispatcherError):
         self.method = method
 
 
+@six.add_metaclass(ABCMeta)
+class RPCAccessPolicyBase(object):
+    """Determines which endpoint methods may be invoked via RPC"""
+
+    @abstractmethod
+    def is_allowed(self, endpoint, method):
+        """Applies an access policy to the rpc method
+        :param endpoint: the instance of a rpc endpoint
+        :param method: the method of the endpoint
+        :return: True if the method may be invoked via RPC, else False.
+        """
+
+
+class LegacyRPCAccessPolicy(RPCAccessPolicyBase):
+    """The legacy access policy allows RPC access to all callable endpoint
+    methods including private methods (methods prefixed by '_')
+    """
+
+    def is_allowed(self, endpoint, method):
+        return True
+
+
+class DefaultRPCAccessPolicy(RPCAccessPolicyBase):
+    """The default access policy prevents RPC calls to private methods
+    (methods prefixed by '_')
+
+    .. note::
+
+        LegacyRPCAdapterPolicy currently needs to be the default while we have
+        projects that rely on exposing private methods.
+
+    """
+
+    def is_allowed(self, endpoint, method):
+        return not method.startswith('_')
+
+
+class ExplicitRPCAccessPolicy(RPCAccessPolicyBase):
+    """Policy which requires decorated endpoint methods to allow dispatch"""
+
+    def is_allowed(self, endpoint, method):
+        if hasattr(endpoint, method):
+            return hasattr(getattr(endpoint, method), 'exposed')
+        return False
+
+
 class RPCDispatcher(dispatcher.DispatcherBase):
     """A message dispatcher which understands RPC messages.
 
@@ -86,13 +139,24 @@ class RPCDispatcher(dispatcher.DispatcherBase):
     in the message and matches those against a list of available endpoints.
 
     Endpoints may have a target attribute describing the namespace and version
-    of the methods exposed by that object. All public methods on an endpoint
-    object are remotely invokable by clients.
+    of the methods exposed by that object.
+
+    The RPCDispatcher may have an access_policy attribute which determines
+    which of the endpoint methods are to be dispatched.
+    The default access_policy dispatches all public methods
+    on an endpoint object.
 
 
     """
-
-    def __init__(self, endpoints, serializer):
+    @updated_kwarg_default_value('access_policy', None, DefaultRPCAccessPolicy,
+                                 message='access_policy defaults to '
+                                         'LegacyRPCAccessPolicy which '
+                                         'exposes private methods. Explicitly '
+                                         'set access_policy to '
+                                         'DefaultRPCAccessPolicy or '
+                                         'ExplicitRPCAccessPolicy.',
+                                 version='?')
+    def __init__(self, endpoints, serializer, access_policy=None):
         """Construct a rpc server dispatcher.
 
         :param endpoints: list of endpoint objects for dispatching to
@@ -102,6 +166,16 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
         self._default_target = msg_target.Target()
+        if access_policy is not None:
+            if issubclass(access_policy, RPCAccessPolicyBase):
+                self.access_policy = access_policy()
+            else:
+                raise TypeError('access_policy must be a subclass of '
+                                'RPCAccessPolicyBase')
+        else:
+            # TODO(pvinci): Change to DefaultRPCAccessPolicy when setting to
+            # DefaultRCPAccessPolicy no longer breaks in tempest tests.
+            self.access_policy = LegacyRPCAccessPolicy()
 
     @staticmethod
     def _is_namespace(target, namespace):
@@ -147,7 +221,8 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                 continue
 
             if hasattr(endpoint, method):
-                return self._do_dispatch(endpoint, method, ctxt, args)
+                if self.access_policy.is_allowed(endpoint, method):
+                    return self._do_dispatch(endpoint, method, ctxt, args)
 
             found_compatible = True
 

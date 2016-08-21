@@ -18,6 +18,10 @@ __all__ = [
     'ExpectedException',
     'NoSuchMethod',
     'RPCClient',
+    'RPCAccessPolicyBase',
+    'LegacyRPCAccessPolicy',
+    'DefaultRPCAccessPolicy',
+    'ExplicitRPCAccessPolicy',
     'RPCDispatcher',
     'RPCDispatcherError',
     'RPCVersionCapError',
@@ -25,6 +29,7 @@ __all__ = [
     'UnsupportedVersion',
     'expected_exceptions',
     'get_rpc_server',
+    'expose'
 ]
 
 from .client import *
