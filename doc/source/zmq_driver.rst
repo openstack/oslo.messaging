@@ -105,10 +105,10 @@ communications.
 
 The MatchMaker is pluggable and it provides two different MatchMaker classes.
 
-DummyMatchMaker: default matchmaker driver for all-in-one scenario (messages
-are sent to itself).
+MatchmakerDummy: default matchmaker driver for all-in-one scenario (messages
+are sent to itself; used mainly for testing).
 
-RedisMatchMaker: loads the hash table from a remote Redis server, supports
+MatchmakerRedis: loads the hash table from a remote Redis server, supports
 dynamic host/topic registrations, host expiration, and hooks for consuming
 applications to acknowledge or neg-acknowledge topic.host service availability.
 
@@ -131,7 +131,7 @@ MatchMaker data source is stored in files or Redis server discussed in the
 previous section. How to make up the database is the key issue for making ZeroMQ
 driver work.
 
-If deploying the RedisMatchMaker, a Redis server is required. Each (K, V) pair
+If deploying the MatchmakerRedis, a Redis server is required. Each (K, V) pair
 stored in Redis is that the key is a base topic and the corresponding values are
 hostname arrays to be sent to.
 
@@ -176,7 +176,18 @@ nodes. The parameters for the script oslo-messaging-zmq-proxy should be::
 
         oslo-messaging-zmq-proxy
             --config-file /etc/oslo/zeromq.conf
-            --log-file /var/log/oslo/zmq-router-proxy.log
+            --log-file /var/log/oslo/zeromq-router-proxy.log
+            --host node-123
+            --frontend-port 50001
+            --backend-port 50002
+            --publisher-port 50003
+            --debug True
+
+Command line arguments like host, frontend_port, backend_port and publisher_port
+respectively can also be set in [zmq_proxy_opts] section of a configuration
+file (i.e., /etc/oslo/zeromq.conf). All arguments are optional.
+
+Port value of 0 means random port (see the next section for more details).
 
 Fanout-based patterns like CAST+Fanout and notifications always use proxy
 as they act over PUB/SUB, 'use_pub_sub' option defaults to true. In such case
@@ -216,7 +227,8 @@ For example::
         rpc_zmq_bind_address = *
 
 Currently zmq driver uses dynamic port binding mechanism, which means that
-each listener will allocate port of a random number. Ports range is controlled
+each listener will allocate port of a random number (static, i.e. fixed, ports
+may only be used for sockets inside proxies now). Ports range is controlled
 by two options 'rpc_zmq_min_port' and 'rpc_zmq_max_port'. Change them to
 restrict current service's port binding range. 'rpc_zmq_bind_port_retries'
 controls number of retries before 'ports range exceeded' failure.
