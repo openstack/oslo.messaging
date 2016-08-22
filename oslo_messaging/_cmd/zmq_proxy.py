@@ -42,33 +42,36 @@ def main():
         usage=USAGE
     )
 
-    parser.add_argument('--config-file', dest='config_file', type=str,
+    parser.add_argument('-c', '--config-file', dest='config_file', type=str,
                         help='Path to configuration file')
+    parser.add_argument('-l', '--log-file', dest='log_file', type=str,
+                        help='Path to log file')
 
-    parser.add_argument('--host', dest='host', type=str,
+    parser.add_argument('-H', '--host', dest='host', type=str,
                         help='Host FQDN for current proxy')
-    parser.add_argument('--frontend-port', dest='frontend_port', type=int,
+    parser.add_argument('-f', '--frontend-port', dest='frontend_port',
+                        type=int,
                         help='Front-end ROUTER port number')
-    parser.add_argument('--backend-port', dest='backend_port', type=int,
+    parser.add_argument('-b', '--backend-port', dest='backend_port', type=int,
                         help='Back-end ROUTER port number')
-    parser.add_argument('--publisher-port', dest='publisher_port', type=int,
-                        help='Back-end PUBLISHER port number')
+    parser.add_argument('-p', '--publisher-port', dest='publisher_port',
+                        type=int,
+                        help='Front-end PUBLISHER port number')
 
     parser.add_argument('-d', '--debug', dest='debug', type=bool,
                         default=False,
-                        help="Turn on DEBUG logging level instead of INFO")
+                        help='Turn on DEBUG logging level instead of INFO')
 
     args = parser.parse_args()
 
     if args.config_file:
-        cfg.CONF(["--config-file", args.config_file])
+        cfg.CONF(['--config-file', args.config_file])
 
-    log_level = logging.INFO
-    if args.debug:
-        log_level = logging.DEBUG
-    logging.basicConfig(level=log_level,
-                        format='%(asctime)s %(name)s '
-                               '%(levelname)-8s %(message)s')
+    log_kwargs = {'level': logging.DEBUG if args.debug else logging.INFO,
+                  'format': '%(asctime)s %(name)s %(levelname)-8s %(message)s'}
+    if args.log_file:
+        log_kwargs.update({'filename': args.log_file})
+    logging.basicConfig(**log_kwargs)
 
     if args.host:
         CONF.zmq_proxy_opts.host = args.host
