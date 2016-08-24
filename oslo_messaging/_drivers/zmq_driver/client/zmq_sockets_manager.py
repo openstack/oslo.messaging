@@ -76,7 +76,8 @@ class SocketsManager(object):
         if self.socket_to_publishers is not None:
             return self.socket_to_publishers
         self.socket_to_publishers = zmq_socket.ZmqSocket(
-            self.conf, self.zmq_context, self.socket_type)
+            self.conf, self.zmq_context, self.socket_type,
+            immediate=self.conf.oslo_messaging_zmq.zmq_immediate)
         publishers = self.matchmaker.get_publishers()
         for pub_address, router_address in publishers:
             self.socket_to_publishers.connect_to_host(router_address)
@@ -86,7 +87,8 @@ class SocketsManager(object):
         if self.socket_to_routers is not None:
             return self.socket_to_routers
         self.socket_to_routers = zmq_socket.ZmqSocket(
-            self.conf, self.zmq_context, self.socket_type)
+            self.conf, self.zmq_context, self.socket_type,
+            immediate=self.conf.oslo_messaging_zmq.zmq_immediate)
         routers = self.matchmaker.get_routers()
         for router_address in routers:
             self.socket_to_routers.connect_to_host(router_address)
