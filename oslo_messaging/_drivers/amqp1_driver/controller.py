@@ -192,9 +192,9 @@ class RPCCallTask(SendTask):
     the destination.
     """
 
-    def __init__(self, target, message, deadline, retry):
+    def __init__(self, target, message, deadline, retry, wait_for_ack):
         super(RPCCallTask, self).__init__("RPC Call", message, target,
-                                          deadline, retry, wait_for_ack=True)
+                                          deadline, retry, wait_for_ack)
         self._reply_link = None
         self._reply_msg = None
         self._msg_id = None

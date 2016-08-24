@@ -223,5 +223,19 @@ amqp1_opts = [
     cfg.IntOpt('notify_server_credit',
                default=100,
                min=1,
-               help='Window size for incoming Notification messages')
+               help='Window size for incoming Notification messages'),
+
+    # Settlement control
+
+    cfg.MultiStrOpt('pre_settled',
+                    default=['rpc-cast'],
+                    help="Send messages of this type pre-settled.\n"
+                    "Pre-settled messages will not receive acknowledgement\n"
+                    "from the peer. Note well: pre-settled messages may be\n"
+                    "silently discarded if the delivery fails.\n"
+                    "Permitted values:\n"
+                    "'rpc-call' - send RPC Calls pre-settled\n"
+                    "'rpc-reply'- send RPC Replies pre-settled\n"
+                    "'rpc-cast' - Send RPC Casts pre-settled\n"
+                    "'notify'   - Send Notifications pre-settled\n")
 ]

@@ -321,8 +321,10 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
     def test_send_not_acked(self):
         """Verify exception thrown if send Nacked."""
+        self.config(pre_settled=[],
+                    group="oslo_messaging_amqp")
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
-        # TODO(kgiusti): update when in config:
+        # set this directly so we can use a value < minimum allowed
         driver._default_send_timeout = 2
         target = oslo_messaging.Target(topic="!no-ack!")
 
@@ -332,6 +334,23 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           {"context": "whatever"},
                           {"method": "drop"},
                           wait_for_reply=False)
+        driver.cleanup()
+
+    def test_no_ack_cast(self):
+        """Verify no exception is thrown if acks are turned off"""
+        # set casts to ignore ack
+        self.config(pre_settled=['rpc-cast'],
+                    group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        # set this directly so we can use a value < minimum allowed
+        driver._default_send_timeout = 2
+        target = oslo_messaging.Target(topic="!no-ack!")
+
+        # the broker will silently discard this cast, but since ack'ing is
+        # disabled the send does not fail
+        driver.send(target, {"context": "whatever"},
+                    {"method": "drop"},
+                    wait_for_reply=False)
         driver.cleanup()
 
     def test_call_late_reply(self):
@@ -540,13 +559,26 @@ class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
 
     def test_notification_not_acked(self):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
-        # TODO(kgiusti): update when in config:
+        # set this directly so we can use a value < minimum allowed
         driver._default_notify_timeout = 2
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           driver.send_notification,
                           oslo_messaging.Target(topic="!no-ack!"),
                           "context", {'target': "!no-ack!"},
                           2.0)
+        driver.cleanup()
+
+    def test_no_ack_notification(self):
+        """Verify no exception is thrown if acks are turned off"""
+        # add a couple of illegal values for coverage of the warning
+        self.config(pre_settled=['notify', 'fleabag', 'poochie'],
+                    group="oslo_messaging_amqp")
+
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        # set this directly so we can use a value < minimum allowed
+        driver._default_notify_timeout = 2
+        driver.send_notification(oslo_messaging.Target(topic="!no-ack!"),
+                                 "context", {'target': "!no-ack!"}, 2.0)
         driver.cleanup()
 
 

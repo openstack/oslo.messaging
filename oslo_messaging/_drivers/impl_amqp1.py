@@ -107,11 +107,12 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
                       self._correlation_id)
             driver = self.listener.driver
             deadline = compute_timeout(driver._default_reply_timeout)
+            ack = not driver._pre_settle_reply
             task = controller.SendTask("RPC Reply", response, self._reply_to,
                                        # analogous to kombu missing dest t/o:
                                        deadline,
                                        retry=0,
-                                       wait_for_ack=True)
+                                       wait_for_ack=ack)
             driver._ctrl.add_task(task)
             rc = task.wait()
             if rc:
@@ -225,6 +226,18 @@ class ProtonDriver(base.BaseDriver):
         self._default_send_timeout = opt_name.default_send_timeout
         self._default_notify_timeout = opt_name.default_notify_timeout
 
+        # which message types should be sent pre-settled?
+        ps = [s.lower() for s in opt_name.pre_settled]
+        self._pre_settle_call = 'rpc-call' in ps
+        self._pre_settle_reply = 'rpc-reply' in ps
+        self._pre_settle_cast = 'rpc-cast' in ps
+        self._pre_settle_notify = 'notify' in ps
+        bad_opts = set(ps).difference(['rpc-call', 'rpc-reply',
+                                      'rpc-cast', 'notify'])
+        if bad_opts:
+            LOG.warning(_LW("Ignoring unrecognized pre_settle value(s): %s"),
+                        " ".join(bad_opts))
+
     def _ensure_connect_called(func):
         """Causes a new controller to be created when the messaging service is
         first used by the current process. It is safe to push tasks to it
@@ -297,10 +310,13 @@ class ProtonDriver(base.BaseDriver):
             expire = compute_timeout(self._default_send_timeout)
         LOG.debug("Sending message to %s", target)
         if wait_for_reply:
-            task = controller.RPCCallTask(target, request, expire, retry)
+            ack = not self._pre_settle_call
+            task = controller.RPCCallTask(target, request, expire, retry,
+                                          wait_for_ack=ack)
         else:
+            ack = not self._pre_settle_cast
             task = controller.SendTask("RPC Cast", request, target, expire,
-                                       retry, wait_for_ack=True)
+                                       retry, wait_for_ack=ack)
         self._ctrl.add_task(task)
 
         reply = task.wait()
@@ -340,8 +356,9 @@ class ProtonDriver(base.BaseDriver):
         # TODO(kgiusti) should raise NotImplemented if not broker backend
         LOG.debug("Send notification to %s", target)
         deadline = compute_timeout(self._default_notify_timeout)
+        ack = not self._pre_settle_notify
         task = controller.SendTask("Notify", request, target,
-                                   deadline, retry, wait_for_ack=True,
+                                   deadline, retry, wait_for_ack=ack,
                                    notification=True)
         self._ctrl.add_task(task)
         rc = task.wait()
