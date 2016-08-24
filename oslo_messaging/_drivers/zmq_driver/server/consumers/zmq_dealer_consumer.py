@@ -13,6 +13,9 @@
 #    under the License.
 
 import logging
+import uuid
+
+import six
 
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
@@ -21,6 +24,7 @@ from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver.server import zmq_ttl_cache
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
@@ -47,9 +51,15 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
             conf, self.matchmaker, self.socket)
         LOG.info(_LI("[%s] Run DEALER consumer"), self.host)
 
+    def _generate_identity(self):
+        return six.b(self.conf.oslo_messaging_zmq.rpc_zmq_host + "/" +
+                     zmq_address.target_to_key(self.target) + "/" +
+                     str(uuid.uuid4()))
+
     def subscribe_socket(self, socket_type):
         try:
-            socket = self.sockets_manager.get_socket_to_routers()
+            socket = self.sockets_manager.get_socket_to_routers(
+                self._generate_identity())
             self.sockets.append(socket)
             self.host = socket.handle.identity
             self.poller.register(socket, self.receive_message)

@@ -35,10 +35,11 @@ def prefix_str(key, listener_type):
     return listener_type + "_" + key
 
 
-def target_to_key(target, listener_type):
+def target_to_key(target, listener_type=None):
 
     def prefix(key):
-        return prefix_str(key, listener_type)
+        return prefix_str(key, listener_type) if listener_type is not None \
+            else key
 
     if target.topic and target.server:
         attributes = ['topic', 'server']

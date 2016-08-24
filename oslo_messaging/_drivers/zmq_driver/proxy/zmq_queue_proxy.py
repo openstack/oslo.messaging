@@ -105,10 +105,12 @@ class UniversalQueueProxy(object):
         socket.send(b'', zmq.SNDMORE)
         socket.send(reply_id, zmq.SNDMORE)
         socket.send(six.b(str(message_type)), zmq.SNDMORE)
-        LOG.debug("Dispatching %(msg_type)s message %(msg_id)s - to %(rkey)s" %
+        LOG.debug("Dispatching %(msg_type)s message %(msg_id)s - from %(rid)s "
+                  "to -> %(rkey)s" %
                   {"msg_type": zmq_names.message_type_str(message_type),
                    "msg_id": message_id,
-                   "rkey": routing_key})
+                   "rkey": routing_key,
+                   "rid": reply_id})
         socket.send_multipart(multipart_message)
 
     def cleanup(self):

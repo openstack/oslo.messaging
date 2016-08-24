@@ -39,7 +39,7 @@ class ZmqSocket(object):
     }
 
     def __init__(self, conf, context, socket_type, immediate,
-                 high_watermark=0):
+                 high_watermark=0, identity=None):
         self.conf = conf
         self.context = context
         self.socket_type = socket_type
@@ -53,7 +53,8 @@ class ZmqSocket(object):
         self.handle.setsockopt(zmq.LINGER, self.close_linger)
         # Put messages to only connected queues
         self.handle.setsockopt(zmq.IMMEDIATE, 1 if immediate else 0)
-        self.handle.identity = six.b(str(uuid.uuid4()))
+        self.handle.identity = six.b(str(uuid.uuid4())) if identity is None \
+            else identity
         self.connections = set()
 
     def _get_serializer(self, serialization):
