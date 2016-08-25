@@ -23,13 +23,13 @@ class GreenPoller(zmq_poller.ZmqPoller):
 
     def __init__(self):
         self.incoming_queue = eventlet.queue.LightQueue()
-        self.green_pool = eventlet.GreenPool()
         self.thread_by_socket = {}
 
     def register(self, socket, recv_method=None):
         if socket not in self.thread_by_socket:
-            self.thread_by_socket[socket] = self.green_pool.spawn(
-                self._socket_receive, socket, recv_method)
+            self.thread_by_socket[socket] = eventlet.spawn(
+                self._socket_receive, socket, recv_method
+            )
 
     def unregister(self, socket):
         thread = self.thread_by_socket.pop(socket, None)
@@ -54,7 +54,6 @@ class GreenPoller(zmq_poller.ZmqPoller):
     def close(self):
         for thread in self.thread_by_socket.values():
             thread.kill()
-
         self.thread_by_socket = {}
 
 
