@@ -11,6 +11,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import os
 import time
 import uuid
 
@@ -331,6 +332,13 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(expected[3], actual[2])
 
     def test_simple_batch(self):
+        if self.url.startswith("amqp:"):
+            backend = os.environ.get("AMQP1_BACKEND")
+            if backend == "qdrouterd":
+                # end-to-end acknowledgement with router intermediary
+                # sender pends until batch_size or timeout reached
+                self.skipTest("qdrouterd backend")
+
         listener = self.useFixture(
             utils.BatchNotificationFixture(self.conf, self.url,
                                            ['test_simple_batch'],
