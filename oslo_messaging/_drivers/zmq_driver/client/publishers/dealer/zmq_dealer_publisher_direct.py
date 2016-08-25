@@ -40,19 +40,19 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
         super(DealerPublisherDirect, self).__init__(conf, matchmaker, sender,
                                                     receiver)
 
-    def connect_socket(self, request):
+    def _connect_socket(self, request):
         try:
             return self.sockets_manager.get_socket(request.target)
         except retrying.RetryError:
             return None
 
-    def _send_non_blocking(self, request):
-        socket = self.connect_socket(request)
+    def _send_request(self, request):
+        socket = self._connect_socket(request)
         if not socket:
-            return
-
+            return None
         if request.msg_type in zmq_names.MULTISEND_TYPES:
             for _ in range(socket.connections_count()):
                 self.sender.send(socket, request)
         else:
             self.sender.send(socket, request)
+        return socket

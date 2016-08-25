@@ -61,9 +61,11 @@ class AckManagerProxy(AckManagerBase):
         )
 
     def _wait_for_ack(self, ack_future):
-        request, socket = ack_future.args
+        request = ack_future.request
         retries = \
             request.retry or self.conf.oslo_messaging_zmq.rpc_retry_attempts
+        if retries is None:
+            retries = -1
         timeout = self.conf.oslo_messaging_zmq.rpc_ack_timeout_base
 
         done = False
@@ -72,8 +74,9 @@ class AckManagerProxy(AckManagerBase):
                 reply_id, response = ack_future.result(timeout=timeout)
                 done = True
                 assert response is None, "Ack expected!"
-                assert reply_id == request.routing_key, \
-                    "Ack from recipient expected!"
+                if reply_id is not None:
+                    assert reply_id == request.routing_key, \
+                        "Ack from recipient expected!"
             except AssertionError:
                 LOG.error(_LE("Message format error in ack for %s"),
                           request.message_id)
@@ -82,10 +85,10 @@ class AckManagerProxy(AckManagerBase):
                                 "for %(msg_id)s"),
                             {"tout": timeout,
                              "msg_id": request.message_id})
-                if retries is None or retries != 0:
-                    if retries is not None and retries > 0:
+                if retries != 0:
+                    if retries > 0:
                         retries -= 1
-                    self.sender.send(socket, request)
+                    self.sender.send(ack_future.socket, request)
                     timeout *= \
                         self.conf.oslo_messaging_zmq.rpc_ack_timeout_multiplier
                 else:
@@ -93,18 +96,35 @@ class AckManagerProxy(AckManagerBase):
                                 request.message_id)
                     done = True
 
-        self.receiver.untrack_request(request)
+        if request.msg_type != zmq_names.CALL_TYPE:
+            self.receiver.untrack_request(request)
 
-    def _get_ack_future(self, request):
-        socket = self.publisher.connect_socket(request)
+    def _send_request_and_get_ack_future(self, request):
+        socket = self.publisher._send_request(request)
+        if not socket:
+            return None
         self.receiver.register_socket(socket)
         ack_future = self.receiver.track_request(request)[zmq_names.ACK_TYPE]
-        ack_future.args = request, socket
+        ack_future.request = request
+        ack_future.socket = socket
         return ack_future
 
+    def send_call(self, request):
+        ack_future = self._send_request_and_get_ack_future(request)
+        if not ack_future:
+            self.publisher._raise_timeout(request)
+        self._pool.submit(self._wait_for_ack, ack_future)
+        try:
+            return self.publisher._recv_reply(request, ack_future.socket)
+        finally:
+            if not ack_future.done():
+                ack_future.set_result((None, None))
+
     def send_cast(self, request):
-        self.publisher.send_cast(request)
-        self._pool.submit(self._wait_for_ack, self._get_ack_future(request))
+        ack_future = self._send_request_and_get_ack_future(request)
+        if not ack_future:
+            return
+        self._pool.submit(self._wait_for_ack, ack_future)
 
     def cleanup(self):
         self._pool.shutdown(wait=True)

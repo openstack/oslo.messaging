@@ -12,11 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import abc
 from concurrent import futures
 import logging
 
-import oslo_messaging
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver.client.publishers \
     import zmq_publisher_base
@@ -41,27 +39,17 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
         super(DealerPublisherBase, self).__init__(sockets_manager, sender,
                                                   receiver)
 
-    @staticmethod
-    def _check_pattern(request, supported_pattern):
-        if request.msg_type != supported_pattern:
-            raise zmq_publisher_base.UnsupportedSendPattern(
-                zmq_names.message_type_str(request.msg_type)
-            )
+    def _check_received_data(self, reply_id, reply, request):
+        assert isinstance(reply, zmq_response.Reply), "Reply expected!"
 
-    @staticmethod
-    def _raise_timeout(request):
-        raise oslo_messaging.MessagingTimeout(
-            "Timeout %(tout)s seconds was reached for message %(msg_id)s" %
-            {"tout": request.timeout, "msg_id": request.message_id}
-        )
-
-    def _recv_reply(self, request):
+    def _recv_reply(self, request, socket):
+        self.receiver.register_socket(socket)
         reply_future = \
             self.receiver.track_request(request)[zmq_names.REPLY_TYPE]
 
         try:
-            _, reply = reply_future.result(timeout=request.timeout)
-            assert isinstance(reply, zmq_response.Reply), "Reply expected!"
+            reply_id, reply = reply_future.result(timeout=request.timeout)
+            self._check_received_data(reply_id, reply, request)
         except AssertionError:
             LOG.error(_LE("Message format error in reply for %s"),
                       request.message_id)
@@ -77,30 +65,3 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
             )
         else:
             return reply.reply_body
-
-    def send_call(self, request):
-        self._check_pattern(request, zmq_names.CALL_TYPE)
-
-        socket = self.connect_socket(request)
-        if not socket:
-            self._raise_timeout(request)
-
-        self.sender.send(socket, request)
-        self.receiver.register_socket(socket)
-        return self._recv_reply(request)
-
-    @abc.abstractmethod
-    def _send_non_blocking(self, request):
-        pass
-
-    def send_cast(self, request):
-        self._check_pattern(request, zmq_names.CAST_TYPE)
-        self._send_non_blocking(request)
-
-    def send_fanout(self, request):
-        self._check_pattern(request, zmq_names.CAST_FANOUT_TYPE)
-        self._send_non_blocking(request)
-
-    def send_notify(self, request):
-        self._check_pattern(request, zmq_names.NOTIFY_TYPE)
-        self._send_non_blocking(request)

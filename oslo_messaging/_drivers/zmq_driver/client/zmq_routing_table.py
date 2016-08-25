@@ -76,9 +76,9 @@ class RoutingTable(object):
         key = str(target)
         if key not in self.routing_table:
             try:
-                self.routing_table[key] = (get_hosts_retry(
-                    target, zmq_names.socket_type_str(zmq.DEALER)),
-                    time.time())
+                hosts = get_hosts_retry(
+                    target, zmq_names.socket_type_str(zmq.DEALER))
+                self.routing_table[key] = (hosts, time.time())
             except retrying.RetryError:
                 LOG.warning(_LW("Matchmaker contains no hosts for target %s")
                             % key)

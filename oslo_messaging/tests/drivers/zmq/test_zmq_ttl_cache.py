@@ -35,6 +35,28 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
 
         self.cache = zmq_ttl_cache.TTLCache(ttl=1)
 
+        self.addCleanup(lambda: self.cache.cleanup())
+
+    def _test_add_get(self):
+        self.cache.add('x', 'a')
+
+        self.assertEqual(self.cache.get('x'), 'a')
+        self.assertEqual(self.cache.get('x', 'b'), 'a')
+        self.assertEqual(self.cache.get('y'), None)
+        self.assertEqual(self.cache.get('y', 'b'), 'b')
+
+        time.sleep(1)
+
+        self.assertEqual(self.cache.get('x'), None)
+        self.assertEqual(self.cache.get('x', 'b'), 'b')
+
+    def test_add_get_with_executor(self):
+        self._test_add_get()
+
+    def test_add_get_without_executor(self):
+        self.cache._executor.stop()
+        self._test_add_get()
+
     def _test_in_operator(self):
         self.cache.add(1)
 
@@ -67,15 +89,15 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
         self.cache._executor.stop()
         self._test_in_operator()
 
-    def _is_expired(self, item):
+    def _is_expired(self, key):
         with self.cache._lock:
-            return self.cache._is_expired(self.cache._expiration_times[item],
-                                          time.time())
+            _, expiration_time = self.cache._cache[key]
+            return self.cache._is_expired(expiration_time, time.time())
 
     def test_executor(self):
         self.cache.add(1)
 
-        self.assertEqual([1], sorted(self.cache._expiration_times.keys()))
+        self.assertEqual([1], sorted(self.cache._cache.keys()))
         self.assertFalse(self._is_expired(1))
 
         time.sleep(0.75)
@@ -84,7 +106,7 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
 
         self.cache.add(2)
 
-        self.assertEqual([1, 2], sorted(self.cache._expiration_times.keys()))
+        self.assertEqual([1, 2], sorted(self.cache._cache.keys()))
         self.assertFalse(self._is_expired(1))
         self.assertFalse(self._is_expired(2))
 
@@ -95,12 +117,10 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
         self.cache.add(3)
 
         if 1 in self.cache:
-            self.assertEqual([1, 2, 3],
-                             sorted(self.cache._expiration_times.keys()))
+            self.assertEqual([1, 2, 3], sorted(self.cache._cache.keys()))
             self.assertTrue(self._is_expired(1))
         else:
-            self.assertEqual([2, 3],
-                             sorted(self.cache._expiration_times.keys()))
+            self.assertEqual([2, 3], sorted(self.cache._cache.keys()))
         self.assertFalse(self._is_expired(2))
         self.assertFalse(self._is_expired(3))
 
@@ -108,9 +128,5 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
 
         self.assertEqual(3, self.cache._update_cache.call_count)
 
-        self.assertEqual([3], sorted(self.cache._expiration_times.keys()))
+        self.assertEqual([3], sorted(self.cache._cache.keys()))
         self.assertFalse(self._is_expired(3))
-
-    def cleanUp(self):
-        self.cache.cleanup()
-        super(TestZmqTTLCache, self).cleanUp()

@@ -43,7 +43,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
                   'use_router_proxy': True,
                   'rpc_thread_pool_size': 1,
                   'rpc_use_acks': True,
-                  'rpc_ack_timeout_base': 3,
+                  'rpc_ack_timeout_base': 5,
                   'rpc_ack_timeout_multiplier': 1,
                   'rpc_retry_attempts': 2}
         self.config(group='oslo_messaging_zmq', **kwargs)
@@ -104,8 +104,8 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         result = self.driver.send(
             self.target, {}, self.message, wait_for_reply=False
         )
-        self.ack_manager._pool.shutdown(wait=True)
         self.assertIsNone(result)
+        self.ack_manager._pool.shutdown(wait=True)
         self.assertTrue(self.listener._received.isSet())
         self.assertEqual(self.message, self.listener.message.message)
         self.assertEqual(1, self.send.call_count)
@@ -119,21 +119,20 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             result = self.driver.send(
                 self.target, {}, self.message, wait_for_reply=False
             )
-            self.listener._received.wait(3)
             self.assertIsNone(result)
+            self.listener._received.wait(5)
             self.assertTrue(self.listener._received.isSet())
             self.assertEqual(self.message, self.listener.message.message)
             self.assertEqual(1, self.send.call_count)
             self.assertEqual(1, lost_ack_mock.call_count)
             self.assertEqual(0, self.set_result.call_count)
+            self.listener._received.clear()
         with mock.patch.object(
             zmq_incoming_message.ZmqIncomingMessage, 'acknowledge',
             side_effect=zmq_incoming_message.ZmqIncomingMessage.acknowledge,
             autospec=True
         ) as received_ack_mock:
-            self.listener._received.clear()
             self.ack_manager._pool.shutdown(wait=True)
-            self.listener._received.wait(3)
             self.assertFalse(self.listener._received.isSet())
             self.assertEqual(2, self.send.call_count)
             self.assertEqual(1, received_ack_mock.call_count)
@@ -146,15 +145,15 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             result = self.driver.send(
                 self.target, {}, self.message, wait_for_reply=False
             )
-            self.listener._received.wait(3)
             self.assertIsNone(result)
+            self.listener._received.wait(5)
             self.assertTrue(self.listener._received.isSet())
             self.assertEqual(self.message, self.listener.message.message)
             self.assertEqual(1, self.send.call_count)
             self.assertEqual(1, lost_ack_mock.call_count)
             self.assertEqual(0, self.set_result.call_count)
             self.listener._received.clear()
-            self.listener._received.wait(4.5)
+            self.listener._received.wait(7.5)
             self.assertFalse(self.listener._received.isSet())
             self.assertEqual(2, self.send.call_count)
             self.assertEqual(2, lost_ack_mock.call_count)
@@ -176,10 +175,53 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         result = self.driver.send(
             self.target, {}, self.message, wait_for_reply=False
         )
-        self.ack_manager._pool.shutdown(wait=True)
         self.assertIsNone(result)
+        self.ack_manager._pool.shutdown(wait=True)
         self.assertTrue(self.listener._received.isSet())
         self.assertEqual(self.message, self.listener.message.message)
         self.assertEqual(3, self.send.call_count)
         self.assertEqual(3, lost_ack_mock.call_count)
         self.assertEqual(1, self.set_result.call_count)
+
+    @mock.patch.object(
+        zmq_incoming_message.ZmqIncomingMessage, 'acknowledge',
+        side_effect=zmq_incoming_message.ZmqIncomingMessage.acknowledge,
+        autospec=True
+    )
+    @mock.patch.object(
+        zmq_incoming_message.ZmqIncomingMessage, 'reply',
+        side_effect=zmq_incoming_message.ZmqIncomingMessage.reply,
+        autospec=True
+    )
+    def test_call_success_without_retries(self, received_reply_mock,
+                                          received_ack_mock):
+        self.listener.listen(self.target)
+        result = self.driver.send(
+            self.target, {}, self.message, wait_for_reply=True, timeout=10
+        )
+        self.assertIsNotNone(result)
+        self.ack_manager._pool.shutdown(wait=True)
+        self.assertTrue(self.listener._received.isSet())
+        self.assertEqual(self.message, self.listener.message.message)
+        self.assertEqual(1, self.send.call_count)
+        self.assertEqual(1, received_ack_mock.call_count)
+        self.assertEqual(3, self.set_result.call_count)
+        received_reply_mock.assert_called_once_with(mock.ANY, reply=True)
+
+    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, 'acknowledge')
+    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, 'reply')
+    def test_call_failure_exhausted_retries_and_timeout_error(self,
+                                                              lost_reply_mock,
+                                                              lost_ack_mock):
+        self.listener.listen(self.target)
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          self.driver.send,
+                          self.target, {}, self.message,
+                          wait_for_reply=True, timeout=20)
+        self.ack_manager._pool.shutdown(wait=True)
+        self.assertTrue(self.listener._received.isSet())
+        self.assertEqual(self.message, self.listener.message.message)
+        self.assertEqual(3, self.send.call_count)
+        self.assertEqual(3, lost_ack_mock.call_count)
+        self.assertEqual(2, self.set_result.call_count)
+        lost_reply_mock.assert_called_once_with(reply=True)
