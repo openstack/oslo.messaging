@@ -108,7 +108,8 @@ class TestKafkaDriver(test_utils.BaseTestCase):
 
     def test_listen(self):
         target = oslo_messaging.Target(topic="topic_test")
-        self.assertRaises(NotImplementedError, self.driver.listen, target)
+        self.assertRaises(NotImplementedError, self.driver.listen, target,
+                          None, None)
 
 
 class TestKafkaConnection(test_utils.BaseTestCase):
