@@ -21,7 +21,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-from oslo_messaging._i18n import _LI
+from oslo_messaging._i18n import _LE, _LI
 
 zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
@@ -91,9 +91,14 @@ class UniversalQueueProxy(object):
             payload.insert(0, routing_key)
             payload.insert(0, msg_type)
             return payload
-        except (AssertionError, ValueError, zmq.ZMQError):
-            LOG.error("Received message with wrong format")
-            return None
+        except (AssertionError, ValueError):
+            LOG.error(_LE("Received message with wrong format"))
+            if socket.getsockopt(zmq.RCVMORE):
+                # NOTE(ozamiatin): Drop the left parts of broken message
+                socket.recv_multipart()
+        except zmq.ZMQError as e:
+            LOG.exception(e)
+        return None
 
     @staticmethod
     def _redirect_message(socket, multipart_message):
@@ -114,6 +119,7 @@ class UniversalQueueProxy(object):
         socket.send_multipart(multipart_message)
 
     def cleanup(self):
+        self.poller.close()
         self.fe_router_socket.close()
         self.be_router_socket.close()
         self.pub_publisher.cleanup()
