@@ -100,6 +100,7 @@ to - primitive types.
 __all__ = [
     'get_rpc_server',
     'expected_exceptions',
+    'expose'
 ]
 
 import logging
@@ -156,7 +157,7 @@ class RPCServer(msg_server.MessageHandlingServer):
 
 
 def get_rpc_server(transport, target, endpoints,
-                   executor='blocking', serializer=None):
+                   executor='blocking', serializer=None, access_policy=None):
     """Construct an RPC server.
 
     The executor parameter controls how incoming messages will be received and
@@ -177,8 +178,12 @@ def get_rpc_server(transport, target, endpoints,
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer
+    :param access_policy: an optional access policy.
+           Defaults to LegacyRPCAccessPolicy
+    :type access_policy: RPCAccessPolicyBase
     """
-    dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer)
+    dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer,
+                                              access_policy)
     return RPCServer(transport, target, dispatcher, executor)
 
 
@@ -207,3 +212,25 @@ def expected_exceptions(*exceptions):
                 raise rpc_dispatcher.ExpectedException()
         return inner
     return outer
+
+
+def expose(func):
+    """Decorator for RPC endpoint methods that are exposed to the RPC client.
+
+    If the dispatcher's access_policy is set to ExplicitRPCAccessPolicy then
+    endpoint methods need to be explicitly exposed.::
+
+        # foo() cannot be invoked by an RPC client
+        def foo(self):
+            pass
+
+        # bar() can be invoked by an RPC client
+        @rpc.expose
+        def bar(self):
+            pass
+
+    """
+
+    func.exposed = True
+
+    return func

@@ -21,6 +21,7 @@ import testscenarios
 
 import mock
 import oslo_messaging
+from oslo_messaging import rpc
 from oslo_messaging.rpc import server as rpc_server_module
 from oslo_messaging import server as server_module
 from oslo_messaging.tests import utils as test_utils
@@ -861,3 +862,22 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # We timed out. Ensure we didn't log anything.
         self.assertFalse(mock_log.warning.called)
+
+
+class TestRPCExposeDecorator(test_utils.BaseTestCase):
+
+    def foo(self):
+        pass
+
+    @rpc.expose
+    def bar(self):
+        """bar docstring"""
+        pass
+
+    def test_undecorated(self):
+        self.assertRaises(AttributeError, lambda: self.foo.exposed)
+
+    def test_decorated(self):
+        self.assertEqual(True, self.bar.exposed)
+        self.assertEqual("""bar docstring""", self.bar.__doc__)
+        self.assertEqual('bar', self.bar.__name__)
