@@ -347,7 +347,7 @@ class KafkaDriver(base.BaseDriver):
         with self._get_connection(purpose=PURPOSE_SEND) as conn:
             conn.notify_send(target_to_topic(target), ctxt, message, retry)
 
-    def listen(self, target):
+    def listen(self, target, batch_size, batch_timeout):
         raise NotImplementedError(
             'The RPC implementation for Kafka is not implemented')
 
