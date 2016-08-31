@@ -93,6 +93,96 @@ backends. An `address mode`_ configuration option is provided to
 override this dynamic behavior and force the use of either the legacy
 or routable address syntax.
 
+Message Acknowledgement
+-----------------------
+
+A primary functional difference between a router and a
+broker intermediary type is when message acknowledgement occurs.
+
+The router does not "store" the message hence it does not generate an
+acknowledgement. Instead the consuming endpoint is responsible for message
+acknowledgement and the router forwards the acknowledgement back to
+the sender. This is known as 'end-to-end' acknowledgement. In contrast, a
+broker stores then forwards the message so that message acknowledgement is
+performed in two stages. In the first stage, a message
+acknowledgement occurs between the broker and the Sender. In the
+second stage, an acknowledgement occurs between the Server and
+the broker.
+
+This difference affects how long the Sender waits for the message
+transfer to complete.
+
+::
+
+                                                        +dispatch+
+                                                        |  (3)   |
+                                                        |        |
+                                                        |        v
+  +--------------+    (1)    +----------+    (2)     +--------------+
+  |    Client    |---------->|  Router  |----------->|    Server    |
+  |   (Sender)   |<----------| (Direct) |<-----------|  (Listener)  |
+  +--------------+    (5)    +----------+    (4)     +--------------+
+
+
+For example when a router intermediary is used, the following sequence
+occurs:
+
+1. The message is sent to the router
+2. The router forwards the message to the Server
+3. The Server dispatches  the message to the application
+4. The Server indicates the acknowledgement via the router
+5. The router forwards the acknowledgement to the Sender
+
+In this sequence, a Sender waits for the message acknowledgement until
+step (5) occurs.
+
+
+::
+
+                                                        +dispatch+
+                                                        |  (4)   |
+                                                        |        |
+                                                        |        v
+  +--------------+    (1)    +----------+    (3)     +--------------+
+  |    Client    |---------->|  Broker  |----------->|    Server    |
+  |   (Sender)   |<----------| (Queue)  |<-----------|  (Listener)  |
+  +--------------+    (2)    +----------+    (5)     +--------------+
+
+
+And when a broker intermediary is used, the following sequence occurs:
+
+1. The message is sent to the broker
+2. The broker stores the message and acknowledges the message to the
+   Sender
+3. The broker sends the message to the Server
+4. The Server dispatches the message to the application
+5. The Server indicates the acknowledgement to the broker
+
+In this sequence, a Sender waits for the message acknowledgement until
+step (2) occurs.
+
+Therefore the broker-based Sender receives the acknowledgement
+earlier in the transfer than the routed case. However in the brokered
+case receipt of the acknowledgement does not signify that the message
+has been (or will ever be) received by the Server.
+
+Batched Notifications **Note Well**
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+While the use of a router intermediary for oslo.messaging Notification is
+currently not recommended, it should be noted that the use of a router
+intermediary with batched notifications may exacerbate the acknowledgement
+wait time for a Sender.
+
+For example, when a batched notification configuration is used where
+batch size is set to 100, the Server will wait until 100 notification
+messages are buffered (or timeout occurs) before dispatching the
+notifications to the application for message acknowledgement. Since
+each notifier client can have at most one message outstanding
+(e.g. pending acknowledgement), then if the total number of notifying
+clients are less than 100 the batch limit will never be met. This will
+effectively pause all notifying clients until the batch timeout expires.
+
 =============
 Prerequisites
 =============
@@ -173,6 +263,7 @@ Pre-built packages for the broker are available. See `packages`_ below.
 
 See the `oslo specification`_ for additional information regarding testing
 done on the driver.
+
 
 =============
 Configuration
@@ -560,3 +651,5 @@ services that use the new driver:
 - Proton libraries: libqpid-proton2-dev
 - Proton python bindings: python-qpid-proton
 - pyngus (via Pypi)
+
+..  LocalWords:  Acknowledgement acknowledgement
