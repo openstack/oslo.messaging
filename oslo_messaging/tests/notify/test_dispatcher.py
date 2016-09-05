@@ -163,6 +163,13 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
               event_type='instance.create.start',
               context={},
               match=False)),
+        # this is only for simulation
+        ('event_type_not_string',
+         dict(filter_rule=dict(event_type='^instance\.delete'),
+              publisher_id='compute01.manager',
+              event_type=['instance.swim', 'instance.fly'],
+              context={},
+              match=False)),
         ('context_match',
          dict(filter_rule=dict(context={'user': '^adm'}),
               publisher_id='compute01.manager',
@@ -206,6 +213,12 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
               event_type='instance.create.start',
               context={},
               match=False)),
+        ('payload_value_none',
+         dict(filter_rule=dict(payload={'virtual_size': '2048'}),
+              publisher_id='compute01.manager',
+              event_type='instance.create.start',
+              context={},
+              match=False)),
         ('mix_match',
          dict(filter_rule=dict(event_type='^instance\.create',
                                publisher_id='^compute',
@@ -214,7 +227,6 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
               event_type='instance.create.start',
               context={'user': 'admin'},
               match=True)),
-
     ]
 
     def test_filters(self):
@@ -224,7 +236,7 @@ class TestDispatcherFilter(test_utils.BaseTestCase):
 
         dispatcher = notify_dispatcher.NotificationDispatcher(
             [endpoint], serializer=None)
-        message = {'payload': {'state': 'active'},
+        message = {'payload': {'state': 'active', 'virtual_size': None},
                    'priority': 'info',
                    'publisher_id': self.publisher_id,
                    'event_type': self.event_type,
