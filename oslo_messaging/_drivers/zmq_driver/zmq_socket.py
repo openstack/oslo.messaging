@@ -52,10 +52,36 @@ class ZmqSocket(object):
             self.close_linger = \
                 self.conf.oslo_messaging_zmq.rpc_zmq_linger * 1000
         self.handle.setsockopt(zmq.LINGER, self.close_linger)
+
         # Put messages to only connected queues
         self.handle.setsockopt(zmq.IMMEDIATE, 1 if immediate else 0)
-        self.handle.identity = six.b(str(uuid.uuid4())) if identity is None \
-            else identity
+
+        # Configure TCP KA
+        keepalive = self.conf.oslo_messaging_zmq.zmq_tcp_keepalive
+        if keepalive < 0:
+            keepalive = -1
+        elif keepalive > 0:
+            keepalive = 1
+        self.handle.setsockopt(zmq.TCP_KEEPALIVE, keepalive)
+
+        keepalive_idle = self.conf.oslo_messaging_zmq.zmq_tcp_keepalive_idle
+        if keepalive_idle <= 0:
+            keepalive_idle = -1
+        self.handle.setsockopt(zmq.TCP_KEEPALIVE_IDLE, keepalive_idle)
+
+        keepalive_cnt = self.conf.oslo_messaging_zmq.zmq_tcp_keepalive_cnt
+        if keepalive_cnt <= 0:
+            keepalive_cnt = -1
+        self.handle.setsockopt(zmq.TCP_KEEPALIVE_CNT, keepalive_cnt)
+
+        keepalive_intvl = self.conf.oslo_messaging_zmq.zmq_tcp_keepalive_intvl
+        if keepalive_intvl <= 0:
+            keepalive_intvl = -1
+        self.handle.setsockopt(zmq.TCP_KEEPALIVE_INTVL, keepalive_intvl)
+
+        self.handle.identity = \
+            six.b(str(uuid.uuid4())) if identity is None else identity
+
         self.connections = set()
 
     def _get_serializer(self, serialization):

@@ -122,6 +122,39 @@ zmq_opts = [
                      'even if server is disconnected, when the server '
                      'appears we send all accumulated messages to it.'),
 
+    cfg.IntOpt('zmq_tcp_keepalive', default=-1,
+               help='Enable/disable TCP keepalive (KA) mechanism. '
+                    'The default value of -1 (or any other negative value) '
+                    'means to skip any overrides and leave it to OS default; '
+                    '0 and 1 (or any other positive value) mean to '
+                    'disable and enable the option respectively.'),
+
+    cfg.IntOpt('zmq_tcp_keepalive_idle', default=-1,
+               help='The duration between two keepalive transmissions in '
+                    'idle condition. '
+                    'The unit is platform dependent, for example, '
+                    'seconds in Linux, milliseconds in Windows etc. '
+                    'The default value of -1 (or any other negative value '
+                    'and 0) means to skip any overrides and leave it '
+                    'to OS default.'),
+
+    cfg.IntOpt('zmq_tcp_keepalive_cnt', default=-1,
+               help='The number of retransmissions to be carried out before '
+                    'declaring that remote end is not available. '
+                    'The default value of -1 (or any other negative value '
+                    'and 0) means to skip any overrides and leave it '
+                    'to OS default.'),
+
+    cfg.IntOpt('zmq_tcp_keepalive_intvl', default=-1,
+               help='The duration between two successive keepalive '
+                    'retransmissions, if acknowledgement to the previous '
+                    'keepalive transmission is not received. '
+                    'The unit is platform dependent, for example, '
+                    'seconds in Linux, milliseconds in Windows etc. '
+                    'The default value of -1 (or any other negative value '
+                    'and 0) means to skip any overrides and leave it '
+                    'to OS default.'),
+
     cfg.IntOpt('rpc_thread_pool_size', default=100,
                help='Maximum number of (green) threads to work concurrently.'),
 
