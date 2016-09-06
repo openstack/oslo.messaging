@@ -12,11 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import threading
 
 import eventlet
 
 from oslo_messaging._drivers.zmq_driver import zmq_poller
+
+LOG = logging.getLogger(__name__)
 
 
 class GreenPoller(zmq_poller.ZmqPoller):
@@ -27,6 +30,7 @@ class GreenPoller(zmq_poller.ZmqPoller):
 
     def register(self, socket, recv_method=None):
         if socket not in self.thread_by_socket:
+            LOG.debug("Registering socket %s", socket.handle.identity)
             self.thread_by_socket[socket] = eventlet.spawn(
                 self._socket_receive, socket, recv_method
             )
@@ -34,6 +38,7 @@ class GreenPoller(zmq_poller.ZmqPoller):
     def unregister(self, socket):
         thread = self.thread_by_socket.pop(socket, None)
         if thread:
+            LOG.debug("Unregistering socket %s", socket.handle.identity)
             thread.kill()
 
     def _socket_receive(self, socket, recv_method=None):
