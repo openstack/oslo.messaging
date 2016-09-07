@@ -56,13 +56,16 @@ zmq_opts = [
                help='Name of this node. Must be a valid hostname, FQDN, or '
                     'IP address. Must match "host" option, if running Nova.'),
 
-    cfg.IntOpt('rpc_cast_timeout', default=-1,
+    cfg.IntOpt('rpc_zmq_linger', default=-1,
                deprecated_group='DEFAULT',
-               help='Seconds to wait before a cast expires (TTL). '
+               deprecated_name='rpc_cast_timeout',
+               help='Number of seconds to wait before all pending '
+                    'messages will be sent after closing a socket. '
                     'The default value of -1 specifies an infinite linger '
                     'period. The value of 0 specifies no linger period. '
                     'Pending messages shall be discarded immediately '
-                    'when the socket is closed. Only supported by impl_zmq.'),
+                    'when the socket is closed. Positive values specify an '
+                    'upper bound for the linger period.'),
 
     cfg.IntOpt('rpc_poll_timeout', default=1,
                deprecated_group='DEFAULT',
