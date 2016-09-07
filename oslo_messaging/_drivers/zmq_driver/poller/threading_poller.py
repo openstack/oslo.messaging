@@ -27,35 +27,40 @@ class ThreadingPoller(zmq_poller.ZmqPoller):
 
     def __init__(self):
         self.poller = zmq.Poller()
-        self.recv_methods = {}
+        self.sockets_and_recv_methods = {}
 
     def register(self, socket, recv_method=None):
-        if socket in self.recv_methods:
+        socket_handle = socket.handle
+        if socket_handle in self.sockets_and_recv_methods:
             return
-        LOG.debug("Registering socket")
-        if recv_method is not None:
-            self.recv_methods[socket] = recv_method
-        self.poller.register(socket, zmq.POLLIN)
+        LOG.debug("Registering socket %s", socket_handle.identity)
+        self.sockets_and_recv_methods[socket_handle] = (socket, recv_method)
+        self.poller.register(socket_handle, zmq.POLLIN)
 
     def unregister(self, socket):
-        self.recv_methods.pop(socket, None)
-        self.poller.unregister(socket)
+        socket_handle = socket.handle
+        socket_and_recv_method = \
+            self.sockets_and_recv_methods.pop(socket_handle, None)
+        if socket_and_recv_method:
+            LOG.debug("Unregistering socket %s", socket_handle.identity)
+            self.poller.unregister(socket_handle)
 
     def poll(self, timeout=None):
         if timeout is not None and timeout > 0:
             timeout *= 1000  # convert seconds to milliseconds
 
-        sockets = {}
+        socket_handles = {}
         try:
-            sockets = dict(self.poller.poll(timeout=timeout))
+            socket_handles = dict(self.poller.poll(timeout=timeout))
         except zmq.ZMQError as e:
             LOG.debug("Polling terminated with error: %s", e)
 
-        if not sockets:
+        if not socket_handles:
             return None, None
-        for socket in sockets:
-            if socket in self.recv_methods:
-                return self.recv_methods[socket](socket), socket
+        for socket_handle in socket_handles:
+            socket, recv_method = self.sockets_and_recv_methods[socket_handle]
+            if recv_method:
+                return recv_method(socket), socket
             else:
                 return socket.recv_multipart(), socket
 

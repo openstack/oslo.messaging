@@ -57,7 +57,7 @@ class ZmqPoller(object):
         """Register socket to poll
 
         :param socket: Socket to subscribe for polling
-        :type socket: zmq.Socket
+        :type socket: ZmqSocket
         :param recv_method: Optional specific receiver procedure
                             Should return received message object
         :type recv_method: callable
@@ -67,7 +67,7 @@ class ZmqPoller(object):
         """Unregister socket from poll
 
         :param socket: Socket to unsubscribe from polling
-        :type socket: zmq.Socket
+        :type socket: ZmqSocket
         """
 
     @abc.abstractmethod

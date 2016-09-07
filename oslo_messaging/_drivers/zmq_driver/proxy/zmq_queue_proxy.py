@@ -49,10 +49,8 @@ class UniversalQueueProxy(object):
             conf.zmq_proxy_opts.backend_port) if port != 0 else \
             zmq_socket.ZmqRandomPortSocket(conf, context, zmq.ROUTER, host)
 
-        self.poller.register(self.fe_router_socket.handle,
-                             self._receive_in_request)
-        self.poller.register(self.be_router_socket.handle,
-                             self._receive_in_request)
+        self.poller.register(self.fe_router_socket, self._receive_in_request)
+        self.poller.register(self.be_router_socket, self._receive_in_request)
 
         self.pub_publisher = zmq_publisher_proxy.PublisherProxy(
             conf, matchmaker)
@@ -73,9 +71,9 @@ class UniversalQueueProxy(object):
                              zmq_names.NOTIFY_TYPE):
             self.pub_publisher.send_request(message)
         else:
-            self._redirect_message(self.be_router_socket.handle
-                                   if socket is self.fe_router_socket.handle
-                                   else self.fe_router_socket.handle, message)
+            self._redirect_message(self.be_router_socket
+                                   if socket is self.fe_router_socket
+                                   else self.fe_router_socket, message)
 
     @staticmethod
     def _receive_in_request(socket):
