@@ -46,12 +46,12 @@ class ZmqSocket(object):
         self.handle = context.socket(socket_type)
         self.handle.set_hwm(high_watermark)
 
-        self.close_linger = -1
-        if self.conf.oslo_messaging_zmq.rpc_zmq_linger >= 0:
+        # Set linger period
+        linger = -1
+        if self.conf.oslo_messaging_zmq.zmq_linger >= 0:
             # Convert seconds to milliseconds
-            self.close_linger = \
-                self.conf.oslo_messaging_zmq.rpc_zmq_linger * 1000
-        self.handle.setsockopt(zmq.LINGER, self.close_linger)
+            linger = self.conf.oslo_messaging_zmq.zmq_linger * 1000
+        self.handle.setsockopt(zmq.LINGER, linger)
 
         # Put messages to only connected queues
         self.handle.setsockopt(zmq.IMMEDIATE, 1 if immediate else 0)
