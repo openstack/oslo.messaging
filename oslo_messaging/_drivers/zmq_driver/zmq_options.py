@@ -56,7 +56,7 @@ zmq_opts = [
                help='Name of this node. Must be a valid hostname, FQDN, or '
                     'IP address. Must match "host" option, if running Nova.'),
 
-    cfg.IntOpt('rpc_zmq_linger', default=-1,
+    cfg.IntOpt('zmq_linger', default=-1,
                deprecated_group='DEFAULT',
                deprecated_name='rpc_cast_timeout',
                help='Number of seconds to wait before all pending '
