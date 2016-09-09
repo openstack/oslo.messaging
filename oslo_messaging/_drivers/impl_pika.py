@@ -117,6 +117,15 @@ rpc_opts = [
 
 
 class PikaDriver(base.BaseDriver):
+    """Pika Driver
+
+    The ``pika`` driver is the successor to the existing rabbit/kombu driver.
+    It is based on the Pika client library and supports the RabbitMQ broker as
+    the messaging back end.
+
+    See :doc:`pika_driver` for details.
+    """
+
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
         opt_group = cfg.OptGroup(name='oslo_messaging_pika',
