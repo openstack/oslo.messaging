@@ -51,8 +51,8 @@ _opts = [
     ('oslo_messaging_rabbit', list(
         itertools.chain(amqp.amqp_opts, impl_rabbit.rabbit_opts,
                         pika_connection_factory.pika_opts,
-                        impl_pika.pika_pool_opts, impl_pika.notification_opts,
-                        impl_pika.rpc_opts))),
+                        impl_pika.pika_pool_opts, impl_pika.message_opts,
+                        impl_pika.notification_opts, impl_pika.rpc_opts))),
 ]
 
 

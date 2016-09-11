@@ -15,6 +15,8 @@
 import select
 import socket
 
+from oslo_serialization.serializer import json_serializer
+from oslo_serialization.serializer import msgpack_serializer
 from oslo_utils import timeutils
 from pika import exceptions as pika_exceptions
 import six
@@ -31,3 +33,8 @@ PIKA_CONNECTIVITY_ERRORS = (
 EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
 
 INFINITE_STOP_WATCH = timeutils.StopWatch(duration=None).start()
+
+MESSAGE_SERIALIZERS = {
+    'application/json': json_serializer.JSONSerializer(),
+    'application/msgpack': msgpack_serializer.MessagePackSerializer()
+}
