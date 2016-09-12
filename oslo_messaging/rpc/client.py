@@ -222,19 +222,34 @@ class _CallContext(_BaseCallContext):
 
 class RPCClient(_BaseCallContext):
 
-    """A class for invoking methods on remote servers.
+    """A class for invoking methods on remote RPC servers.
 
-    The RPCClient class is responsible for sending method invocations to remote
-    servers via a messaging transport.
+    The RPCClient class is responsible for sending method invocations to and
+    receiving return values from remote RPC servers via a messaging transport.
 
-    A default target is supplied to the RPCClient constructor, but target
-    attributes can be overridden for individual method invocations using the
-    prepare() method.
+    Two RPC patterns are supported: RPC calls and RPC casts.
+
+    An RPC cast is used when an RPC method does *not* return a value to
+    the caller. An RPC call is used when a return value is expected from the
+    method.  For further information see the cast() and call() methods.
+
+    The default target used for all subsequent calls and casts is supplied to
+    the RPCClient constructor.  The client uses the target to control how the
+    RPC request is delivered to a server.  If only the target's topic (and
+    optionally exchange) are set, then the RPC can be serviced by any server
+    that is listening to that topic (and exchange).  If multiple servers are
+    listening on that topic/exchange, then one server is picked using a
+    best-effort round-robin algorithm.  Alternatively, the client can set the
+    Target's ``server`` attribute to the name of a specific server to send the
+    RPC request to one particular server.  In the case of RPC cast, the RPC
+    request can be broadcast to all servers listening to the Target's
+    topic/exchange by setting the Target's ``fanout`` property to ``True``.
+
+    While the default target is set on construction, target attributes can be
+    overridden for individual method invocations using the prepare() method.
 
     A method invocation consists of a request context dictionary, a method name
-    and a dictionary of arguments. A cast() invocation just sends the request
-    and returns immediately. A call() invocation waits for the server to send
-    a return value.
+    and a dictionary of arguments.
 
     This class is intended to be used by wrapping it in another class which
     provides methods on the subclass to perform the remote invocation using
@@ -275,10 +290,13 @@ class RPCClient(_BaseCallContext):
     but this is probably only useful in limited circumstances as a wrapper
     class will usually help to make the code much more obvious.
 
-    By default, cast() and call() will block until the message is successfully
-    sent. However, the retry parameter can be used to have message sending
-    fail with a MessageDeliveryFailure after the given number of retries. For
-    example::
+    If the connection to the messaging service is not active when an RPC
+    request is made the client will block waiting for the connection to
+    complete.  If the connection fails to complete, the client will try to
+    re-establish that connection. By default this will continue indefinitely
+    until the connection completes. However, the retry parameter can be used to
+    have the RPC request fail with a MessageDeliveryFailure after the given
+    number of retries. For example::
 
         client = messaging.RPCClient(transport, target, retry=None)
         client.call(ctxt, 'sync')
@@ -304,10 +322,10 @@ class RPCClient(_BaseCallContext):
         :type version_cap: str
         :param serializer: an optional entity serializer
         :type serializer: Serializer
-        :param retry: an optional default connection retries configuration
-                      None or -1 means to retry forever
-                      0 means no retry
-                      N means N retries
+        :param retry: an optional default connection retries configuration:
+                      None or -1 means to retry forever.
+                      0 means no retry is attempted.
+                      N means attempt at most N retries.
         :type retry: int
         """
         if serializer is None:
@@ -347,10 +365,10 @@ class RPCClient(_BaseCallContext):
         :type timeout: int or float
         :param version_cap: raise a RPCVersionCapError version exceeds this cap
         :type version_cap: str
-        :param retry: an optional connection retries configuration
-                      None or -1 means to retry forever
-                      0 means no retry
-                      N means N retries
+        :param retry: an optional connection retries configuration:
+                      None or -1 means to retry forever.
+                      0 means no retry is attempted.
+                      N means attempt at most N retries.
         :type retry: int
         """
         return _CallContext._prepare(self,
@@ -359,7 +377,22 @@ class RPCClient(_BaseCallContext):
                                      timeout, version_cap, retry)
 
     def cast(self, ctxt, method, **kwargs):
-        """Invoke a method and return immediately.
+        """Invoke a method without blocking for a return value.
+
+        The cast() method is used to invoke an RPC method that does not return
+        a value.  cast() RPC requests may be broadcast to all Servers listening
+        on a given topic by setting the fanout Target property to ``True``.
+
+        The cast() operation is best-effort: cast() will block the
+        calling thread until the RPC request method is accepted by the
+        messaging transport, but cast() does *not* verify that the RPC method
+        has been invoked by the server. cast() does guarantee that the the
+        method will be not executed twice on a destination (e.g. 'at-most-once'
+        execution).
+
+        There are no ordering guarantees across successive casts, even
+        among casts to the same destination. Therefore methods may be executed
+        in an order different from the order in which they are cast.
 
         Method arguments must either be primitive types or types supported by
         the client's serializer (if any).
@@ -367,26 +400,36 @@ class RPCClient(_BaseCallContext):
         Similarly, the request context must be a dict unless the client's
         serializer supports serializing another type.
 
-        Note: cast does not ensure that the remote method will be executed on
-        each destination. But it does ensure that the method will be not
-        executed twice on a destination (e.g. 'at-most-once' execution).
-
-        Note: there are no ordering guarantees across successive casts, even
-        among casts to the same destination. Therefore methods may be executed
-        in an order different from the order in which they are cast.
-
         :param ctxt: a request context dict
         :type ctxt: dict
         :param method: the method name
         :type method: str
         :param kwargs: a dict of method arguments
         :type kwargs: dict
-        :raises: MessageDeliveryFailure
+        :raises: MessageDeliveryFailure if the messaging transport fails to
+                 accept the request.
+
         """
         self.prepare().cast(ctxt, method, **kwargs)
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply.
+
+        The call() method is used to invoke RPC methods that return a
+        value. Since only a single return value is permitted it is not possible
+        to call() to a fanout target.
+
+        call() will block the calling thread until the messaging transport
+        provides the return value, a timeout occurs, or a non-recoverable error
+        occurs.
+
+        call() guarantees that the RPC request is done 'at-most-once' which
+        ensures that the call will never be duplicated.  However if the call
+        should fail or time out before the return value arrives then there are
+        no guarantees whether or not the method was invoked.
+
+        Since call() blocks until completion of the RPC method, call()s from
+        the same thread are guaranteed to be processed in-order.
 
         Method arguments must either be primitive types or types supported by
         the client's serializer (if any). Similarly, the request context must
@@ -410,12 +453,6 @@ class RPCClient(_BaseCallContext):
         Secondly, if a remote exception is not from a module listed in the
         allowed_remote_exmods list, then a messaging.RemoteError exception is
         raised with all details of the remote exception.
-
-        Note: call is done 'at-most-once'. In case of we can't known
-        if the call have been done correctly, because we didn't get the
-        response on time, MessagingTimeout exception is raised.
-        The real reason can vary, transport failure, worker
-        doesn't answer in time or crash, ...
 
         :param ctxt: a request context dict
         :type ctxt: dict

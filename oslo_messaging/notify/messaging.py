@@ -15,6 +15,27 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+"""
+Notification drivers for sending notifications via messaging.
+
+The messaging drivers publish notification messages to notification
+listeners.
+
+The driver will block the notifier's thread until the notification message has
+been passed to the messaging transport.  There is no guarantee that the
+notification message will be consumed by a notification listener.
+
+Notification messages are sent 'at-most-once' - ensuring that they are not
+duplicated.
+
+If the connection to the messaging service is not active when a notification is
+sent this driver will block waiting for the connection to complete.  If the
+connection fails to complete, the driver will try to re-establish that
+connection. By default this will continue indefinitely until the connection
+completes. However, the retry parameter can be used to have the notification
+send fail with a MessageDeliveryFailure after the given number of retries.
+"""
+
 import logging
 
 import oslo_messaging

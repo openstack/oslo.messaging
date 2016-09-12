@@ -1,6 +1,6 @@
-------
-Server
-------
+----------
+RPC Server
+----------
 
 .. automodule:: oslo_messaging.rpc.server
 

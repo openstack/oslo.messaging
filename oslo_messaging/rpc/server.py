@@ -31,14 +31,49 @@ The target supplied when creating an RPC server expresses the topic, server
 name and - optionally - the exchange to listen on. See Target for more details
 on these attributes.
 
+Multiple RPC Servers may listen to the same topic (and exchange)
+simultaineously. See RPCClient for details regarding how RPC requests are
+distributed to the Servers in this case.
+
 Each endpoint object may have a target attribute which may have namespace and
 version fields set. By default, we use the 'null namespace' and version 1.0.
 Incoming method calls will be dispatched to the first endpoint with the
 requested method, a matching namespace and a compatible version number.
 
-RPC servers have start(), stop() and wait() messages to begin handling
-requests, stop handling requests and wait for all in-process requests to
-complete.
+The first parameter to method invocations is always the request context
+supplied by the client.  The remaining parameters are the arguments supplied to
+the method by the client.  Endpoint methods may return a value.  If so the RPC
+Server will send the returned value back to the requesting client via the
+transport.
+
+The executor parameter controls how incoming messages will be received and
+dispatched. By default, the most simple executor is used - the blocking
+executor.  This executor processes inbound RPC requests on the server's thread,
+blocking it from processing additional requests until it finishes with the
+current request. This includes time spent sending the reply message to the
+transport if the method returns a result.  Refer to the Executor documentation
+for descriptions of the other types of executors.
+
+*Note:* If the "eventlet" executor is used, the threading and time library need
+to be monkeypatched.
+
+The RPC reply operation is best-effort: the server will consider the message
+containing the reply successfully sent once it is accepted by the messaging
+transport.  The server does not guarantee that the reply is processed by the
+RPC client.  If the send fails an error will be logged and the server will
+continue to processing incoming RPC requests.
+
+Parameters to the method invocation and values returned from the method are
+python primitive types. However the actual encoding of the data in the message
+may not be in primitive form (e.g. the message payload may be a dictionary
+encoded as an ASCII string using JSON). A serializer object is used to convert
+incoming encoded message data to primitive types.  The serializer is also used
+to convert the return value from primitive types to an encoding suitable for
+the message payload.
+
+RPC servers have start(), stop() and wait() methods to begin handling
+requests, stop handling requests, and wait for all in-process requests to
+complete after the Server has been stopped.
 
 A simple example of an RPC server with multiple endpoints might be::
 
@@ -81,20 +116,6 @@ A simple example of an RPC server with multiple endpoints might be::
     server.stop()
     server.wait()
 
-Clients can invoke methods on the server by sending the request to a topic and
-it gets sent to one of the servers listening on the topic, or by sending the
-request to a specific server listening on the topic, or by sending the request
-to all servers listening on the topic (known as fanout). These modes are chosen
-via the server and fanout attributes on Target but the mode used is transparent
-to the server.
-
-The first parameter to method invocations is always the request context
-supplied by the client.
-
-Parameters to the method invocation are primitive types and so must be the
-return values from the methods. By supplying a serializer object, a server can
-deserialize a request context and arguments from - and serialize return values
-to - primitive types.
 """
 
 __all__ = [
@@ -159,13 +180,6 @@ class RPCServer(msg_server.MessageHandlingServer):
 def get_rpc_server(transport, target, endpoints,
                    executor='blocking', serializer=None, access_policy=None):
     """Construct an RPC server.
-
-    The executor parameter controls how incoming messages will be received and
-    dispatched. By default, the most simple executor is used - the blocking
-    executor.
-
-    If the eventlet executor is used, the threading and time library need to be
-    monkeypatched.
 
     :param transport: the messaging transport
     :type transport: Transport
