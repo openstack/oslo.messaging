@@ -24,12 +24,16 @@ class Target(object):
     Different subsets of the information encapsulated in a Target object is
     relevant to various aspects of the API:
 
-      creating a server:
+      an RPC Server's target:
         topic and server is required; exchange is optional
-      an endpoint's target:
+      an RPC endpoint's target:
         namespace and version is optional
-      client sending a message:
+      an RPC client sending a message:
         topic is required, all other attributes optional
+      a Notification Server's target:
+        topic is required, exchange is optional; all other attributes ignored
+      a Notifier's target:
+        topic is required, exchange is optional; all other attributes ignored
 
     Its attributes are:
 
@@ -38,24 +42,26 @@ class Target(object):
     :type exchange: str
     :param topic: A name which identifies the set of interfaces exposed by a
       server. Multiple servers may listen on a topic and messages will be
-      dispatched to one of the servers in a round-robin fashion.
+      dispatched to one of the servers selected in a best-effort round-robin
+      fashion (unless fanout is ``True``).
     :type topic: str
-    :param namespace: Identifies a particular interface (i.e. set of methods)
-      exposed by a server. The default interface has no namespace identifier
-      and is referred to as the null namespace.
+    :param namespace: Identifies a particular RPC interface (i.e. set of
+      methods) exposed by a server. The default interface has no namespace
+      identifier and is referred to as the null namespace.
     :type namespace: str
-    :param version: Interfaces have a major.minor version number associated
+    :param version: RPC interfaces have a major.minor version number associated
       with them. A minor number increment indicates a backwards compatible
       change and an incompatible change is indicated by a major number bump.
       Servers may implement multiple major versions and clients may require
       indicate that their message requires a particular minimum minor version.
     :type version: str
-    :param server: Clients can request that a message be directed to a specific
-      server, rather than just one of a pool of servers listening on the topic.
+    :param server: RPC Clients can request that a message be directed to a
+      specific server, rather than just one of a pool of servers listening on
+      the topic.
     :type server: str
-    :param fanout: Clients may request that a message be directed to all
-      servers listening on a topic by setting fanout to ``True``, rather than
-      just one of them.
+    :param fanout: Clients may request that a copy of the message be delivered
+      to all servers listening on a topic by setting fanout to ``True``, rather
+      than just one of them.
     :type fanout: bool
     :param legacy_namespaces: A server always accepts messages specified via
       the 'namespace' parameter, and may also accept messages defined via

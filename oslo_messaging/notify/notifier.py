@@ -127,10 +127,11 @@ class Driver(object):
         :type msg: str
         :param priority: priority of the message
         :type priority: str
-        :param retry: an connection retries configuration
-                      None or -1 means to retry forever
-                      0 means no retry
-                      N means N retries
+        :param retry: connection retries configuration (used by the messaging
+                      driver):
+                      None or -1 means to retry forever.
+                      0 means no retry is attempted.
+                      N means attempt at most N retries.
         :type retry: int
         """
         pass
@@ -235,10 +236,11 @@ class Notifier(object):
         :type topic: str
         :param serializer: an optional entity serializer
         :type serializer: Serializer
-        :param retry: an connection retries configuration
-                      None or -1 means to retry forever
-                      0 means no retry
-                      N means N retries
+        :param retry: connection retries configuration (used by the messaging
+                      driver):
+                      None or -1 means to retry forever.
+                      0 means no retry is attempted.
+                      N means attempt at most N retries.
         :type retry: int
         :param topics: the topics which to send messages on
         :type topics: list of strings
@@ -285,10 +287,11 @@ class Notifier(object):
         :param publisher_id: field in notifications sent, for example
                              'compute.host1'
         :type publisher_id: str
-        :param retry: an connection retries configuration
-                      None or -1 means to retry forever
-                      0 means no retry
-                      N means N retries
+        :param retry: connection retries configuration (used by the messaging
+                      driver):
+                      None or -1 means to retry forever.
+                      0 means no retry is attempted.
+                      N means attempt at most N retries.
         :type retry: int
         """
         return _SubNotifier._prepare(self, publisher_id, retry=retry)

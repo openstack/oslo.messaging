@@ -13,8 +13,68 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""A notification listener exposes a number of endpoints, each of which
-contain a set of methods. Each method corresponds to a notification priority.
+"""A notification listener is used to process notification messages sent by a
+notifier that uses the ``messaging`` driver.
+
+A notification listener subscribes to the topic - and optionally exchange - in
+the supplied target.  Notification messages sent by notifier clients to the
+target's topic/exchange are received by the listener.
+
+If multiple listeners subscribe to the same target, the notification will be
+received by only one of the listeners. The receiving listener is selected from
+the group using a best-effort round-robin algorithm.
+
+This delivery pattern can be altered somewhat by specifying a pool name for the
+listener. Listeners with the same pool name behave like a subgroup within the
+group of listeners subscribed to the same topic/exchange.  Each subgroup of
+listeners will receive a copy of the notification to be consumed by one member
+of the subgroup. Therefore, multiple copies of the notification will be
+delivered - one to the group of listeners that have no pool name (if they
+exist), and one to each subgroup of listeners that share the same pool name.
+
+Note that not all transport drivers have implemented support for listener
+pools. Those drivers that do not support pools will raise a NotImplementedError
+if a pool name is specified to get_notification_listener().
+
+A notification listener exposes a number of endpoints, each of which contain a
+set of methods. Each method's name corresponds to a notification's priority.
+When a notification is received it is dispatched to the method named like the
+notification's priority - e.g. ``info`` notifications are dispatched to the
+info() method, etc.
+
+Optionally a notification endpoint can define a NotificationFilter.
+Notification messages that do not match the filter's rules will *not* be passed
+to the endpoint's methods.
+
+Parameters to endpoint methods are: the request context supplied by the client,
+the publisher_id of the notification message, the event_type, the payload and
+metadata. The metadata parameter is a mapping containing a unique message_id
+and a timestamp.
+
+An endpoint method can explicitly return
+oslo_messaging.NotificationResult.HANDLED to acknowledge a message or
+oslo_messaging.NotificationResult.REQUEUE to requeue the message. Note that not
+all transport drivers implement support for requeueing. In order to use this
+feature, applications should assert that the feature is available by passing
+allow_requeue=True to get_notification_listener(). If the driver does not
+support requeueing, it will raise NotImplementedError at this point.
+
+The message is acknowledged only if all endpoints either return
+oslo_messaging.NotificationResult.HANDLED or None.
+
+Each notification listener is associated with an executor which controls how
+incoming notification messages will be received and dispatched. By default, the
+most simple executor is used - the blocking executor. This executor processes
+inbound notifications on the server's thread, blocking it from processing
+additional notifications until it finishes with the current one. Refer to the
+Executor documentation for descriptions of the other types of executors.
+
+*Note:* If the "eventlet" executor is used, the threading and time library need
+to be monkeypatched.
+
+Notification listener have start(), stop() and wait() messages to begin
+handling requests, stop handling requests, and wait for all in-process
+requests to complete after the listener has been stopped.
 
 To create a notification listener, you supply a transport, list of targets and
 a list of endpoints.
@@ -26,18 +86,6 @@ method::
 
 which will load the appropriate transport driver according to the user's
 messaging configuration. See get_notification_transport() for more details.
-
-The target supplied when creating a notification listener expresses the topic
-and - optionally - the exchange to listen on. See Target for more details
-on these attributes.
-
-Notification listener have start(), stop() and wait() messages to begin
-handling requests, stop handling requests and wait for all in-process
-requests to complete.
-
-Each notification listener is associated with an executor which integrates the
-listener with a specific I/O handling framework. Currently, there are blocking
-and eventlet executors available.
 
 A simple example of a notification listener with multiple endpoints might be::
 
@@ -72,35 +120,9 @@ A simple example of a notification listener with multiple endpoints might be::
     server.start()
     server.wait()
 
-A notifier sends a notification on a topic with a priority, the notification
-listener will receive this notification if the topic of this one have been set
-in one of the targets and if an endpoint implements the method named like the
-priority and if the notification match the NotificationFilter rule set into
-the filter_rule attribute of the endpoint.
-
-Parameters to endpoint methods are the request context supplied by the client,
-the publisher_id of the notification message, the event_type, the payload and
-metadata. The metadata parameter is a mapping containing a unique message_id
-and a timestamp.
 
 By supplying a serializer object, a listener can deserialize a request context
-and arguments from - and serialize return values to - primitive types.
-
-By supplying a pool name you can create multiple groups of listeners consuming
-notifications and that each group only receives one copy of each
-notification.
-
-An endpoint method can explicitly return
-oslo_messaging.NotificationResult.HANDLED to acknowledge a message or
-oslo_messaging.NotificationResult.REQUEUE to requeue the message.
-
-The message is acknowledged only if all endpoints either return
-oslo_messaging.NotificationResult.HANDLED or None.
-
-Note that not all transport drivers implement support for requeueing. In order
-to use this feature, applications should assert that the feature is available
-by passing allow_requeue=True to get_notification_listener(). If the driver
-does not support requeueing, it will raise NotImplementedError at this point.
+and arguments from primitive types.
 
 """
 import itertools
