@@ -198,34 +198,32 @@ class MatchmakerRedis(zmq_matchmaker_base.MatchmakerBase):
 
     @redis_connection_warn
     def register(self, target, hostname, listener_type, expire=-1):
-        if target.topic and target.server:
+        if target.server:
             key = zmq_address.target_to_key(target, listener_type)
             self._add_key_with_expire(key, hostname, expire)
 
-        if target.topic:
-            key = zmq_address.prefix_str(target.topic, listener_type)
-            self._add_key_with_expire(key, hostname, expire)
+        key = zmq_address.prefix_str(target.topic, listener_type)
+        self._add_key_with_expire(key, hostname, expire)
 
     @no_reraise
     @redis_connection_warn
     def unregister(self, target, hostname, listener_type):
-        if target.topic and target.server:
+        if target.server:
             key = zmq_address.target_to_key(target, listener_type)
             self._redis.srem(key, hostname)
 
-        if target.topic:
-            key = zmq_address.prefix_str(target.topic, listener_type)
-            self._redis.srem(key, hostname)
+        key = zmq_address.prefix_str(target.topic, listener_type)
+        self._redis.srem(key, hostname)
 
     @redis_connection_warn
     def get_hosts(self, target, listener_type):
         hosts = []
 
-        if target.topic and target.server:
+        if target.server:
             key = zmq_address.target_to_key(target, listener_type)
             hosts.extend(self._get_hosts_by_key(key))
 
-        if not hosts and target.topic:
+        if not hosts:
             key = zmq_address.prefix_str(target.topic, listener_type)
             hosts.extend(self._get_hosts_by_key(key))
 
@@ -239,14 +237,8 @@ class MatchmakerRedis(zmq_matchmaker_base.MatchmakerBase):
 
     @redis_connection_warn
     def get_hosts_fanout(self, target, listener_type):
-        hosts = []
-
-        if target.topic and target.server:
-            key = zmq_address.target_to_key(target, listener_type)
-            hosts.extend(self._get_hosts_by_key(key))
-
         key = zmq_address.prefix_str(target.topic, listener_type)
-        hosts.extend(self._get_hosts_by_key(key))
+        hosts = list(self._get_hosts_by_key(key))
 
         LOG.debug("[Redis] get_hosts_fanout for target %(target)s: %(hosts)s",
                   {"target": target, "hosts": hosts})

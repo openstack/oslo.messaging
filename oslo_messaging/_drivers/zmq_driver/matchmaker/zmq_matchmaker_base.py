@@ -13,12 +13,15 @@
 
 import abc
 import collections
+import logging
 
 import six
 
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._i18n import _LE
+
+LOG = logging.getLogger(__name__)
 
 
 class MatchmakerUnavailable(rpc_common.RPCException):
@@ -147,6 +150,28 @@ class MatchmakerBase(object):
        :returns: a list of "hostname:port" hosts
        """
 
+    @abc.abstractmethod
+    def get_hosts_fanout(self, target, listener_type):
+        """Get all hosts for fanout from nameserver by target.
+
+       :param target: the default target for invocations
+       :type target: Target
+       :param listener_type: listener socket type ROUTER, SUB etc.
+       :type listener_type: str
+       :returns: a list of "hostname:port" hosts
+       """
+
+    @abc.abstractmethod
+    def get_hosts_fanout_retry(self, target, listener_type):
+        """Retry if not host for fanout - used on client first time connection.
+
+       :param target: the default target for invocations
+       :type target: Target
+       :param listener_type: listener socket type ROUTER, SUB etc.
+       :type listener_type: str
+       :returns: a list of "hostname:port" hosts
+       """
+
 
 class MatchmakerDummy(MatchmakerBase):
 
@@ -180,20 +205,56 @@ class MatchmakerDummy(MatchmakerBase):
         return list(self._routers)
 
     def register(self, target, hostname, listener_type, expire=-1):
-        key = zmq_address.target_to_key(target, listener_type)
+        if target.server:
+            key = zmq_address.target_to_key(target, listener_type)
+            if hostname not in self._cache[key]:
+                self._cache[key].append(hostname)
+
+        key = zmq_address.prefix_str(target.topic, listener_type)
         if hostname not in self._cache[key]:
             self._cache[key].append(hostname)
 
     def unregister(self, target, hostname, listener_type):
-        key = zmq_address.target_to_key(target, listener_type)
+        if target.server:
+            key = zmq_address.target_to_key(target, listener_type)
+            if hostname in self._cache[key]:
+                self._cache[key].remove(hostname)
+
+        key = zmq_address.prefix_str(target.topic, listener_type)
         if hostname in self._cache[key]:
             self._cache[key].remove(hostname)
 
     def get_hosts(self, target, listener_type):
-        key = zmq_address.target_to_key(target, listener_type)
-        return self._cache[key]
+        hosts = []
+
+        if target.server:
+            key = zmq_address.target_to_key(target, listener_type)
+            hosts.extend(self._cache[key])
+
+        if not hosts:
+            key = zmq_address.prefix_str(target.topic, listener_type)
+            hosts.extend(self._cache[key])
+
+        LOG.debug("[Dummy] get_hosts for target %(target)s: %(hosts)s",
+                  {"target": target, "hosts": hosts})
+
+        return hosts
 
     def get_hosts_retry(self, target, listener_type):
         # Do not complicate dummy matchmaker
         # This method will act smarter in real world matchmakers
         return self.get_hosts(target, listener_type)
+
+    def get_hosts_fanout(self, target, listener_type):
+        key = zmq_address.prefix_str(target.topic, listener_type)
+        hosts = list(self._cache[key])
+
+        LOG.debug("[Dummy] get_hosts_fanout for target %(target)s: %(hosts)s",
+                  {"target": target, "hosts": hosts})
+
+        return hosts
+
+    def get_hosts_fanout_retry(self, target, listener_type):
+        # Do not complicate dummy matchmaker
+        # This method will act smarter in real world matchmakers
+        return self.get_hosts_fanout(target, listener_type)

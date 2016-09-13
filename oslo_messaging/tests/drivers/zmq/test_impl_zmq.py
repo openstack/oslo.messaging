@@ -13,7 +13,6 @@
 #    under the License.
 
 import testtools
-import time
 
 import oslo_messaging
 from oslo_messaging._drivers import impl_zmq
@@ -68,86 +67,63 @@ class TestConfZmqDriverLoad(test_utils.BaseTestCase):
 
 class TestZmqBasics(zmq_common.ZmqBaseTestCase):
 
-    def test_send_receive_raises(self):
-        """Call() without method."""
-        target = oslo_messaging.Target(topic='testtopic')
-        self.listener.listen(target)
-        self.assertRaises(
-            KeyError,
-            self.driver.send,
-            target, {}, {'tx_id': 1},
-            wait_for_reply=True,
-            timeout=60)
+    @testtools.skipIf(zmq is None, "zmq not available")
+    def setUp(self):
+        super(TestZmqBasics, self).setUp()
+        self.target = oslo_messaging.Target(topic='topic')
+        self.ctxt = {'key': 'value'}
+        self.message = {'method': 'qwerty', 'args': {'int': 1, 'bool': True}}
 
-    def test_send_receive_topic(self):
-        """Call() with topic."""
+    def test_send_call_without_method_failure(self):
+        self.message.pop('method')
+        self.listener.listen(self.target)
+        self.assertRaises(KeyError, self.driver.send,
+                          self.target, self.ctxt, self.message,
+                          wait_for_reply=True, timeout=10)
 
-        target = oslo_messaging.Target(topic='testtopic')
-        self.listener.listen(target)
-        result = self.driver.send(
-            target, {},
-            {'method': 'hello-world', 'tx_id': 1},
-            wait_for_reply=True,
-            timeout=60)
+    def _check_listener_received(self):
+        self.assertTrue(self.listener._received.isSet())
+        self.assertEqual(self.ctxt, self.listener.message.ctxt)
+        self.assertEqual(self.message, self.listener.message.message)
+
+    def test_send_call_success(self):
+        self.listener.listen(self.target)
+        result = self.driver.send(self.target, self.ctxt, self.message,
+                                  wait_for_reply=True, timeout=10)
         self.assertTrue(result)
+        self._check_listener_received()
 
-    def test_send_noreply(self):
-        """Cast() with topic."""
-
-        target = oslo_messaging.Target(topic='testtopic', server="my@server")
-        self.listener.listen(target)
-        time.sleep(0.01)
-        result = self.driver.send(
-            target, {},
-            {'method': 'hello-world', 'tx_id': 1},
-            wait_for_reply=False)
-
-        self.listener._received.wait(5)
-
-        self.assertIsNone(result)
-        self.assertTrue(self.listener._received.isSet())
-        method = self.listener.message.message[u'method']
-        self.assertEqual(u'hello-world', method)
-
-    def test_send_fanout(self):
-        target = oslo_messaging.Target(topic='testtopic', fanout=True)
-
-        self.listener.listen(target)
-
-        result = self.driver.send(
-            target, {},
-            {'method': 'hello-world', 'tx_id': 1},
-            wait_for_reply=False)
-
-        self.listener._received.wait(5)
-
-        self.assertIsNone(result)
-        self.assertTrue(self.listener._received.isSet())
-        method = self.listener.message.message[u'method']
-        self.assertEqual(u'hello-world', method)
-
-    def test_send_receive_direct(self):
-        """Call() without topic."""
-
-        target = oslo_messaging.Target(server='127.0.0.1')
-        self.listener.listen(target)
-        message = {'method': 'hello-world', 'tx_id': 1}
-        context = {}
-        result = self.driver.send(target, context, message,
-                                  wait_for_reply=True,
-                                  timeout=60)
+    def test_send_call_direct_success(self):
+        self.target.server = 'server'
+        self.listener.listen(self.target)
+        result = self.driver.send(self.target, self.ctxt, self.message,
+                                  wait_for_reply=True, timeout=10)
         self.assertTrue(result)
+        self._check_listener_received()
 
-    def test_send_receive_notification(self):
-        """Notify() test"""
-
-        target = oslo_messaging.Target(topic='t1',
-                                       server='notification@server')
-        self.listener.listen_notifications([(target, 'info')])
-
-        message = {'method': 'hello-world', 'tx_id': 1}
-        context = {}
-        target.topic += '.info'
-        self.driver.send_notification(target, context, message, '3.0')
+    def test_send_cast_direct_success(self):
+        self.target.server = 'server'
+        self.listener.listen(self.target)
+        result = self.driver.send(self.target, self.ctxt, self.message,
+                                  wait_for_reply=False)
         self.listener._received.wait(5)
-        self.assertTrue(self.listener._received.isSet())
+        self.assertIsNone(result)
+        self._check_listener_received()
+
+    def test_send_fanout_success(self):
+        self.target.fanout = True
+        self.listener.listen(self.target)
+        result = self.driver.send(self.target, self.ctxt, self.message,
+                                  wait_for_reply=False)
+        self.listener._received.wait(5)
+        self.assertIsNone(result)
+        self._check_listener_received()
+
+    def test_send_notify_success(self):
+        self.listener.listen_notifications([(self.target, 'info')])
+        self.target.topic += '.info'
+        result = self.driver.send_notification(self.target, self.ctxt,
+                                               self.message, '3.0')
+        self.listener._received.wait(5)
+        self.assertIsNone(result)
+        self._check_listener_received()

@@ -37,12 +37,17 @@ class SocketsManager(object):
         return self.matchmaker.get_hosts_retry(
             target, zmq_names.socket_type_str(self.listener_type))
 
+    def get_hosts_fanout(self, target):
+        return self.matchmaker.get_hosts_fanout_retry(
+            target, zmq_names.socket_type_str(self.listener_type))
+
     @staticmethod
     def _key_from_target(target):
         return target.topic if target.fanout else str(target)
 
     def _get_hosts_and_connect(self, socket, target):
-        hosts = self.get_hosts(target)
+        get_hosts = self.get_hosts_fanout if target.fanout else self.get_hosts
+        hosts = get_hosts(target)
         self._connect_to_hosts(socket, target, hosts)
 
     def _track_socket(self, socket, target):
