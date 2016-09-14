@@ -50,11 +50,4 @@ def target_to_key(target, listener_type=None):
 
 
 def target_to_subscribe_filter(target):
-    if target.topic and target.server:
-        attributes = ['topic', 'server']
-        key = "/".join(getattr(target, attr) for attr in attributes)
-        return six.b(key)
-    if target.topic:
-        return six.b(target.topic)
-    if target.server:
-        return six.b(target.server)
+    return six.b(target.topic)

@@ -177,18 +177,19 @@ class ZmqSocket(object):
         if address in self.connections:
             return
         stype = zmq_names.socket_type_str(self.socket_type)
+        sid = self.handle.identity
         try:
-            LOG.info(_LI("Connecting %(stype)s id %(id)s to %(address)s"),
-                     {"stype": stype,
-                      "id": self.handle.identity,
-                      "address": address})
+            LOG.info(_LI("Connecting %(stype)s socket %(sid)s to %(address)s"),
+                     {"stype": stype, "sid": sid, "address": address})
             self.connect(address)
         except zmq.ZMQError as e:
-            errmsg = _LE("Failed connecting %(stype)s to %(address)s: %(e)s") \
-                % {"stype": stype, "address": address, "e": e}
-            LOG.error(_LE("Failed connecting %(stype)s to %(address)s: %(e)s"),
-                      {"stype": stype, "address": address, "e": e})
-            raise rpc_common.RPCException(errmsg)
+            LOG.error(_LE("Failed connecting %(stype)s-%(sid)s to "
+                          "%(address)s: %(e)s"),
+                      {"stype": stype, "sid": sid, "address": address, "e": e})
+            raise rpc_common.RPCException(
+                "Failed connecting %(stype)s-%(sid)s to %(address)s: %(e)s" %
+                {"stype": stype, "sid": sid, "address": address, "e": e}
+            )
 
     def connect_to_host(self, host):
         address = zmq_address.get_tcp_direct_address(
