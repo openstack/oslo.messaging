@@ -261,7 +261,7 @@ class Consumer(object):
     def __init__(self, exchange_name, queue_name, routing_key, type, durable,
                  exchange_auto_delete, queue_auto_delete, callback,
                  nowait=False, rabbit_ha_queues=None, rabbit_queue_ttl=0):
-        """Init the Publisher class with the exchange_name, routing_key,
+        """Init the Consumer class with the exchange_name, routing_key,
         type, durable auto_delete
         """
         self.queue_name = queue_name
