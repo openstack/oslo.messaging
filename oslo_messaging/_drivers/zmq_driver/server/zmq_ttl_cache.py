@@ -12,12 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
 import threading
 import time
 
 import six
 
 from oslo_messaging._drivers.zmq_driver import zmq_async
+
+LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
@@ -71,10 +74,16 @@ class TTLCache(object):
     def _update_cache(self):
         with self._lock:
             current_time = time.time()
+            old_size = len(self._cache)
             self._cache = \
                 {key: (value, expiration_time) for
                  key, (value, expiration_time) in six.iteritems(self._cache)
                  if not self._is_expired(expiration_time, current_time)}
+            new_size = len(self._cache)
+            LOG.debug('Updated cache: current size %(new_size)s '
+                      '(%(size_difference)s records removed)',
+                      {'new_size': new_size,
+                       'size_difference': old_size - new_size})
         time.sleep(self._ttl)
 
     def cleanup(self):

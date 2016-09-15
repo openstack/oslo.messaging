@@ -103,8 +103,8 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         time.sleep(1)
 
     @mock.patch.object(
-        zmq_incoming_message.ZmqIncomingMessage, 'acknowledge',
-        side_effect=zmq_incoming_message.ZmqIncomingMessage.acknowledge,
+        zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
+        side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
         autospec=True
     )
     def test_cast_success_without_retries(self, received_ack_mock):
@@ -121,7 +121,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
 
     def test_cast_success_with_one_retry(self):
         with mock.patch.object(zmq_incoming_message.ZmqIncomingMessage,
-                               'acknowledge') as lost_ack_mock:
+                               '_acknowledge') as lost_ack_mock:
             result = self.driver.send(
                 self.target, {}, self.message, wait_for_reply=False
             )
@@ -134,8 +134,8 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.assertEqual(0, self.set_result.call_count)
             self.listener._received.clear()
         with mock.patch.object(
-            zmq_incoming_message.ZmqIncomingMessage, 'acknowledge',
-            side_effect=zmq_incoming_message.ZmqIncomingMessage.acknowledge,
+            zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
+            side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
             autospec=True
         ) as received_ack_mock:
             self.ack_manager._pool.shutdown(wait=True)
@@ -146,7 +146,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
 
     def test_cast_success_with_two_retries(self):
         with mock.patch.object(zmq_incoming_message.ZmqIncomingMessage,
-                               'acknowledge') as lost_ack_mock:
+                               '_acknowledge') as lost_ack_mock:
             result = self.driver.send(
                 self.target, {}, self.message, wait_for_reply=False
             )
@@ -164,8 +164,8 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.assertEqual(2, lost_ack_mock.call_count)
             self.assertEqual(0, self.set_result.call_count)
         with mock.patch.object(
-            zmq_incoming_message.ZmqIncomingMessage, 'acknowledge',
-            side_effect=zmq_incoming_message.ZmqIncomingMessage.acknowledge,
+            zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
+            side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
             autospec=True
         ) as received_ack_mock:
             self.ack_manager._pool.shutdown(wait=True)
@@ -174,7 +174,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.assertEqual(1, received_ack_mock.call_count)
             self.assertEqual(2, self.set_result.call_count)
 
-    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, 'acknowledge')
+    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, '_acknowledge')
     def test_cast_failure_exhausted_retries(self, lost_ack_mock):
         result = self.driver.send(
             self.target, {}, self.message, wait_for_reply=False
@@ -188,8 +188,8 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(1, self.set_result.call_count)
 
     @mock.patch.object(
-        zmq_incoming_message.ZmqIncomingMessage, 'acknowledge',
-        side_effect=zmq_incoming_message.ZmqIncomingMessage.acknowledge,
+        zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
+        side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
         autospec=True
     )
     @mock.patch.object(
@@ -197,7 +197,13 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         side_effect=zmq_incoming_message.ZmqIncomingMessage.reply,
         autospec=True
     )
-    def test_call_success_without_retries(self, received_reply_mock,
+    @mock.patch.object(
+        zmq_incoming_message.ZmqIncomingMessage, '_reply_from_cache',
+        side_effect=zmq_incoming_message.ZmqIncomingMessage._reply_from_cache,
+        autospec=True
+    )
+    def test_call_success_without_retries(self, unused_reply_from_cache_mock,
+                                          received_reply_mock,
                                           received_ack_mock):
         result = self.driver.send(
             self.target, {}, self.message, wait_for_reply=True, timeout=10
@@ -210,12 +216,14 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(1, received_ack_mock.call_count)
         self.assertEqual(3, self.set_result.call_count)
         received_reply_mock.assert_called_once_with(mock.ANY, reply=True)
+        self.assertEqual(0, unused_reply_from_cache_mock.call_count)
 
-    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, 'acknowledge')
+    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, '_acknowledge')
     @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, 'reply')
-    def test_call_failure_exhausted_retries_and_timeout_error(self,
-                                                              lost_reply_mock,
-                                                              lost_ack_mock):
+    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage,
+                       '_reply_from_cache')
+    def test_call_failure_exhausted_retries(self, lost_reply_from_cache_mock,
+                                            lost_reply_mock, lost_ack_mock):
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           self.driver.send,
                           self.target, {}, self.message,
@@ -227,3 +235,4 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(3, lost_ack_mock.call_count)
         self.assertEqual(2, self.set_result.call_count)
         lost_reply_mock.assert_called_once_with(reply=True)
+        self.assertEqual(2, lost_reply_from_cache_mock.call_count)

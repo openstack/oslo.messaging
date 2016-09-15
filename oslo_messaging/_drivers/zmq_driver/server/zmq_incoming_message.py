@@ -49,6 +49,9 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
         self.replies_cache = replies_cache
 
     def acknowledge(self):
+        """Acknowledge is not supported publicly (used only internally)."""
+
+    def _acknowledge(self):
         if self.ack_sender is not None:
             ack = zmq_response.Ack(message_id=self.message_id,
                                    reply_id=self.reply_id)
@@ -66,11 +69,11 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
             if self.replies_cache is not None:
                 self.replies_cache.add(self.message_id, reply)
 
-    def reply_from_cache(self):
+    def _reply_from_cache(self):
         if self.reply_sender is not None and self.replies_cache is not None:
             reply = self.replies_cache.get(self.message_id)
             if reply is not None:
                 self.reply_sender.send(self.socket, reply)
 
     def requeue(self):
-        """Requeue is not supported"""
+        """Requeue is not supported."""

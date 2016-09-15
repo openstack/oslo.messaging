@@ -108,9 +108,9 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
                     # message, since the old one might be lost;
                     # for the CALL message also try to resend its reply
                     # (of course, if it was already obtained and cached).
-                    message.acknowledge()
+                    message._acknowledge()
                     if msg_type == zmq_names.CALL_TYPE:
-                        message.reply_from_cache()
+                        message._reply_from_cache()
                     return None
 
                 self.messages_cache.add(message_id)
@@ -120,6 +120,10 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
                      "msg_type": zmq_names.message_type_str(msg_type),
                      "msg_id": message_id}
                 )
+                # NOTE(gdavoian): send an immediate ack, since it may
+                # be too late to wait until the message will be
+                # dispatched and processed by a RPC server
+                message._acknowledge()
                 return message
 
             else:
