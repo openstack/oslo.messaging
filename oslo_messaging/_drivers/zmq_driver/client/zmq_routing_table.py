@@ -13,12 +13,16 @@
 #    under the License.
 
 import logging
-import retrying
+import threading
 import time
 
+import itertools
+
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LW
 
 zmq = zmq_async.import_zmq()
@@ -26,75 +30,162 @@ zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
 
 
-class RoutingTable(object):
-    """This class implements local routing-table cache
-        taken from matchmaker. Its purpose is to give the next routable
-        host id (remote DEALER's id) by request for specific target in
-        round-robin fashion.
-    """
+class RoutingTableAdaptor(object):
 
-    def __init__(self, conf, matchmaker):
+    def __init__(self, conf, matchmaker, listener_type):
         self.conf = conf
         self.matchmaker = matchmaker
-        self.routing_table = {}
-        self.routable_hosts = {}
+        self.listener_type = listener_type
+        self.routing_table = RoutingTable(conf)
+        self.routing_table_updater = RoutingTableUpdater(
+            conf, matchmaker, self.routing_table)
+        self.round_robin_targets = {}
 
-    def get_all_hosts(self, target):
-        self._update_routing_table(
-            target,
-            get_hosts=self.matchmaker.get_hosts_fanout,
-            get_hosts_retry=self.matchmaker.get_hosts_fanout_retry)
-        return self.routable_hosts.get(str(target), [])
+    def get_round_robin_host(self, target):
+        target_key = zmq_address.target_to_key(
+            target, zmq_names.socket_type_str(self.listener_type))
 
-    def get_routable_host(self, target):
-        self._update_routing_table(
-            target,
-            get_hosts=self.matchmaker.get_hosts,
-            get_hosts_retry=self.matchmaker.get_hosts_retry)
-        hosts_for_target = self.routable_hosts.get(str(target))
-        if not hosts_for_target:
-            # Matchmaker doesn't contain any target
-            return None
-        host = hosts_for_target.pop(0)
-        if not hosts_for_target:
-            self._renew_routable_hosts(target)
+        LOG.debug("Processing target %s for round-robin." % target_key)
+
+        if target_key not in self.round_robin_targets:
+            LOG.debug("Target %s is not in cache. Check matchmaker server."
+                      % target_key)
+            hosts = self.matchmaker.get_hosts_retry(
+                target, zmq_names.socket_type_str(self.listener_type))
+            LOG.debug("Received hosts %s" % hosts)
+            self.routing_table.update_hosts(target_key, hosts)
+            self.round_robin_targets[target_key] = \
+                self.routing_table.get_hosts_round_robin(target_key)
+
+        rr_gen = self.round_robin_targets[target_key]
+        host = next(rr_gen)
+        LOG.debug("Host resolved for the current connection is %s" % host)
         return host
 
-    def _is_tm_expired(self, tm):
-        return 0 <= self.conf.oslo_messaging_zmq.zmq_target_expire \
-            <= time.time() - tm
+    def get_fanout_hosts(self, target):
+        target_key = zmq_address.target_to_key(
+            target, zmq_names.socket_type_str(self.listener_type))
 
-    def _update_routing_table(self, target, get_hosts, get_hosts_retry):
-        routing_record = self.routing_table.get(str(target))
-        if routing_record is None:
-            self._fetch_hosts(target, get_hosts, get_hosts_retry)
-            self._renew_routable_hosts(target)
-        elif self._is_tm_expired(routing_record[1]):
-            self._fetch_hosts(target, get_hosts, get_hosts_retry)
+        LOG.debug("Processing target %s for fanout." % target_key)
 
-    def _fetch_hosts(self, target, get_hosts, get_hosts_retry):
-        key = str(target)
-        if key not in self.routing_table:
-            try:
-                hosts = get_hosts_retry(
-                    target, zmq_names.socket_type_str(zmq.DEALER))
-                self.routing_table[key] = (hosts, time.time())
-            except retrying.RetryError:
-                LOG.warning(_LW("Matchmaker contains no hosts for target %s")
-                            % key)
+        if not self.routing_table.contains(target_key):
+            LOG.debug("Target %s is not in cache. Check matchmaker server."
+                      % target_key)
+            hosts = self.matchmaker.get_hosts_fanout_retry(
+                target, zmq_names.socket_type_str(self.listener_type))
+            LOG.debug("Received hosts %s" % hosts)
+            self.routing_table.update_hosts(target_key, hosts)
         else:
-            try:
-                hosts = get_hosts(
-                    target, zmq_names.socket_type_str(zmq.DEALER))
-                self.routing_table[key] = (hosts, time.time())
-            except zmq_matchmaker_base.MatchmakerUnavailable:
-                LOG.warning(_LW("Matchmaker contains no hosts for target %s")
-                            % key)
+            LOG.debug("Target %s has been found in cache." % target_key)
+        return self.routing_table.get_hosts_fanout(target_key)
 
-    def _renew_routable_hosts(self, target):
-        key = str(target)
+    def cleanup(self):
+        self.routing_table_updater.cleanup()
+
+
+class RoutingTable(object):
+
+    def __init__(self, conf):
+        self.conf = conf
+        self.targets = {}
+        self._lock = threading.Lock()
+
+    def register(self, target_key, host):
+        with self._lock:
+            if target_key in self.targets:
+                hosts, tm = self.targets[target_key]
+                if host not in hosts:
+                    hosts.add(host)
+                    self.targets[target_key] = (hosts, self._create_tm())
+            else:
+                self.targets[target_key] = ({host}, self._create_tm())
+
+    def get_targets(self):
+        with self._lock:
+            return list(self.targets.keys())
+
+    def unregister(self, target_key, host):
+        with self._lock:
+            hosts, tm = self.targets.get(target_key)
+            if hosts and host in hosts:
+                hosts.discard(host)
+                self.targets[target_key] = (hosts, self._create_tm())
+
+    def update_hosts(self, target_key, hosts_updated):
+        with self._lock:
+            if target_key in self.targets and not hosts_updated:
+                self.targets.pop(target_key)
+                return
+            hosts_current, _ = self.targets.get(target_key, (set(), None))
+            hosts_updated = set(hosts_updated)
+            has_differences = hosts_updated ^ hosts_current
+            if has_differences:
+                self.targets[target_key] = (hosts_updated, self._create_tm())
+
+    def get_hosts_round_robin(self, target_key):
+        while self._contains_hosts(target_key):
+            for host in self._get_hosts_rr(target_key):
+                yield host
+
+    def get_hosts_fanout(self, target_key):
+        hosts, _ = self._get_hosts(target_key)
+        for host in hosts:
+            yield host
+
+    def contains(self, target_key):
+        with self._lock:
+            return target_key in self.targets
+
+    def _get_hosts(self, target_key):
+        with self._lock:
+            hosts, tm = self.targets.get(target_key, ([], None))
+            hosts = list(hosts)
+            return hosts, tm
+
+    def _get_tm(self, target_key):
+        with self._lock:
+            _, tm = self.targets.get(target_key)
+            return tm
+
+    def _contains_hosts(self, target_key):
+        with self._lock:
+            return target_key in self.targets
+
+    def _is_target_changed(self, target_key, tm_orig):
+        return self._get_tm(target_key) != tm_orig
+
+    @staticmethod
+    def _create_tm():
+        return time.time()
+
+    def _get_hosts_rr(self, target_key):
+        hosts, tm_original = self._get_hosts(target_key)
+        for host in itertools.cycle(hosts):
+            if self._is_target_changed(target_key, tm_original):
+                raise StopIteration()
+            yield host
+
+
+class RoutingTableUpdater(zmq_updater.UpdaterBase):
+
+    def __init__(self, conf, matchmaker, routing_table):
+        self.routing_table = routing_table
+        super(RoutingTableUpdater, self).__init__(
+            conf, matchmaker, self._update_routing_table,
+            conf.oslo_messaging_zmq.zmq_target_update)
+
+    def _update_routing_table(self):
+        target_keys = self.routing_table.get_targets()
+
         try:
-            hosts, _ = self.routing_table[key]
-            self.routable_hosts[key] = list(hosts)
-        except KeyError:
-            self.routable_hosts[key] = []
+            for target_key in target_keys:
+                hosts = self.matchmaker.get_hosts_by_key(target_key)
+                if not hosts:
+                    LOG.warning(_LW("Target %s has been removed") % target_key)
+                else:
+                    self.routing_table.update_hosts(target_key, hosts)
+            LOG.debug("Updating routing table from the matchmaker. "
+                      "%d target(s) updated %s." % (len(target_keys),
+                                                    target_keys))
+        except zmq_matchmaker_base.MatchmakerUnavailable:
+            LOG.warning(_LW("Not updated. Matchmaker was not available."))

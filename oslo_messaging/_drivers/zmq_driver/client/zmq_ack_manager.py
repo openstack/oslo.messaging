@@ -15,6 +15,7 @@
 from concurrent import futures
 import logging
 
+from oslo_messaging._drivers.zmq_driver.client import zmq_publisher_manager
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE, _LW
@@ -24,38 +25,10 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
-class AckManagerBase(object):
+class AckManager(zmq_publisher_manager.PublisherManagerBase):
 
     def __init__(self, publisher):
-        self.publisher = publisher
-        self.conf = publisher.conf
-        self.sender = publisher.sender
-        self.receiver = publisher.receiver
-
-    def send_call(self, request):
-        return self.publisher.send_call(request)
-
-    def send_cast(self, request):
-        self.publisher.send_cast(request)
-
-    def send_fanout(self, request):
-        self.publisher.send_fanout(request)
-
-    def send_notify(self, request):
-        self.publisher.send_notify(request)
-
-    def cleanup(self):
-        self.publisher.cleanup()
-
-
-class AckManagerDirect(AckManagerBase):
-    pass
-
-
-class AckManagerProxy(AckManagerBase):
-
-    def __init__(self, publisher):
-        super(AckManagerProxy, self).__init__(publisher)
+        super(AckManager, self).__init__(publisher)
         self._pool = zmq_async.get_pool(
             size=self.conf.oslo_messaging_zmq.rpc_thread_pool_size
         )
@@ -99,33 +72,39 @@ class AckManagerProxy(AckManagerBase):
         if request.msg_type != zmq_names.CALL_TYPE:
             self.receiver.untrack_request(request)
 
-    def _send_request_and_get_ack_future(self, request):
-        socket = self.publisher._send_request(request)
-        if not socket:
-            return None
+    def _schedule_request_for_ack(self, request):
+        socket = self.publisher.acquire_connection(request)
+        self.publisher.send_request(socket, request)
         self.receiver.register_socket(socket)
-        ack_future = self.receiver.track_request(request)[zmq_names.ACK_TYPE]
+        futures_by_type = self.receiver.track_request(request)
+        ack_future = futures_by_type[zmq_names.ACK_TYPE]
         ack_future.request = request
         ack_future.socket = socket
         return ack_future
 
+    @zmq_publisher_manager.target_not_found_timeout
     def send_call(self, request):
-        ack_future = self._send_request_and_get_ack_future(request)
-        if not ack_future:
-            self.publisher._raise_timeout(request)
-        self._pool.submit(self._wait_for_ack, ack_future)
         try:
-            return self.publisher._recv_reply(request, ack_future.socket)
+            ack_future = self._schedule_request_for_ack(request)
+            self._pool.submit(self._wait_for_ack, ack_future)
+            return self.publisher.receive_reply(ack_future.socket, request)
         finally:
             if not ack_future.done():
                 ack_future.set_result((None, None))
 
+    @zmq_publisher_manager.target_not_found_warn
     def send_cast(self, request):
-        ack_future = self._send_request_and_get_ack_future(request)
-        if not ack_future:
-            return
+        ack_future = self._schedule_request_for_ack(request)
         self._pool.submit(self._wait_for_ack, ack_future)
+
+    @zmq_publisher_manager.target_not_found_warn
+    def _send_request(self, request):
+        socket = self.publisher.acquire_connection(request)
+        self.publisher.send_request(socket, request)
 
     def cleanup(self):
         self._pool.shutdown(wait=True)
-        super(AckManagerProxy, self).cleanup()
+        super(AckManager, self).cleanup()
+
+    send_fanout = _send_request
+    send_notify = _send_request

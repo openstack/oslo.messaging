@@ -177,6 +177,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         if server is None:
             for i in range(len(self.servers)):
                 self.client(i).ping()
+                time.sleep(0.3)
         else:
             if server == 'all':
                 for s in self.servers:

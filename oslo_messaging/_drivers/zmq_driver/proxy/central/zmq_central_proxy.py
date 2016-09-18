@@ -156,8 +156,9 @@ class RouterUpdater(zmq_updater.UpdaterBase):
         self.publisher_address = publisher_address
         self.fe_router_address = fe_router_address
         self.be_router_address = be_router_address
-        super(RouterUpdater, self).__init__(conf, matchmaker,
-                                            self._update_records)
+        super(RouterUpdater, self).__init__(
+            conf, matchmaker, self._update_records,
+            conf.oslo_messaging_zmq.zmq_target_update)
 
     def _update_records(self):
         self.matchmaker.register_publisher(

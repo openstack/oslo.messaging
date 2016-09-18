@@ -13,6 +13,7 @@
 #    under the License.
 
 import logging
+import random
 import uuid
 
 import six
@@ -22,11 +23,13 @@ from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
 from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
 from oslo_messaging._drivers.zmq_driver.client import zmq_routing_table
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
+from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-from oslo_messaging._i18n import _LW
+
 
 LOG = logging.getLogger(__name__)
 
@@ -46,8 +49,10 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
                                                    receiver)
         self.socket = self.sockets_manager.get_socket_to_publishers(
             self._generate_identity())
-        self.routing_table = zmq_routing_table.RoutingTable(self.conf,
-                                                            self.matchmaker)
+
+        self.routing_table = zmq_routing_table.RoutingTableAdaptor(
+            conf, matchmaker, zmq.DEALER)
+
         self.connection_updater = \
             PublisherConnectionUpdater(self.conf, self.matchmaker, self.socket)
 
@@ -63,30 +68,24 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
 
     def _get_routing_keys(self, request):
         if request.msg_type in zmq_names.DIRECT_TYPES:
-            return [self.routing_table.get_routable_host(request.target)]
+            return [self.routing_table.get_round_robin_host(request.target)]
         else:
             return \
                 [zmq_address.target_to_subscribe_filter(request.target)] \
                 if self.conf.oslo_messaging_zmq.use_pub_sub else \
-                self.routing_table.get_all_hosts(request.target)
+                self.routing_table.get_fanout_hosts(request.target)
 
-    def _send_request(self, request):
-        routing_keys = [routing_key
-                        for routing_key in self._get_routing_keys(request)
-                        if routing_key is not None]
-        if not routing_keys:
-            LOG.warning(_LW("Matchmaker contains no records for specified "
-                            "target %(target)s. Dropping message %(msg_id)s.")
-                        % {"target": request.target,
-                           "msg_id": request.message_id})
-            return None
-        for routing_key in routing_keys:
-            request.routing_key = routing_key
-            self.sender.send(self.socket, request)
+    def acquire_connection(self, request):
         return self.socket
+
+    def send_request(self, socket, request):
+        for routing_key in self._get_routing_keys(request):
+            request.routing_key = routing_key
+            self.sender.send(socket, request)
 
     def cleanup(self):
         super(DealerPublisherProxy, self).cleanup()
+        self.routing_table.cleanup()
         self.connection_updater.stop()
         self.socket.close()
 
@@ -97,3 +96,49 @@ class PublisherConnectionUpdater(zmq_updater.ConnectionUpdater):
         publishers = self.matchmaker.get_publishers()
         for pub_address, router_address in publishers:
             self.socket.connect_to_host(router_address)
+
+
+class DealerPublisherProxyDynamic(
+        zmq_dealer_publisher_base.DealerPublisherBase):
+
+    def __init__(self, conf, matchmaker):
+        self.publishers = set()
+        self.updater = DynamicPublishersUpdater(conf, matchmaker,
+                                                self.publishers)
+        self.updater.update_publishers()
+        sender = zmq_senders.RequestSenderProxy(conf)
+        receiver = zmq_receivers.ReplyReceiverDirect(conf)
+        super(DealerPublisherProxyDynamic, self).__init__(
+            conf, matchmaker, sender, receiver)
+
+    def acquire_connection(self, request):
+        socket = zmq_socket.ZmqSocket(self.conf, self.context,
+                                      self.socket_type, immediate=False)
+        if not self.publishers:
+            raise zmq_matchmaker_base.MatchmakerUnavailable()
+        socket.connect_to_host(random.choice(tuple(self.publishers)))
+        return socket
+
+    def send_request(self, socket, request):
+        assert request.msg_type in zmq_names.MULTISEND_TYPES
+        request.routing_key = zmq_address.target_to_subscribe_filter(
+            request.target)
+        self.sender.send(socket, request)
+
+    def cleanup(self):
+        super(DealerPublisherProxyDynamic, self).cleanup()
+        self.updater.cleanup()
+
+
+class DynamicPublishersUpdater(zmq_updater.UpdaterBase):
+
+    def __init__(self, conf, matchmaker, publishers):
+        super(DynamicPublishersUpdater, self).__init__(
+            conf, matchmaker, self.update_publishers,
+            sleep_for=conf.oslo_messaging_zmq.zmq_target_update
+        )
+        self.publishers = publishers
+
+    def update_publishers(self):
+        for _, pub_frontend in self.matchmaker.get_publishers():
+            self.publishers.add(pub_frontend)

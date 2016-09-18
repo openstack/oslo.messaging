@@ -18,30 +18,11 @@ import logging
 import six
 
 import oslo_messaging
-from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LE
+
 
 LOG = logging.getLogger(__name__)
-
 zmq = zmq_async.import_zmq()
-
-
-class UnsupportedSendPattern(rpc_common.RPCException):
-
-    """Exception to raise from publishers in case of unsupported
-    sending pattern called.
-    """
-
-    def __init__(self, pattern_name):
-        """Construct exception object
-
-        :param pattern_name: Message type name from zmq_names
-        :type pattern_name: str
-        """
-        errmsg = _LE("Sending pattern %s is unsupported.") % pattern_name
-        super(UnsupportedSendPattern, self).__init__(errmsg)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -68,16 +49,40 @@ class PublisherBase(object):
         :param receiver: reply receiver object
         :type receiver: zmq_receivers.ReplyReceiver
         """
+        self.context = zmq.Context()
         self.sockets_manager = sockets_manager
         self.conf = sockets_manager.conf
         self.matchmaker = sockets_manager.matchmaker
         self.sender = sender
         self.receiver = receiver
 
-    @staticmethod
-    def _check_message_pattern(expected, actual):
-        if expected != actual:
-            raise UnsupportedSendPattern(zmq_names.message_type_str(actual))
+    @abc.abstractmethod
+    def acquire_connection(self, request):
+        """Get socket to publish request on it
+
+        :param request: request object
+        :type senders: zmq_request.Request
+        """
+
+    @abc.abstractmethod
+    def send_request(self, socket, request):
+        """Publish request on a socket
+
+        :param socket: socket object to publish request on
+        :type socket: zmq_socket.ZmqSocket
+        :param request: request object
+        :type senders: zmq_request.Request
+        """
+
+    @abc.abstractmethod
+    def receive_reply(self, socket, request):
+        """Wait for a reply via the socket used for sending the request.
+
+        :param socket: socket object to receive reply from
+        :type socket: zmq_socket.ZmqSocket
+        :param request: request object
+        :type senders: zmq_request.Request
+        """
 
     @staticmethod
     def _raise_timeout(request):
@@ -85,37 +90,6 @@ class PublisherBase(object):
             "Timeout %(tout)s seconds was reached for message %(msg_id)s" %
             {"tout": request.timeout, "msg_id": request.message_id}
         )
-
-    @abc.abstractmethod
-    def _send_request(self, request):
-        """Send the request and return a socket used for that.
-        Return value of None means some failure (e.g. connection
-        can't be established, etc).
-        """
-
-    @abc.abstractmethod
-    def _recv_reply(self, request, socket):
-        """Wait for a reply via the socket used for sending the request."""
-
-    def send_call(self, request):
-        self._check_message_pattern(zmq_names.CALL_TYPE, request.msg_type)
-        socket = self._send_request(request)
-        if not socket:
-            raise self._raise_timeout(request)
-        return self._recv_reply(request, socket)
-
-    def send_cast(self, request):
-        self._check_message_pattern(zmq_names.CAST_TYPE, request.msg_type)
-        self._send_request(request)
-
-    def send_fanout(self, request):
-        self._check_message_pattern(zmq_names.CAST_FANOUT_TYPE,
-                                    request.msg_type)
-        self._send_request(request)
-
-    def send_notify(self, request):
-        self._check_message_pattern(zmq_names.NOTIFY_TYPE, request.msg_type)
-        self._send_request(request)
 
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""

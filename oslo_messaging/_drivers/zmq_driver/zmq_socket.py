@@ -21,7 +21,7 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._i18n import _LE, _LI
+from oslo_messaging._i18n import _LE
 from oslo_messaging import exceptions
 from oslo_serialization.serializer import json_serializer
 from oslo_serialization.serializer import msgpack_serializer
@@ -174,7 +174,9 @@ class ZmqSocket(object):
         return obj
 
     def close(self, *args, **kwargs):
+        identity = self.handle.identity
         self.handle.close(*args, **kwargs)
+        LOG.debug("Socket %s closed" % identity)
 
     def connect_to_address(self, address):
         if address in self.connections:
@@ -182,8 +184,8 @@ class ZmqSocket(object):
         stype = zmq_names.socket_type_str(self.socket_type)
         sid = self.handle.identity
         try:
-            LOG.info(_LI("Connecting %(stype)s socket %(sid)s to %(address)s"),
-                     {"stype": stype, "sid": sid, "address": address})
+            LOG.debug("Connecting %(stype)s socket %(sid)s to %(address)s",
+                      {"stype": stype, "sid": sid, "address": address})
             self.connect(address)
         except zmq.ZMQError as e:
             LOG.error(_LE("Failed connecting %(stype)s-%(sid)s to "

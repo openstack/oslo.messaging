@@ -45,26 +45,29 @@ class SocketsManager(object):
     def _key_from_target(target):
         return target.topic if target.fanout else str(target)
 
+    def _get_hosts_and_track(self, socket, target):
+        self._get_hosts_and_connect(socket, target)
+        self._track_socket(socket, target)
+
     def _get_hosts_and_connect(self, socket, target):
         get_hosts = self.get_hosts_fanout if target.fanout else self.get_hosts
         hosts = get_hosts(target)
-        self._connect_to_hosts(socket, target, hosts)
+        self._connect_to_hosts(socket, hosts)
 
     def _track_socket(self, socket, target):
         key = self._key_from_target(target)
         self.outbound_sockets[key] = (socket, time.time())
 
-    def _connect_to_hosts(self, socket, target, hosts):
+    def _connect_to_hosts(self, socket, hosts):
         for host in hosts:
             socket.connect_to_host(host)
-        self._track_socket(socket, target)
 
     def _check_for_new_hosts(self, target):
         key = self._key_from_target(target)
         socket, tm = self.outbound_sockets[key]
         if 0 <= self.conf.oslo_messaging_zmq.zmq_target_expire \
                 <= time.time() - tm:
-            self._get_hosts_and_connect(socket, target)
+            self._get_hosts_and_track(socket, target)
         return socket
 
     def get_socket(self, target):
@@ -74,7 +77,7 @@ class SocketsManager(object):
         else:
             socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
                                           self.socket_type, immediate=False)
-            self._get_hosts_and_connect(socket, target)
+            self._get_hosts_and_track(socket, target)
         return socket
 
     def get_socket_to_publishers(self, identity=None):

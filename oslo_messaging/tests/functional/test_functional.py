@@ -165,6 +165,7 @@ class CastTestCase(utils.SkipIfNoTransportURL):
         client.append(text='stack')
         client.add(increment=2)
         client.add(increment=10)
+        time.sleep(0.3)
         client.sync()
 
         group.sync(1)
@@ -205,6 +206,7 @@ class CastTestCase(utils.SkipIfNoTransportURL):
         client.append(text='stack')
         client.add(increment=2)
         client.add(increment=10)
+        time.sleep(0.3)
         client.sync()
         group.sync(server='all')
         for s in group.servers:

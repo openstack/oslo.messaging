@@ -87,7 +87,7 @@ zmq_opts = [
                 help='Use PUB/SUB pattern for fanout methods. '
                      'PUB/SUB always uses proxy.'),
 
-    cfg.BoolOpt('use_router_proxy', default=True,
+    cfg.BoolOpt('use_router_proxy', default=False,
                 deprecated_group='DEFAULT',
                 help='Use ROUTER remote proxy.'),
 
