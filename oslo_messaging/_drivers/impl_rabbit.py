@@ -133,6 +133,7 @@ rabbit_opts = [
                help='The RabbitMQ password.',
                secret=True),
     cfg.StrOpt('rabbit_login_method',
+               choices=('PLAIN', 'AMQPLAIN', 'RABBIT-CR-DEMO'),
                default='AMQPLAIN',
                deprecated_group='DEFAULT',
                help='The RabbitMQ login method.'),
