@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,6 +14,8 @@
 
 import logging
 
+from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
 from oslo_messaging._drivers.zmq_driver.server.consumers \
     import zmq_consumer_base
@@ -30,43 +32,51 @@ zmq = zmq_async.import_zmq()
 class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        self.ack_sender = zmq_senders.AckSenderDirect(conf)
         self.reply_sender = zmq_senders.ReplySenderDirect(conf)
         super(RouterConsumer, self).__init__(conf, poller, server, zmq.ROUTER)
         LOG.info(_LI("[%s] Run ROUTER consumer"), self.host)
 
-    def _receive_request(self, socket):
-        reply_id = socket.recv()
-        empty = socket.recv()
-        assert empty == b'', 'Bad format: empty delimiter expected'
-        msg_type = int(socket.recv())
-        message_id = socket.recv_string()
-        context, message = socket.recv_loaded()
-        return reply_id, msg_type, message_id, context, message
+    def _reply(self, rpc_message, reply, failure):
+        if failure is not None:
+            failure = rpc_common.serialize_remote_exception(failure)
+        reply = zmq_response.Reply(message_id=rpc_message.message_id,
+                                   reply_id=rpc_message.reply_id,
+                                   reply_body=reply,
+                                   failure=failure)
+        self.reply_sender.send(rpc_message.socket, reply)
+        return reply
+
+    def _create_message(self, context, message, reply_id, message_id, socket,
+                        message_type):
+        if message_type == zmq_names.CALL_TYPE:
+            message = zmq_incoming_message.ZmqIncomingMessage(
+                context, message, reply_id=reply_id, message_id=message_id,
+                socket=socket, reply_method=self._reply
+            )
+        else:
+            message = zmq_incoming_message.ZmqIncomingMessage(context, message)
+
+        LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
+                  {"host": self.host,
+                   "msg_type": zmq_names.message_type_str(message_type),
+                   "msg_id": message_id})
+        return message
 
     def receive_message(self, socket):
         try:
-            reply_id, msg_type, message_id, context, message = \
-                self._receive_request(socket)
+            reply_id = socket.recv()
+            assert reply_id != b'', "Valid reply id expected!"
+            empty = socket.recv()
+            assert empty == b'', "Empty delimiter expected!"
+            message_type = int(socket.recv())
+            assert message_type in zmq_names.REQUEST_TYPES, \
+                "Request message type expected!"
+            message_id = socket.recv_string()
+            assert message_id != '', "Valid message id expected!"
+            context, message = socket.recv_loaded()
 
-            LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
-                      {"host": self.host,
-                       "msg_type": zmq_names.message_type_str(msg_type),
-                       "msg_id": message_id})
-
-            if msg_type == zmq_names.CALL_TYPE or \
-                    msg_type in zmq_names.NON_BLOCKING_TYPES:
-                ack_sender = self.ack_sender \
-                    if self.conf.oslo_messaging_zmq.rpc_use_acks else None
-                reply_sender = self.reply_sender \
-                    if msg_type == zmq_names.CALL_TYPE else None
-                return zmq_incoming_message.ZmqIncomingMessage(
-                    context, message, reply_id, message_id, socket,
-                    ack_sender, reply_sender
-                )
-            else:
-                LOG.error(_LE("Unknown message type: %s"),
-                          zmq_names.message_type_str(msg_type))
+            return self._create_message(context, message, reply_id,
+                                        message_id, socket, message_type)
         except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
 

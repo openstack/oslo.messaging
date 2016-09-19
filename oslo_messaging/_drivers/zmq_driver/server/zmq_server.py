@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -44,14 +44,20 @@ class ZmqServer(base.PollStyleListener):
                  {'host': self.conf.oslo_messaging_zmq.rpc_zmq_host,
                   'target': self.target})
 
-        self.router_consumer = zmq_router_consumer.RouterConsumer(
-            conf, self.poller, self) \
-            if not conf.oslo_messaging_zmq.use_router_proxy else None
-        self.dealer_consumer = zmq_dealer_consumer.DealerConsumer(
-            conf, self.poller, self) \
-            if conf.oslo_messaging_zmq.use_router_proxy else None
-        self.sub_consumer = zmq_sub_consumer.SubConsumer(
-            conf, self.poller, self) \
+        if conf.oslo_messaging_zmq.use_router_proxy:
+            self.router_consumer = None
+            dealer_consumer_cls = \
+                zmq_dealer_consumer.DealerConsumerWithAcks \
+                if conf.oslo_messaging_zmq.rpc_use_acks else \
+                zmq_dealer_consumer.DealerConsumer
+            self.dealer_consumer = dealer_consumer_cls(conf, self.poller, self)
+        else:
+            self.router_consumer = \
+                zmq_router_consumer.RouterConsumer(conf, self.poller, self)
+            self.dealer_consumer = None
+
+        self.sub_consumer = \
+            zmq_sub_consumer.SubConsumer(conf, self.poller, self) \
             if conf.oslo_messaging_zmq.use_pub_sub else None
 
         self.consumers = []

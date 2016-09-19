@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -48,7 +48,7 @@ RESPONSE_TYPES = (REPLY_TYPE, ACK_TYPE)
 MESSAGE_TYPES = REQUEST_TYPES + RESPONSE_TYPES
 
 MULTISEND_TYPES = (CAST_FANOUT_TYPE, NOTIFY_TYPE)
-DIRECT_TYPES = (CALL_TYPE, CAST_TYPE, REPLY_TYPE, ACK_TYPE)
+DIRECT_TYPES = (CALL_TYPE, CAST_TYPE) + RESPONSE_TYPES
 CAST_TYPES = (CAST_TYPE, CAST_FANOUT_TYPE)
 NOTIFY_TYPES = (NOTIFY_TYPE,)
 NON_BLOCKING_TYPES = CAST_TYPES + NOTIFY_TYPES
@@ -73,4 +73,4 @@ def message_type_str(message_type):
                     NOTIFY_TYPE: "NOTIFY",
                     REPLY_TYPE: "REPLY",
                     ACK_TYPE: "ACK"}
-    return msg_type_str[message_type]
+    return msg_type_str.get(message_type, "UNKNOWN")
