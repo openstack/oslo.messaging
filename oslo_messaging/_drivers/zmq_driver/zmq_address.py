@@ -27,10 +27,6 @@ def get_tcp_random_address(conf):
     return "tcp://%s" % conf.oslo_messaging_zmq.rpc_zmq_bind_address
 
 
-def get_broker_address(conf):
-    return "ipc://%s/zmq-broker" % conf.oslo_messaging_zmq.rpc_zmq_ipc_dir
-
-
 def prefix_str(key, listener_type):
     return listener_type + "/" + key
 

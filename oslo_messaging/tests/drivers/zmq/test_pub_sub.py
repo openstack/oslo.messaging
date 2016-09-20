@@ -22,8 +22,9 @@ import testscenarios
 from oslo_config import cfg
 
 import oslo_messaging
+from oslo_messaging._drivers.zmq_driver.proxy.central \
+    import zmq_publisher_proxy
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
-from oslo_messaging._drivers.zmq_driver.proxy import zmq_publisher_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -82,9 +83,8 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         message = {'method': 'hello-world'}
 
         self.publisher.send_request(
-            [zmq_names.CAST_FANOUT_TYPE,
+            [b'', b'', zmq_names.CAST_FANOUT_TYPE,
              zmq_address.target_to_subscribe_filter(target),
-             b"message",
              b"0000-0000",
              self.dumps([context, message])])
 

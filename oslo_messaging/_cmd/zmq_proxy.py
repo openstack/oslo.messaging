@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,86 +12,36 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import argparse
 import logging
 
 from oslo_config import cfg
 
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
-from oslo_messaging._drivers.zmq_driver.proxy import zmq_queue_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_options
+from oslo_messaging._i18n import _LI
 
-CONF = cfg.CONF
-
-zmq_options.register_opts(CONF)
-
-opt_group = cfg.OptGroup(name='zmq_proxy_opts',
-                         title='ZeroMQ proxy options')
-CONF.register_opts(zmq_proxy.zmq_proxy_opts, group=opt_group)
-
-
-USAGE = """ Usage: ./zmq-proxy.py [-h] [] ...
-
-Usage example:
- python oslo_messaging/_cmd/zmq-proxy.py"""
+LOG = logging.getLogger(__name__)
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description='ZeroMQ proxy service',
-        usage=USAGE
-    )
 
-    parser.add_argument('-c', '--config-file', dest='config_file', type=str,
-                        help='Path to configuration file')
-    parser.add_argument('-l', '--log-file', dest='log_file', type=str,
-                        help='Path to log file')
+    conf = cfg.CONF
+    opt_group = cfg.OptGroup(name='zmq_proxy_opts',
+                             title='ZeroMQ proxy options')
+    conf.register_opts(zmq_proxy.zmq_proxy_opts, group=opt_group)
+    zmq_options.register_opts(conf)
+    zmq_proxy.parse_command_line_args(conf)
 
-    parser.add_argument('-H', '--host', dest='host', type=str,
-                        help='Host FQDN for current proxy')
-    parser.add_argument('-f', '--frontend-port', dest='frontend_port',
-                        type=int,
-                        help='Front-end ROUTER port number')
-    parser.add_argument('-b', '--backend-port', dest='backend_port', type=int,
-                        help='Back-end ROUTER port number')
-    parser.add_argument('-p', '--publisher-port', dest='publisher_port',
-                        type=int,
-                        help='Front-end PUBLISHER port number')
-
-    parser.add_argument('-d', '--debug', dest='debug', type=bool,
-                        default=False,
-                        help='Turn on DEBUG logging level instead of INFO')
-
-    args = parser.parse_args()
-
-    if args.config_file:
-        cfg.CONF(['--config-file', args.config_file])
-
-    log_kwargs = {'level': logging.DEBUG if args.debug else logging.INFO,
-                  'format': '%(asctime)s %(name)s %(levelname)-8s %(message)s'}
-    if args.log_file:
-        log_kwargs.update({'filename': args.log_file})
-    logging.basicConfig(**log_kwargs)
-
-    if args.host:
-        CONF.zmq_proxy_opts.host = args.host
-    if args.frontend_port:
-        CONF.set_override('frontend_port', args.frontend_port,
-                          group='zmq_proxy_opts')
-    if args.backend_port:
-        CONF.set_override('backend_port', args.backend_port,
-                          group='zmq_proxy_opts')
-    if args.publisher_port:
-        CONF.set_override('publisher_port', args.publisher_port,
-                          group='zmq_proxy_opts')
-
-    reactor = zmq_proxy.ZmqProxy(CONF, zmq_queue_proxy.UniversalQueueProxy)
+    reactor = zmq_proxy.ZmqProxy(conf)
 
     try:
         while True:
             reactor.run()
     except (KeyboardInterrupt, SystemExit):
+        LOG.info(_LI("Exit proxy by interrupt signal."))
+    finally:
         reactor.close()
+
 
 if __name__ == "__main__":
     main()
