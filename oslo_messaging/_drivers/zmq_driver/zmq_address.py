@@ -32,21 +32,14 @@ def get_broker_address(conf):
 
 
 def prefix_str(key, listener_type):
-    return listener_type + "_" + key
+    return listener_type + "/" + key
 
 
 def target_to_key(target, listener_type=None):
-
-    def prefix(key):
-        return prefix_str(key, listener_type) if listener_type is not None \
-            else key
-
-    if target.topic and target.server:
-        attributes = ['topic', 'server']
-        key = ".".join(getattr(target, attr) for attr in attributes)
-        return prefix(key)
-    if target.topic:
-        return prefix(target.topic)
+    key = target.topic
+    if target.server:
+        key += "/" + target.server
+    return prefix_str(key, listener_type) if listener_type else key
 
 
 def target_to_subscribe_filter(target):
