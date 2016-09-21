@@ -40,6 +40,10 @@ class ZmqServer(base.PollStyleListener):
         self.target = target
         self.poller = poller or zmq_async.get_poller()
 
+        LOG.info(_LI('[%(host)s] Run server %(target)s'),
+                 {'host': self.conf.oslo_messaging_zmq.rpc_zmq_host,
+                  'target': self.target})
+
         self.router_consumer = zmq_router_consumer.RouterConsumer(
             conf, self.poller, self) \
             if not conf.oslo_messaging_zmq.use_router_proxy else None
@@ -66,14 +70,21 @@ class ZmqServer(base.PollStyleListener):
 
     def stop(self):
         self.poller.close()
-        LOG.info(_LI("Stop server %(target)s"), {'target': self.target})
         for consumer in self.consumers:
             consumer.stop()
+
+        LOG.info(_LI('[%(host)s] Stop server %(target)s'),
+                 {'host': self.conf.oslo_messaging_zmq.rpc_zmq_host,
+                  'target': self.target})
 
     def cleanup(self):
         self.poller.close()
         for consumer in self.consumers:
             consumer.cleanup()
+
+        LOG.info(_LI('[%(host)s] Destroy server %(target)s'),
+                 {'host': self.conf.oslo_messaging_zmq.rpc_zmq_host,
+                  'target': self.target})
 
 
 class ZmqNotificationServer(base.PollStyleListener):
