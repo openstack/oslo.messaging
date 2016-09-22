@@ -13,7 +13,6 @@
 #    under the License.
 
 import logging
-import threading
 
 import eventlet
 
@@ -67,23 +66,17 @@ class GreenExecutor(zmq_poller.Executor):
     def __init__(self, method):
         self._method = method
         super(GreenExecutor, self).__init__(None)
-        self._done = threading.Event()
 
     def _loop(self):
-        while not self._done.is_set():
+        while True:
             self._method()
             eventlet.sleep()
 
     def execute(self):
-        self.thread = eventlet.spawn(self._loop)
-
-    def wait(self):
-        if self.thread is not None:
-            self.thread.wait()
+        if self.thread is None:
+            self.thread = eventlet.spawn(self._loop)
 
     def stop(self):
         if self.thread is not None:
             self.thread.kill()
-
-    def done(self):
-        self._done.set()
+            self.thread = None
