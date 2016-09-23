@@ -118,11 +118,13 @@ class ZmqSocket(object):
     def send(self, *args, **kwargs):
         self.handle.send(*args, **kwargs)
 
-    def send_string(self, value, *args, **kwargs):
+    def send_string(self, u, *args, **kwargs):
         # NOTE(ozamiatin): Not using send_string until
         # eventlet zmq support this convenience method
         # in thread-safe manner
-        self.handle.send(six.b(value), *args, **kwargs)
+        encoding = kwargs.pop('encoding', 'utf-8')
+        s = u.encode(encoding) if isinstance(u, six.text_type) else u
+        self.handle.send(s, *args, **kwargs)
 
     def send_json(self, *args, **kwargs):
         self.handle.send_json(*args, **kwargs)
@@ -148,9 +150,10 @@ class ZmqSocket(object):
         # NOTE(ozamiatin): Not using recv_string until
         # eventlet zmq support this convenience method
         # in thread-safe manner
-        result = self.handle.recv(*args, **kwargs)
-        return result.decode('utf-8') if six.PY3 and \
-            isinstance(result, six.binary_type) else result
+        encoding = kwargs.pop('encoding', 'utf-8')
+        s = self.handle.recv(*args, **kwargs)
+        u = s.decode(encoding) if isinstance(s, six.binary_type) else s
+        return u
 
     def recv_json(self, *args, **kwargs):
         return self.handle.recv_json(*args, **kwargs)
