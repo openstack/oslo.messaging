@@ -32,6 +32,7 @@ import kombu.entity
 import kombu.messaging
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import eventletutils
 from oslo_utils import netutils
 import six
 from six.moves.urllib import parse
@@ -400,7 +401,7 @@ class ConnectionLock(DummyConnectionLock):
         self._monitor = threading.Lock()
         self._workers_locks = threading.Condition(self._monitor)
         self._heartbeat_lock = threading.Condition(self._monitor)
-        self._get_thread_id = _utils.fetch_current_thread_functor()
+        self._get_thread_id = eventletutils.fetch_current_thread_functor()
 
     def acquire(self):
         with self._monitor:
