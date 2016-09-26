@@ -23,8 +23,9 @@ from oslo_messaging._drivers.zmq_driver.proxy.central import zmq_central_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 
-zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
+
+zmq = zmq_async.import_zmq()
 
 
 USAGE = """ Usage: ./zmq-proxy.py [-h] [] ...
@@ -46,6 +47,11 @@ zmq_proxy_opts = [
 
     cfg.IntOpt('publisher_port', default=0,
                help='Publisher port number. Zero means random.'),
+
+    cfg.BoolOpt('ack_pub_sub', default=False,
+                help='Use acknowledgements for notifying senders about '
+                     'receiving their fanout messages. '
+                     'The option is ignored if PUB/SUB is disabled.')
 ]
 
 
@@ -70,9 +76,11 @@ def parse_command_line_args(conf):
     parser.add_argument('-p', '--publisher-port', dest='publisher_port',
                         type=int,
                         help='Front-end PUBLISHER port number')
+    parser.add_argument('-a', '--ack-pub-sub', dest='ack_pub_sub',
+                        action='store_true',
+                        help='Acknowledge PUB/SUB messages')
 
-    parser.add_argument('-d', '--debug', dest='debug', type=bool,
-                        default=False,
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                         help='Turn on DEBUG logging level instead of INFO')
 
     args = parser.parse_args()
@@ -87,7 +95,7 @@ def parse_command_line_args(conf):
     logging.basicConfig(**log_kwargs)
 
     if args.host:
-        conf.zmq_proxy_opts.host = args.host
+        conf.set_override('host', args.host, group='zmq_proxy_opts')
     if args.frontend_port:
         conf.set_override('frontend_port', args.frontend_port,
                           group='zmq_proxy_opts')
@@ -96,6 +104,9 @@ def parse_command_line_args(conf):
                           group='zmq_proxy_opts')
     if args.publisher_port:
         conf.set_override('publisher_port', args.publisher_port,
+                          group='zmq_proxy_opts')
+    if args.ack_pub_sub:
+        conf.set_override('ack_pub_sub', args.ack_pub_sub,
                           group='zmq_proxy_opts')
 
 

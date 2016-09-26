@@ -79,6 +79,9 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
                                         message_id, socket, message_type)
         except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
+            # NOTE(gdavoian): drop the left parts of a broken message
+            if socket.getsockopt(zmq.RCVMORE):
+                socket.recv_multipart()
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy ROUTER consumer"), self.host)

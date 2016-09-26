@@ -210,10 +210,10 @@ class ZmqPortBusy(exceptions.MessagingException):
 class ZmqRandomPortSocket(ZmqSocket):
 
     def __init__(self, conf, context, socket_type, host=None,
-                 high_watermark=0):
+                 high_watermark=0, identity=None):
         super(ZmqRandomPortSocket, self).__init__(
             conf, context, socket_type, immediate=False,
-            high_watermark=high_watermark)
+            high_watermark=high_watermark, identity=identity)
         self.bind_address = zmq_address.get_tcp_random_address(self.conf)
         if host is None:
             host = conf.oslo_messaging_zmq.rpc_zmq_host
@@ -232,10 +232,10 @@ class ZmqRandomPortSocket(ZmqSocket):
 class ZmqFixedPortSocket(ZmqSocket):
 
     def __init__(self, conf, context, socket_type, host, port,
-                 high_watermark=0):
+                 high_watermark=0, identity=None):
         super(ZmqFixedPortSocket, self).__init__(
             conf, context, socket_type, immediate=False,
-            high_watermark=high_watermark)
+            high_watermark=high_watermark, identity=identity)
         self.connect_address = zmq_address.combine_address(host, port)
         self.bind_address = zmq_address.get_tcp_direct_address(
             zmq_address.combine_address(
