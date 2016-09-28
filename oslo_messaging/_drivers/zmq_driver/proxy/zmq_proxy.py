@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,17 +12,25 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import argparse
 import logging
 import socket
 
+from oslo_config import cfg
 from stevedore import driver
 
-from oslo_config import cfg
+from oslo_messaging._drivers.zmq_driver.proxy.central import zmq_central_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 
 zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
+
+
+USAGE = """ Usage: ./zmq-proxy.py [-h] [] ...
+
+Usage example:
+ python oslo_messaging/_cmd/zmq-proxy.py"""
 
 
 zmq_proxy_opts = [
@@ -39,6 +47,56 @@ zmq_proxy_opts = [
     cfg.IntOpt('publisher_port', default=0,
                help='Publisher port number. Zero means random.'),
 ]
+
+
+def parse_command_line_args(conf):
+    parser = argparse.ArgumentParser(
+        description='ZeroMQ proxy service',
+        usage=USAGE
+    )
+
+    parser.add_argument('-c', '--config-file', dest='config_file', type=str,
+                        help='Path to configuration file')
+    parser.add_argument('-l', '--log-file', dest='log_file', type=str,
+                        help='Path to log file')
+
+    parser.add_argument('-H', '--host', dest='host', type=str,
+                        help='Host FQDN for current proxy')
+    parser.add_argument('-f', '--frontend-port', dest='frontend_port',
+                        type=int,
+                        help='Front-end ROUTER port number')
+    parser.add_argument('-b', '--backend-port', dest='backend_port', type=int,
+                        help='Back-end ROUTER port number')
+    parser.add_argument('-p', '--publisher-port', dest='publisher_port',
+                        type=int,
+                        help='Front-end PUBLISHER port number')
+
+    parser.add_argument('-d', '--debug', dest='debug', type=bool,
+                        default=False,
+                        help='Turn on DEBUG logging level instead of INFO')
+
+    args = parser.parse_args()
+
+    if args.config_file:
+        conf(['--config-file', args.config_file])
+
+    log_kwargs = {'level': logging.DEBUG if args.debug else logging.INFO,
+                  'format': '%(asctime)s %(name)s %(levelname)-8s %(message)s'}
+    if args.log_file:
+        log_kwargs.update({'filename': args.log_file})
+    logging.basicConfig(**log_kwargs)
+
+    if args.host:
+        conf.zmq_proxy_opts.host = args.host
+    if args.frontend_port:
+        conf.set_override('frontend_port', args.frontend_port,
+                          group='zmq_proxy_opts')
+    if args.backend_port:
+        conf.set_override('backend_port', args.backend_port,
+                          group='zmq_proxy_opts')
+    if args.publisher_port:
+        conf.set_override('publisher_port', args.publisher_port,
+                          group='zmq_proxy_opts')
 
 
 class ZmqProxy(object):
@@ -80,7 +138,7 @@ class ZmqProxy(object):
 
     """
 
-    def __init__(self, conf, proxy_cls):
+    def __init__(self, conf):
         super(ZmqProxy, self).__init__()
         self.conf = conf
         self.matchmaker = driver.DriverManager(
@@ -88,7 +146,16 @@ class ZmqProxy(object):
             self.conf.oslo_messaging_zmq.rpc_zmq_matchmaker,
         ).driver(self.conf)
         self.context = zmq.Context()
-        self.proxy = proxy_cls(conf, self.context, self.matchmaker)
+        self.proxy = self._choose_proxy_implementation()
+
+    def _choose_proxy_implementation(self):
+        if self.conf.zmq_proxy_opts.frontend_port != 0 and \
+                self.conf.zmq_proxy_opts.backend_port == 0:
+            return zmq_central_proxy.SingleRouterProxy(self.conf, self.context,
+                                                       self.matchmaker)
+        else:
+            return zmq_central_proxy.DoubleRouterProxy(self.conf, self.context,
+                                                       self.matchmaker)
 
     def run(self):
         self.proxy.run()

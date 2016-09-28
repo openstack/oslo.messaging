@@ -55,7 +55,7 @@ class Request(object):
         :type retry: int
         """
 
-        if self.msg_type not in zmq_names.MESSAGE_TYPES:
+        if self.msg_type not in zmq_names.REQUEST_TYPES:
             raise RuntimeError("Unknown message type!")
 
         self.target = target

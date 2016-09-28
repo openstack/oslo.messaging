@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,8 +14,8 @@
 
 import logging
 
+from oslo_messaging._drivers.zmq_driver.proxy import zmq_sender
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 
 LOG = logging.getLogger(__name__)
@@ -44,7 +44,6 @@ class PublisherProxy(object):
         self.matchmaker = matchmaker
 
         port = conf.zmq_proxy_opts.publisher_port
-
         self.socket = zmq_socket.ZmqFixedPortSocket(
             self.conf, self.zmq_context, zmq.PUB, conf.zmq_proxy_opts.host,
             port) if port != 0 else \
@@ -52,23 +51,10 @@ class PublisherProxy(object):
                 self.conf, self.zmq_context, zmq.PUB, conf.zmq_proxy_opts.host)
 
         self.host = self.socket.connect_address
+        self.sender = zmq_sender.CentralPublisherSender()
 
     def send_request(self, multipart_message):
-        message_type = multipart_message.pop(0)
-        assert message_type in (zmq_names.CAST_FANOUT_TYPE,
-                                zmq_names.NOTIFY_TYPE), "Fanout expected!"
-        topic_filter = multipart_message.pop(0)
-        reply_id = multipart_message.pop(0)
-        message_id = multipart_message.pop(0)
-        assert reply_id is not None, "Reply id expected!"
-
-        self.socket.send(topic_filter, zmq.SNDMORE)
-        self.socket.send(message_id, zmq.SNDMORE)
-        self.socket.send_multipart(multipart_message)
-
-        LOG.debug("Publishing message %(message_id)s on [%(topic)s]",
-                  {"topic": topic_filter,
-                   "message_id": message_id})
+        self.sender.send_message(self.socket, multipart_message)
 
     def cleanup(self):
         self.socket.close()

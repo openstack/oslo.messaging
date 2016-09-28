@@ -20,7 +20,6 @@ import oslo_messaging
 from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
-from oslo_messaging._drivers.zmq_driver.proxy import zmq_queue_proxy
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_options
@@ -70,8 +69,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.driver = transport._driver
 
         # prepare and launch proxy
-        self.proxy = zmq_proxy.ZmqProxy(self.conf,
-                                        zmq_queue_proxy.UniversalQueueProxy)
+        self.proxy = zmq_proxy.ZmqProxy(self.conf)
         vars(self.driver.matchmaker).update(vars(self.proxy.matchmaker))
         self.executor = zmq_async.get_executor(self.proxy.run)
         self.executor.execute()
