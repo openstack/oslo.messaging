@@ -374,9 +374,9 @@ class DummyConnectionLock(_utils.DummyLock):
 
 
 class ConnectionLock(DummyConnectionLock):
-    """Lock object to protect access the the kombu connection
+    """Lock object to protect access to the kombu connection
 
-    This is a lock object to protect access the the kombu connection
+    This is a lock object to protect access to the kombu connection
     object between the heartbeat thread and the driver thread.
 
     They are two way to acquire this lock:
