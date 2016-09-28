@@ -20,7 +20,8 @@ import oslo_messaging
 from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
-from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
+from oslo_messaging._drivers.zmq_driver.server.consumers.zmq_dealer_consumer \
+    import DealerConsumerWithAcks
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging.tests.drivers.zmq import zmq_common
@@ -100,11 +101,9 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         # and all parties to be ready for messaging
         time.sleep(1)
 
-    @mock.patch.object(
-        zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
-        side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
-        autospec=True
-    )
+    @mock.patch.object(DealerConsumerWithAcks, '_acknowledge',
+                       side_effect=DealerConsumerWithAcks._acknowledge,
+                       autospec=True)
     def test_cast_success_without_retries(self, received_ack_mock):
         result = self.driver.send(
             self.target, {}, self.message, wait_for_reply=False
@@ -118,7 +117,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(2, self.set_result.call_count)
 
     def test_cast_success_with_one_retry(self):
-        with mock.patch.object(zmq_incoming_message.ZmqIncomingMessage,
+        with mock.patch.object(DealerConsumerWithAcks,
                                '_acknowledge') as lost_ack_mock:
             result = self.driver.send(
                 self.target, {}, self.message, wait_for_reply=False
@@ -131,11 +130,9 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.assertEqual(1, lost_ack_mock.call_count)
             self.assertEqual(0, self.set_result.call_count)
             self.listener._received.clear()
-        with mock.patch.object(
-            zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
-            side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
-            autospec=True
-        ) as received_ack_mock:
+        with mock.patch.object(DealerConsumerWithAcks, '_acknowledge',
+                               side_effect=DealerConsumerWithAcks._acknowledge,
+                               autospec=True) as received_ack_mock:
             self.ack_manager._pool.shutdown(wait=True)
             self.assertFalse(self.listener._received.isSet())
             self.assertEqual(2, self.send.call_count)
@@ -143,7 +140,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.assertEqual(2, self.set_result.call_count)
 
     def test_cast_success_with_two_retries(self):
-        with mock.patch.object(zmq_incoming_message.ZmqIncomingMessage,
+        with mock.patch.object(DealerConsumerWithAcks,
                                '_acknowledge') as lost_ack_mock:
             result = self.driver.send(
                 self.target, {}, self.message, wait_for_reply=False
@@ -161,18 +158,16 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.assertEqual(2, self.send.call_count)
             self.assertEqual(2, lost_ack_mock.call_count)
             self.assertEqual(0, self.set_result.call_count)
-        with mock.patch.object(
-            zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
-            side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
-            autospec=True
-        ) as received_ack_mock:
+        with mock.patch.object(DealerConsumerWithAcks, '_acknowledge',
+                               side_effect=DealerConsumerWithAcks._acknowledge,
+                               autospec=True) as received_ack_mock:
             self.ack_manager._pool.shutdown(wait=True)
             self.assertFalse(self.listener._received.isSet())
             self.assertEqual(3, self.send.call_count)
             self.assertEqual(1, received_ack_mock.call_count)
             self.assertEqual(2, self.set_result.call_count)
 
-    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, '_acknowledge')
+    @mock.patch.object(DealerConsumerWithAcks, '_acknowledge')
     def test_cast_failure_exhausted_retries(self, lost_ack_mock):
         result = self.driver.send(
             self.target, {}, self.message, wait_for_reply=False
@@ -185,21 +180,15 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(3, lost_ack_mock.call_count)
         self.assertEqual(1, self.set_result.call_count)
 
-    @mock.patch.object(
-        zmq_incoming_message.ZmqIncomingMessage, '_acknowledge',
-        side_effect=zmq_incoming_message.ZmqIncomingMessage._acknowledge,
-        autospec=True
-    )
-    @mock.patch.object(
-        zmq_incoming_message.ZmqIncomingMessage, 'reply',
-        side_effect=zmq_incoming_message.ZmqIncomingMessage.reply,
-        autospec=True
-    )
-    @mock.patch.object(
-        zmq_incoming_message.ZmqIncomingMessage, '_reply_from_cache',
-        side_effect=zmq_incoming_message.ZmqIncomingMessage._reply_from_cache,
-        autospec=True
-    )
+    @mock.patch.object(DealerConsumerWithAcks, '_acknowledge',
+                       side_effect=DealerConsumerWithAcks._acknowledge,
+                       autospec=True)
+    @mock.patch.object(DealerConsumerWithAcks, '_reply',
+                       side_effect=DealerConsumerWithAcks._reply,
+                       autospec=True)
+    @mock.patch.object(DealerConsumerWithAcks, '_reply_from_cache',
+                       side_effect=DealerConsumerWithAcks._reply_from_cache,
+                       autospec=True)
     def test_call_success_without_retries(self, unused_reply_from_cache_mock,
                                           received_reply_mock,
                                           received_ack_mock):
@@ -213,13 +202,13 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(1, self.send.call_count)
         self.assertEqual(1, received_ack_mock.call_count)
         self.assertEqual(3, self.set_result.call_count)
-        received_reply_mock.assert_called_once_with(mock.ANY, reply=True)
+        received_reply_mock.assert_called_once_with(mock.ANY, mock.ANY,
+                                                    reply=True, failure=None)
         self.assertEqual(0, unused_reply_from_cache_mock.call_count)
 
-    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, '_acknowledge')
-    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage, 'reply')
-    @mock.patch.object(zmq_incoming_message.ZmqIncomingMessage,
-                       '_reply_from_cache')
+    @mock.patch.object(DealerConsumerWithAcks, '_acknowledge')
+    @mock.patch.object(DealerConsumerWithAcks, '_reply')
+    @mock.patch.object(DealerConsumerWithAcks, '_reply_from_cache')
     def test_call_failure_exhausted_retries(self, lost_reply_from_cache_mock,
                                             lost_reply_mock, lost_ack_mock):
         self.assertRaises(oslo_messaging.MessagingTimeout,
@@ -232,5 +221,6 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         self.assertEqual(3, self.send.call_count)
         self.assertEqual(3, lost_ack_mock.call_count)
         self.assertEqual(2, self.set_result.call_count)
-        lost_reply_mock.assert_called_once_with(reply=True)
+        lost_reply_mock.assert_called_once_with(mock.ANY,
+                                                reply=True, failure=None)
         self.assertEqual(2, lost_reply_from_cache_mock.call_count)

@@ -18,6 +18,7 @@ import uuid
 import six
 
 from oslo_messaging._drivers import common as rpc_common
+from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
 from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
 from oslo_messaging._drivers.zmq_driver.server.consumers \
@@ -38,11 +39,7 @@ zmq = zmq_async.import_zmq()
 class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
 
     def __init__(self, conf, poller, server):
-        self.ack_sender = zmq_senders.AckSenderProxy(conf)
         self.reply_sender = zmq_senders.ReplySenderProxy(conf)
-        self.messages_cache = zmq_ttl_cache.TTLCache(
-            ttl=conf.oslo_messaging_zmq.rpc_message_ttl
-        )
         self.sockets_manager = zmq_sockets_manager.SocketsManager(
             conf, server.matchmaker, zmq.ROUTER, zmq.DEALER)
         self.host = None
@@ -68,75 +65,115 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
             LOG.error(_LE("Failed connecting to ROUTER socket %(e)s") % e)
             raise rpc_common.RPCException(str(e))
 
-    def _receive_request(self, socket):
-        empty = socket.recv()
-        assert empty == b'', 'Bad format: empty delimiter expected'
-        reply_id = socket.recv()
-        msg_type = int(socket.recv())
-        message_id = socket.recv_string()
-        context, message = socket.recv_loaded()
-        return reply_id, msg_type, message_id, context, message
+    def _reply(self, rpc_message, reply, failure):
+        if failure is not None:
+            failure = rpc_common.serialize_remote_exception(failure)
+        reply = zmq_response.Reply(message_id=rpc_message.message_id,
+                                   reply_id=rpc_message.reply_id,
+                                   reply_body=reply,
+                                   failure=failure)
+        self.reply_sender.send(rpc_message.socket, reply)
+        return reply
+
+    def _create_message(self, context, message, reply_id, message_id, socket,
+                        message_type):
+        if message_type == zmq_names.CALL_TYPE:
+            message = zmq_incoming_message.ZmqIncomingMessage(
+                context, message, reply_id=reply_id, message_id=message_id,
+                socket=socket, reply_method=self._reply
+            )
+        else:
+            message = zmq_incoming_message.ZmqIncomingMessage(context, message)
+
+        LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
+                  {"host": self.host,
+                   "msg_type": zmq_names.message_type_str(message_type),
+                   "msg_id": message_id})
+        return message
 
     def receive_message(self, socket):
         try:
-            reply_id, msg_type, message_id, context, message = \
-                self._receive_request(socket)
+            empty = socket.recv()
+            assert empty == b'', "Empty delimiter expected!"
+            reply_id = socket.recv()
+            assert reply_id != b'', "Valid reply id expected!"
+            message_type = int(socket.recv())
+            assert message_type in zmq_names.REQUEST_TYPES, \
+                "Request message type expected!"
+            message_id = socket.recv_string()
+            assert message_id != '', "Valid message id expected!"
+            context, message = socket.recv_loaded()
 
-            if msg_type == zmq_names.CALL_TYPE or \
-                    msg_type in zmq_names.NON_BLOCKING_TYPES:
-
-                ack_sender = self.ack_sender \
-                    if self.conf.oslo_messaging_zmq.rpc_use_acks else None
-                reply_sender = self.reply_sender \
-                    if msg_type == zmq_names.CALL_TYPE else None
-
-                message = zmq_incoming_message.ZmqIncomingMessage(
-                    context, message, reply_id, message_id, socket,
-                    ack_sender, reply_sender, self.messages_cache
-                )
-
-                # drop a duplicate message
-                if message_id in self.messages_cache:
-                    LOG.warning(
-                        _LW("[%(host)s] Dropping duplicate %(msg_type)s "
-                            "message %(msg_id)s"),
-                        {"host": self.host,
-                         "msg_type": zmq_names.message_type_str(msg_type),
-                         "msg_id": message_id}
-                    )
-                    # NOTE(gdavoian): send yet another ack for the non-CALL
-                    # message, since the old one might be lost;
-                    # for the CALL message also try to resend its reply
-                    # (of course, if it was already obtained and cached).
-                    message._acknowledge()
-                    if msg_type == zmq_names.CALL_TYPE:
-                        message._reply_from_cache()
-                    return None
-
-                self.messages_cache.add(message_id)
-                LOG.debug(
-                    "[%(host)s] Received %(msg_type)s message %(msg_id)s",
-                    {"host": self.host,
-                     "msg_type": zmq_names.message_type_str(msg_type),
-                     "msg_id": message_id}
-                )
-                # NOTE(gdavoian): send an immediate ack, since it may
-                # be too late to wait until the message will be
-                # dispatched and processed by a RPC server
-                message._acknowledge()
-                return message
-
-            else:
-                LOG.error(_LE("Unknown message type: %s"),
-                          zmq_names.message_type_str(msg_type))
+            return self._create_message(context, message, reply_id,
+                                        message_id, socket, message_type)
         except (zmq.ZMQError, AssertionError, ValueError) as e:
             LOG.error(_LE("Receiving message failure: %s"), str(e))
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy DEALER consumer"), self.host)
-        self.messages_cache.cleanup()
         self.connection_updater.cleanup()
         super(DealerConsumer, self).cleanup()
+
+
+class DealerConsumerWithAcks(DealerConsumer):
+
+    def __init__(self, conf, poller, server):
+        super(DealerConsumerWithAcks, self).__init__(conf, poller, server)
+        self.ack_sender = zmq_senders.AckSenderProxy(conf)
+        self.messages_cache = zmq_ttl_cache.TTLCache(
+            ttl=conf.oslo_messaging_zmq.rpc_message_ttl
+        )
+
+    def _acknowledge(self, reply_id, message_id, socket):
+        ack = zmq_response.Ack(message_id=message_id,
+                               reply_id=reply_id)
+        self.ack_sender.send(socket, ack)
+
+    def _reply(self, rpc_message, reply, failure):
+        reply = super(DealerConsumerWithAcks, self)._reply(rpc_message,
+                                                           reply, failure)
+        self.messages_cache.add(rpc_message.message_id, reply)
+        return reply
+
+    def _reply_from_cache(self, message_id, socket):
+        reply = self.messages_cache.get(message_id)
+        if reply is not None:
+            self.reply_sender.send(socket, reply)
+
+    def _create_message(self, context, message, reply_id, message_id, socket,
+                        message_type):
+        # drop a duplicate message
+        if message_id in self.messages_cache:
+            LOG.warning(
+                _LW("[%(host)s] Dropping duplicate %(msg_type)s "
+                    "message %(msg_id)s"),
+                {"host": self.host,
+                 "msg_type": zmq_names.message_type_str(message_type),
+                 "msg_id": message_id}
+            )
+            # NOTE(gdavoian): send yet another ack for the non-CALL
+            # message, since the old one might be lost;
+            # for the CALL message also try to resend its reply
+            # (of course, if it was already obtained and cached).
+            self._acknowledge(reply_id, message_id, socket)
+            if message_type == zmq_names.CALL_TYPE:
+                self._reply_from_cache(message_id, socket)
+            return None
+
+        self.messages_cache.add(message_id)
+
+        # NOTE(gdavoian): send an immediate ack, since it may
+        # be too late to wait until the message will be
+        # dispatched and processed by a RPC server
+        self._acknowledge(reply_id, message_id, socket)
+
+        return super(DealerConsumerWithAcks, self)._create_message(
+            context, message, reply_id, message_id, socket, message_type
+        )
+
+    def cleanup(self):
+        self.messages_cache.cleanup()
+        super(DealerConsumerWithAcks, self).cleanup()
 
 
 class ConsumerConnectionUpdater(zmq_updater.ConnectionUpdater):

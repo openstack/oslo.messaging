@@ -43,7 +43,6 @@ class ConsumerBase(object):
 
     def stop(self):
         """Stop consumer polling/updates"""
-        pass
 
     @abc.abstractmethod
     def receive_message(self, target):
