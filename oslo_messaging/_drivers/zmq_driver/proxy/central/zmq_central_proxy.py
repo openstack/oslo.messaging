@@ -13,6 +13,9 @@
 #    under the License.
 
 import logging
+import uuid
+
+import six
 
 from oslo_messaging._drivers.zmq_driver.proxy.central \
     import zmq_publisher_proxy
@@ -23,8 +26,9 @@ from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LI, _LE
 
-zmq = zmq_async.import_zmq()
 LOG = logging.getLogger(__name__)
+
+zmq = zmq_async.import_zmq()
 
 
 def check_message_format(func):
@@ -39,27 +43,27 @@ def check_message_format(func):
 
 class SingleRouterProxy(object):
 
+    PROXY_TYPE = "ROUTER"
+
     def __init__(self, conf, context, matchmaker):
         self.conf = conf
         self.context = context
-        super(SingleRouterProxy, self).__init__()
         self.matchmaker = matchmaker
-        host = conf.zmq_proxy_opts.host
+
+        LOG.info(_LI("Running %s proxy") % self.PROXY_TYPE)
 
         self.poller = zmq_async.get_poller()
 
         port = conf.zmq_proxy_opts.frontend_port
-        self.fe_router_socket = zmq_socket.ZmqFixedPortSocket(
-            conf, context, zmq.ROUTER, host,
-            conf.zmq_proxy_opts.frontend_port) if port != 0 else \
-            zmq_socket.ZmqRandomPortSocket(conf, context, zmq.ROUTER,
-                                           host)
+        self.fe_router_socket = self._create_router_socket(conf, context, port)
 
         self.poller.register(self.fe_router_socket, self._receive_message)
 
-        self.publisher = zmq_publisher_proxy.PublisherProxy(
-            conf, matchmaker)
+        self.publisher = zmq_publisher_proxy.PublisherProxy(conf, matchmaker)
+
         self.router_sender = zmq_sender.CentralRouterSender()
+        self.ack_sender = zmq_sender.CentralAckSender()
+
         self._router_updater = self._create_router_updater()
 
     def run(self):
@@ -67,14 +71,27 @@ class SingleRouterProxy(object):
         if message is None:
             return
 
-        msg_type = int(message[zmq_names.MESSAGE_TYPE_IDX])
+        message_type = int(message[zmq_names.MESSAGE_TYPE_IDX])
         if self.conf.oslo_messaging_zmq.use_pub_sub and \
-                msg_type in (zmq_names.CAST_FANOUT_TYPE,
-                             zmq_names.NOTIFY_TYPE):
+                message_type in zmq_names.MULTISEND_TYPES:
             self.publisher.send_request(message)
+            if socket is self.fe_router_socket and \
+                    self.conf.zmq_proxy_opts.ack_pub_sub:
+                self.ack_sender.send_message(socket, message)
         else:
             self.router_sender.send_message(
                 self._get_socket_to_dispatch_on(socket), message)
+
+    @staticmethod
+    def _create_router_socket(conf, context, port):
+        host = conf.zmq_proxy_opts.host
+        identity = six.b(host) + b"/zmq-proxy/" + six.b(str(uuid.uuid4()))
+        if port != 0:
+            return zmq_socket.ZmqFixedPortSocket(conf, context, zmq.ROUTER,
+                                                 host, port, identity=identity)
+        else:
+            return zmq_socket.ZmqRandomPortSocket(conf, context, zmq.ROUTER,
+                                                  host, identity=identity)
 
     def _create_router_updater(self):
         return RouterUpdater(
@@ -105,15 +122,11 @@ class SingleRouterProxy(object):
 
 class DoubleRouterProxy(SingleRouterProxy):
 
+    PROXY_TYPE = "ROUTER-ROUTER"
+
     def __init__(self, conf, context, matchmaker):
-        LOG.info(_LI('Running double router proxy'))
         port = conf.zmq_proxy_opts.backend_port
-        host = conf.zmq_proxy_opts.host
-        self.be_router_socket = zmq_socket.ZmqFixedPortSocket(
-            conf, context, zmq.ROUTER, host,
-            conf.zmq_proxy_opts.backend_port) if port != 0 else \
-            zmq_socket.ZmqRandomPortSocket(
-                conf, context, zmq.ROUTER, host)
+        self.be_router_socket = self._create_router_socket(conf, context, port)
         super(DoubleRouterProxy, self).__init__(conf, context, matchmaker)
         self.poller.register(self.be_router_socket, self._receive_message)
 
