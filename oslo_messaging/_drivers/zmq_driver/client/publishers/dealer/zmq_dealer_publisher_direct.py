@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import logging
 
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
@@ -22,8 +21,6 @@ from oslo_messaging._drivers.zmq_driver.client import zmq_routing_table
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._drivers.zmq_driver import zmq_socket
-
 
 LOG = logging.getLogger(__name__)
 
@@ -55,8 +52,6 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
     """
 
     def __init__(self, conf, matchmaker):
-        self.routing_table = zmq_routing_table.RoutingTableAdaptor(
-            conf, matchmaker, zmq.ROUTER)
         sender = zmq_senders.RequestSenderDirect(conf)
         if conf.oslo_messaging_zmq.rpc_use_acks:
             receiver = zmq_receivers.AckAndReplyReceiverDirect(conf)
@@ -64,6 +59,9 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
             receiver = zmq_receivers.ReplyReceiverDirect(conf)
         super(DealerPublisherDirect, self).__init__(conf, matchmaker, sender,
                                                     receiver)
+
+        self.routing_table = zmq_routing_table.RoutingTableAdaptor(
+            conf, matchmaker, zmq.ROUTER)
 
     def _get_round_robin_host_connection(self, target, socket):
         host = self.routing_table.get_round_robin_host(target)
@@ -74,8 +72,7 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
             socket.connect_to_host(host)
 
     def acquire_connection(self, request):
-        socket = zmq_socket.ZmqSocket(self.conf, self.context,
-                                      self.socket_type, immediate=False)
+        socket = self.sockets_manager.get_socket()
         if request.msg_type in zmq_names.DIRECT_TYPES:
             self._get_round_robin_host_connection(request.target, socket)
         elif request.msg_type in zmq_names.MULTISEND_TYPES:

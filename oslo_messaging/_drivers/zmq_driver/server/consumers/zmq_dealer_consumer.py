@@ -41,7 +41,7 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
     def __init__(self, conf, poller, server):
         self.reply_sender = zmq_senders.ReplySenderProxy(conf)
         self.sockets_manager = zmq_sockets_manager.SocketsManager(
-            conf, server.matchmaker, zmq.ROUTER, zmq.DEALER)
+            conf, server.matchmaker, zmq.DEALER)
         self.host = None
         super(DealerConsumer, self).__init__(conf, poller, server, zmq.DEALER)
         self.connection_updater = ConsumerConnectionUpdater(

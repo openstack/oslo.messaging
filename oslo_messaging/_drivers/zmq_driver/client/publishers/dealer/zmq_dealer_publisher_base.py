@@ -34,8 +34,7 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
 
     def __init__(self, conf, matchmaker, sender, receiver):
         sockets_manager = zmq_sockets_manager.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
-        self.socket_type = zmq.DEALER
+            conf, matchmaker, zmq.DEALER)
         super(DealerPublisherBase, self).__init__(
             sockets_manager, sender, receiver)
 

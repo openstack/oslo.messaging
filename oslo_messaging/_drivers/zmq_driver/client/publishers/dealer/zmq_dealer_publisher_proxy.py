@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -27,9 +27,7 @@ from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-
 
 LOG = logging.getLogger(__name__)
 
@@ -47,14 +45,13 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
             receiver = zmq_receivers.ReplyReceiverProxy(conf)
         super(DealerPublisherProxy, self).__init__(conf, matchmaker, sender,
                                                    receiver)
+
         self.socket = self.sockets_manager.get_socket_to_publishers(
             self._generate_identity())
-
         self.routing_table = zmq_routing_table.RoutingTableAdaptor(
             conf, matchmaker, zmq.DEALER)
-
-        self.connection_updater = \
-            PublisherConnectionUpdater(self.conf, self.matchmaker, self.socket)
+        self.connection_updater = PublisherConnectionUpdater(
+            self.conf, self.matchmaker, self.socket)
 
     def _generate_identity(self):
         return six.b(self.conf.oslo_messaging_zmq.rpc_zmq_host + "/" +
@@ -84,50 +81,49 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
             self.sender.send(socket, request)
 
     def cleanup(self):
-        super(DealerPublisherProxy, self).cleanup()
-        self.routing_table.cleanup()
         self.connection_updater.stop()
+        self.routing_table.cleanup()
         self.socket.close()
+        super(DealerPublisherProxy, self).cleanup()
 
 
 class PublisherConnectionUpdater(zmq_updater.ConnectionUpdater):
 
     def _update_connection(self):
         publishers = self.matchmaker.get_publishers()
-        for pub_address, router_address in publishers:
-            self.socket.connect_to_host(router_address)
+        for pub_address, fe_router_address in publishers:
+            self.socket.connect_to_host(fe_router_address)
 
 
 class DealerPublisherProxyDynamic(
         zmq_dealer_publisher_base.DealerPublisherBase):
 
     def __init__(self, conf, matchmaker):
+        sender = zmq_senders.RequestSenderProxy(conf)
+        receiver = zmq_receivers.ReplyReceiverDirect(conf)
+        super(DealerPublisherProxyDynamic, self).__init__(conf, matchmaker,
+                                                          sender, receiver)
+
         self.publishers = set()
         self.updater = DynamicPublishersUpdater(conf, matchmaker,
                                                 self.publishers)
         self.updater.update_publishers()
-        sender = zmq_senders.RequestSenderProxy(conf)
-        receiver = zmq_receivers.ReplyReceiverDirect(conf)
-        super(DealerPublisherProxyDynamic, self).__init__(
-            conf, matchmaker, sender, receiver)
 
     def acquire_connection(self, request):
-        socket = zmq_socket.ZmqSocket(self.conf, self.context,
-                                      self.socket_type, immediate=False)
         if not self.publishers:
             raise zmq_matchmaker_base.MatchmakerUnavailable()
+        socket = self.sockets_manager.get_socket()
         socket.connect_to_host(random.choice(tuple(self.publishers)))
         return socket
 
     def send_request(self, socket, request):
-        assert request.msg_type in zmq_names.MULTISEND_TYPES
-        request.routing_key = zmq_address.target_to_subscribe_filter(
-            request.target)
+        request.routing_key = \
+            zmq_address.target_to_subscribe_filter(request.target)
         self.sender.send(socket, request)
 
     def cleanup(self):
-        super(DealerPublisherProxyDynamic, self).cleanup()
         self.updater.cleanup()
+        super(DealerPublisherProxyDynamic, self).cleanup()
 
 
 class DynamicPublishersUpdater(zmq_updater.UpdaterBase):
@@ -140,5 +136,6 @@ class DynamicPublishersUpdater(zmq_updater.UpdaterBase):
         self.publishers = publishers
 
     def update_publishers(self):
-        for _, pub_frontend in self.matchmaker.get_publishers():
-            self.publishers.add(pub_frontend)
+        publishers = self.matchmaker.get_publishers()
+        for pub_address, fe_router_address in publishers:
+            self.publishers.add(fe_router_address)

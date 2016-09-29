@@ -20,8 +20,8 @@ import six
 import oslo_messaging
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
-
 LOG = logging.getLogger(__name__)
+
 zmq = zmq_async.import_zmq()
 
 
@@ -49,7 +49,6 @@ class PublisherBase(object):
         :param receiver: reply receiver object
         :type receiver: zmq_receivers.ReplyReceiver
         """
-        self.context = zmq.Context()
         self.sockets_manager = sockets_manager
         self.conf = sockets_manager.conf
         self.matchmaker = sockets_manager.matchmaker
@@ -94,4 +93,3 @@ class PublisherBase(object):
     def cleanup(self):
         """Cleanup publisher. Close allocated connections."""
         self.receiver.stop()
-        self.sockets_manager.cleanup()

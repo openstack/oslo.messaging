@@ -12,11 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import itertools
 import logging
 import threading
 import time
-
-import itertools
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
@@ -25,9 +24,9 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LW
 
-zmq = zmq_async.import_zmq()
-
 LOG = logging.getLogger(__name__)
+
+zmq = zmq_async.import_zmq()
 
 
 class RoutingTableAdaptor(object):
@@ -63,8 +62,8 @@ class RoutingTableAdaptor(object):
         return host
 
     def get_fanout_hosts(self, target):
-        target_key = zmq_address.target_to_key(
-            target, zmq_names.socket_type_str(self.listener_type))
+        target_key = zmq_address.prefix_str(
+            target.topic, zmq_names.socket_type_str(self.listener_type))
 
         LOG.debug("Processing target %s for fanout." % target_key)
 
@@ -123,14 +122,13 @@ class RoutingTable(object):
                 self.targets[target_key] = (hosts_updated, self._create_tm())
 
     def get_hosts_round_robin(self, target_key):
-        while self._contains_hosts(target_key):
+        while self.contains(target_key):
             for host in self._get_hosts_rr(target_key):
                 yield host
 
     def get_hosts_fanout(self, target_key):
         hosts, _ = self._get_hosts(target_key)
-        for host in hosts:
-            yield host
+        return hosts
 
     def contains(self, target_key):
         with self._lock:
@@ -146,10 +144,6 @@ class RoutingTable(object):
         with self._lock:
             _, tm = self.targets.get(target_key)
             return tm
-
-    def _contains_hosts(self, target_key):
-        with self._lock:
-            return target_key in self.targets
 
     def _is_target_changed(self, target_key, tm_orig):
         return self._get_tm(target_key) != tm_orig

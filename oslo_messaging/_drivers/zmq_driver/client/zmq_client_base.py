@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -73,8 +73,7 @@ class ZmqClientBase(object):
     def _create_publisher_direct(conf, matchmaker):
         publisher_direct = zmq_dealer_publisher_direct.DealerPublisherDirect(
             conf, matchmaker)
-        return zmq_publisher_manager.PublisherManagerDynamic(
-            publisher_direct)
+        return zmq_publisher_manager.PublisherManagerDynamic(publisher_direct)
 
     @staticmethod
     def _create_publisher_proxy(conf, matchmaker):
@@ -86,9 +85,10 @@ class ZmqClientBase(object):
 
     @staticmethod
     def _create_publisher_proxy_dynamic(conf, matchmaker):
-        return zmq_publisher_manager.PublisherManagerDynamic(
+        publisher_proxy = \
             zmq_dealer_publisher_proxy.DealerPublisherProxyDynamic(
-                conf, matchmaker))
+                conf, matchmaker)
+        return zmq_publisher_manager.PublisherManagerDynamic(publisher_proxy)
 
     def cleanup(self):
         cleaned = set()
