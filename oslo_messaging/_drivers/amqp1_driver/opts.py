@@ -191,7 +191,6 @@ amqp1_opts = [
                " consumers."),
 
     cfg.StrOpt('default_notification_exchange',
-               default=None,
                help="Exchange name used in notification addresses.\n"
                "Exchange name resolution precedence:\n"
                "Target.exchange if set\n"
@@ -200,7 +199,6 @@ amqp1_opts = [
                "else 'notify'"),
 
     cfg.StrOpt('default_rpc_exchange',
-               default=None,
                help="Exchange name used in RPC addresses.\n"
                "Exchange name resolution precedence:\n"
                "Target.exchange if set\n"
