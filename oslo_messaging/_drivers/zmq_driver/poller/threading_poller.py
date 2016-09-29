@@ -72,8 +72,9 @@ class ThreadingExecutor(zmq_poller.Executor):
 
     def __init__(self, method):
         self._method = method
-        super(ThreadingExecutor, self).__init__(
-            threading.Thread(target=self._loop))
+        thread = threading.Thread(target=self._loop)
+        thread.daemon = True
+        super(ThreadingExecutor, self).__init__(thread)
         self._stop = threading.Event()
 
     def _loop(self):
@@ -81,14 +82,7 @@ class ThreadingExecutor(zmq_poller.Executor):
             self._method()
 
     def execute(self):
-        self.thread.daemon = True
         self.thread.start()
 
     def stop(self):
-        self._stop.set()
-
-    def wait(self):
-        pass
-
-    def done(self):
         self._stop.set()

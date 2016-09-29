@@ -100,11 +100,3 @@ class Executor(object):
     @abc.abstractmethod
     def stop(self):
         """Stop execution"""
-
-    @abc.abstractmethod
-    def wait(self):
-        """Wait until pass"""
-
-    @abc.abstractmethod
-    def done(self):
-        """More soft way to stop rather than killing thread"""
