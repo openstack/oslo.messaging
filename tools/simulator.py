@@ -601,8 +601,7 @@ def main():
     parser.add_argument('--url', dest='url',
                         default='rabbit://guest:password@localhost/',
                         help="oslo.messaging transport url")
-    parser.add_argument('-d', '--debug', dest='debug', type=bool,
-                        default=False,
+    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                         help="Turn on DEBUG logging level instead of WARN")
     parser.add_argument('-tp', '--topic', dest='topic',
                         default="profiler_topic",
@@ -659,10 +658,10 @@ def main():
     client.add_argument('--exit-wait', dest='exit_wait', type=int, default=0,
                         help='Keep connections open N seconds after calls '
                         'have been done')
-    client.add_argument('--is-cast', dest='is_cast', type=bool, default=False,
+    client.add_argument('--is-cast', dest='is_cast', action='store_true',
                         help='Use `call` or `cast` RPC methods')
-    client.add_argument('--is-fanout', dest='is_fanout', type=bool,
-                        default=False, help='fanout=True for CAST messages')
+    client.add_argument('--is-fanout', dest='is_fanout', action='store_true',
+                        help='fanout=True for CAST messages')
 
     args = parser.parse_args()
 
