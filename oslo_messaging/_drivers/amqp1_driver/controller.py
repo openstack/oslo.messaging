@@ -429,8 +429,6 @@ class Sender(pyngus.SenderEventHandler):
             # simulate ack to wakeup sender
             send_task._on_ack(pyngus.SenderLink.ACCEPTED, dict())
 
-        LOG.debug("Message sent to %s", self._address)
-
     def _send_pending(self):
         # send as many pending messages as there is credit available
         if self._can_send:
@@ -500,8 +498,6 @@ class Replies(pyngus.ReceiverEventHandler):
         # reply is placed on reply_queue
         self._correlation[request.id] = callback
         request.reply_to = self._receiver.source_address
-        LOG.debug("Reply for msg id=%(id)s expected on link %(reply_to)s",
-                  {'id': request.id, 'reply_to': request.reply_to})
         return request.id
 
     def cancel_response(self, msg_id):
@@ -552,7 +548,6 @@ class Replies(pyngus.ReceiverEventHandler):
         arrives on this receiver link from the peer.
         """
         key = message.correlation_id
-        LOG.debug("Received response for msg id=%s", key)
         try:
             self._correlation[key](message)
             # cleanup (only need one response per request)
@@ -660,7 +655,6 @@ class Server(pyngus.ReceiverEventHandler):
             else:
                 LOG.debug("Can't find receiver for settlement")
 
-        LOG.debug("Message received on: %s", receiver.target_address)
         qentry = {"message": message, "disposition": message_disposition}
         self._incoming.put(qentry)
 
@@ -873,7 +867,6 @@ class Controller(pyngus.ConnectionEventHandler):
         if send_task.deadline and send_task.deadline <= now():
             send_task._on_timeout()
             return
-        LOG.debug("Sending message to %s", send_task.target)
         if send_task.retry is None or send_task.retry < 0:
             send_task.retry = None
         key = keyify(send_task.target, send_task.service)

@@ -103,8 +103,6 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         if self._reply_to:
             response = marshal_response(reply, failure)
             response.correlation_id = self._correlation_id
-            LOG.debug("Sending RPC reply to %s (%s)", self._reply_to,
-                      self._correlation_id)
             driver = self.listener.driver
             deadline = compute_timeout(driver._default_reply_timeout)
             ack = not driver._pre_settle_reply
@@ -117,7 +115,7 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
             rc = task.wait()
             if rc:
                 # something failed.  Not much we can do at this point but log
-                LOG.debug("Reply failed to send: %s", str(rc))
+                LOG.debug("RPC Reply failed to send: %s", str(rc))
         else:
             LOG.debug("Ignoring reply as no reply address available")
 
@@ -187,7 +185,6 @@ class ProtonListener(base.PollStyleListener):
         message = qentry['message']
         request, ctxt = unmarshal_request(message)
         disposition = qentry['disposition']
-        LOG.debug("poll: message received")
         return ProtonIncomingMessage(self, ctxt, request, message, disposition)
 
 
@@ -308,7 +305,6 @@ class ProtonDriver(base.BaseDriver):
             # this could lead to a hang - provide a default to prevent this
             # TODO(kgiusti) only do this if brokerless backend
             expire = compute_timeout(self._default_send_timeout)
-        LOG.debug("Sending message to %s", target)
         if wait_for_reply:
             ack = not self._pre_settle_call
             task = controller.RPCCallTask(target, request, expire, retry,
@@ -327,7 +323,6 @@ class ProtonDriver(base.BaseDriver):
             # Must log, and determine best way to communicate this failure
             # back up to the caller
             reply = unmarshal_response(reply, self._allowed_remote_exmods)
-        LOG.debug("Send to %s returning", target)
         return reply
 
     @_ensure_connect_called
@@ -354,7 +349,6 @@ class ProtonDriver(base.BaseDriver):
         # queueless this could lead to a hang - provide a default to prevent
         # this
         # TODO(kgiusti) should raise NotImplemented if not broker backend
-        LOG.debug("Send notification to %s", target)
         deadline = compute_timeout(self._default_notify_timeout)
         ack = not self._pre_settle_notify
         task = controller.SendTask("Notify", request, target,
@@ -364,7 +358,6 @@ class ProtonDriver(base.BaseDriver):
         rc = task.wait()
         if isinstance(rc, Exception):
             raise rc
-        LOG.debug("Send notification to %s returning", target)
 
     @_ensure_connect_called
     def listen(self, target, batch_size, batch_timeout):
