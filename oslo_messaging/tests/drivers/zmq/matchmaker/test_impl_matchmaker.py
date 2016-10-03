@@ -13,6 +13,7 @@
 #    under the License.
 
 from fixtures._fixtures import timeout
+import inspect
 import retrying
 from stevedore import driver
 import testscenarios
@@ -100,3 +101,17 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         except (timeout.TimeoutException, retrying.RetryError):
             pass
         self.assertEqual([], hosts)
+
+    def test_handle_redis_package_error(self):
+        if self.rpc_zmq_matchmaker == "redis":
+            # move 'redis' variable to prevent this case affect others
+            module = inspect.getmodule(self.test_matcher)
+            redis_package = module.redis
+
+            # 'redis' variable is set None, when importing package is failed
+            module.redis = None
+            self.assertRaises(ImportError, self.test_matcher.__init__,
+                              self.conf)
+
+            # retrieve 'redis' variable wihch is set originally
+            module.redis = redis_package

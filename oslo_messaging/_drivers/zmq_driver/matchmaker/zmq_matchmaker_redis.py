@@ -19,7 +19,7 @@ from oslo_utils import importutils
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
-from oslo_messaging._i18n import _LW
+from oslo_messaging._i18n import _LW, _LE
 
 redis = importutils.try_import('redis')
 redis_sentinel = importutils.try_import('redis.sentinel')
@@ -112,6 +112,8 @@ class MatchmakerRedis(zmq_matchmaker_base.MatchmakerBase):
     def __init__(self, conf, *args, **kwargs):
         super(MatchmakerRedis, self).__init__(conf, *args, **kwargs)
         self.conf.register_opts(matchmaker_redis_opts, "matchmaker_redis")
+        if redis is None:
+            raise ImportError(_LE("Redis package is not available!"))
 
         self.sentinel_hosts = self._extract_sentinel_options()
         if not self.sentinel_hosts:
