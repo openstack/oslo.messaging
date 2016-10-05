@@ -170,7 +170,7 @@ rabbit_opts = [
                 'database. In RabbitMQ 3.0, queue mirroring is no longer '
                 'controlled by the x-ha-policy argument when declaring a '
                 'queue. If you just want to make sure that all queues (except '
-                ' those with auto-generated names) are mirrored across all '
+                'those with auto-generated names) are mirrored across all '
                 'nodes, run: '
                 """\"rabbitmqctl set_policy HA '^(?!amq\.).*' """
                 """'{"ha-mode": "all"}' \""""),
@@ -784,7 +784,7 @@ class Connection(object):
             self._set_current_channel(new_channel)
 
             LOG.info(_LI('[%(connection_id)s] Reconnected to AMQP server on '
-                         '%(hostname)s:%(port)s via [%(transport)s] client'
+                         '%(hostname)s:%(port)s via [%(transport)s] client '
                          'with port %(client_port)s.'),
                      self._get_connection_info())
 
