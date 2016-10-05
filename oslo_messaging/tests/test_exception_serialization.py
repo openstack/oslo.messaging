@@ -26,6 +26,7 @@ from oslo_messaging.tests import utils as test_utils
 load_tests = testscenarios.load_tests_apply_scenarios
 
 EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
+OTHER_EXCEPTIONS_MODULE = 'builtins' if six.PY2 else 'exceptions'
 
 
 class NovaStyleException(Exception):
@@ -142,6 +143,17 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
          dict(allowed=_standard_allowed,
               clsname='Exception',
               modname=EXCEPTIONS_MODULE,
+              cls=Exception,
+              args=['test'],
+              kwargs={},
+              str='test\ntraceback\ntraceback\n',
+              remote_name='Exception',
+              remote_args=('test\ntraceback\ntraceback\n', ),
+              remote_kwargs={})),
+        ('different_python_versions',
+         dict(allowed=_standard_allowed,
+              clsname='Exception',
+              modname=OTHER_EXCEPTIONS_MODULE,
               cls=Exception,
               args=['test'],
               kwargs={},
