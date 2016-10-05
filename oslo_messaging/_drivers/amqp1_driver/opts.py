@@ -226,7 +226,7 @@ amqp1_opts = [
     # Settlement control
 
     cfg.MultiStrOpt('pre_settled',
-                    default=['rpc-cast'],
+                    default=['rpc-cast', 'rpc-reply'],
                     help="Send messages of this type pre-settled.\n"
                     "Pre-settled messages will not receive acknowledgement\n"
                     "from the peer. Note well: pre-settled messages may be\n"
