@@ -28,16 +28,20 @@ LOG = logging.getLogger(__name__)
 zmq = zmq_async.import_zmq()
 
 
+def _drop_message_warn(request):
+    LOG.warning(_LW("Matchmaker contains no records for specified "
+                    "target %(target)s. Dropping message %(msg_id)s.")
+                % {"target": request.target,
+                   "msg_id": request.message_id})
+
+
 def target_not_found_warn(func):
     def _target_not_found_warn(self, request, *args, **kwargs):
         try:
             return func(self, request, *args, **kwargs)
         except (zmq_matchmaker_base.MatchmakerUnavailable,
                 retrying.RetryError):
-            LOG.warning(_LW("Matchmaker contains no records for specified "
-                            "target %(target)s. Dropping message %(msg_id)s.")
-                        % {"target": request.target,
-                           "msg_id": request.message_id})
+            _drop_message_warn(request)
     return _target_not_found_warn
 
 
@@ -47,6 +51,7 @@ def target_not_found_timeout(func):
             return func(self, request, *args, **kwargs)
         except (zmq_matchmaker_base.MatchmakerUnavailable,
                 retrying.RetryError):
+            _drop_message_warn(request)
             self.publisher._raise_timeout(request)
     return _target_not_found_timeout
 
@@ -72,31 +77,31 @@ class PublisherManagerBase(object):
         """Send call request
 
         :param request: request object
-        :type senders: zmq_request.Request
+        :type request: zmq_request.CallRequest
         """
 
     @abc.abstractmethod
     def send_cast(self, request):
-        """Send call request
+        """Send cast request
 
         :param request: request object
-        :type senders: zmq_request.Request
+        :type request: zmq_request.CastRequest
         """
 
     @abc.abstractmethod
     def send_fanout(self, request):
-        """Send call request
+        """Send fanout request
 
         :param request: request object
-        :type senders: zmq_request.Request
+        :type request: zmq_request.FanoutRequest
         """
 
     @abc.abstractmethod
     def send_notify(self, request):
-        """Send call request
+        """Send notification request
 
         :param request: request object
-        :type senders: zmq_request.Request
+        :type request: zmq_request.NotificationRequest
         """
 
     def cleanup(self):
@@ -107,8 +112,8 @@ class PublisherManagerDynamic(PublisherManagerBase):
 
     @target_not_found_timeout
     def send_call(self, request):
-        with contextlib.closing(
-                self.publisher.acquire_connection(request)) as socket:
+        with contextlib.closing(self.publisher.acquire_connection(request)) \
+                as socket:
             self.publisher.send_request(socket, request)
             reply = self.publisher.receive_reply(socket, request)
             return reply

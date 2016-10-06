@@ -12,10 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
-
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 
 zmq = zmq_async.import_zmq()
@@ -23,61 +20,17 @@ zmq = zmq_async.import_zmq()
 
 class SocketsManager(object):
 
-    def __init__(self, conf, matchmaker, listener_type, socket_type):
+    def __init__(self, conf, matchmaker, socket_type):
         self.conf = conf
         self.matchmaker = matchmaker
-        self.listener_type = listener_type
         self.socket_type = socket_type
         self.zmq_context = zmq.Context()
-        self.outbound_sockets = {}
         self.socket_to_publishers = None
         self.socket_to_routers = None
 
-    def get_hosts(self, target):
-        return self.matchmaker.get_hosts_retry(
-            target, zmq_names.socket_type_str(self.listener_type))
-
-    def get_hosts_fanout(self, target):
-        return self.matchmaker.get_hosts_fanout_retry(
-            target, zmq_names.socket_type_str(self.listener_type))
-
-    @staticmethod
-    def _key_from_target(target):
-        return target.topic if target.fanout else str(target)
-
-    def _get_hosts_and_track(self, socket, target):
-        self._get_hosts_and_connect(socket, target)
-        self._track_socket(socket, target)
-
-    def _get_hosts_and_connect(self, socket, target):
-        get_hosts = self.get_hosts_fanout if target.fanout else self.get_hosts
-        hosts = get_hosts(target)
-        self._connect_to_hosts(socket, hosts)
-
-    def _track_socket(self, socket, target):
-        key = self._key_from_target(target)
-        self.outbound_sockets[key] = (socket, time.time())
-
-    def _connect_to_hosts(self, socket, hosts):
-        for host in hosts:
-            socket.connect_to_host(host)
-
-    def _check_for_new_hosts(self, target):
-        key = self._key_from_target(target)
-        socket, tm = self.outbound_sockets[key]
-        if 0 <= self.conf.oslo_messaging_zmq.zmq_target_expire \
-                <= time.time() - tm:
-            self._get_hosts_and_track(socket, target)
-        return socket
-
-    def get_socket(self, target):
-        key = self._key_from_target(target)
-        if key in self.outbound_sockets:
-            socket = self._check_for_new_hosts(target)
-        else:
-            socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                          self.socket_type, immediate=False)
-            self._get_hosts_and_track(socket, target)
+    def get_socket(self):
+        socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                      self.socket_type, immediate=False)
         return socket
 
     def get_socket_to_publishers(self, identity=None):
@@ -88,8 +41,8 @@ class SocketsManager(object):
             immediate=self.conf.oslo_messaging_zmq.zmq_immediate,
             identity=identity)
         publishers = self.matchmaker.get_publishers()
-        for pub_address, router_address in publishers:
-            self.socket_to_publishers.connect_to_host(router_address)
+        for pub_address, fe_router_address in publishers:
+            self.socket_to_publishers.connect_to_host(fe_router_address)
         return self.socket_to_publishers
 
     def get_socket_to_routers(self, identity=None):
@@ -100,10 +53,6 @@ class SocketsManager(object):
             immediate=self.conf.oslo_messaging_zmq.zmq_immediate,
             identity=identity)
         routers = self.matchmaker.get_routers()
-        for router_address in routers:
-            self.socket_to_routers.connect_to_host(router_address)
+        for be_router_address in routers:
+            self.socket_to_routers.connect_to_host(be_router_address)
         return self.socket_to_routers
-
-    def cleanup(self):
-        for socket, tm in self.outbound_sockets.values():
-            socket.close()

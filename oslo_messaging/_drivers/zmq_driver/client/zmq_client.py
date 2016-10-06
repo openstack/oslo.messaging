@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -11,7 +11,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 
 from oslo_messaging._drivers import common
 from oslo_messaging._drivers.zmq_driver.client import zmq_client_base
@@ -69,8 +68,9 @@ class ZmqClientDirect(zmq_client_base.ZmqClientBase):
 
         super(ZmqClientDirect, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
-            publishers={"default": self._create_publisher_direct(
-                conf, matchmaker)}
+            publishers={
+                "default": self._create_publisher_direct(conf, matchmaker)
+            }
         )
 
 
@@ -91,6 +91,7 @@ class ZmqClientProxy(zmq_client_base.ZmqClientBase):
 
         super(ZmqClientProxy, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
-            publishers={"default": self._create_publisher_proxy(
-                conf, matchmaker)}
+            publishers={
+                "default": self._create_publisher_proxy(conf, matchmaker)
+            }
         )
