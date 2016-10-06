@@ -195,6 +195,10 @@ class MatchmakerRedis(zmq_matchmaker_base.MatchmakerBase):
     def get_routers(self):
         return self._get_hosts_by_key(_ROUTERS_KEY)
 
+    @redis_connection_warn
+    def get_hosts_by_key(self, key):
+        return self._get_hosts_by_key(key)
+
     def _get_hosts_by_key(self, key):
         return self._redis.smembers(key)
 

@@ -27,12 +27,11 @@ zmq = zmq_async.import_zmq()
 
 class UpdaterBase(object):
 
-    def __init__(self, conf, matchmaker, update_method):
+    def __init__(self, conf, matchmaker, update_method, sleep_for):
         self.conf = conf
         self.matchmaker = matchmaker
         self.update_method = update_method
-        self._sleep_for = self.conf.oslo_messaging_zmq.zmq_target_update
-        self.update_method()
+        self._sleep_for = sleep_for
         self.executor = zmq_async.get_executor(method=self._update_loop)
         self.executor.execute()
 
@@ -53,7 +52,8 @@ class ConnectionUpdater(UpdaterBase):
     def __init__(self, conf, matchmaker, socket):
         self.socket = socket
         super(ConnectionUpdater, self).__init__(
-            conf, matchmaker, self._update_connection)
+            conf, matchmaker, self._update_connection,
+            conf.oslo_messaging_zmq.zmq_target_update)
 
     @abc.abstractmethod
     def _update_connection(self):

@@ -34,15 +34,18 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
 
     def __init__(self, conf, matchmaker, sender, receiver):
         sockets_manager = zmq_sockets_manager.SocketsManager(
-            conf, matchmaker, zmq.ROUTER, zmq.DEALER
-        )
-        super(DealerPublisherBase, self).__init__(sockets_manager, sender,
-                                                  receiver)
+            conf, matchmaker, zmq.ROUTER, zmq.DEALER)
+        self.socket_type = zmq.DEALER
+        super(DealerPublisherBase, self).__init__(
+            sockets_manager, sender, receiver)
 
     def _check_received_data(self, reply_id, reply, request):
         assert isinstance(reply, zmq_response.Reply), "Reply expected!"
 
-    def _recv_reply(self, request, socket):
+    def _finally_unregister(self, socket, request):
+        self.receiver.untrack_request(request)
+
+    def receive_reply(self, socket, request):
         self.receiver.register_socket(socket)
         reply_future = \
             self.receiver.track_request(request)[zmq_names.REPLY_TYPE]
@@ -57,11 +60,10 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
         except futures.TimeoutError:
             self._raise_timeout(request)
         finally:
-            self.receiver.untrack_request(request)
+            self._finally_unregister(socket, request)
 
         if reply.failure:
             raise rpc_common.deserialize_remote_exception(
-                reply.failure, request.allowed_remote_exmods
-            )
+                reply.failure, request.allowed_remote_exmods)
         else:
             return reply.reply_body

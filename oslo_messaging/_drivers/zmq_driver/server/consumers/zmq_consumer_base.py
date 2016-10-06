@@ -112,8 +112,17 @@ class TargetUpdater(zmq_updater.UpdaterBase):
         self.target = target
         self.host = host
         self.socket_type = socket_type
-        super(TargetUpdater, self).__init__(conf, matchmaker,
-                                            self._update_target)
+        self.conf = conf
+        self.matchmaker = matchmaker
+        self._sleep_for = conf.oslo_messaging_zmq.zmq_target_update
+
+        # NOTE(ozamiatin): Update target immediately not waiting
+        # for background executor to initialize.
+        self._update_target()
+
+        super(TargetUpdater, self).__init__(
+            conf, matchmaker, self._update_target,
+            conf.oslo_messaging_zmq.zmq_target_update)
 
     def _update_target(self):
         try:

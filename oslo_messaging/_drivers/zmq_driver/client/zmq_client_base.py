@@ -12,6 +12,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
+    import zmq_dealer_publisher_direct
+from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
+    import zmq_dealer_publisher_proxy
+from oslo_messaging._drivers.zmq_driver.client import zmq_ack_manager
+from oslo_messaging._drivers.zmq_driver.client import zmq_publisher_manager
 from oslo_messaging._drivers.zmq_driver.client import zmq_request
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
@@ -36,13 +42,6 @@ class ZmqClientBase(object):
                                                publishers["default"])
         self.notify_publisher = publishers.get(zmq_names.NOTIFY_TYPE,
                                                publishers["default"])
-
-    @staticmethod
-    def create_publisher(conf, matchmaker, publisher_cls, ack_manager_cls):
-        publisher = publisher_cls(conf, matchmaker)
-        if conf.oslo_messaging_zmq.rpc_use_acks:
-            publisher = ack_manager_cls(publisher)
-        return publisher
 
     def send_call(self, target, context, message, timeout=None, retry=None):
         request = zmq_request.CallRequest(
@@ -69,6 +68,27 @@ class ZmqClientBase(object):
             version=version
         )
         self.notify_publisher.send_notify(request)
+
+    @staticmethod
+    def _create_publisher_direct(conf, matchmaker):
+        publisher_direct = zmq_dealer_publisher_direct.DealerPublisherDirect(
+            conf, matchmaker)
+        return zmq_publisher_manager.PublisherManagerDynamic(
+            publisher_direct)
+
+    @staticmethod
+    def _create_publisher_proxy(conf, matchmaker):
+        publisher_proxy = zmq_dealer_publisher_proxy.DealerPublisherProxy(
+            conf, matchmaker)
+        return zmq_ack_manager.AckManager(publisher_proxy) \
+            if conf.oslo_messaging_zmq.rpc_use_acks else \
+            zmq_publisher_manager.PublisherManagerStatic(publisher_proxy)
+
+    @staticmethod
+    def _create_publisher_proxy_dynamic(conf, matchmaker):
+        return zmq_publisher_manager.PublisherManagerDynamic(
+            zmq_dealer_publisher_proxy.DealerPublisherProxyDynamic(
+                conf, matchmaker))
 
     def cleanup(self):
         cleaned = set()
