@@ -92,15 +92,19 @@ A simple example of a notification listener with multiple endpoints might be::
     from oslo_config import cfg
     import oslo_messaging
 
+
     class NotificationEndpoint(object):
-        filter_rule = NotificationFilter(publisher_id='^compute.*')
+        filter_rule = oslo_messaging.NotificationFilter(
+            publisher_id='^compute.*')
 
         def warn(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
 
+
     class ErrorEndpoint(object):
-        filter_rule = NotificationFilter(event_type='^instance\..*\.start$',
-                                         context={'ctxt_key': 'regexp'})
+        filter_rule = oslo_messaging.NotificationFilter(
+            event_type='^instance\..*\.start$',
+            context={'ctxt_key': 'regexp'})
 
         def error(self, ctxt, publisher_id, event_type, payload, metadata):
             do_something(payload)
@@ -116,7 +120,7 @@ A simple example of a notification listener with multiple endpoints might be::
     ]
     pool = "listener-workers"
     server = oslo_messaging.get_notification_listener(transport, targets,
-                                                      endpoints, pool)
+                                                      endpoints, pool=pool)
     server.start()
     server.wait()
 
