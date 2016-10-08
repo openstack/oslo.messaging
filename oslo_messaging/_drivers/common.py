@@ -33,6 +33,7 @@ from oslo_messaging import _utils as utils
 LOG = logging.getLogger(__name__)
 
 _EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
+_EXCEPTIONS_MODULES = ['exceptions', 'builtins']
 
 
 '''RPC Envelope Version.
@@ -207,6 +208,13 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
     message = failure.get('message', "") + "\n" + "\n".join(trace)
     name = failure.get('class')
     module = failure.get('module')
+
+    # the remote service which raised the given exception might have a
+    # different python version than the caller. For example, the caller might
+    # run python 2.7, while the remote service might run python 3.4. Thus,
+    # the exception module will be "builtins" instead of "exceptions".
+    if module in _EXCEPTIONS_MODULES:
+        module = _EXCEPTIONS_MODULE
 
     # NOTE(ameade): We DO NOT want to allow just any module to be imported, in
     # order to prevent arbitrary code execution.
