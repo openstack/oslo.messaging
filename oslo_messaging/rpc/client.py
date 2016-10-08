@@ -386,7 +386,7 @@ class RPCClient(_BaseCallContext):
         The cast() operation is best-effort: cast() will block the
         calling thread until the RPC request method is accepted by the
         messaging transport, but cast() does *not* verify that the RPC method
-        has been invoked by the server. cast() does guarantee that the the
+        has been invoked by the server. cast() does guarantee that the
         method will be not executed twice on a destination (e.g. 'at-most-once'
         execution).
 
