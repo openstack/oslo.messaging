@@ -19,9 +19,11 @@ import socket
 from oslo_config import cfg
 from stevedore import driver
 
+from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver.proxy.central import zmq_central_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
+from oslo_messaging import transport
 
 LOG = logging.getLogger(__name__)
 
@@ -51,7 +53,10 @@ zmq_proxy_opts = [
     cfg.BoolOpt('ack_pub_sub', default=False,
                 help='Use acknowledgements for notifying senders about '
                      'receiving their fanout messages. '
-                     'The option is ignored if PUB/SUB is disabled.')
+                     'The option is ignored if PUB/SUB is disabled.'),
+
+    cfg.StrOpt('url', default='zmq://127.0.0.1:6379/',
+               help='ZMQ-driver transport URL with additional configurations')
 ]
 
 
@@ -79,6 +84,8 @@ def parse_command_line_args(conf):
     parser.add_argument('-a', '--ack-pub-sub', dest='ack_pub_sub',
                         action='store_true',
                         help='Acknowledge PUB/SUB messages')
+    parser.add_argument('-u', '--url', dest='url', type=str,
+                        help='Transport URL with configurations')
 
     parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                         help='Turn on DEBUG logging level instead of INFO')
@@ -108,6 +115,8 @@ def parse_command_line_args(conf):
     if args.ack_pub_sub:
         conf.set_override('ack_pub_sub', args.ack_pub_sub,
                           group='zmq_proxy_opts')
+    if args.url:
+        conf.set_override('url', args.url, group='zmq_proxy_opts')
 
 
 class ZmqProxy(object):
@@ -152,10 +161,13 @@ class ZmqProxy(object):
     def __init__(self, conf):
         super(ZmqProxy, self).__init__()
         self.conf = conf
+        url = transport.TransportURL.parse(
+            self.conf, url=self.conf.zmq_proxy_opts.url
+        )
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
-            self.conf.oslo_messaging_zmq.rpc_zmq_matchmaker,
-        ).driver(self.conf)
+            impl_zmq.ZmqDriver.get_matchmaker_backend(self.conf, url)
+        ).driver(self.conf, url=url)
         self.context = zmq.Context()
         self.proxy = self._choose_proxy_implementation()
 

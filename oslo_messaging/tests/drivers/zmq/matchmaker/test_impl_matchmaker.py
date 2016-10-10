@@ -12,12 +12,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from fixtures._fixtures import timeout
 import inspect
-import retrying
 from stevedore import driver
 import testscenarios
-import testtools
 
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
@@ -31,8 +28,7 @@ def redis_available():
     if not redis:
         return False
     try:
-        c = redis.StrictRedis(socket_timeout=1)
-        c.ping()
+        redis.StrictRedis(socket_timeout=1).ping()
         return True
     except redis.exceptions.ConnectionError:
         return False
@@ -41,7 +37,6 @@ def redis_available():
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
-@testtools.skipIf(not redis_available(), "redis unavailable")
 class TestImplMatchmaker(test_utils.BaseTestCase):
 
     scenarios = [
@@ -52,13 +47,18 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
     def setUp(self):
         super(TestImplMatchmaker, self).setUp()
 
+        if self.rpc_zmq_matchmaker == "redis":
+            if not redis_available():
+                self.skipTest("redis unavailable")
+
         self.test_matcher = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
             self.rpc_zmq_matchmaker,
         ).driver(self.conf)
 
         if self.rpc_zmq_matchmaker == "redis":
-            self.addCleanup(self.test_matcher._redis.flushdb)
+            for redis_instance in self.test_matcher._redis_instances:
+                self.addCleanup(redis_instance.flushdb)
 
         self.target = oslo_messaging.Target(topic="test_topic")
         self.host1 = b"test_host1"
@@ -77,7 +77,7 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         self.assertItemsEqual(self.test_matcher.get_hosts(self.target, "test"),
                               [self.host1, self.host2])
 
-    def test_register_unsibscribe(self):
+    def test_register_unregister(self):
         self.test_matcher.register(self.target, self.host1, "test")
         self.test_matcher.register(self.target, self.host2, "test")
 
@@ -95,12 +95,7 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
 
     def test_get_hosts_wrong_topic(self):
         target = oslo_messaging.Target(topic="no_such_topic")
-        hosts = []
-        try:
-            hosts = self.test_matcher.get_hosts(target, "test")
-        except (timeout.TimeoutException, retrying.RetryError):
-            pass
-        self.assertEqual([], hosts)
+        self.assertEqual([], self.test_matcher.get_hosts(target, "test"))
 
     def test_handle_redis_package_error(self):
         if self.rpc_zmq_matchmaker == "redis":
@@ -108,10 +103,10 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
             module = inspect.getmodule(self.test_matcher)
             redis_package = module.redis
 
-            # 'redis' variable is set None, when importing package is failed
+            # 'redis' variable is set to None, when package importing is failed
             module.redis = None
             self.assertRaises(ImportError, self.test_matcher.__init__,
                               self.conf)
 
-            # retrieve 'redis' variable wihch is set originally
+            # retrieve 'redis' variable which is set originally
             module.redis = redis_package

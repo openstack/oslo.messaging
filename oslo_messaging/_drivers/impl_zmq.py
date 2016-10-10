@@ -102,7 +102,7 @@ class ZmqDriver(base.BaseDriver):
 
         self.matchmaker = driver.DriverManager(
             'oslo.messaging.zmq.matchmaker',
-            self.get_matchmaker_backend(url),
+            self.get_matchmaker_backend(self.conf, url),
         ).driver(self.conf, url=url)
 
         client_cls = zmq_client.ZmqClientProxy
@@ -124,12 +124,13 @@ class ZmqDriver(base.BaseDriver):
         super(ZmqDriver, self).__init__(conf, url, default_exchange,
                                         allowed_remote_exmods)
 
-    def get_matchmaker_backend(self, url):
-        zmq_transport, p, matchmaker_backend = url.transport.partition('+')
+    @staticmethod
+    def get_matchmaker_backend(conf, url):
+        zmq_transport, _, matchmaker_backend = url.transport.partition('+')
         assert zmq_transport == 'zmq', "Needs to be zmq for this transport!"
         if not matchmaker_backend:
-            return self.conf.oslo_messaging_zmq.rpc_zmq_matchmaker
-        elif matchmaker_backend not in zmq_options.MATCHMAKER_BACKENDS:
+            return conf.oslo_messaging_zmq.rpc_zmq_matchmaker
+        if matchmaker_backend not in zmq_options.MATCHMAKER_BACKENDS:
             raise rpc_common.RPCException(
                 _LE("Incorrect matchmaker backend name %(backend_name)s!"
                     "Available names are: %(available_names)s") %

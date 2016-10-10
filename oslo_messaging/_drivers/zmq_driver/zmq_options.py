@@ -20,7 +20,7 @@ from oslo_messaging._drivers import base
 from oslo_messaging import server
 
 
-MATCHMAKER_BACKENDS = ('redis', 'dummy')
+MATCHMAKER_BACKENDS = ('redis', 'sentinel', 'dummy')
 MATCHMAKER_DEFAULT = 'redis'
 
 
