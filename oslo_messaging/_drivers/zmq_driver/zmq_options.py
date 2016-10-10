@@ -87,7 +87,7 @@ zmq_opts = [
                 help='Use PUB/SUB pattern for fanout methods. '
                      'PUB/SUB always uses proxy.'),
 
-    cfg.BoolOpt('use_router_proxy', default=False,
+    cfg.BoolOpt('use_router_proxy', default=True,
                 deprecated_group='DEFAULT',
                 help='Use ROUTER remote proxy.'),
 
@@ -115,7 +115,7 @@ zmq_opts = [
                help='Default serialization mechanism for '
                     'serializing/deserializing outgoing/incoming messages'),
 
-    cfg.BoolOpt('zmq_immediate', default=False,
+    cfg.BoolOpt('zmq_immediate', default=True,
                 help='This option configures round-robin mode in zmq socket. '
                      'True means not keeping a queue when server side '
                      'disconnects. False means to keep queue and messages '
