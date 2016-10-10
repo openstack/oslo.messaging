@@ -157,7 +157,7 @@ class RPCServer(msg_server.MessageHandlingServer):
             failure = e.exc_info
             LOG.debug(u'Expected exception during message handling (%s)', e)
         except Exception:
-            # current sys.exc_info() content can be overriden
+            # current sys.exc_info() content can be overridden
             # by another exception raised by a log handler during
             # LOG.exception(). So keep a copy and delete it later.
             failure = sys.exc_info()
