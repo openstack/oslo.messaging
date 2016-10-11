@@ -124,18 +124,12 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         task = controller.MessageDispositionTask(self._disposition,
                                                  released=False)
         self.listener.driver._ctrl.add_task(task)
-        rc = task.wait()
-        if rc:
-            LOG.debug("Message acknowledge failed: %s", str(rc))
 
     def requeue(self):
         """Schedule a MessageDispositionTask to release the message"""
         task = controller.MessageDispositionTask(self._disposition,
                                                  released=True)
         self.listener.driver._ctrl.add_task(task)
-        rc = task.wait()
-        if rc:
-            LOG.debug("Message requeue failed: %s", str(rc))
 
 
 class Queue(object):
