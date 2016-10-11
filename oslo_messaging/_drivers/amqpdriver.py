@@ -487,6 +487,12 @@ class AMQPDriverBase(base.BaseDriver):
     def listen_for_notifications(self, targets_and_priorities, pool,
                                  batch_size, batch_timeout):
         conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
+        # NOTE(sileht): The application set batch_size, so we don't need to
+        # prefetch more messages, especially for notifications. Notifications
+        # queues can be really big when the consumer have disapear during a
+        # long period, and when it come back, kombu/pyamqp will fetch all
+        # messages it can. So we override the default qos prefetch value
+        conn.connection.rabbit_qos_prefetch_count = batch_size
 
         listener = AMQPListener(self, conn)
         for target, priority in targets_and_priorities:
