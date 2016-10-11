@@ -132,7 +132,7 @@ class ZmqDriver(base.BaseDriver):
             return conf.oslo_messaging_zmq.rpc_zmq_matchmaker
         if matchmaker_backend not in zmq_options.MATCHMAKER_BACKENDS:
             raise rpc_common.RPCException(
-                _LE("Incorrect matchmaker backend name %(backend_name)s!"
+                _LE("Incorrect matchmaker backend name %(backend_name)s! "
                     "Available names are: %(available_names)s") %
                 {"backend_name": matchmaker_backend,
                  "available_names": zmq_options.MATCHMAKER_BACKENDS})
