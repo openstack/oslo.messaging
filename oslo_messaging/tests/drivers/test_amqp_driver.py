@@ -1085,16 +1085,16 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         target.fanout = True
         target.server = None
         # these threads will share the same link
-        th = []
         for i in range(3):
             t = threading.Thread(target=driver.send,
                                  args=(target, {"context": "whatever"},
                                        {"msg": "n=%d" % i}),
                                  kwargs={'wait_for_reply': False})
             t.start()
-            t.join(timeout=1)
-            self.assertTrue(t.isAlive())
-            th.append(t)
+            # casts return once message is put on active link
+            t.join(timeout=30)
+
+        time.sleep(1)  # ensure messages are going nowhere
         self.assertEqual(self._broker.fanout_sent_count, 0)
         # this will trigger the release of credit for the previous links
         target.fanout = False
@@ -1106,9 +1106,6 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         listener.join(timeout=30)
         self.assertTrue(self._broker.fanout_count == 3)
         self.assertFalse(listener.isAlive())
-        for t in th:
-            t.join(timeout=30)
-            self.assertFalse(t.isAlive())
         driver.cleanup()
 
 
