@@ -235,17 +235,19 @@ class MessageDispositionTask(Task):
         super(MessageDispositionTask, self).__init__()
         self._disposition = disposition
         self._released = released
-        self._wakeup = threading.Event()
 
     def wait(self):
-        self._wakeup.wait()
+        # disposition update does not have to block the sender since there is
+        # no result to pend for.  This avoids a thread context switch with
+        # every RPC call
+        pass
 
     def _execute(self, controller):
         try:
             self._disposition(self._released)
-        except Exception:
-            pass
-        self._wakeup.set()
+        except Exception as e:
+            # there's really nothing we can do about a failed disposition.
+            LOG.exception(_LE("Message acknowledgment failed: %s"), e)
 
 
 class Sender(pyngus.SenderEventHandler):
