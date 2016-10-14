@@ -248,11 +248,14 @@ class ReplyWaiters(object):
 
     def add(self, msg_id):
         self._queues[msg_id] = moves.queue.Queue()
-        if len(self._queues) > self._wrn_threshold:
-            LOG.warning(_LW('Number of call queues is greater than warning '
-                            'threshold: %(old_threshold)s. There could be a '
-                            'leak. Increasing threshold to: %(threshold)s'),
-                        {'old_threshold': self._wrn_threshold,
+        queues_length = len(self._queues)
+        if queues_length > self._wrn_threshold:
+            LOG.warning(_LW('Number of call queues is %(queues_length)s, '
+                            'greater than warning threshold: %(old_threshold)s'
+                            '. There could be a leak. Increasing threshold to:'
+                            ' %(threshold)s'),
+                        {'queues_length': queues_length,
+                         'old_threshold': self._wrn_threshold,
                          'threshold': self._wrn_threshold * 2})
             self._wrn_threshold *= 2
 
