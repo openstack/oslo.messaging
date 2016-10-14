@@ -15,6 +15,11 @@
 
 import threading
 
+from oslo_utils import importutils
+
+_eventlet = importutils.try_import('eventlet')
+_patcher = importutils.try_import('eventlet.patcher')
+
 
 def version_is_compatible(imp_version, version):
     """Determine whether versions are compatible.
@@ -74,3 +79,49 @@ class DummyLock(object):
 
     def __exit__(self, type, value, traceback):
         self.release()
+
+
+class _Event(object):
+    """A class that provides consistent eventlet/threading Event API.
+
+    This wraps the eventlet.event.Event class to have the same API as
+    the standard threading.Event object.
+    """
+    def __init__(self, *args, **kwargs):
+        self.clear()
+
+    def clear(self):
+        self._set = False
+        self._event = _eventlet.event.Event()
+
+    def is_set(self):
+        return self._set
+
+    isSet = is_set
+
+    def set(self):
+        self._set = True
+        self._event.send(True)
+
+    def wait(self, timeout=None):
+        with _eventlet.timeout.Timeout(timeout, False):
+            self._event.wait()
+        return self.is_set()
+
+
+def _is_monkey_patched(module):
+    """Determines safely is eventlet patching for module enabled or not
+    :param module: String, module name
+    :return Bool, True if module is patched, False otherwise
+    """
+
+    if _patcher is None:
+        return False
+    return _patcher.is_monkey_patched(module)
+
+
+def Event():
+    if _is_monkey_patched("thread"):
+        return _Event()
+    else:
+        return threading.Event()
