@@ -86,8 +86,23 @@ class CentralPublisherSender(Sender):
         message_id = multipart_message[zmq_names.MESSAGE_ID_IDX]
 
         socket.send(topic_filter, zmq.SNDMORE)
+        socket.send(six.b(str(message_type)), zmq.SNDMORE)
         socket.send_multipart(multipart_message[zmq_names.MESSAGE_ID_IDX:])
 
         LOG.debug("Publishing message %(message_id)s on [%(topic)s]",
                   {"topic": topic_filter,
                    "message_id": message_id})
+
+
+class LocalPublisherSender(Sender):
+
+    TOPIC_IDX = 0
+    MSG_TYPE_IDX = 1
+    MSG_ID_IDX = 2
+
+    def send_message(self, socket, multipart_message):
+        socket.send_multipart(multipart_message)
+
+        LOG.debug("Publishing message %(message_id)s on [%(topic)s]",
+                  {"topic": multipart_message[self.TOPIC_IDX],
+                   "message_id": multipart_message[self.MSG_ID_IDX]})

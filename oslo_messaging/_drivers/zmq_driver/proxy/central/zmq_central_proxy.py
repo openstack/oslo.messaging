@@ -13,49 +13,32 @@
 #    under the License.
 
 import logging
-import uuid
-
-import six
 
 from oslo_messaging._drivers.zmq_driver.proxy.central \
     import zmq_publisher_proxy
+from oslo_messaging._drivers.zmq_driver.proxy \
+    import zmq_base_proxy
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_sender
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
-from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
-from oslo_messaging._i18n import _LI, _LE
+from oslo_messaging._i18n import _LI
 
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
-def check_message_format(func):
-    def _check_message_format(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            LOG.error(_LE("Received message with wrong format"))
-            LOG.exception(e)
-    return _check_message_format
-
-
-class SingleRouterProxy(object):
+class SingleRouterProxy(zmq_base_proxy.ProxyBase):
 
     PROXY_TYPE = "ROUTER"
 
     def __init__(self, conf, context, matchmaker):
-        self.conf = conf
-        self.context = context
-        self.matchmaker = matchmaker
-
-        LOG.info(_LI("Running %s proxy") % self.PROXY_TYPE)
-
-        self.poller = zmq_async.get_poller()
+        super(SingleRouterProxy, self).__init__(conf, context, matchmaker)
 
         port = conf.zmq_proxy_opts.frontend_port
-        self.fe_router_socket = self._create_router_socket(conf, context, port)
+        self.fe_router_socket = zmq_base_proxy.create_socket(
+            conf, context, port, zmq.ROUTER)
 
         self.poller.register(self.fe_router_socket, self._receive_message)
 
@@ -82,17 +65,6 @@ class SingleRouterProxy(object):
             self.router_sender.send_message(
                 self._get_socket_to_dispatch_on(socket), message)
 
-    @staticmethod
-    def _create_router_socket(conf, context, port):
-        host = conf.zmq_proxy_opts.host
-        identity = six.b(host) + b"/zmq-proxy/" + six.b(str(uuid.uuid4()))
-        if port != 0:
-            return zmq_socket.ZmqFixedPortSocket(conf, context, zmq.ROUTER,
-                                                 host, port, identity=identity)
-        else:
-            return zmq_socket.ZmqRandomPortSocket(conf, context, zmq.ROUTER,
-                                                  host, identity=identity)
-
     def _create_router_updater(self):
         return RouterUpdater(
             self.conf, self.matchmaker, self.publisher.host,
@@ -102,20 +74,9 @@ class SingleRouterProxy(object):
     def _get_socket_to_dispatch_on(self, socket):
         return self.fe_router_socket
 
-    @staticmethod
-    @check_message_format
-    def _receive_message(socket):
-        message = socket.recv_multipart()
-        assert len(message) > zmq_names.MESSAGE_ID_IDX, "Not enough parts"
-        assert message[zmq_names.REPLY_ID_IDX] != b'', "Valid id expected"
-        message_type = int(message[zmq_names.MESSAGE_TYPE_IDX])
-        assert message_type in zmq_names.MESSAGE_TYPES, "Known type expected!"
-        assert message[zmq_names.EMPTY_IDX] == b'', "Empty delimiter expected"
-        return message
-
     def cleanup(self):
+        super(SingleRouterProxy, self).cleanup()
         self._router_updater.cleanup()
-        self.poller.close()
         self.fe_router_socket.close()
         self.publisher.cleanup()
 
@@ -126,7 +87,8 @@ class DoubleRouterProxy(SingleRouterProxy):
 
     def __init__(self, conf, context, matchmaker):
         port = conf.zmq_proxy_opts.backend_port
-        self.be_router_socket = self._create_router_socket(conf, context, port)
+        self.be_router_socket = zmq_base_proxy.create_socket(
+            conf, context, port, zmq.ROUTER)
         super(DoubleRouterProxy, self).__init__(conf, context, matchmaker)
         self.poller.register(self.be_router_socket, self._receive_message)
 

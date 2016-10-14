@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -22,6 +22,7 @@ from oslo_messaging._drivers.zmq_driver.server.consumers \
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
+from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
 from oslo_messaging._i18n import _LE, _LI
@@ -35,7 +36,8 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
 
     def __init__(self, conf, poller, server):
         super(SubConsumer, self).__init__(conf, poller, server)
-        self.matchmaker = server.matchmaker
+        self.matchmaker = SubscriptionMatchmakerWrapper(conf,
+                                                        server.matchmaker)
         self.target = server.target
         self.socket = zmq_socket.ZmqSocket(self.conf, self.context, zmq.SUB,
                                            immediate=False,
@@ -61,11 +63,15 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
 
     def _receive_request(self, socket):
         topic_filter = socket.recv()
+        message_type = int(socket.recv())
         message_id = socket.recv()
         context, message = socket.recv_loaded()
-        LOG.debug("[%(host)s] Received on topic %(filter)s message %(msg_id)s",
-                  {'host': self.host, 'filter': topic_filter,
-                   'msg_id': message_id})
+        LOG.debug("[%(host)s] Received on topic %(filter)s message %(msg_id)s "
+                  "%(msg_type)s",
+                  {'host': self.host,
+                   'filter': topic_filter,
+                   'msg_id': message_id,
+                   'msg_type': zmq_names.message_type_str(message_type)})
         return context, message
 
     def receive_message(self, socket):
@@ -81,6 +87,20 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         LOG.info(_LI("[%s] Destroy SUB consumer"), self.host)
         self.connection_updater.cleanup()
         super(SubConsumer, self).cleanup()
+
+
+class SubscriptionMatchmakerWrapper(object):
+
+    def __init__(self, conf, matchmaker):
+        self.conf = conf
+        self.matchmaker = matchmaker
+
+    def get_publishers(self):
+        conf_publishers = self.conf.oslo_messaging_zmq.subscribe_on
+        LOG.debug("Publishers taken from configuration %s", conf_publishers)
+        if conf_publishers:
+            return [(publisher, None) for publisher in conf_publishers]
+        return self.matchmaker.get_publishers()
 
 
 class SubscriberConnectionUpdater(zmq_updater.ConnectionUpdater):
