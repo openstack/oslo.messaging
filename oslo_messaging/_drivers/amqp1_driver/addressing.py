@@ -256,7 +256,7 @@ class AddresserFactory(object):
         self._kwargs = kwargs
 
     def __call__(self, remote_properties):
-        # for backwards compatiblity use legacy if dynamic and we're connected
+        # for backwards compatibility use legacy if dynamic and we're connected
         # to qpidd or we cannot identify the message bus.  This can be
         # overridden via the configuration.
         product = remote_properties.get('product', 'qpid-cpp')
