@@ -363,38 +363,48 @@ class MatchmakerSentinel(MatchmakerRedisBase):
 
     def __init__(self, conf, *args, **kwargs):
         super(MatchmakerSentinel, self).__init__(conf, *args, **kwargs)
-
-        self._sentinel_hosts = self._extract_sentinel_hosts()
-
         socket_timeout = self.conf.matchmaker_redis.socket_timeout / 1000.
 
-        sentinel = redis_sentinel.Sentinel(
-            sentinels=self._sentinel_hosts,
-            socket_timeout=socket_timeout
-        )
+        self._sentinel_hosts, password, master_group = \
+            self._extract_sentinel_hosts()
 
-        self._redis_instance = sentinel.master_for(
-            self.conf.matchmaker_redis.sentinel_group_name,
-            socket_timeout=socket_timeout
-        )
+        self._sentinel = redis_sentinel.Sentinel(
+            sentinels=self._sentinel_hosts,
+            socket_timeout=socket_timeout,
+            password=password)
+
+        self._redis_master = self._sentinel.master_for(master_group)
+        self._redis_slave = self._sentinel.slave_for(master_group)
 
     def _extract_sentinel_hosts(self):
+
+        sentinels = []
+        master_group = self.conf.matchmaker_redis.sentinel_group_name
+        master_password = None
+
         if self.url and self.url.hosts:
-            return [(sentinel_host.hostname, sentinel_host.port)
-                    for sentinel_host in self.url.hosts]
+            for host in self.url.hosts:
+                target = host.hostname, host.port
+                if host.password:
+                    master_password = host.password
+                sentinels.append(target)
+            if self.url.virtual_host:
+                # url://:pass@sentinel_a,:pass@sentinel_b/master_group_name
+                master_group = self.url.virtual_host
         elif self.conf.matchmaker_redis.sentinel_hosts:
-            return [tuple(sentinel_host.split(':')) for sentinel_host
-                    in self.conf.matchmaker_redis.sentinel_hosts]
-        else:
-            return []
+            s = self.conf.matchmaker_redis.sentinel_hosts
+            sentinels.extend([tuple(target.split(":")) for target in s])
+            master_password = self.conf.matchmaker_redis.password
+
+        return sentinels, master_password, master_group
 
     def _sadd(self, key, value, expire):
-        self._redis_instance.sadd(key, value)
+        self._redis_master.sadd(key, value)
         if expire > 0:
-            self._redis_instance.expire(key, expire)
+            self._redis_master.expire(key, expire)
 
     def _srem(self, key, value):
-        self._redis_instance.srem(key, value)
+        self._redis_master.srem(key, value)
 
     def _smembers(self, key):
-        return self._redis_instance.smembers(key)
+        return self._redis_slave.smembers(key)
