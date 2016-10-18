@@ -34,7 +34,9 @@ def prefix_str(key, listener_type):
 def target_to_key(target, listener_type=None):
     key = target.topic
     if target.server:
-        key += "/" + target.server
+        # FIXME(ozamiatin): Workaround for Cinder.
+        # Remove split when Bug #1630975 is being fixed.
+        key += "/" + target.server.split('@')[0]
     return prefix_str(key, listener_type) if listener_type else key
 
 

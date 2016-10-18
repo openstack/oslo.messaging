@@ -70,7 +70,7 @@ class RoutingTableAdaptor(object):
         if not self.routing_table.contains(target_key):
             LOG.debug("Target %s is not in cache. Check matchmaker server."
                       % target_key)
-            hosts = self.matchmaker.get_hosts_fanout_retry(
+            hosts = self.matchmaker.get_hosts_fanout(
                 target, zmq_names.socket_type_str(self.listener_type))
             LOG.debug("Received hosts %s" % hosts)
             self.routing_table.update_hosts(target_key, hosts)
@@ -174,10 +174,7 @@ class RoutingTableUpdater(zmq_updater.UpdaterBase):
         try:
             for target_key in target_keys:
                 hosts = self.matchmaker.get_hosts_by_key(target_key)
-                if not hosts:
-                    LOG.warning(_LW("Target %s has been removed") % target_key)
-                else:
-                    self.routing_table.update_hosts(target_key, hosts)
+                self.routing_table.update_hosts(target_key, hosts)
             LOG.debug("Updating routing table from the matchmaker. "
                       "%d target(s) updated %s." % (len(target_keys),
                                                     target_keys))

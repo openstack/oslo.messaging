@@ -214,8 +214,7 @@ class MatchmakerRedisBase(zmq_matchmaker_base.MatchmakerBase):
         if target.server:
             key = zmq_address.target_to_key(target, listener_type)
             hosts.extend(self._smembers(key))
-
-        if not hosts:
+        else:
             key = zmq_address.prefix_str(target.topic, listener_type)
             hosts.extend(self._smembers(key))
 
