@@ -38,7 +38,6 @@ from oslo_messaging import rpc  # noqa
 from oslo_utils import timeutils
 
 LOG = logging.getLogger()
-RANDOM_GENERATOR = None
 CURRENT_PID = None
 CURRENT_HOST = None
 CLIENTS = []
@@ -471,9 +470,9 @@ def generate_messages(messages_count):
     if messages_count > MESSAGES_LIMIT:
         messages_count = MESSAGES_LIMIT
     LOG.info("Generating %d random messages", messages_count)
-
+    generator = init_random_generator()
     for i in six.moves.range(messages_count):
-        length = RANDOM_GENERATOR()
+        length = generator()
         msg = ''.join(random.choice(
                       string.ascii_lowercase) for x in six.moves.range(length))
         MESSAGES.append(msg)
@@ -832,7 +831,6 @@ def main():
 
 
 if __name__ == '__main__':
-    RANDOM_GENERATOR = init_random_generator()
     CURRENT_PID = os.getpid()
     CURRENT_HOST = socket.gethostname()
     main()
