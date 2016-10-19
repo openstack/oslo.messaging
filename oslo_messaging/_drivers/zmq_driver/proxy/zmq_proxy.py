@@ -21,6 +21,7 @@ from stevedore import driver
 
 from oslo_messaging._drivers import impl_zmq
 from oslo_messaging._drivers.zmq_driver.proxy.central import zmq_central_proxy
+from oslo_messaging._drivers.zmq_driver.proxy.local import zmq_local_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LI
 from oslo_messaging import transport
@@ -49,6 +50,9 @@ zmq_proxy_opts = [
 
     cfg.IntOpt('publisher_port', default=0,
                help='Publisher port number. Zero means random.'),
+
+    cfg.BoolOpt('local_publisher', default=False,
+                help='Specify publisher/subscriber local proxy.'),
 
     cfg.BoolOpt('ack_pub_sub', default=False,
                 help='Use acknowledgements for notifying senders about '
@@ -80,7 +84,10 @@ def parse_command_line_args(conf):
                         help='Back-end ROUTER port number')
     parser.add_argument('-p', '--publisher-port', dest='publisher_port',
                         type=int,
-                        help='Front-end PUBLISHER port number')
+                        help='Back-end PUBLISHER port number')
+    parser.add_argument('-lp', '--local-publisher', dest='local_publisher',
+                        action='store_true',
+                        help='Specify publisher/subscriber local proxy.')
     parser.add_argument('-a', '--ack-pub-sub', dest='ack_pub_sub',
                         action='store_true',
                         help='Acknowledge PUB/SUB messages')
@@ -111,6 +118,9 @@ def parse_command_line_args(conf):
                           group='zmq_proxy_opts')
     if args.publisher_port:
         conf.set_override('publisher_port', args.publisher_port,
+                          group='zmq_proxy_opts')
+    if args.local_publisher:
+        conf.set_override('local_publisher', args.local_publisher,
                           group='zmq_proxy_opts')
     if args.ack_pub_sub:
         conf.set_override('ack_pub_sub', args.ack_pub_sub,
@@ -172,7 +182,10 @@ class ZmqProxy(object):
         self.proxy = self._choose_proxy_implementation()
 
     def _choose_proxy_implementation(self):
-        if self.conf.zmq_proxy_opts.frontend_port != 0 and \
+        if self.conf.zmq_proxy_opts.local_publisher:
+            return zmq_local_proxy.LocalPublisherProxy(self.conf, self.context,
+                                                       self.matchmaker)
+        elif self.conf.zmq_proxy_opts.frontend_port != 0 and \
                 self.conf.zmq_proxy_opts.backend_port == 0:
             return zmq_central_proxy.SingleRouterProxy(self.conf, self.context,
                                                        self.matchmaker)

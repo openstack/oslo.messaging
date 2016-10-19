@@ -37,7 +37,7 @@ class PublisherProxy(object):
         Target object.
     """
 
-    def __init__(self, conf, matchmaker):
+    def __init__(self, conf, matchmaker, sender=None):
         super(PublisherProxy, self).__init__()
         self.conf = conf
         self.zmq_context = zmq.Context()
@@ -51,7 +51,7 @@ class PublisherProxy(object):
                 self.conf, self.zmq_context, zmq.PUB, conf.zmq_proxy_opts.host)
 
         self.host = self.socket.connect_address
-        self.sender = zmq_sender.CentralPublisherSender()
+        self.sender = sender or zmq_sender.CentralPublisherSender()
 
     def send_request(self, multipart_message):
         self.sender.send_message(self.socket, multipart_message)

@@ -181,7 +181,14 @@ zmq_opts = [
                     'of any problems occurred: positive value N means '
                     'at most N retries, 0 means no retries, None or -1 '
                     '(or any other negative values) mean to retry forever. '
-                    'This option is used only if acknowledgments are enabled.')
+                    'This option is used only if acknowledgments are '
+                    'enabled.'),
+
+    cfg.ListOpt('subscribe_on',
+                default=[],
+                help='List of publisher hosts SubConsumer can subscribe on. '
+                     'This option has higher priority then the default '
+                     'publishers list taken from the matchmaker.'),
 ]
 
 
