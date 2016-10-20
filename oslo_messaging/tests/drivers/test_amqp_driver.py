@@ -1337,10 +1337,10 @@ class TestAddressing(test_utils.BaseTestCase):
         # simply check that the correct addresser is provided based on the
         # identity of the messaging back-end
         self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
-        self.assertTrue(isinstance(self._dynamic_test("router"),
-                                   RoutableAddresser))
-        self.assertTrue(isinstance(self._dynamic_test("qpid-cpp"),
-                                   LegacyAddresser))
+        self.assertIsInstance(self._dynamic_test("router"),
+                              RoutableAddresser)
+        self.assertIsInstance(self._dynamic_test("qpid-cpp"),
+                              LegacyAddresser)
 
 
 class FakeBroker(threading.Thread):

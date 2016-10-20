@@ -51,8 +51,8 @@ class TestConfigOptsProxy(test_utils.BaseTestCase):
         self.assertRaises(cfg.NoSuchOptError,
                           conf.__getattr__,
                           'unknown_group')
-        self.assertTrue(isinstance(getattr(conf, group),
-                                   conf.GroupAttrProxy))
+        self.assertIsInstance(getattr(conf, group),
+                              conf.GroupAttrProxy)
         self.assertEqual(1, conf.oslo_messaging_rabbit.rabbit_retry_interval)
         self.assertEqual(2,
                          conf.oslo_messaging_rabbit.rabbit_qos_prefetch_count)
