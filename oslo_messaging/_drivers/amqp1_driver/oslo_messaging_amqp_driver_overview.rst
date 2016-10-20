@@ -877,7 +877,7 @@ ProtonIncomingMessage
 +-----------------+----------------------------------------------------+
 |Collaborators    | Controller                                         |
 |                 | ProtonListener                                     |
-|                 | MessageDispostionTask                              |
+|                 | MessageDispositionTask                              |
 |                 | SendTask                                           |
 |                 |                                                    |
 +-----------------+----------------------------------------------------+
