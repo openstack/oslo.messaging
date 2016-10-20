@@ -78,7 +78,7 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         for key in ['name', 'thread', 'extra', 'process', 'funcName',
                     'levelno', 'processName', 'pathname', 'lineno',
                     'msg', 'exc_info', 'levelname']:
-            self.assertTrue(key in info_event[2])
+            self.assertIn(key, info_event[2])
 
 
 LoggingNotificationHandlerTestCase.generate_scenarios()

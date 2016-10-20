@@ -47,7 +47,7 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
 
         time.sleep(1)
 
-        self.assertEqual(self.cache.get('x'), None)
+        self.assertIsNone(self.cache.get('x'))
         self.assertEqual(self.cache.get('x', 'b'), 'b')
 
     def test_add_get_with_executor(self):
@@ -60,27 +60,27 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
     def _test_in_operator(self):
         self.cache.add(1)
 
-        self.assertTrue(1 in self.cache)
+        self.assertIn(1, self.cache)
 
         time.sleep(0.5)
 
         self.cache.add(2)
 
-        self.assertTrue(1 in self.cache)
-        self.assertTrue(2 in self.cache)
+        self.assertIn(1, self.cache)
+        self.assertIn(2, self.cache)
 
         time.sleep(0.75)
 
         self.cache.add(3)
 
-        self.assertFalse(1 in self.cache)
-        self.assertTrue(2 in self.cache)
-        self.assertTrue(3 in self.cache)
+        self.assertNotIn(1, self.cache)
+        self.assertIn(2, self.cache)
+        self.assertIn(3, self.cache)
 
         time.sleep(0.5)
 
-        self.assertFalse(2 in self.cache)
-        self.assertTrue(3 in self.cache)
+        self.assertNotIn(2, self.cache)
+        self.assertIn(3, self.cache)
 
     def test_in_operator_with_executor(self):
         self._test_in_operator()

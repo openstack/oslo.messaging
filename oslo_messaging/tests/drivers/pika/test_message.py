@@ -144,8 +144,8 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         self.assertEqual("context_value",
                          message.ctxt.get("key_context", None))
-        self.assertEqual(None, message.msg_id)
-        self.assertEqual(None, message.reply_q)
+        self.assertIsNone(message.msg_id)
+        self.assertIsNone(message.reply_q)
 
         self.assertEqual("payload_value",
                          message.message.get("payload_key", None))
@@ -160,8 +160,8 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         self.assertEqual("context_value",
                          message.ctxt.get("key_context", None))
-        self.assertEqual(None, message.msg_id)
-        self.assertEqual(None, message.reply_q)
+        self.assertIsNone(message.msg_id)
+        self.assertIsNone(message.reply_q)
 
         self.assertEqual("payload_value",
                          message.message.get("payload_key", None))
