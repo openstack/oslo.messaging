@@ -42,7 +42,7 @@ class TestZmqTTLCache(test_utils.BaseTestCase):
 
         self.assertEqual(self.cache.get('x'), 'a')
         self.assertEqual(self.cache.get('x', 'b'), 'a')
-        self.assertEqual(self.cache.get('y'), None)
+        self.assertIsNone(self.cache.get('y'))
         self.assertEqual(self.cache.get('y', 'b'), 'b')
 
         time.sleep(1)
