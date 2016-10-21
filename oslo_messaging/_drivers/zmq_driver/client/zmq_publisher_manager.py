@@ -16,8 +16,8 @@ import abc
 import contextlib
 import logging
 
-import retrying
 import six
+import tenacity
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_async
@@ -30,9 +30,9 @@ zmq = zmq_async.import_zmq()
 
 def _drop_message_warn(request):
     LOG.warning(_LW("Matchmaker contains no records for specified "
-                    "target %(target)s. Dropping message %(msg_id)s.")
-                % {"target": request.target,
-                   "msg_id": request.message_id})
+                    "target %(target)s. Dropping message %(msg_id)s."),
+                {"target": request.target,
+                 "msg_id": request.message_id})
 
 
 def target_not_found_warn(func):
@@ -40,7 +40,7 @@ def target_not_found_warn(func):
         try:
             return func(self, request, *args, **kwargs)
         except (zmq_matchmaker_base.MatchmakerUnavailable,
-                retrying.RetryError):
+                tenacity.RetryError):
             _drop_message_warn(request)
     return _target_not_found_warn
 
@@ -50,7 +50,7 @@ def target_not_found_timeout(func):
         try:
             return func(self, request, *args, **kwargs)
         except (zmq_matchmaker_base.MatchmakerUnavailable,
-                retrying.RetryError):
+                tenacity.RetryError):
             _drop_message_warn(request)
             self.publisher._raise_timeout(request)
     return _target_not_found_timeout

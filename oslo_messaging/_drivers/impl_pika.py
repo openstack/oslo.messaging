@@ -16,7 +16,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
 import pika_pool
-import retrying
+import tenacity
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers.pika_driver import (pika_connection_factory as
@@ -201,14 +201,15 @@ class PikaDriver(base.BaseDriver):
                 else:
                     return False
 
-            retrier = (
-                None if retry == 0 else
-                retrying.retry(
-                    stop_max_attempt_number=(None if retry == -1 else retry),
-                    retry_on_exception=on_exception,
-                    wait_fixed=self._pika_engine.rpc_retry_delay * 1000,
+            if retry:
+                retrier = tenacity.retry(
+                    stop=(tenacity.stop_never if retry == -1 else
+                          tenacity.stop_after_attempt(retry)),
+                    retry=tenacity.retry_if_exception(on_exception),
+                    wait=tenacity.wait_fixed(self._pika_engine.rpc_retry_delay)
                 )
-            )
+            else:
+                retrier = None
 
             if target.fanout:
                 return self.cast_all_workers(
@@ -312,11 +313,17 @@ class PikaDriver(base.BaseDriver):
             else:
                 return False
 
-        retrier = retrying.retry(
-            stop_max_attempt_number=(None if retry == -1 else retry),
-            retry_on_exception=on_exception,
-            wait_fixed=self._pika_engine.notification_retry_delay * 1000,
-        )
+        if retry:
+            retrier = tenacity.retry(
+                stop=(tenacity.stop_never if retry == -1 else
+                      tenacity.stop_after_attempt(retry)),
+                retry=tenacity.retry_if_exception(on_exception),
+                wait=tenacity.wait_fixed(
+                    self._pika_engine.notification_retry_delay
+                )
+            )
+        else:
+            retrier = None
 
         msg = pika_drv_msg.PikaOutgoingMessage(self._pika_engine, message,
                                                ctxt)

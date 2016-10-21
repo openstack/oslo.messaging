@@ -11,6 +11,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 import functools
 import unittest
 
@@ -172,7 +173,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
     @patch("oslo_messaging._drivers.pika_driver.pika_message."
            "RpcReplyPikaOutgoingMessage")
-    @patch("retrying.retry")
+    @patch("tenacity.retry")
     def test_positive_reply_for_call_message(self,
                                              retry_mock,
                                              outgoing_message_mock):
@@ -202,13 +203,12 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             reply_q='reply_queue', stopwatch=mock.ANY, retrier=mock.ANY
         )
         retry_mock.assert_called_once_with(
-            retry_on_exception=mock.ANY, stop_max_attempt_number=3,
-            wait_fixed=250.0
+            stop=mock.ANY, retry=mock.ANY, wait=mock.ANY
         )
 
     @patch("oslo_messaging._drivers.pika_driver.pika_message."
            "RpcReplyPikaOutgoingMessage")
-    @patch("retrying.retry")
+    @patch("tenacity.retry")
     def test_negative_reply_for_call_message(self,
                                              retry_mock,
                                              outgoing_message_mock):
@@ -241,8 +241,7 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             reply_q='reply_queue', stopwatch=mock.ANY, retrier=mock.ANY
         )
         retry_mock.assert_called_once_with(
-            retry_on_exception=mock.ANY, stop_max_attempt_number=3,
-            wait_fixed=250.0
+            stop=mock.ANY, retry=mock.ANY, wait=mock.ANY
         )
 
 
