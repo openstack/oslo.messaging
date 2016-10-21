@@ -59,14 +59,14 @@ class TestGetPoller(test_utils.BaseTestCase):
 
         poller = zmq_async.get_poller()
 
-        self.assertTrue(isinstance(poller, green_poller.GreenPoller))
+        self.assertIsInstance(poller, green_poller.GreenPoller)
 
     def test_when_eventlet_is_unavailable_then_return_ThreadingPoller(self):
         zmq_async.eventletutils.is_monkey_patched = lambda _: False
 
         poller = zmq_async.get_poller()
 
-        self.assertTrue(isinstance(poller, threading_poller.ThreadingPoller))
+        self.assertIsInstance(poller, threading_poller.ThreadingPoller)
 
 
 class TestGetExecutor(test_utils.BaseTestCase):
@@ -80,7 +80,7 @@ class TestGetExecutor(test_utils.BaseTestCase):
 
         executor = zmq_async.get_executor('any method')
 
-        self.assertTrue(isinstance(executor, green_poller.GreenExecutor))
+        self.assertIsInstance(executor, green_poller.GreenExecutor)
         self.assertEqual('any method', executor._method)
 
     def test_when_eventlet_is_unavailable_then_return_ThreadingExecutor(self):
@@ -88,6 +88,6 @@ class TestGetExecutor(test_utils.BaseTestCase):
 
         executor = zmq_async.get_executor('any method')
 
-        self.assertTrue(isinstance(executor,
-                                   threading_poller.ThreadingExecutor))
+        self.assertIsInstance(executor,
+                              threading_poller.ThreadingExecutor)
         self.assertEqual('any method', executor._method)
