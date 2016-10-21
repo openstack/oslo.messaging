@@ -163,7 +163,7 @@ zmq_opts = [
                     'after which it is not tracked anymore by a '
                     'client/server.'),
 
-    cfg.BoolOpt('rpc_use_acks', default=True,
+    cfg.BoolOpt('rpc_use_acks', default=False,
                 help='Wait for message acknowledgements from receivers. '
                      'This mechanism works only via proxy without PUB/SUB.'),
 
