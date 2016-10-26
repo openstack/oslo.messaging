@@ -362,18 +362,33 @@ class MatchmakerSentinel(MatchmakerRedisBase):
 
     def __init__(self, conf, *args, **kwargs):
         super(MatchmakerSentinel, self).__init__(conf, *args, **kwargs)
-
-        self._sentinel_hosts, password, master_group = \
+        socket_timeout = self.conf.matchmaker_redis.socket_timeout / 1000.
+        self._sentinel_hosts, self._password, self._master_group = \
             self._extract_sentinel_hosts()
-
         self._sentinel = redis_sentinel.Sentinel(
             sentinels=self._sentinel_hosts,
-            socket_timeout=self.conf.matchmaker_redis.socket_timeout / 1000.,
-            password=password
-        )
+            socket_timeout=socket_timeout,
+            password=self._password)
+        self._slave = self._master = None
 
-        self._redis_master = self._sentinel.master_for(master_group)
-        self._redis_slave = self._sentinel.slave_for(master_group)
+    @property
+    def _redis_master(self):
+        try:
+            if not self._master:
+                self._master = self._sentinel.master_for(self._master_group)
+            return self._master
+        except redis_sentinel.MasterNotFoundError:
+            raise zmq_matchmaker_base.MatchmakerUnavailable()
+
+    @property
+    def _redis_slave(self):
+        try:
+            if not self._slave:
+                self._slave = self._sentinel.slave_for(self._master_group)
+        except redis_sentinel.SlaveNotFoundError:
+            # use the master as slave (temporary)
+            return self._redis_master
+        return self._slave
 
     def _extract_sentinel_hosts(self):
 
