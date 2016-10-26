@@ -394,15 +394,6 @@ class AMQPDriverBase(base.BaseDriver):
               wait_for_reply=None, timeout=None,
               envelope=True, notify=False, retry=None):
 
-        # FIXME(markmc): remove this temporary hack
-        class Context(object):
-            def __init__(self, d):
-                self.d = d
-
-            def to_dict(self):
-                return self.d
-
-        context = Context(ctxt)
         msg = message
 
         if wait_for_reply:
@@ -413,7 +404,7 @@ class AMQPDriverBase(base.BaseDriver):
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
 
-        rpc_amqp.pack_context(msg, context)
+        rpc_amqp.pack_context(msg, ctxt)
 
         if envelope:
             msg = rpc_common.serialize_msg(msg)
