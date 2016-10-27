@@ -27,10 +27,9 @@ import oslo_messaging
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging.tests.functional import utils
 
+LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
-
-LOG = logging.getLogger(__name__)
 
 
 class QueueHandler(logging.Handler):
@@ -158,6 +157,7 @@ class Server(object):
             LOG.debug("Waiting for the stop signal ...")
             time.sleep(1)
         self.rpc_server.stop()
+        self.rpc_server.wait()
         LOG.debug("Leaving process T:%s Pid:%d", str(target), os.getpid())
 
     def cleanup(self):
@@ -180,13 +180,13 @@ class Server(object):
         pass
 
 
-class MutliprocTestCase(utils.SkipIfNoTransportURL):
+class MultiprocTestCase(utils.SkipIfNoTransportURL):
 
     def setUp(self):
-        super(MutliprocTestCase, self).setUp(conf=cfg.ConfigOpts())
+        super(MultiprocTestCase, self).setUp(conf=cfg.ConfigOpts())
 
-        if not self.url.startswith("zmq:"):
-            self.skipTest("ZeroMQ specific skipped ...")
+        if not self.url.startswith("zmq"):
+            self.skipTest("ZeroMQ specific skipped...")
 
         self.transport = oslo_messaging.get_transport(self.conf, url=self.url)
 
@@ -204,30 +204,29 @@ class MutliprocTestCase(utils.SkipIfNoTransportURL):
         self.conf.project = "test_project"
 
     def tearDown(self):
-        super(MutliprocTestCase, self).tearDown()
         for process in self.spawned:
             process.cleanup()
+        super(MultiprocTestCase, self).tearDown()
 
     def get_client(self, topic):
         return Client(self.transport, topic)
 
-    def spawn_server(self, name, wait_for_server=False, topic=None):
-        srv = Server(self.conf, self.log_queue, self.url, name, topic)
-        LOG.debug("[SPAWN] %s (starting)...", srv.name)
-        srv.start()
+    def spawn_server(self, wait_for_server=False, topic=None):
+        name = "server_%d_%s" % (len(self.spawned), str(uuid.uuid4())[:8])
+        server = Server(self.conf, self.log_queue, self.url, name, topic)
+        LOG.debug("[SPAWN] %s (starting)...", server.name)
+        server.start()
         if wait_for_server:
-            while not srv.ready.value:
+            while not server.ready.value:
                 LOG.debug("[SPAWN] %s (waiting for server ready)...",
-                          srv.name)
+                          server.name)
                 time.sleep(1)
-        LOG.debug("[SPAWN] Server %s:%d started.", srv.name, srv.process.pid)
-        self.spawned.append(srv)
-        return srv
+        LOG.debug("[SPAWN] Server %s:%d started.",
+                  server.name, server.process.pid)
+        self.spawned.append(server)
+        return server
 
-    def spawn_servers(self, number, wait_for_server=False, random_topic=True):
-        common_topic = str(uuid.uuid4()) if random_topic else None
-        names = ["server_%i_%s" % (i, str(uuid.uuid4())[:8])
-                 for i in range(number)]
-        for name in names:
-            server = self.spawn_server(name, wait_for_server, common_topic)
-            self.spawned.append(server)
+    def spawn_servers(self, number, wait_for_server=False, common_topic=True):
+        topic = str(uuid.uuid4()) if common_topic else None
+        for _ in range(number):
+            self.spawn_server(wait_for_server, topic)

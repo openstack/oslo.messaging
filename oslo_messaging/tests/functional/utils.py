@@ -127,7 +127,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
                  use_fanout_ctrl=False, endpoint=None):
         self.conf = conf
         self.url = url
-        # NOTE(sileht): topic and servier_name must be uniq
+        # NOTE(sileht): topic and server_name must be unique
         # to be able to run all tests in parallel
         self.topic = topic or str(uuid.uuid4())
         self.names = names or ["server_%i_%s" % (i, str(uuid.uuid4())[:8])
@@ -162,7 +162,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         else:
             if server == 'all':
                 target = self._target(fanout=True)
-            elif server >= 0 and server < len(self.targets):
+            elif 0 <= server < len(self.targets):
                 target = self.targets[server]
             else:
                 raise ValueError("Invalid value for server: %r" % server)
@@ -177,12 +177,11 @@ class RpcServerGroupFixture(fixtures.Fixture):
         if server is None:
             for i in range(len(self.servers)):
                 self.client(i).ping()
-                time.sleep(0.3)
         else:
             if server == 'all':
                 for s in self.servers:
                     s.syncq.get(timeout=5)
-            elif server >= 0 and server < len(self.targets):
+            elif 0 <= server < len(self.targets):
                 self.servers[server].syncq.get(timeout=5)
             else:
                 raise ValueError("Invalid value for server: %r" % server)

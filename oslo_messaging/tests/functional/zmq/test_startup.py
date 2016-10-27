@@ -18,11 +18,10 @@ import sys
 
 from oslo_messaging.tests.functional.zmq import multiproc_utils
 
-
 LOG = logging.getLogger(__name__)
 
 
-class StartupOrderTestCase(multiproc_utils.MutliprocTestCase):
+class StartupOrderTestCase(multiproc_utils.MultiprocTestCase):
 
     def setUp(self):
         super(StartupOrderTestCase, self).setUp()
@@ -30,26 +29,26 @@ class StartupOrderTestCase(multiproc_utils.MutliprocTestCase):
         self.conf.prog = "test_prog"
         self.conf.project = "test_project"
 
-        self.config(rpc_response_timeout=30)
+        self.config(rpc_response_timeout=10)
 
         log_path = os.path.join(self.conf.oslo_messaging_zmq.rpc_zmq_ipc_dir,
                                 str(os.getpid()) + ".log")
         sys.stdout = open(log_path, "w", buffering=0)
 
-    def test_call_server_before_client(self):
-        self.spawn_servers(3, wait_for_server=True, random_topic=False)
+    def test_call_client_wait_for_server(self):
+        self.spawn_servers(3, wait_for_server=True, common_topic=True)
         servers = self.spawned
         client = self.get_client(servers[0].topic)
-        for i in range(3):
+        for _ in range(3):
             reply = client.call_a()
             self.assertIsNotNone(reply)
         self.assertEqual(3, len(client.replies))
 
     def test_call_client_dont_wait_for_server(self):
-        self.spawn_servers(3, wait_for_server=False, random_topic=False)
+        self.spawn_servers(3, wait_for_server=False, common_topic=True)
         servers = self.spawned
         client = self.get_client(servers[0].topic)
-        for i in range(3):
+        for _ in range(3):
             reply = client.call_a()
             self.assertIsNotNone(reply)
         self.assertEqual(3, len(client.replies))
