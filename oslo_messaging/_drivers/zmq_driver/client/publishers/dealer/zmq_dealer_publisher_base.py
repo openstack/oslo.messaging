@@ -21,7 +21,6 @@ from oslo_messaging._drivers.zmq_driver.client.publishers \
 from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
 from oslo_messaging._drivers.zmq_driver import zmq_async
-from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -38,7 +37,7 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
         super(DealerPublisherBase, self).__init__(
             sockets_manager, sender, receiver)
 
-    def _check_received_data(self, reply_id, reply, request):
+    def _check_reply(self, reply, request):
         assert isinstance(reply, zmq_response.Reply), "Reply expected!"
 
     def _finally_unregister(self, socket, request):
@@ -46,12 +45,11 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
 
     def receive_reply(self, socket, request):
         self.receiver.register_socket(socket)
-        reply_future = \
-            self.receiver.track_request(request)[zmq_names.REPLY_TYPE]
+        _, reply_future = self.receiver.track_request(request)
 
         try:
-            reply_id, reply = reply_future.result(timeout=request.timeout)
-            self._check_received_data(reply_id, reply, request)
+            reply = reply_future.result(timeout=request.timeout)
+            self._check_reply(reply, request)
         except AssertionError:
             LOG.error(_LE("Message format error in reply for %s"),
                       request.message_id)

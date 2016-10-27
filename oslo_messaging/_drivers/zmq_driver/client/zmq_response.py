@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -23,13 +23,15 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 class Response(object):
 
     def __init__(self, message_id=None, reply_id=None):
+        if self.msg_type not in zmq_names.RESPONSE_TYPES:
+            raise RuntimeError("Unknown response type!")
 
         self._message_id = message_id
         self._reply_id = reply_id
 
     @abc.abstractproperty
     def msg_type(self):
-        pass
+        """ZMQ response type"""
 
     @property
     def message_id(self):

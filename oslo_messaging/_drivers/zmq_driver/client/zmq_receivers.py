@@ -22,10 +22,25 @@ import six
 from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
+
+
+def suppress_errors(func):
+    @six.wraps(func)
+    def silent_func(self, socket):
+        try:
+            return func(self, socket)
+        except Exception as e:
+            LOG.error(_LE("Receiving message failed: %r"), e)
+            # NOTE(gdavoian): drop the left parts of a broken message, since
+            # they most likely will lead to additional exceptions
+            if socket.getsockopt(zmq.RCVMORE):
+                socket.recv_multipart()
+    return silent_func
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -37,147 +52,117 @@ class ReceiverBase(object):
         self._lock = threading.Lock()
         self._requests = {}
         self._poller = zmq_async.get_poller()
-        self._executor = zmq_async.get_executor(method=self._run_loop)
+        self._executor = zmq_async.get_executor(self._run_loop)
         self._executor.execute()
-
-    @abc.abstractproperty
-    def message_types(self):
-        """A set of supported incoming response types."""
 
     def register_socket(self, socket):
         """Register a socket for receiving data."""
-        self._poller.register(socket, recv_method=self.recv_response)
+        self._poller.register(socket, self.receive_response)
 
     def unregister_socket(self, socket):
         """Unregister a socket from receiving data."""
         self._poller.unregister(socket)
 
     @abc.abstractmethod
-    def recv_response(self, socket):
-        """Receive a response and return a tuple of the form
-        (reply_id, message_type, message_id, response).
-        """
+    def receive_response(self, socket):
+        """Receive a response (ack or reply) and return it."""
 
     def track_request(self, request):
         """Track a request via already registered sockets and return
-        a dict of futures for monitoring all types of responses.
+        a pair of ack and reply futures for monitoring all possible
+        types of responses for the given request.
         """
-        futures = {}
         message_id = request.message_id
-        for message_type in self.message_types:
-            future = self._get_future(message_id, message_type)
-            if future is None:
-                future = futurist.Future()
-                self._set_future(message_id, message_type, future)
-            futures[message_type] = future
+        futures = self._get_futures(message_id)
+        if futures is None:
+            ack_future = reply_future = None
+            if self.conf.oslo_messaging_zmq.rpc_use_acks:
+                ack_future = futurist.Future()
+            if request.msg_type == zmq_names.CALL_TYPE:
+                reply_future = futurist.Future()
+            futures = (ack_future, reply_future)
+            self._set_futures(message_id, futures)
         return futures
 
     def untrack_request(self, request):
         """Untrack a request and stop monitoring any responses."""
-        for message_type in self.message_types:
-            self._pop_future(request.message_id, message_type)
+        self._pop_futures(request.message_id)
 
     def stop(self):
         self._poller.close()
         self._executor.stop()
 
-    def _get_future(self, message_id, message_type):
+    def _get_futures(self, message_id):
         with self._lock:
-            return self._requests.get((message_id, message_type))
+            return self._requests.get(message_id)
 
-    def _set_future(self, message_id, message_type, future):
+    def _set_futures(self, message_id, futures):
         with self._lock:
-            self._requests[(message_id, message_type)] = future
+            self._requests[message_id] = futures
 
-    def _pop_future(self, message_id, message_type):
+    def _pop_futures(self, message_id):
         with self._lock:
-            return self._requests.pop((message_id, message_type), None)
+            return self._requests.pop(message_id, None)
 
     def _run_loop(self):
-        data, socket = self._poller.poll(
-            timeout=self.conf.oslo_messaging_zmq.rpc_poll_timeout)
-        if data is None:
+        response, socket = \
+            self._poller.poll(self.conf.oslo_messaging_zmq.rpc_poll_timeout)
+        if response is None:
             return
-        reply_id, message_type, message_id, response = data
-        assert message_type in self.message_types, \
-            "%s is not supported!" % zmq_names.message_type_str(message_type)
-        future = self._get_future(message_id, message_type)
-        if future is not None:
+        message_type, message_id = response.msg_type, response.message_id
+        futures = self._get_futures(message_id)
+        if futures is not None:
+            ack_future, reply_future = futures
+            if message_type == zmq_names.REPLY_TYPE:
+                reply_future.set_result(response)
+            else:
+                ack_future.set_result(response)
             LOG.debug("Received %(msg_type)s for %(msg_id)s",
                       {"msg_type": zmq_names.message_type_str(message_type),
                        "msg_id": message_id})
-            future.set_result((reply_id, response))
 
 
-class ReplyReceiver(ReceiverBase):
+class ReceiverProxy(ReceiverBase):
 
-    message_types = {zmq_names.REPLY_TYPE}
-
-
-class ReplyReceiverProxy(ReplyReceiver):
-
-    def recv_response(self, socket):
+    @suppress_errors
+    def receive_response(self, socket):
         empty = socket.recv()
-        assert empty == b'', "Empty expected!"
+        assert empty == b'', "Empty delimiter expected!"
         reply_id = socket.recv()
-        assert reply_id is not None, "Reply ID expected!"
+        assert reply_id != b'', "Valid reply id expected!"
         message_type = int(socket.recv())
-        assert message_type == zmq_names.REPLY_TYPE, "Reply expected!"
+        assert message_type in zmq_names.RESPONSE_TYPES, "Response expected!"
         message_id = socket.recv_string()
-        reply_body, failure = socket.recv_loaded()
-        reply = zmq_response.Reply(
-            message_id=message_id, reply_id=reply_id,
-            reply_body=reply_body, failure=failure
-        )
-        return reply_id, message_type, message_id, reply
-
-
-class ReplyReceiverDirect(ReplyReceiver):
-
-    def recv_response(self, socket):
-        empty = socket.recv()
-        assert empty == b'', "Empty expected!"
-        raw_reply = socket.recv_loaded()
-        assert isinstance(raw_reply, dict), "Dict expected!"
-        reply = zmq_response.Reply(**raw_reply)
-        return reply.reply_id, reply.msg_type, reply.message_id, reply
-
-
-class AckAndReplyReceiver(ReceiverBase):
-
-    message_types = {zmq_names.ACK_TYPE, zmq_names.REPLY_TYPE}
-
-
-class AckAndReplyReceiverProxy(AckAndReplyReceiver):
-
-    def recv_response(self, socket):
-        empty = socket.recv()
-        assert empty == b'', "Empty expected!"
-        reply_id = socket.recv()
-        assert reply_id is not None, "Reply ID expected!"
-        message_type = int(socket.recv())
-        assert message_type in (zmq_names.ACK_TYPE, zmq_names.REPLY_TYPE), \
-            "Ack or reply expected!"
-        message_id = socket.recv_string()
+        assert message_id != '', "Valid message id expected!"
         if message_type == zmq_names.REPLY_TYPE:
             reply_body, failure = socket.recv_loaded()
-            reply = zmq_response.Reply(
-                message_id=message_id, reply_id=reply_id,
-                reply_body=reply_body, failure=failure
-            )
-            response = reply
+            reply = zmq_response.Reply(message_id=message_id,
+                                       reply_id=reply_id,
+                                       reply_body=reply_body,
+                                       failure=failure)
+            return reply
         else:
-            response = None
-        return reply_id, message_type, message_id, response
+            ack = zmq_response.Ack(message_id=message_id,
+                                   reply_id=reply_id)
+            return ack
 
 
-class AckAndReplyReceiverDirect(AckAndReplyReceiver):
+class ReceiverDirect(ReceiverBase):
 
-    def recv_response(self, socket):
-        # acks are not supported yet
+    @suppress_errors
+    def receive_response(self, socket):
         empty = socket.recv()
-        assert empty == b'', "Empty expected!"
-        raw_reply = socket.recv_loaded()
-        assert isinstance(raw_reply, dict), "Dict expected!"
-        reply = zmq_response.Reply(**raw_reply)
-        return reply.reply_id, reply.msg_type, reply.message_id, reply
+        assert empty == b'', "Empty delimiter expected!"
+        message_type = int(socket.recv())
+        assert message_type in zmq_names.RESPONSE_TYPES, "Response expected!"
+        message_id = socket.recv_string()
+        assert message_id != '', "Valid message id expected!"
+        if message_type == zmq_names.REPLY_TYPE:
+            reply_body, failure = socket.recv_loaded()
+            reply = zmq_response.Reply(message_id=message_id,
+                                       reply_body=reply_body,
+                                       failure=failure)
+            return reply
+        else:
+            ack = zmq_response.Ack(message_id=message_id)
+            return ack

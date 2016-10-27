@@ -16,6 +16,7 @@ from concurrent import futures
 import logging
 
 from oslo_messaging._drivers.zmq_driver.client import zmq_publisher_manager
+from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._i18n import _LE, _LW
@@ -33,6 +34,13 @@ class AckManager(zmq_publisher_manager.PublisherManagerBase):
             size=self.conf.oslo_messaging_zmq.rpc_thread_pool_size
         )
 
+    @staticmethod
+    def _check_ack(ack, request):
+        if ack is not None:
+            assert isinstance(ack, zmq_response.Ack), "Ack expected!"
+            assert ack.reply_id == request.routing_key, \
+                "Ack from recipient expected!"
+
     def _wait_for_ack(self, request, ack_future=None):
         if ack_future is None:
             ack_future = self._schedule_request_for_ack(request)
@@ -46,12 +54,9 @@ class AckManager(zmq_publisher_manager.PublisherManagerBase):
         done = ack_future is None
         while not done:
             try:
-                reply_id, response = ack_future.result(timeout=timeout)
+                ack = ack_future.result(timeout=timeout)
                 done = True
-                assert response is None, "Ack expected!"
-                if reply_id is not None:
-                    assert reply_id == request.routing_key, \
-                        "Ack from recipient expected!"
+                self._check_ack(ack, request)
             except AssertionError:
                 LOG.error(_LE("Message format error in ack for %s"),
                           request.message_id)
@@ -85,7 +90,7 @@ class AckManager(zmq_publisher_manager.PublisherManagerBase):
         if socket is None:
             return None
         self.receiver.register_socket(socket)
-        ack_future = self.receiver.track_request(request)[zmq_names.ACK_TYPE]
+        ack_future, _ = self.receiver.track_request(request)
         ack_future.socket = socket
         return ack_future
 
@@ -98,7 +103,7 @@ class AckManager(zmq_publisher_manager.PublisherManagerBase):
             return self.publisher.receive_reply(ack_future.socket, request)
         finally:
             if not ack_future.done():
-                ack_future.set_result((None, None))
+                ack_future.set_result(None)
 
     def send_cast(self, request):
         self._pool.submit(self._wait_for_ack, request)

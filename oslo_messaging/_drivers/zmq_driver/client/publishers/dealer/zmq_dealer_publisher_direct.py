@@ -53,12 +53,9 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
 
     def __init__(self, conf, matchmaker):
         sender = zmq_senders.RequestSenderDirect(conf)
-        if conf.oslo_messaging_zmq.rpc_use_acks:
-            receiver = zmq_receivers.AckAndReplyReceiverDirect(conf)
-        else:
-            receiver = zmq_receivers.ReplyReceiverDirect(conf)
-        super(DealerPublisherDirect, self).__init__(conf, matchmaker, sender,
-                                                    receiver)
+        receiver = zmq_receivers.ReceiverDirect(conf)
+        super(DealerPublisherDirect, self).__init__(conf, matchmaker,
+                                                    sender, receiver)
 
         self.routing_table = zmq_routing_table.RoutingTableAdaptor(
             conf, matchmaker, zmq.ROUTER)
