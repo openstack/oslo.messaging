@@ -109,7 +109,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.target, {}, self.message, wait_for_reply=False
         )
         self.assertIsNone(result)
-        self.ack_manager._pool.shutdown(wait=True)
+        self.ack_manager.pool.shutdown(wait=True)
         self.assertTrue(self.listener._received.isSet())
         self.assertEqual(self.message, self.listener.message.message)
         self.assertEqual(1, self.send.call_count)
@@ -133,7 +133,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         with mock.patch.object(DealerConsumerWithAcks, '_acknowledge',
                                side_effect=DealerConsumerWithAcks._acknowledge,
                                autospec=True) as received_ack_mock:
-            self.ack_manager._pool.shutdown(wait=True)
+            self.ack_manager.pool.shutdown(wait=True)
             self.assertFalse(self.listener._received.isSet())
             self.assertEqual(2, self.send.call_count)
             self.assertEqual(1, received_ack_mock.call_count)
@@ -161,7 +161,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
         with mock.patch.object(DealerConsumerWithAcks, '_acknowledge',
                                side_effect=DealerConsumerWithAcks._acknowledge,
                                autospec=True) as received_ack_mock:
-            self.ack_manager._pool.shutdown(wait=True)
+            self.ack_manager.pool.shutdown(wait=True)
             self.assertFalse(self.listener._received.isSet())
             self.assertEqual(3, self.send.call_count)
             self.assertEqual(1, received_ack_mock.call_count)
@@ -173,7 +173,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.target, {}, self.message, wait_for_reply=False
         )
         self.assertIsNone(result)
-        self.ack_manager._pool.shutdown(wait=True)
+        self.ack_manager.pool.shutdown(wait=True)
         self.assertTrue(self.listener._received.isSet())
         self.assertEqual(self.message, self.listener.message.message)
         self.assertEqual(3, self.send.call_count)
@@ -196,7 +196,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
             self.target, {}, self.message, wait_for_reply=True, timeout=10
         )
         self.assertIsNotNone(result)
-        self.ack_manager._pool.shutdown(wait=True)
+        self.ack_manager.pool.shutdown(wait=True)
         self.assertTrue(self.listener._received.isSet())
         self.assertEqual(self.message, self.listener.message.message)
         self.assertEqual(1, self.send.call_count)
@@ -215,7 +215,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
                           self.driver.send,
                           self.target, {}, self.message,
                           wait_for_reply=True, timeout=20)
-        self.ack_manager._pool.shutdown(wait=True)
+        self.ack_manager.pool.shutdown(wait=True)
         self.assertTrue(self.listener._received.isSet())
         self.assertEqual(self.message, self.listener.message.message)
         self.assertEqual(3, self.send.call_count)

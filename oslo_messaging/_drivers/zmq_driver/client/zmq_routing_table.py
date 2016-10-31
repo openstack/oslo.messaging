@@ -39,6 +39,7 @@ class RoutingTableAdaptor(object):
         self.routing_table_updater = RoutingTableUpdater(
             conf, matchmaker, self.routing_table)
         self.round_robin_targets = {}
+        self._lock = threading.Lock()
 
     def get_round_robin_host(self, target):
         target_key = zmq_address.target_to_key(
@@ -47,19 +48,24 @@ class RoutingTableAdaptor(object):
         LOG.debug("Processing target %s for round-robin." % target_key)
 
         if target_key not in self.round_robin_targets:
-            LOG.debug("Target %s is not in cache. Check matchmaker server."
-                      % target_key)
-            hosts = self.matchmaker.get_hosts_retry(
-                target, zmq_names.socket_type_str(self.listener_type))
-            LOG.debug("Received hosts %s" % hosts)
-            self.routing_table.update_hosts(target_key, hosts)
-            self.round_robin_targets[target_key] = \
-                self.routing_table.get_hosts_round_robin(target_key)
+            self._fetch_round_robin_hosts_from_matchmaker(target, target_key)
 
         rr_gen = self.round_robin_targets[target_key]
         host = next(rr_gen)
         LOG.debug("Host resolved for the current connection is %s" % host)
         return host
+
+    def _fetch_round_robin_hosts_from_matchmaker(self, target, target_key):
+        with self._lock:
+            if target_key not in self.round_robin_targets:
+                LOG.debug("Target %s is not in cache. Check matchmaker server."
+                          % target_key)
+                hosts = self.matchmaker.get_hosts_retry(
+                    target, zmq_names.socket_type_str(self.listener_type))
+                LOG.debug("Received hosts %s" % hosts)
+                self.routing_table.update_hosts(target_key, hosts)
+                self.round_robin_targets[target_key] = \
+                    self.routing_table.get_hosts_round_robin(target_key)
 
     def get_fanout_hosts(self, target):
         target_key = zmq_address.prefix_str(
@@ -68,15 +74,19 @@ class RoutingTableAdaptor(object):
         LOG.debug("Processing target %s for fanout." % target_key)
 
         if not self.routing_table.contains(target_key):
-            LOG.debug("Target %s is not in cache. Check matchmaker server."
-                      % target_key)
-            hosts = self.matchmaker.get_hosts_fanout(
-                target, zmq_names.socket_type_str(self.listener_type))
-            LOG.debug("Received hosts %s" % hosts)
-            self.routing_table.update_hosts(target_key, hosts)
-        else:
-            LOG.debug("Target %s has been found in cache." % target_key)
+            self._fetch_fanout_hosts_from_matchmaker(target, target_key)
+
         return self.routing_table.get_hosts_fanout(target_key)
+
+    def _fetch_fanout_hosts_from_matchmaker(self, target, target_key):
+        with self._lock:
+            if not self.routing_table.contains(target_key):
+                LOG.debug("Target %s is not in cache. Check matchmaker server."
+                          % target_key)
+                hosts = self.matchmaker.get_hosts_fanout(
+                    target, zmq_names.socket_type_str(self.listener_type))
+                LOG.debug("Received hosts %s" % hosts)
+                self.routing_table.update_hosts(target_key, hosts)
 
     def cleanup(self):
         self.routing_table_updater.cleanup()

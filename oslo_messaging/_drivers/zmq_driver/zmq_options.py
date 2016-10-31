@@ -82,7 +82,7 @@ zmq_opts = [
                help='Update period in seconds of a name service record '
                     'about existing target.'),
 
-    cfg.BoolOpt('use_pub_sub', default=True,
+    cfg.BoolOpt('use_pub_sub', default=False,
                 deprecated_group='DEFAULT',
                 help='Use PUB/SUB pattern for fanout methods. '
                      'PUB/SUB always uses proxy.'),
