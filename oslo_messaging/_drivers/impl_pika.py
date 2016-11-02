@@ -113,7 +113,7 @@ rpc_opts = [
         help="Reconnecting retry count in case of connectivity problem during "
              "sending RPC message, -1 means infinite retry. If actual "
              "retry attempts in not 0 the rpc request could be processed more "
-             "then one time"
+             "than one time"
     ),
     cfg.FloatOpt(
         'rpc_retry_delay', default=0.25,
