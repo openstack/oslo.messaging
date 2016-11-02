@@ -35,7 +35,7 @@ PyYAML>=3.10.0 # MIT
 # rabbit driver is the default
 # we set the amqp version to ensure heartbeat works
 amqp<2.0,>=1.4.0 # LGPL
-kombu>=3.0.25 # BSD
+kombu!=4.0.0,>=3.0.25 # BSD
 pika>=0.10.0 # BSD
 pika-pool>=0.1.3 # BSD
 
