@@ -20,8 +20,8 @@ import time
 
 from oslo_config import cfg
 from oslo_utils import importutils
-from retrying import retry
 import six
+import tenacity
 
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_base
 from oslo_messaging._drivers.zmq_driver import zmq_address
@@ -30,6 +30,7 @@ from oslo_messaging._i18n import _LE, _LI, _LW
 
 redis = importutils.try_import('redis')
 redis_sentinel = importutils.try_import('redis.sentinel')
+
 LOG = logging.getLogger(__name__)
 
 
@@ -54,8 +55,8 @@ matchmaker_redis_opts = [
                 default=[],
                 deprecated_for_removal=True,
                 deprecated_reason="Replaced by [DEFAULT]/transport_url",
-                help='List of Redis Sentinel hosts (fault tolerance mode) e.g.\
-                [host:port, host1:port ... ]'),
+                help='List of Redis Sentinel hosts (fault tolerance mode), '
+                     'e.g., [host:port, host1:port ... ]'),
     cfg.StrOpt('sentinel_group_name',
                default='oslo-messaging-zeromq',
                help='Redis replica set name.'),
@@ -67,7 +68,7 @@ matchmaker_redis_opts = [
                help='Time in ms to wait before the transaction is killed.'),
     cfg.IntOpt('socket_timeout',
                default=10000,
-               help='Timeout in ms on blocking socket operations'),
+               help='Timeout in ms on blocking socket operations.'),
 ]
 
 _PUBLISHERS_KEY = "PUBLISHERS"
@@ -132,11 +133,7 @@ def empty_list_on_error(func):
     return func_wrapper
 
 
-def retry_if_connection_error(ex):
-    return isinstance(ex, zmq_matchmaker_base.MatchmakerUnavailable)
-
-
-def retry_if_empty(hosts):
+def is_empty(hosts):
     return not hosts
 
 
@@ -239,12 +236,15 @@ class MatchmakerRedisBase(zmq_matchmaker_base.MatchmakerBase):
         return self._retry_method(target, listener_type, self.get_hosts_fanout)
 
     def _retry_method(self, target, listener_type, method):
-        @retry(retry_on_result=retry_if_empty,
-               wrap_exception=True,
-               wait_fixed=self.conf.matchmaker_redis.wait_timeout,
-               stop_max_delay=self.conf.matchmaker_redis.check_timeout)
+        wait_timeout = self.conf.matchmaker_redis.wait_timeout / 1000.
+        check_timeout = self.conf.matchmaker_redis.check_timeout / 1000.
+
+        @tenacity.retry(retry=tenacity.retry_if_result(is_empty),
+                        wait=tenacity.wait_fixed(wait_timeout),
+                        stop=tenacity.stop_after_delay(check_timeout))
         def _get_hosts_retry(target, listener_type):
             return method(target, listener_type)
+
         return _get_hosts_retry(target, listener_type)
 
 
@@ -362,15 +362,15 @@ class MatchmakerSentinel(MatchmakerRedisBase):
 
     def __init__(self, conf, *args, **kwargs):
         super(MatchmakerSentinel, self).__init__(conf, *args, **kwargs)
-        socket_timeout = self.conf.matchmaker_redis.socket_timeout / 1000.
 
         self._sentinel_hosts, password, master_group = \
             self._extract_sentinel_hosts()
 
         self._sentinel = redis_sentinel.Sentinel(
             sentinels=self._sentinel_hosts,
-            socket_timeout=socket_timeout,
-            password=password)
+            socket_timeout=self.conf.matchmaker_redis.socket_timeout / 1000.,
+            password=password
+        )
 
         self._redis_master = self._sentinel.master_for(master_group)
         self._redis_slave = self._sentinel.slave_for(master_group)

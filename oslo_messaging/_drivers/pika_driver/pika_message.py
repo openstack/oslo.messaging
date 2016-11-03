@@ -25,8 +25,8 @@ from oslo_utils import timeutils
 from pika import exceptions as pika_exceptions
 from pika import spec as pika_spec
 import pika_pool
-import retrying
 import six
+import tenacity
 
 
 import oslo_messaging
@@ -201,14 +201,22 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
             else:
                 return False
 
-        retrier = retrying.retry(
-            stop_max_attempt_number=(
-                None if self._pika_engine.rpc_reply_retry_attempts == -1
-                else self._pika_engine.rpc_reply_retry_attempts
-            ),
-            retry_on_exception=on_exception,
-            wait_fixed=self._pika_engine.rpc_reply_retry_delay * 1000,
-        ) if self._pika_engine.rpc_reply_retry_attempts else None
+        if self._pika_engine.rpc_reply_retry_attempts:
+            retrier = tenacity.retry(
+                stop=(
+                    tenacity.stop_never
+                    if self._pika_engine.rpc_reply_retry_attempts == -1 else
+                    tenacity.stop_after_attempt(
+                        self._pika_engine.rpc_reply_retry_attempts
+                    )
+                ),
+                retry=tenacity.retry_if_exception(on_exception),
+                wait=tenacity.wait_fixed(
+                    self._pika_engine.rpc_reply_retry_delay
+                )
+            )
+        else:
+            retrier = None
 
         try:
             timeout = (None if self.expiration_time is None else
@@ -438,8 +446,8 @@ class PikaOutgoingMessage(object):
             for routing into durable queues
         :param stopwatch: StopWatch, stopwatch object for calculating
             allowed timeouts
-        :param retrier: retrying.Retrier, configured retrier object for sending
-            message, if None no retrying is performed
+        :param retrier: tenacity.Retrying, configured retrier object for
+            sending message, if None no retrying is performed
         """
         msg_props.delivery_mode = 2 if persistent else 1
 
@@ -475,8 +483,8 @@ class PikaOutgoingMessage(object):
             for routing into durable queues
         :param stopwatch: StopWatch, stopwatch object for calculating
             allowed timeouts
-        :param retrier: retrying.Retrier, configured retrier object for sending
-            message, if None no retrying is performed
+        :param retrier: tenacity.Retrying, configured retrier object for
+            sending message, if None no retrying is performed
         """
         msg_dict, msg_props = self._prepare_message_to_send()
 
@@ -506,8 +514,8 @@ class RpcPikaOutgoingMessage(PikaOutgoingMessage):
             reply. If None - return immediately without reply waiting
         :param stopwatch: StopWatch, stopwatch object for calculating
             allowed timeouts
-        :param retrier: retrying.Retrier, configured retrier object for sending
-            message, if None no retrying is performed
+        :param retrier: tenacity.Retrying, configured retrier object for
+            sending message, if None no retrying is performed
         """
         msg_dict, msg_props = self._prepare_message_to_send()
 
@@ -595,8 +603,8 @@ class RpcReplyPikaOutgoingMessage(PikaOutgoingMessage):
         :param reply_q: String, queue name for sending reply
         :param stopwatch: StopWatch, stopwatch object for calculating
             allowed timeouts
-        :param retrier: retrying.Retrier, configured retrier object for sending
-            message, if None no retrying is performed
+        :param retrier: tenacity.Retrying, configured retrier object for
+            sending message, if None no retrying is performed
         """
 
         msg_dict, msg_props = self._prepare_message_to_send()
