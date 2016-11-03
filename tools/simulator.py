@@ -692,7 +692,6 @@ def main():
         usage=USAGE,
     )
     parser.add_argument('--url', dest='url',
-                        default='rabbit://guest:password@localhost/',
                         help="oslo.messaging transport url")
     parser.add_argument('-d', '--debug', dest='debug', action='store_true',
                         help="Turn on DEBUG logging level instead of WARN")
@@ -787,9 +786,6 @@ def main():
 
     if args.mode == 'rpc-server':
         target = messaging.Target(topic=args.topic, server=args.server)
-        if args.url.startswith('zmq'):
-            cfg.CONF.oslo_messaging_zmq.rpc_zmq_matchmaker = "redis"
-
         endpoint = rpc_server(TRANSPORT, target, args.wait_before_answer,
                               args.executor, args.duration)
         show_server_stats(endpoint, args.json_filename)
