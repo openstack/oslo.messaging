@@ -26,5 +26,3 @@ RPC Server
 .. autofunction:: expose
 
 .. autoexception:: ExpectedException
-
-.. autofunction:: get_local_context
