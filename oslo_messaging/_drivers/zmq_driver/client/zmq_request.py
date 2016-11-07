@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -20,6 +20,7 @@ import six
 
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_version
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -72,6 +73,10 @@ class Request(object):
     @abc.abstractproperty
     def msg_type(self):
         """ZMQ request type"""
+
+    @property
+    def message_version(self):
+        return zmq_version.MESSAGE_VERSION
 
 
 class RpcRequest(Request):

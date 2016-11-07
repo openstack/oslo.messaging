@@ -22,12 +22,13 @@ from oslo_messaging._drivers.zmq_driver import zmq_names
 @six.add_metaclass(abc.ABCMeta)
 class Response(object):
 
-    def __init__(self, message_id=None, reply_id=None):
+    def __init__(self, message_id=None, reply_id=None, message_version=None):
         if self.msg_type not in zmq_names.RESPONSE_TYPES:
             raise RuntimeError("Unknown response type!")
 
         self._message_id = message_id
         self._reply_id = reply_id
+        self._message_version = message_version
 
     @abc.abstractproperty
     def msg_type(self):
@@ -41,9 +42,14 @@ class Response(object):
     def reply_id(self):
         return self._reply_id
 
+    @property
+    def message_version(self):
+        return self._message_version
+
     def to_dict(self):
         return {zmq_names.FIELD_MSG_ID: self._message_id,
-                zmq_names.FIELD_REPLY_ID: self._reply_id}
+                zmq_names.FIELD_REPLY_ID: self._reply_id,
+                zmq_names.FIELD_MSG_VERSION: self._message_version}
 
     def __str__(self):
         return str(self.to_dict())
@@ -58,9 +64,9 @@ class Reply(Response):
 
     msg_type = zmq_names.REPLY_TYPE
 
-    def __init__(self, message_id=None, reply_id=None, reply_body=None,
-                 failure=None):
-        super(Reply, self).__init__(message_id, reply_id)
+    def __init__(self, message_id=None, reply_id=None, message_version=None,
+                 reply_body=None, failure=None):
+        super(Reply, self).__init__(message_id, reply_id, message_version)
         self._reply_body = reply_body
         self._failure = failure
 

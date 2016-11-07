@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -28,6 +28,7 @@ from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_version
 from oslo_messaging.tests.drivers.zmq import zmq_common
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -58,15 +59,14 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         self.config(group='oslo_messaging_zmq', **kwargs)
 
         self.config(host="127.0.0.1", group="zmq_proxy_opts")
-        self.config(publisher_port="0", group="zmq_proxy_opts")
+        self.config(publisher_port=0, group="zmq_proxy_opts")
 
         self.publisher = zmq_publisher_proxy.PublisherProxy(
             self.conf, self.driver.matchmaker)
-        self.driver.matchmaker.register_publisher(
-            (self.publisher.host, ""))
+        self.driver.matchmaker.register_publisher((self.publisher.host, ''))
 
         self.listeners = []
-        for i in range(self.LISTENERS_COUNT):
+        for _ in range(self.LISTENERS_COUNT):
             self.listeners.append(zmq_common.TestServerListener(self.driver))
 
     def tearDown(self):
@@ -83,10 +83,14 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
         message = {'method': 'hello-world'}
 
         self.publisher.send_request(
-            [b'', b'', zmq_names.CAST_FANOUT_TYPE,
+            [b"reply_id",
+             b'',
+             six.b(zmq_version.MESSAGE_VERSION),
+             six.b(str(zmq_names.CAST_FANOUT_TYPE)),
              zmq_address.target_to_subscribe_filter(target),
-             b"0000-0000",
-             self.dumps([context, message])])
+             b"message_id",
+             self.dumps([context, message])]
+        )
 
     def _check_listener(self, listener):
         listener._received.wait(timeout=5)
