@@ -39,19 +39,19 @@ class SenderBase(object):
         """Send a message via a socket in a thread-safe manner."""
 
 
-class RequestSender(SenderBase):
+class RequestSenderBase(SenderBase):
     pass
 
 
-class AckSender(SenderBase):
+class AckSenderBase(SenderBase):
     pass
 
 
-class ReplySender(SenderBase):
+class ReplySenderBase(SenderBase):
     pass
 
 
-class RequestSenderProxy(SenderBase):
+class RequestSenderProxy(RequestSenderBase):
 
     def send(self, socket, request):
         with self._lock:
@@ -72,7 +72,7 @@ class RequestSenderProxy(SenderBase):
         socket.send_dumped([request.context, request.message])
 
 
-class AckSenderProxy(AckSender):
+class AckSenderProxy(AckSenderBase):
 
     def send(self, socket, ack):
         assert ack.msg_type == zmq_names.ACK_TYPE, "Ack expected!"
@@ -92,7 +92,7 @@ class AckSenderProxy(AckSender):
         socket.send_string(ack.message_id)
 
 
-class ReplySenderProxy(SenderBase):
+class ReplySenderProxy(ReplySenderBase):
 
     def send(self, socket, reply):
         assert reply.msg_type == zmq_names.REPLY_TYPE, "Reply expected!"
@@ -113,7 +113,7 @@ class ReplySenderProxy(SenderBase):
         socket.send_dumped([reply.reply_body, reply.failure])
 
 
-class RequestSenderDirect(SenderBase):
+class RequestSenderDirect(RequestSenderBase):
 
     def send(self, socket, request):
         with self._lock:
@@ -132,7 +132,7 @@ class RequestSenderDirect(SenderBase):
         socket.send_dumped([request.context, request.message])
 
 
-class AckSenderDirect(AckSender):
+class AckSenderDirect(AckSenderBase):
 
     def send(self, socket, ack):
         assert ack.msg_type == zmq_names.ACK_TYPE, "Ack expected!"
@@ -148,7 +148,7 @@ class AckSenderDirect(AckSender):
         raise NotImplementedError()
 
 
-class ReplySenderDirect(SenderBase):
+class ReplySenderDirect(ReplySenderBase):
 
     def send(self, socket, reply):
         assert reply.msg_type == zmq_names.REPLY_TYPE, "Reply expected!"
@@ -163,4 +163,6 @@ class ReplySenderDirect(SenderBase):
     def _send(self, socket, reply):
         socket.send(reply.reply_id, zmq.SNDMORE)
         socket.send(b'', zmq.SNDMORE)
-        socket.send_dumped(reply.to_dict())
+        socket.send(six.b(str(reply.msg_type)), zmq.SNDMORE)
+        socket.send_string(reply.message_id, zmq.SNDMORE)
+        socket.send_dumped([reply.reply_body, reply.failure])

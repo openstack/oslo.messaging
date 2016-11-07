@@ -39,12 +39,9 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
 
     def __init__(self, conf, matchmaker):
         sender = zmq_senders.RequestSenderProxy(conf)
-        if conf.oslo_messaging_zmq.rpc_use_acks:
-            receiver = zmq_receivers.AckAndReplyReceiverProxy(conf)
-        else:
-            receiver = zmq_receivers.ReplyReceiverProxy(conf)
-        super(DealerPublisherProxy, self).__init__(conf, matchmaker, sender,
-                                                   receiver)
+        receiver = zmq_receivers.ReceiverProxy(conf)
+        super(DealerPublisherProxy, self).__init__(conf, matchmaker,
+                                                   sender, receiver)
 
         self.socket = self.sockets_manager.get_socket_to_publishers(
             self._generate_identity())
@@ -57,10 +54,9 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
         return six.b(self.conf.oslo_messaging_zmq.rpc_zmq_host + "/" +
                      str(uuid.uuid4()))
 
-    def _check_received_data(self, reply_id, reply, request):
-        super(DealerPublisherProxy, self)._check_received_data(reply_id, reply,
-                                                               request)
-        assert reply_id == request.routing_key, \
+    def _check_reply(self, reply, request):
+        super(DealerPublisherProxy, self)._check_reply(reply, request)
+        assert reply.reply_id == request.routing_key, \
             "Reply from recipient expected!"
 
     def _get_routing_keys(self, request):
@@ -100,7 +96,7 @@ class DealerPublisherProxyDynamic(
 
     def __init__(self, conf, matchmaker):
         sender = zmq_senders.RequestSenderProxy(conf)
-        receiver = zmq_receivers.ReplyReceiverDirect(conf)
+        receiver = zmq_receivers.ReceiverDirect(conf)
         super(DealerPublisherProxyDynamic, self).__init__(conf, matchmaker,
                                                           sender, receiver)
 

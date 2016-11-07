@@ -44,10 +44,10 @@ class PublisherBase(object):
 
         :param sockets_manager: sockets manager object
         :type sockets_manager: zmq_sockets_manager.SocketsManager
-        :param senders: request sender object
-        :type senders: zmq_senders.RequestSender
-        :param receiver: reply receiver object
-        :type receiver: zmq_receivers.ReplyReceiver
+        :param sender: request sender object
+        :type sender: zmq_senders.RequestSenderBase
+        :param receiver: response receiver object
+        :type receiver: zmq_receivers.ReceiverBase
         """
         self.sockets_manager = sockets_manager
         self.conf = sockets_manager.conf

@@ -56,7 +56,7 @@ class Request(object):
         """
 
         if self.msg_type not in zmq_names.REQUEST_TYPES:
-            raise RuntimeError("Unknown message type!")
+            raise RuntimeError("Unknown request type!")
 
         self.target = target
         self.context = context
@@ -71,7 +71,7 @@ class Request(object):
 
     @abc.abstractproperty
     def msg_type(self):
-        """ZMQ message type"""
+        """ZMQ request type"""
 
 
 class RpcRequest(Request):
