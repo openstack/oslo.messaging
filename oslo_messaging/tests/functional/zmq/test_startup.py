@@ -12,13 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import os
 import sys
 
 from oslo_messaging.tests.functional.zmq import multiproc_utils
-
-LOG = logging.getLogger(__name__)
 
 
 class StartupOrderTestCase(multiproc_utils.MultiprocTestCase):

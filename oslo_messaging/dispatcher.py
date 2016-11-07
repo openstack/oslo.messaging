@@ -12,7 +12,6 @@
 #    under the License.
 
 import abc
-import logging
 
 import six
 
@@ -20,8 +19,6 @@ import six
 __all__ = [
     "DispatcherBase"
 ]
-
-LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(abc.ABCMeta)

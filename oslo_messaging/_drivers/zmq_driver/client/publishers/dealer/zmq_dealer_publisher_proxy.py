@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import random
 import uuid
 
@@ -29,7 +28,6 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
 
-LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 

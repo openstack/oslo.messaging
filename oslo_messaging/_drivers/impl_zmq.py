@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
 import os
 import threading
 
@@ -28,7 +27,6 @@ from oslo_messaging._i18n import _LE
 
 
 RPCException = rpc_common.RPCException
-LOG = logging.getLogger(__name__)
 
 
 class LazyDriverItem(object):
