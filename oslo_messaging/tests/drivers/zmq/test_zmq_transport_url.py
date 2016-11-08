@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
 import testtools
 
 import oslo_messaging
@@ -23,6 +24,9 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging.tests import utils as test_utils
 
 zmq = zmq_async.import_zmq()
+
+redis = zmq_matchmaker_redis.redis
+sentinel = zmq_matchmaker_redis.redis_sentinel
 
 
 class TestZmqTransportUrl(test_utils.BaseTestCase):
@@ -37,7 +41,24 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
         driver = transport._driver
         return driver, url
 
+    def mock_redis(self):
+        if redis is None:
+            self.skipTest("redis not available")
+        else:
+            redis_patcher = mock.patch.object(redis, 'StrictRedis')
+            self.addCleanup(redis_patcher.stop)
+            return redis_patcher.start()
+
+    def mock_sentinel(self):
+        if sentinel is None:
+            self.skipTest("sentinel not available")
+        else:
+            sentinel_patcher = mock.patch.object(sentinel, 'Sentinel')
+            self.addCleanup(sentinel_patcher.stop)
+            return sentinel_patcher.start()
+
     def test_empty_url(self):
+        self.mock_redis()
         driver, url = self.setup_url("zmq:///")
         self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
@@ -53,18 +74,21 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
         self.assertEqual('zmq+dummy', driver.matchmaker.url.transport)
 
     def test_redis_url(self):
+        self.mock_redis()
         driver, url = self.setup_url("zmq+redis:///")
         self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+redis', driver.matchmaker.url.transport)
 
     def test_sentinel_url(self):
+        self.mock_sentinel()
         driver, url = self.setup_url("zmq+sentinel:///")
         self.assertIs(zmq_matchmaker_redis.MatchmakerSentinel,
                       driver.matchmaker.__class__)
         self.assertEqual('zmq+sentinel', driver.matchmaker.url.transport)
 
     def test_host_with_credentials_url(self):
+        self.mock_redis()
         driver, url = self.setup_url("zmq://:password@host:60000/")
         self.assertIs(zmq_matchmaker_redis.MatchmakerRedis,
                       driver.matchmaker.__class__)
@@ -75,6 +99,7 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
         )
 
     def test_redis_multiple_hosts_url(self):
+        self.mock_redis()
         driver, url = self.setup_url(
             "zmq+redis://host1:60001,host2:60002,host3:60003/"
         )
@@ -89,6 +114,7 @@ class TestZmqTransportUrl(test_utils.BaseTestCase):
         )
 
     def test_sentinel_multiple_hosts_url(self):
+        self.mock_sentinel()
         driver, url = self.setup_url(
             "zmq+sentinel://host1:20001,host2:20002,host3:20003/"
         )
