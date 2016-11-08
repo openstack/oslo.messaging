@@ -12,13 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import logging
-
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_sender
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 
-LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 

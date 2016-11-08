@@ -13,14 +13,12 @@
 #    under the License.
 
 import abc
-import logging
 import time
 
 import six
 
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
-LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
