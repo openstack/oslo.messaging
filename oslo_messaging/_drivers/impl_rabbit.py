@@ -967,7 +967,7 @@ class Connection(object):
 
     def _heartbeat_start(self):
         if self._heartbeat_supported_and_enabled():
-            self._heartbeat_exit_event = threading.Event()
+            self._heartbeat_exit_event = eventletutils.Event()
             self._heartbeat_thread = threading.Thread(
                 target=self._heartbeat_thread_job)
             self._heartbeat_thread.daemon = True
