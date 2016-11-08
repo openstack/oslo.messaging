@@ -115,7 +115,7 @@ In section [oslo_messaging_pika]:
 
 #. default_rpc_retry_attempts (default=-1): Reconnecting retry count in case of
    connectivity problem during sending RPC message, -1 means infinite retry. If
-   actual retry attempts in not 0 the rpc request could be processed more then
+   actual retry attempts in not 0 the rpc request could be processed more than
    one time,
 
 #. rpc_retry_delay (default=0.25): Reconnecting retry delay in case of
