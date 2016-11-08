@@ -8,6 +8,4 @@ Notification Listener
 
 .. autofunction:: get_notification_listener
 
-.. autoclass:: MessageHandlingServer
-   :members:
-   :noindex:
+.. autofunction:: get_batch_notification_listener
