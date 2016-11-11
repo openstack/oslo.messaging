@@ -777,9 +777,8 @@ class Connection(object):
             """Callback invoked when the kombu reconnects and creates
             a new channel, we use it the reconfigure our consumers.
             """
-
-            self.set_transport_socket_timeout()
             self._set_current_channel(new_channel)
+            self.set_transport_socket_timeout()
 
             LOG.info(_LI('[%(connection_id)s] Reconnected to AMQP server on '
                          '%(hostname)s:%(port)s via [%(transport)s] client'
