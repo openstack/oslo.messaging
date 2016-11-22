@@ -27,6 +27,7 @@ Contents
    AMQP1.0
    pika_driver
    zmq_driver
+   driver-dev-guide
    FAQ
    contributing
 
