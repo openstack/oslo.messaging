@@ -43,7 +43,7 @@ fi
 
 # Install required packages
 case $RPC_BACKEND in
-    zeromq)
+    zeromq|zeromq-proxy|zeromq-pub-sub)
         sudo apt-get update -y
         sudo apt-get install -y redis-server python-redis
         ;;
