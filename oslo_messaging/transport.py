@@ -411,7 +411,7 @@ class TransportURL(object):
 
         query = {}
         if url.query:
-            for key, values in six.iteritems(parse.parse_qs(url.query)):
+            for key, values in parse.parse_qs(url.query).items():
                 query[key] = ','.join(values)
 
         virtual_host = None

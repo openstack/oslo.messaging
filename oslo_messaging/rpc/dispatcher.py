@@ -186,7 +186,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
     def _do_dispatch(self, endpoint, method, ctxt, args):
         ctxt = self.serializer.deserialize_context(ctxt)
         new_args = dict()
-        for argname, arg in six.iteritems(args):
+        for argname, arg in args.items():
             new_args[argname] = self.serializer.deserialize_entity(ctxt, arg)
         func = getattr(endpoint, method)
         result = func(ctxt, **new_args)

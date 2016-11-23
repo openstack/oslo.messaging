@@ -89,7 +89,7 @@ class RPCException(Exception):
                 # log the issue and the kwargs
                 LOG.exception(_LE('Exception in string format operation, '
                                   'kwargs are:'))
-                for name, value in six.iteritems(kwargs):
+                for name, value in kwargs.items():
                     LOG.error("%s: %s", name, value)
                 # at least get the core message out if something happened
                 message = self.msg_fmt

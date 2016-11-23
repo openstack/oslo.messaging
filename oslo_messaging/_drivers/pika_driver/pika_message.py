@@ -344,7 +344,7 @@ class PikaOutgoingMessage(object):
         msg = self.message.copy()
 
         if self.context:
-            for key, value in six.iteritems(self.context):
+            for key, value in self.context.items():
                 key = six.text_type(key)
                 msg['_$_' + key] = value
 

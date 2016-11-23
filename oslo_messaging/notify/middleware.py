@@ -23,7 +23,6 @@ import traceback as tb
 
 from oslo_config import cfg
 from oslo_middleware import base
-import six
 import webob.dec
 
 import oslo_messaging
@@ -73,7 +72,7 @@ class RequestNotifier(base.Middleware):
         include them.
 
         """
-        return dict((k, v) for k, v in six.iteritems(environ)
+        return dict((k, v) for k, v in environ.items()
                     if k.isupper() and k != 'HTTP_X_AUTH_TOKEN')
 
     @log_and_ignore_error

@@ -89,9 +89,9 @@ def pack_context(msg, context):
 
     """
     if isinstance(context, dict):
-        context_d = six.iteritems(context)
+        context_d = context.items()
     else:
-        context_d = six.iteritems(context.to_dict())
+        context_d = context.to_dict().items()
 
     msg.update(('_context_%s' % key, value)
                for (key, value) in context_d)

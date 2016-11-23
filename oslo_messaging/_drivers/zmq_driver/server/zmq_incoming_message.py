@@ -12,8 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import six
-
 from oslo_messaging._drivers import base
 
 
@@ -27,7 +25,7 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
         super(ZmqIncomingMessage, self).__init__(context, message)
         self._reply_method = kwargs.pop('reply_method',
                                         lambda self, reply, failure: None)
-        for key, value in six.iteritems(kwargs):
+        for key, value in kwargs.items():
             setattr(self, key, value)
 
     def acknowledge(self):

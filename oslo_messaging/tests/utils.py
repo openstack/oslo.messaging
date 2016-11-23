@@ -24,7 +24,7 @@ import threading
 from oslo_config import cfg
 from oslotest import base
 from oslotest import moxstubout
-import six
+
 
 TRUE_VALUES = ('true', '1', 'yes')
 
@@ -59,7 +59,7 @@ class BaseTestCase(base.BaseTestCase):
         test by the tearDown() method.
         """
         group = kw.pop('group', None)
-        for k, v in six.iteritems(kw):
+        for k, v in kw.items():
             self.conf.set_override(k, v, group, enforce_type=True)
 
 

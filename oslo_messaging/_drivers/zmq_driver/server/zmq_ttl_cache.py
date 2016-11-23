@@ -16,8 +16,6 @@ import logging
 import threading
 import time
 
-import six
-
 from oslo_messaging._drivers.zmq_driver import zmq_async
 
 LOG = logging.getLogger(__name__)
@@ -77,7 +75,7 @@ class TTLCache(object):
             old_size = len(self._cache)
             self._cache = \
                 {key: (value, expiration_time) for
-                 key, (value, expiration_time) in six.iteritems(self._cache)
+                 key, (value, expiration_time) in self._cache.items()
                  if not self._is_expired(expiration_time, current_time)}
             new_size = len(self._cache)
             LOG.debug('Updated cache: current size %(new_size)s '

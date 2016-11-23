@@ -105,7 +105,7 @@ class _BaseCallContext(object):
         msg = dict(method=method)
 
         msg['args'] = dict()
-        for argname, arg in six.iteritems(args):
+        for argname, arg in args.items():
             msg['args'][argname] = self.serializer.serialize_entity(ctxt, arg)
 
         if self.target.namespace is not None:

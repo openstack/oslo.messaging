@@ -17,7 +17,6 @@ import logging
 
 from oslo_config import cfg
 from oslo_utils import fnmatch
-import six
 from stevedore import dispatch
 import yaml
 
@@ -88,9 +87,9 @@ class RoutingDriver(notifier.Driver):
         """
         accepted_drivers = set()
 
-        for driver, rules in six.iteritems(group):
+        for driver, rules in group.items():
             checks = []
-            for key, patterns in six.iteritems(rules):
+            for key, patterns in rules.items():
                 if key == 'accepted_events':
                     c = [fnmatch.fnmatch(event_type, p)
                          for p in patterns]
