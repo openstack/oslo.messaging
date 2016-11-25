@@ -34,6 +34,6 @@ EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
 
-oslo-messaging-zmq-proxy --debug True --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-proxy.log 2>&1 &
+oslo-messaging-zmq-proxy --debug --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-proxy.log 2>&1 &
 
 $*
