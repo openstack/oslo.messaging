@@ -33,18 +33,16 @@ class StartupOrderTestCase(multiproc_utils.MultiprocTestCase):
         sys.stdout = open(log_path, "w", buffering=0)
 
     def test_call_client_wait_for_server(self):
-        self.spawn_servers(3, wait_for_server=True, common_topic=True)
-        servers = self.spawned
-        client = self.get_client(servers[0].topic)
+        server = self.spawn_server(wait_for_server=True)
+        client = self.get_client(server.topic)
         for _ in range(3):
             reply = client.call_a()
             self.assertIsNotNone(reply)
         self.assertEqual(3, len(client.replies))
 
     def test_call_client_dont_wait_for_server(self):
-        self.spawn_servers(3, wait_for_server=False, common_topic=True)
-        servers = self.spawned
-        client = self.get_client(servers[0].topic)
+        server = self.spawn_server(wait_for_server=False)
+        client = self.get_client(server.topic)
         for _ in range(3):
             reply = client.call_a()
             self.assertIsNotNone(reply)
