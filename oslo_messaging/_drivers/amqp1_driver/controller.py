@@ -870,7 +870,7 @@ class Controller(pyngus.ConnectionEventHandler):
                             self.link_retry_delay, send_task.service)
             self._all_senders[key] = sender
             if self.reply_link and self.reply_link.active:
-                sender.attach(self._socket_connection.connection,
+                sender.attach(self._socket_connection.pyngus_conn,
                               self.reply_link, self.addresser)
         self._active_senders.add(key)
         sender.send_message(send_task)
@@ -901,7 +901,7 @@ class Controller(pyngus.ConnectionEventHandler):
             self._servers[key] = servers
         servers[subscribe_task._subscriber_id] = server
         if self._active:
-            server.attach(self._socket_connection.connection,
+            server.attach(self._socket_connection.pyngus_conn,
                           self.addresser)
 
     # commands executed on the processor (eventloop) via 'wakeup()':
@@ -980,7 +980,7 @@ class Controller(pyngus.ConnectionEventHandler):
             self._detach_senders()
             self._detach_servers()
             self.reply_link.detach()
-            self._socket_connection.connection.close()
+            self._socket_connection.pyngus_conn.close()
         else:
             # don't wait for a close from the remote, may never happen
             self.processor.shutdown()
@@ -996,7 +996,7 @@ class Controller(pyngus.ConnectionEventHandler):
                  {'hostname': self.hosts.current.hostname,
                   'port': self.hosts.current.port})
         for sender in itervalues(self._all_senders):
-            sender.attach(self._socket_connection.connection,
+            sender.attach(self._socket_connection.pyngus_conn,
                           self.reply_link, self.addresser)
 
     def _reply_link_down(self):
@@ -1005,7 +1005,7 @@ class Controller(pyngus.ConnectionEventHandler):
         if not self._closing:
             self._detach_senders()
             self._detach_servers()
-            self._socket_connection.connection.close()
+            self._socket_connection.pyngus_conn.close()
             # once closed, _handle_connection_loss() will initiate reconnect
 
     # callback from eventloop on socket error
@@ -1022,7 +1022,7 @@ class Controller(pyngus.ConnectionEventHandler):
         """This is a Pyngus callback, invoked by Pyngus when a non-recoverable
         error occurs on the connection.
         """
-        if connection is not self._socket_connection.connection:
+        if connection is not self._socket_connection.pyngus_conn:
             # pyngus bug: ignore failure callback on destroyed connections
             return
         LOG.debug("AMQP Connection failure: %s", error)
@@ -1042,9 +1042,9 @@ class Controller(pyngus.ConnectionEventHandler):
         self.addresser = self.addresser_factory(props)
         for servers in itervalues(self._servers):
             for server in itervalues(servers):
-                server.attach(self._socket_connection.connection,
+                server.attach(self._socket_connection.pyngus_conn,
                               self.addresser)
-        self.reply_link = Replies(self._socket_connection.connection,
+        self.reply_link = Replies(self._socket_connection.pyngus_conn,
                                   self._reply_link_ready,
                                   self._reply_link_down,
                                   self._reply_credit)
@@ -1075,7 +1075,7 @@ class Controller(pyngus.ConnectionEventHandler):
         self._detach_senders()
         self._detach_servers()
         self.reply_link.detach()
-        self._socket_connection.connection.close()
+        self._socket_connection.pyngus_conn.close()
 
     def sasl_done(self, connection, pn_sasl, outcome):
         """This is a Pyngus callback invoked when the SASL handshake
@@ -1189,4 +1189,4 @@ class Controller(pyngus.ConnectionEventHandler):
     def _active(self):
         # Is the connection up
         return (self._socket_connection
-                and self._socket_connection.connection.active)
+                and self._socket_connection.pyngus_conn.active)
