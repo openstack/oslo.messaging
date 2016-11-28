@@ -154,11 +154,12 @@ class DealerConsumerWithAcks(DealerConsumer):
                  "msg_type": zmq_names.message_type_str(message_type),
                  "msg_id": message_id}
             )
-            # NOTE(gdavoian): send yet another ack for the non-CALL
+            # NOTE(gdavoian): send yet another ack for the direct
             # message, since the old one might be lost;
             # for the CALL message also try to resend its reply
             # (of course, if it was already obtained and cached).
-            self._acknowledge(reply_id, message_id, socket)
+            if message_type in zmq_names.DIRECT_TYPES:
+                self._acknowledge(reply_id, message_id, socket)
             if message_type == zmq_names.CALL_TYPE:
                 self._reply_from_cache(message_id, socket)
             return None
@@ -168,7 +169,8 @@ class DealerConsumerWithAcks(DealerConsumer):
         # NOTE(gdavoian): send an immediate ack, since it may
         # be too late to wait until the message will be
         # dispatched and processed by a RPC server
-        self._acknowledge(reply_id, message_id, socket)
+        if message_type in zmq_names.DIRECT_TYPES:
+            self._acknowledge(reply_id, message_id, socket)
 
         return super(DealerConsumerWithAcks, self)._create_message(
             context, message, reply_id, message_id, socket, message_type

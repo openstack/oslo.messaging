@@ -29,10 +29,7 @@ zmq = zmq_async.import_zmq()
 class AckManager(zmq_publisher_manager.PublisherManagerBase):
 
     def __init__(self, publisher):
-        super(AckManager, self).__init__(publisher)
-        self._pool = zmq_async.get_pool(
-            size=self.conf.oslo_messaging_zmq.rpc_thread_pool_size
-        )
+        super(AckManager, self).__init__(publisher, with_pool=True)
 
     @staticmethod
     def _check_ack(ack, request):
@@ -98,7 +95,7 @@ class AckManager(zmq_publisher_manager.PublisherManagerBase):
         ack_future = self._schedule_request_for_ack(request)
         if ack_future is None:
             self.publisher._raise_timeout(request)
-        self._pool.submit(self._wait_for_ack, request, ack_future)
+        self.pool.submit(self._wait_for_ack, request, ack_future)
         try:
             return self.publisher.receive_reply(ack_future.socket, request)
         finally:
@@ -106,14 +103,16 @@ class AckManager(zmq_publisher_manager.PublisherManagerBase):
                 ack_future.set_result(None)
 
     def send_cast(self, request):
-        self._pool.submit(self._wait_for_ack, request)
+        self.pool.submit(self._wait_for_ack, request)
 
-    def send_fanout(self, request):
-        self._send_request(request)
+    send_fanout = _send_request
+    send_notify = _send_request
 
-    def send_notify(self, request):
-        self._send_request(request)
 
-    def cleanup(self):
-        self._pool.shutdown(wait=True)
-        super(AckManager, self).cleanup()
+class AckManagerAsyncMultisend(AckManager):
+
+    def _send_request_async(self, request):
+        self.pool.submit(self._send_request, request)
+
+    send_fanout = _send_request_async
+    send_notify = _send_request_async

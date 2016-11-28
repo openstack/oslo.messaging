@@ -71,23 +71,34 @@ class ZmqClientBase(object):
 
     @staticmethod
     def _create_publisher_direct(conf, matchmaker):
-        publisher_direct = zmq_dealer_publisher_direct.DealerPublisherDirect(
-            conf, matchmaker)
-        return zmq_publisher_manager.PublisherManagerDynamic(publisher_direct)
+        publisher_direct = \
+            zmq_dealer_publisher_direct.DealerPublisherDirect(conf, matchmaker)
+        publisher_manager_cls = zmq_publisher_manager.PublisherManagerDynamic \
+            if conf.oslo_messaging_zmq.use_pub_sub else \
+            zmq_publisher_manager.PublisherManagerDynamicAsyncMultisend
+        return publisher_manager_cls(publisher_direct)
 
     @staticmethod
     def _create_publisher_proxy(conf, matchmaker):
-        publisher_proxy = zmq_dealer_publisher_proxy.DealerPublisherProxy(
-            conf, matchmaker)
-        return zmq_ack_manager.AckManager(publisher_proxy) \
-            if conf.oslo_messaging_zmq.rpc_use_acks else \
-            zmq_publisher_manager.PublisherManagerStatic(publisher_proxy)
+        publisher_proxy = \
+            zmq_dealer_publisher_proxy.DealerPublisherProxy(conf, matchmaker)
+        if conf.oslo_messaging_zmq.rpc_use_acks:
+            ack_manager_cls = zmq_ack_manager.AckManager \
+                if conf.oslo_messaging_zmq.use_pub_sub else \
+                zmq_ack_manager.AckManagerAsyncMultisend
+            return ack_manager_cls(publisher_proxy)
+        else:
+            publisher_manager_cls = \
+                zmq_publisher_manager.PublisherManagerStatic \
+                if conf.oslo_messaging_zmq.use_pub_sub else \
+                zmq_publisher_manager.PublisherManagerStaticAsyncMultisend
+            return publisher_manager_cls(publisher_proxy)
 
     @staticmethod
     def _create_publisher_proxy_dynamic(conf, matchmaker):
         publisher_proxy = \
-            zmq_dealer_publisher_proxy.DealerPublisherProxyDynamic(
-                conf, matchmaker)
+            zmq_dealer_publisher_proxy.DealerPublisherProxyDynamic(conf,
+                                                                   matchmaker)
         return zmq_publisher_manager.PublisherManagerDynamic(publisher_proxy)
 
     def cleanup(self):

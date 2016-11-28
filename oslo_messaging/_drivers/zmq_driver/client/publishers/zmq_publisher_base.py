@@ -1,4 +1,4 @@
-#    Copyright 2015 Mirantis, Inc.
+#    Copyright 2015-2016 Mirantis, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,7 +18,6 @@ import six
 
 import oslo_messaging
 from oslo_messaging._drivers.zmq_driver import zmq_async
-
 
 zmq = zmq_async.import_zmq()
 
@@ -89,5 +88,7 @@ class PublisherBase(object):
         )
 
     def cleanup(self):
-        """Cleanup publisher. Close allocated connections."""
+        """Cleanup publisher: stop receiving responses, close allocated
+        connections etc.
+        """
         self.receiver.stop()

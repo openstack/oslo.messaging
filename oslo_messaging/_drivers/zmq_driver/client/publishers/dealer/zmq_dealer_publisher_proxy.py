@@ -28,7 +28,6 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_updater
 
-
 zmq = zmq_async.import_zmq()
 
 

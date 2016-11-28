@@ -63,14 +63,21 @@ class PublisherManagerBase(object):
 
     Publisher knows how to establish connection, how to send message,
     and how to receive reply. PublisherManager coordinates all these steps
-    regarding retrying logic in AckManager implementations
+    regarding retrying logic in AckManager implementations. May also have an
+    additional thread pool for scheduling background tasks.
     """
 
-    def __init__(self, publisher):
+    def __init__(self, publisher, with_pool=False):
         self.publisher = publisher
         self.conf = publisher.conf
         self.sender = publisher.sender
         self.receiver = publisher.receiver
+        if with_pool:
+            self.pool = zmq_async.get_pool(
+                size=self.conf.oslo_messaging_zmq.rpc_thread_pool_size
+            )
+        else:
+            self.pool = None
 
     @abc.abstractmethod
     def send_call(self, request):
@@ -105,6 +112,8 @@ class PublisherManagerBase(object):
         """
 
     def cleanup(self):
+        if self.pool:
+            self.pool.shutdown(wait=True)
         self.publisher.cleanup()
 
 
@@ -129,6 +138,20 @@ class PublisherManagerDynamic(PublisherManagerBase):
     send_notify = _send
 
 
+class PublisherManagerDynamicAsyncMultisend(PublisherManagerDynamic):
+
+    def __init__(self, publisher):
+        super(PublisherManagerDynamicAsyncMultisend, self).__init__(
+            publisher, with_pool=True
+        )
+
+    def _send_async(self, request):
+        self.pool.submit(self._send, request)
+
+    send_fanout = _send_async
+    send_notify = _send_async
+
+
 class PublisherManagerStatic(PublisherManagerBase):
 
     @target_not_found_timeout
@@ -146,3 +169,17 @@ class PublisherManagerStatic(PublisherManagerBase):
     send_cast = _send
     send_fanout = _send
     send_notify = _send
+
+
+class PublisherManagerStaticAsyncMultisend(PublisherManagerStatic):
+
+    def __init__(self, publisher):
+        super(PublisherManagerStaticAsyncMultisend, self).__init__(
+            publisher, with_pool=True
+        )
+
+    def _send_async(self, request):
+        self.pool.submit(self._send, request)
+
+    send_fanout = _send_async
+    send_notify = _send_async
