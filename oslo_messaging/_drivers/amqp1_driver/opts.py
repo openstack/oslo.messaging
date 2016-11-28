@@ -127,6 +127,13 @@ amqp1_opts = [
                help='The deadline for a sent notification message delivery.'
                ' Only used when caller does not provide a timeout expiry.'),
 
+    # Sender link cache maintenance:
+    cfg.IntOpt('default_sender_link_timeout',
+               default=600,
+               min=1,
+               help='The duration to schedule a purge of idle sender links.'
+               ' Detach link after expiry.'),
+
     # Addressing:
 
     cfg.StrOpt('addressing_mode',
