@@ -8,8 +8,8 @@ Introduction
 ============
 
 This document describes the architecture and implementation of the
-olso.messaging AMQP 1.0 driver. The AMQP 1.0 driver provides an
-implementation of the olso.messaging base driver service interfaces
+oslo.messaging AMQP 1.0 driver. The AMQP 1.0 driver provides an
+implementation of the oslo.messaging base driver service interfaces
 that map client application RPC and Notify methods "onto" the
 operation of an AMQP 1.0 protocol messaging bus. The blueprint for the original
 driver can be found here [1]_ and the original implementation is described in
