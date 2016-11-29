@@ -533,7 +533,7 @@ update the qpidd.conf values to match.
 DevStack Support
 ================
 
-The plugin for the AMQP 1.0 olso.messaging driver is supported by
+The plugin for the AMQP 1.0 oslo.messaging driver is supported by
 DevStack. The plugin supports the use of either the broker or router
 intermediary.
 
