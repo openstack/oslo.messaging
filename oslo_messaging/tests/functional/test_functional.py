@@ -28,6 +28,8 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def setUp(self):
         super(CallTestCase, self).setUp(conf=cfg.ConfigOpts())
+        if self.url.startswith("kafka://"):
+            self.skipTest("kafka does not support RPC API")
 
         self.conf.prog = "test_prog"
         self.conf.project = "test_project"
@@ -155,6 +157,11 @@ class CastTestCase(utils.SkipIfNoTransportURL):
     # Note: casts return immediately, so these tests utilise a special
     # internal sync() cast to ensure prior casts are complete before
     # making the necessary assertions.
+
+    def setUp(self):
+        super(CastTestCase, self).setUp()
+        if self.url.startswith("kafka://"):
+            self.skipTest("kafka does not support RPC API")
 
     def test_specific_server(self):
         group = self.useFixture(

@@ -16,7 +16,6 @@ from kafka.common import KafkaError
 import mock
 from oslo_serialization import jsonutils
 import testscenarios
-from testtools.testcase import unittest
 import time
 
 import oslo_messaging
@@ -25,21 +24,6 @@ from oslo_messaging._drivers import impl_kafka as kafka_driver
 from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
-
-KAFKA_BROKER = 'localhost:9092'
-KAFKA_BROKER_URL = 'kafka://localhost:9092'
-
-
-def _is_kafka_service_running():
-    """Checks whether the Kafka service is running or not"""
-    kafka_running = True
-    try:
-        broker = KAFKA_BROKER
-        kafka.KafkaClient(broker)
-    except KafkaError:
-        # Kafka service is not running.
-        kafka_running = False
-    return kafka_running
 
 
 class TestKafkaDriverLoad(test_utils.BaseTestCase):
@@ -252,62 +236,3 @@ class TestKafkaListener(test_utils.BaseTestCase):
         fake_response = listener.poll()
         self.assertEqual(1, len(listener.conn.consume.mock_calls))
         self.assertEqual([], fake_response)
-
-
-class TestWithRealKafkaBroker(test_utils.BaseTestCase):
-
-    def setUp(self):
-        super(TestWithRealKafkaBroker, self).setUp()
-        self.messaging_conf.transport_driver = 'kafka'
-        transport = oslo_messaging.get_transport(self.conf, KAFKA_BROKER_URL)
-        self.driver = transport._driver
-
-    @unittest.skipUnless(
-        _is_kafka_service_running(), "Kafka service is not available")
-    def test_send_and_receive_message(self):
-        target = oslo_messaging.Target(
-            topic="fake_topic", exchange='fake_exchange')
-        targets_and_priorities = [(target, 'fake_info')]
-
-        listener = self.driver.listen_for_notifications(
-            targets_and_priorities, None, None, None)._poll_style_listener
-        fake_context = {"fake_context_key": "fake_context_value"}
-        fake_message = {"fake_message_key": "fake_message_value"}
-        self.driver.send_notification(
-            target, fake_context, fake_message, None)
-
-        received_message = listener.poll()[0]
-        self.assertEqual(fake_context, received_message.ctxt)
-        self.assertEqual(fake_message, received_message.message)
-
-    @unittest.skipUnless(
-        _is_kafka_service_running(), "Kafka service is not available")
-    def test_send_and_receive_message_without_exchange(self):
-        target = oslo_messaging.Target(topic="fake_no_exchange_topic")
-        targets_and_priorities = [(target, 'fake_info')]
-
-        listener = self.driver.listen_for_notifications(
-            targets_and_priorities, None, None, None)._poll_style_listener
-        fake_context = {"fake_context_key": "fake_context_value"}
-        fake_message = {"fake_message_key": "fake_message_value"}
-        self.driver.send_notification(
-            target, fake_context, fake_message, None)
-
-        received_message = listener.poll()[0]
-        self.assertEqual(fake_context, received_message.ctxt)
-        self.assertEqual(fake_message, received_message.message)
-
-    @unittest.skipUnless(
-        _is_kafka_service_running(), "Kafka service is not available")
-    def test_receive_message_from_empty_topic_with_timeout(self):
-        target = oslo_messaging.Target(
-            topic="fake_empty_topic", exchange='fake_empty_exchange')
-        targets_and_priorities = [(target, 'fake_info')]
-
-        listener = self.driver.listen_for_notifications(
-            targets_and_priorities, None, None, None)._poll_style_listener
-
-        deadline = time.time() + 3
-        received_message = listener.poll(batch_timeout=3)
-        self.assertEqual(0, int(deadline - time.time()))
-        self.assertEqual([], received_message)
