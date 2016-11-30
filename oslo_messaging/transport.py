@@ -453,9 +453,13 @@ class TransportURL(object):
                 # parses the port data
                 port = None
                 if ':' in port_text:
-                    port = int(port_text.split(':', 1)[1])
+                    port = port_text.split(':', 1)[1]
             elif ':' in hostname:
                 hostname, port = hostname.split(':', 1)
+
+            if port == "":
+                port = None
+            if port is not None:
                 port = int(port)
 
             if username is None or password is None:
