@@ -13,9 +13,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import threading
+
 from oslo_messaging._drivers import common
 from oslo_messaging import _utils as utils
 from oslo_messaging.tests import utils as test_utils
+
+import six
 from six.moves import mock
 
 
@@ -97,3 +101,27 @@ class TimerTestCase(test_utils.BaseTestCase):
         remaining = t.check_return(callback, 1, a='b')
         self.assertEqual(0, remaining)
         callback.assert_called_once_with(1, a='b')
+
+
+class EventCompatTestCase(test_utils.BaseTestCase):
+    @mock.patch('oslo_messaging._utils._Event.clear')
+    def test_event_api_compat(self, mock_clear):
+        with mock.patch('oslo_messaging._utils._is_monkey_patched',
+                        return_value=True):
+            e_event = utils.Event()
+        self.assertIsInstance(e_event, utils._Event)
+
+        with mock.patch('oslo_messaging._utils._is_monkey_patched',
+                        return_value=False):
+            t_event = utils.Event()
+        if six.PY3:
+            t_event_cls = threading.Event
+        else:
+            t_event_cls = threading._Event
+        self.assertIsInstance(t_event, t_event_cls)
+
+        public_methods = [m for m in dir(t_event) if not m.startswith("_") and
+                          callable(getattr(t_event, m))]
+
+        for method in public_methods:
+            self.assertTrue(hasattr(e_event, method))
