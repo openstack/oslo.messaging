@@ -346,7 +346,7 @@ class MatchmakerRedisAvailabilityUpdater(zmq_updater.UpdaterBase):
                     # reading from
                     redis_instance._is_available = True
                     redis_instance._ready_from = time.time() + \
-                        self.conf.oslo_messaging_zmq.zmq_target_update
+                        self.conf.oslo_messaging_zmq.zmq_target_expire
             else:
                 fraction_of_available_instances += 1
         fraction_of_available_instances /= \
