@@ -297,19 +297,15 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         for event_type, payload in b_out:
             b.info({}, event_type, payload)
 
-        for expected in a_out:
-            actual = listener_a.events.get(timeout=0.5)
-            self.assertEqual('info', actual[0])
-            self.assertEqual(expected[0], actual[1])
-            self.assertEqual(expected[1], actual[2])
-            self.assertEqual('pub-1', actual[3])
+        def check_received(listener, publisher, messages):
+            actuals = sorted([listener.events.get(timeout=0.5)
+                              for __ in range(len(a_out))])
+            expected = sorted([['info', m[0], m[1], publisher]
+                               for m in messages])
+            self.assertEqual(expected, actuals)
 
-        for expected in b_out:
-            actual = listener_b.events.get(timeout=0.5)
-            self.assertEqual('info', actual[0])
-            self.assertEqual(expected[0], actual[1])
-            self.assertEqual(expected[1], actual[2])
-            self.assertEqual('pub-2', actual[3])
+        check_received(listener_a, "pub-1", a_out)
+        check_received(listener_b, "pub-2", b_out)
 
     def test_all_categories(self):
         listener = self.useFixture(utils.NotificationFixture(
