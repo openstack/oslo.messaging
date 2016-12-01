@@ -1,0 +1,35 @@
+# common dpkg
+gettext [platform:dpkg] # For releasenotes job
+build-essential [platform:dpkg]
+libffi-dev [platform:dpkg]
+
+# common rpm
+gcc [platform:rpm]
+gcc-c++ [platform:rpm]
+make [platform:rpm]
+pkg-config [platform:rpm]
+libffi-devel [platform:rpm]
+
+# kombu/pika
+rabbitmq-server [platform:dpkg rabbit pika]
+
+# zeromq
+redis-sentinel [platform:ubuntu !platform:ubuntu-trusty zeromq]
+redis-server [platform:dpkg zeromq]
+python-redis [platform:dpkg zeromq]
+zookeeperd [platform:dpkg zeromq]
+
+# AMQP1 dpkg
+qpidd [platform:dpkg amqp1]
+sasl2-bin [platform:dpkg amqp1]
+uuid-dev [platform:dpkg amqp1]
+swig [platform:dpkg amqp1]
+
+# AMQP1 rpm
+qpid-cpp-server [platform:rpm amqp1]
+qpid-proton-c-devel [platform:rpm amqp1]
+python-qpid-proton [platform:rpm amqp1]
+cyrus-sasl-lib [platform:rpm amqp1]
+cyrus-sasl-plain [platform:rpm amqp1]
+libuuid-devel [platform:rpm amqp1]
+swig [platform:rpm amqp1]
