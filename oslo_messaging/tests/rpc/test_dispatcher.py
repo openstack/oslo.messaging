@@ -231,23 +231,23 @@ class TestSerializer(test_utils.BaseTestCase):
         serializer = msg_serializer.NoOpSerializer()
         dispatcher = oslo_messaging.RPCDispatcher([endpoint], serializer)
 
-        self.mox.StubOutWithMock(endpoint, 'foo')
+        endpoint.foo = mock.Mock()
+
         args = dict([(k, 'd' + v) for k, v in self.args.items()])
-        endpoint.foo(self.dctxt, **args).AndReturn(self.retval)
+        endpoint.foo.return_value = self.retval
 
-        self.mox.StubOutWithMock(serializer, 'serialize_entity')
-        self.mox.StubOutWithMock(serializer, 'deserialize_entity')
-        self.mox.StubOutWithMock(serializer, 'deserialize_context')
+        serializer.serialize_entity = mock.Mock()
+        serializer.deserialize_entity = mock.Mock()
+        serializer.deserialize_context = mock.Mock()
 
-        serializer.deserialize_context(self.ctxt).AndReturn(self.dctxt)
+        serializer.deserialize_context.return_value = self.dctxt
 
-        for arg in self.args:
-            serializer.deserialize_entity(self.dctxt, arg).AndReturn('d' + arg)
+        expected_side_effect = ['d' + arg for arg in self.args]
+        serializer.deserialize_entity.side_effect = expected_side_effect
 
-        serializer.serialize_entity(self.dctxt, self.retval). \
-            AndReturn('s' + self.retval if self.retval else None)
-
-        self.mox.ReplayAll()
+        serializer.serialize_entity.return_value = None
+        if self.retval:
+            serializer.serialize_entity.return_value = 's' + self.retval
 
         incoming = mock.Mock()
         incoming.ctxt = self.ctxt
@@ -255,3 +255,13 @@ class TestSerializer(test_utils.BaseTestCase):
         retval = dispatcher.dispatch(incoming)
         if self.retval is not None:
             self.assertEqual('s' + self.retval, retval)
+
+        endpoint.foo.assert_called_once_with(self.dctxt, **args)
+        serializer.deserialize_context.assert_called_once_with(self.ctxt)
+
+        expected_calls = [mock.call(self.dctxt, arg) for arg in self.args]
+        self.assertEqual(expected_calls,
+                         serializer.deserialize_entity.mock_calls)
+
+        serializer.serialize_entity.assert_called_once_with(self.dctxt,
+                                                            self.retval)

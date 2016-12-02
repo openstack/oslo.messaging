@@ -15,7 +15,6 @@
 
 import fixtures
 import mock
-from mox3 import mox
 from oslo_config import cfg
 import six
 from stevedore import driver
@@ -119,7 +118,7 @@ class GetTransportTestCase(test_utils.BaseTestCase):
                     control_exchange=self.control_exchange,
                     transport_url=self.transport_url)
 
-        self.mox.StubOutWithMock(driver, 'DriverManager')
+        driver.DriverManager = mock.Mock()
 
         invoke_args = [self.conf,
                        oslo_messaging.TransportURL.parse(self.conf,
@@ -128,14 +127,8 @@ class GetTransportTestCase(test_utils.BaseTestCase):
                            allowed_remote_exmods=self.expect['allowed'])
 
         drvr = _FakeDriver(self.conf)
-        driver.DriverManager('oslo.messaging.drivers',
-                             self.expect['backend'],
-                             invoke_on_load=True,
-                             invoke_args=invoke_args,
-                             invoke_kwds=invoke_kwds).\
-            AndReturn(_FakeManager(drvr))
 
-        self.mox.ReplayAll()
+        driver.DriverManager.return_value = _FakeManager(drvr)
 
         kwargs = dict(url=self.url)
         if self.allowed is not None:
@@ -155,6 +148,12 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         self.assertIsNotNone(transport_)
         self.assertIs(transport_.conf, self.conf)
         self.assertIs(transport_._driver, drvr)
+
+        driver.DriverManager.assert_called_once_with('oslo.messaging.drivers',
+                                                     self.expect['backend'],
+                                                     invoke_on_load=True,
+                                                     invoke_args=invoke_args,
+                                                     invoke_kwds=invoke_kwds)
 
 
 class GetTransportSadPathTestCase(test_utils.BaseTestCase):
@@ -182,7 +181,7 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
                     transport_url=self.transport_url)
 
         if self.rpc_backend:
-            self.mox.StubOutWithMock(driver, 'DriverManager')
+            driver.DriverManager = mock.Mock()
 
             invoke_args = [self.conf,
                            oslo_messaging.TransportURL.parse(self.conf,
@@ -190,18 +189,17 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
             invoke_kwds = dict(default_exchange='openstack',
                                allowed_remote_exmods=[])
 
-            driver.DriverManager('oslo.messaging.drivers',
-                                 self.rpc_backend,
-                                 invoke_on_load=True,
-                                 invoke_args=invoke_args,
-                                 invoke_kwds=invoke_kwds).\
-                AndRaise(RuntimeError())
-
-            self.mox.ReplayAll()
-
+            driver.DriverManager.side_effect = RuntimeError()
         try:
             oslo_messaging.get_transport(self.conf, url=self.url)
             self.assertFalse(True)
+
+            driver.DriverManager.\
+                assert_called_once_with('oslo.messaging.drivers',
+                                        self.rpc_backend,
+                                        invoke_on_load=True,
+                                        invoke_args=invoke_args,
+                                        invoke_kwds=invoke_kwds)
         except Exception as ex:
             ex_cls = self.ex.pop('cls')
             ex_msg_contains = self.ex.pop('msg_contains')
@@ -258,17 +256,19 @@ class TestSetDefaults(test_utils.BaseTestCase):
     def test_set_default_control_exchange(self):
         oslo_messaging.set_transport_defaults(control_exchange='foo')
 
-        self.mox.StubOutWithMock(driver, 'DriverManager')
-        invoke_kwds = mox.ContainsKeyValue('default_exchange', 'foo')
-        driver.DriverManager(mox.IgnoreArg(),
-                             mox.IgnoreArg(),
-                             invoke_on_load=mox.IgnoreArg(),
-                             invoke_args=mox.IgnoreArg(),
-                             invoke_kwds=invoke_kwds).\
-            AndReturn(_FakeManager(_FakeDriver(self.conf)))
-        self.mox.ReplayAll()
+        driver.DriverManager = mock.Mock()
+        invoke_kwds = dict(default_exchange='foo', allowed_remote_exmods=[])
+
+        driver.DriverManager.return_value = \
+            _FakeManager(_FakeDriver(self.conf))
 
         oslo_messaging.get_transport(self.conf)
+
+        driver.DriverManager.assert_called_once_with(mock.ANY,
+                                                     mock.ANY,
+                                                     invoke_on_load=mock.ANY,
+                                                     invoke_args=mock.ANY,
+                                                     invoke_kwds=invoke_kwds)
 
 
 class TestTransportMethodArgs(test_utils.BaseTestCase):
@@ -278,56 +278,69 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
     def test_send_defaults(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
-        self.mox.StubOutWithMock(t._driver, 'send')
-        t._driver.send(self._target, 'ctxt', 'message',
-                       wait_for_reply=None,
-                       timeout=None, retry=None)
-        self.mox.ReplayAll()
+        t._driver.send = mock.Mock()
 
         t._send(self._target, 'ctxt', 'message')
+
+        t._driver.send.assert_called_once_with(self._target,
+                                               'ctxt',
+                                               'message',
+                                               wait_for_reply=None,
+                                               timeout=None,
+                                               retry=None)
 
     def test_send_all_args(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
-        self.mox.StubOutWithMock(t._driver, 'send')
-        t._driver.send(self._target, 'ctxt', 'message',
-                       wait_for_reply='wait_for_reply',
-                       timeout='timeout', retry='retry')
-        self.mox.ReplayAll()
+        t._driver.send = mock.Mock()
 
         t._send(self._target, 'ctxt', 'message',
                 wait_for_reply='wait_for_reply',
                 timeout='timeout', retry='retry')
 
+        t._driver.send.\
+            assert_called_once_with(self._target,
+                                    'ctxt',
+                                    'message',
+                                    wait_for_reply='wait_for_reply',
+                                    timeout='timeout',
+                                    retry='retry')
+
     def test_send_notification(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
-        self.mox.StubOutWithMock(t._driver, 'send_notification')
-        t._driver.send_notification(self._target, 'ctxt', 'message', 1.0,
-                                    retry=None)
-        self.mox.ReplayAll()
+        t._driver.send_notification = mock.Mock()
 
         t._send_notification(self._target, 'ctxt', 'message', version=1.0)
+
+        t._driver.send_notification.assert_called_once_with(self._target,
+                                                            'ctxt',
+                                                            'message',
+                                                            1.0,
+                                                            retry=None)
 
     def test_send_notification_all_args(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
-        self.mox.StubOutWithMock(t._driver, 'send_notification')
-        t._driver.send_notification(self._target, 'ctxt', 'message', 1.0,
-                                    retry=5)
-        self.mox.ReplayAll()
+        t._driver.send_notification = mock.Mock()
 
         t._send_notification(self._target, 'ctxt', 'message', version=1.0,
                              retry=5)
 
+        t._driver.send_notification.assert_called_once_with(self._target,
+                                                            'ctxt',
+                                                            'message',
+                                                            1.0,
+                                                            retry=5)
+
     def test_listen(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
-        self.mox.StubOutWithMock(t._driver, 'listen')
-        t._driver.listen(self._target, 1, None)
-        self.mox.ReplayAll()
+        t._driver.listen = mock.Mock()
 
         t._listen(self._target, 1, None)
+
+        t._driver.listen.assert_called_once_with(self._target, 1, None)
 
 
 class TestTransportUrlCustomisation(test_utils.BaseTestCase):
