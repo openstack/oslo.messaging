@@ -395,6 +395,8 @@ class TransportURL(object):
         :returns: A TransportURL
         """
 
+        if not url:
+            conf.register_opts(_transport_opts)
         url = url or conf.transport_url
         if not url:
             return cls(conf, aliases=aliases)
