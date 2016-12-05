@@ -288,7 +288,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         driver.cleanup()
 
     def test_send_timeout(self):
-        """Verify send timeout."""
+        """Verify send timeout - no reply sent."""
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
@@ -310,17 +310,19 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="no listener")
 
-        # the broker will send a nack:
+        # the broker will send a nack (released) since there is no active
+        # listener for the target:
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           driver.send, target,
                           {"context": "whatever"},
                           {"method": "drop"},
                           wait_for_reply=True,
+                          retry=0,
                           timeout=1.0)
         driver.cleanup()
 
     def test_send_not_acked(self):
-        """Verify exception thrown if send Nacked."""
+        """Verify exception thrown ack dropped."""
         self.config(pre_settled=[],
                     group="oslo_messaging_amqp")
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
@@ -333,7 +335,8 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           driver.send, target,
                           {"context": "whatever"},
                           {"method": "drop"},
-                          wait_for_reply=False)
+                          retry=0,
+                          wait_for_reply=True)
         driver.cleanup()
 
     def test_no_ack_cast(self):
@@ -393,7 +396,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         driver.cleanup()
 
     def test_call_failed_reply(self):
-        """Send back an exception"""
+        """Send back an exception generated at the listener"""
         class _FailedResponder(_ListenerThread):
             def __init__(self, listener):
                 super(_FailedResponder, self).__init__(listener, 1)
@@ -434,7 +437,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                 self.started.set()
                 while not self._done:
                     for in_msg in self.listener.poll(timeout=0.5):
-                        # reply will never be acked:
+                        # reply will never be acked (simulate drop):
                         in_msg._reply_to = "!no-ack!"
                         in_msg.reply(reply={'correlation-id':
                                             in_msg.message.get("id")})
@@ -458,6 +461,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
     def test_listener_requeue(self):
         "Emulate Server requeue on listener incoming messages"
+        self.config(pre_settled=[], group="oslo_messaging_amqp")
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         driver.require_features(requeue=True)
         target = oslo_messaging.Target(topic="test-topic")
@@ -471,10 +475,6 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
-
-        for x in listener.get_messages():
-            x.requeue()
-            self.assertEqual(x.message, {"msg": "value"})
 
         predicate = lambda: (self._broker.sender_link_requeue_count == 1)
         _wait_until(predicate, 30)
@@ -575,7 +575,7 @@ class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
                 try:
                     driver.send_notification(oslo_messaging.Target(topic=t),
                                              "context", {'target': t},
-                                             version)
+                                             version, retry=0)
                 except oslo_messaging.MessageDeliveryFailure:
                     excepted_targets.append(t)
 
@@ -592,15 +592,18 @@ class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
         driver.cleanup()
 
     def test_released_notification(self):
+        """Broker sends a Nack (released)"""
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           driver.send_notification,
                           oslo_messaging.Target(topic="bad address"),
                           "context", {'target': "bad address"},
-                          2.0)
+                          2.0,
+                          retry=0)
         driver.cleanup()
 
     def test_notification_not_acked(self):
+        """Simulate drop of ack from broker"""
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         # set this directly so we can use a value < minimum allowed
         driver._default_notify_timeout = 2
@@ -608,7 +611,7 @@ class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
                           driver.send_notification,
                           oslo_messaging.Target(topic="!no-ack!"),
                           "context", {'target': "!no-ack!"},
-                          2.0)
+                          2.0, retry=0)
         driver.cleanup()
 
     def test_no_ack_notification(self):
@@ -1388,6 +1391,64 @@ class TestAddressing(test_utils.BaseTestCase):
                               LegacyAddresser)
 
 
+@testtools.skipUnless(pyngus, "proton modules not present")
+class TestMessageRetransmit(_AmqpBrokerTestCase):
+    # test message is retransmitted if safe to do so
+    def _test_retransmit(self, nack_method):
+        self._nack_count = 2
+
+        def _on_message(message, handle, link):
+            if self._nack_count:
+                self._nack_count -= 1
+                nack_method(link, handle)
+            else:
+                self._broker.forward_message(message, handle, link)
+
+        self._broker.on_message = _on_message
+        self._broker.start()
+        self.config(link_retry_delay=1, pre_settled=[],
+                    group="oslo_messaging_amqp")
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _ListenerThread(driver.listen(target,
+                                                 None,
+                                                 None)._poll_style_listener,
+                                   1)
+        rc = driver.send(target, {"context": "whatever"},
+                         {"method": "echo", "id": "blah"},
+                         wait_for_reply=True,
+                         retry=2)  # initial send + up to 2 resends
+        self.assertIsNotNone(rc)
+        self.assertEqual(0, self._nack_count)
+        self.assertEqual(rc.get('correlation-id'), 'blah')
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_released(self):
+        # should retry and succeed
+        self._test_retransmit(lambda l, h: l.message_released(h))
+
+    def test_modified(self):
+        # should retry and succeed
+        self._test_retransmit(lambda l, h: l.message_modified(h,
+                                                              False,
+                                                              False,
+                                                              {}))
+
+    def test_modified_failed(self):
+        # since delivery_failed is set to True, should fail
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          self._test_retransmit,
+                          lambda l, h: l.message_modified(h, True, False, {}))
+
+    def test_rejected(self):
+        # rejected - should fail
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                          self._test_retransmit,
+                          lambda l, h: l.message_rejected(h, {}))
+
+
 class FakeBroker(threading.Thread):
     """A test AMQP message 'broker'."""
 
@@ -1609,7 +1670,7 @@ class FakeBroker(threading.Thread):
 
             def message_received(self, receiver_link, message, handle):
                 """Forward this message out the proper sending link."""
-                self.server.forward_message(message, handle, receiver_link)
+                self.server.on_message(message, handle, receiver_link)
                 if self.link.capacity < 1:
                     self.server.on_credit_exhausted(self.link)
 
@@ -1674,6 +1735,7 @@ class FakeBroker(threading.Thread):
         self.on_sender_active = lambda link: None
         self.on_receiver_active = lambda link: link.add_capacity(10)
         self.on_credit_exhausted = lambda link: link.add_capacity(10)
+        self.on_message = lambda m, h, l: self.forward_message(m, h, l)
 
     def start(self):
         """Start the server."""

@@ -109,7 +109,7 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
             task = controller.SendTask("RPC Reply", response, self._reply_to,
                                        # analogous to kombu missing dest t/o:
                                        deadline,
-                                       retry=0,
+                                       retry=driver._default_reply_retry,
                                        wait_for_ack=ack)
             driver._ctrl.add_task(task)
             rc = task.wait()
@@ -216,6 +216,7 @@ class ProtonDriver(base.BaseDriver):
         self._default_reply_timeout = opt_name.default_reply_timeout
         self._default_send_timeout = opt_name.default_send_timeout
         self._default_notify_timeout = opt_name.default_notify_timeout
+        self._default_reply_retry = opt_name.default_reply_retry
 
         # which message types should be sent pre-settled?
         ps = [s.lower() for s in opt_name.pre_settled]
@@ -301,8 +302,7 @@ class ProtonDriver(base.BaseDriver):
             expire = compute_timeout(self._default_send_timeout)
         if wait_for_reply:
             ack = not self._pre_settle_call
-            task = controller.RPCCallTask(target, request, expire, retry,
-                                          wait_for_ack=ack)
+            task = controller.RPCCallTask(target, request, expire, retry)
         else:
             ack = not self._pre_settle_cast
             task = controller.SendTask("RPC Cast", request, target, expire,
