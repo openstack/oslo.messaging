@@ -28,12 +28,16 @@ zmq = zmq_async.import_zmq()
 
 
 def check_message_format(func):
-    def _check_message_format(*args, **kwargs):
+    def _check_message_format(socket):
         try:
-            return func(*args, **kwargs)
+            return func(socket)
         except Exception as e:
-            LOG.error(_LE("Received message with wrong format"))
-            LOG.exception(e)
+            LOG.error(_LE("Received message with wrong format: %r. "
+                          "Dropping invalid message"), e)
+            # NOTE(gdavoian): drop the left parts of a broken message, since
+            # they most likely will break the order of next messages' parts
+            if socket.getsockopt(zmq.RCVMORE):
+                socket.recv_multipart()
     return _check_message_format
 
 
@@ -65,11 +69,12 @@ class ProxyBase(object):
     @check_message_format
     def _receive_message(socket):
         message = socket.recv_multipart()
-        assert len(message) > zmq_names.MESSAGE_ID_IDX, "Not enough parts"
-        assert message[zmq_names.REPLY_ID_IDX] != b'', "Valid id expected"
+        assert message[zmq_names.EMPTY_IDX] == b'', "Empty delimiter expected!"
         message_type = int(message[zmq_names.MESSAGE_TYPE_IDX])
-        assert message_type in zmq_names.MESSAGE_TYPES, "Known type expected!"
-        assert message[zmq_names.EMPTY_IDX] == b'', "Empty delimiter expected"
+        assert message_type in zmq_names.MESSAGE_TYPES, \
+            "Known message type expected!"
+        assert len(message) > zmq_names.MESSAGE_ID_IDX, \
+            "At least %d parts expected!" % (zmq_names.MESSAGE_ID_IDX + 1)
         return message
 
     def cleanup(self):

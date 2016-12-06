@@ -22,6 +22,7 @@ from oslo_messaging._drivers.zmq_driver.server.consumers \
 from oslo_messaging._drivers.zmq_driver.server import zmq_incoming_message
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_version
 from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
@@ -34,6 +35,8 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
     def __init__(self, conf, poller, server):
         self.reply_sender = zmq_senders.ReplySenderDirect(conf)
         super(RouterConsumer, self).__init__(conf, poller, server, zmq.ROUTER)
+        self._receive_request_versions = \
+            zmq_version.get_method_versions(self, 'receive_request')
         LOG.info(_LI("[%s] Run ROUTER consumer"), self.host)
 
     def _reply(self, rpc_message, reply, failure):
@@ -41,47 +44,65 @@ class RouterConsumer(zmq_consumer_base.SingleSocketConsumer):
             failure = rpc_common.serialize_remote_exception(failure)
         reply = zmq_response.Reply(message_id=rpc_message.message_id,
                                    reply_id=rpc_message.reply_id,
+                                   message_version=rpc_message.message_version,
                                    reply_body=reply,
                                    failure=failure)
         self.reply_sender.send(rpc_message.socket, reply)
         return reply
 
-    def _create_message(self, context, message, reply_id, message_id, socket,
-                        message_type):
+    def _create_message(self, context, message, message_version, reply_id,
+                        message_id, socket, message_type):
         if message_type == zmq_names.CALL_TYPE:
             message = zmq_incoming_message.ZmqIncomingMessage(
-                context, message, reply_id=reply_id, message_id=message_id,
+                context, message, message_version=message_version,
+                reply_id=reply_id, message_id=message_id,
                 socket=socket, reply_method=self._reply
             )
         else:
             message = zmq_incoming_message.ZmqIncomingMessage(context, message)
 
-        LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s",
+        LOG.debug("[%(host)s] Received %(msg_type)s message %(msg_id)s "
+                  "(v%(msg_version)s)",
                   {"host": self.host,
                    "msg_type": zmq_names.message_type_str(message_type),
-                   "msg_id": message_id})
+                   "msg_id": message_id,
+                   "msg_version": message_version})
         return message
 
-    def receive_message(self, socket):
+    def _get_receive_request_version(self, version):
+        receive_request_version = self._receive_request_versions.get(version)
+        if receive_request_version is None:
+            raise zmq_version.UnsupportedMessageVersionError(version)
+        return receive_request_version
+
+    def receive_request(self, socket):
         try:
             reply_id = socket.recv()
             assert reply_id != b'', "Valid reply id expected!"
             empty = socket.recv()
             assert empty == b'', "Empty delimiter expected!"
-            message_type = int(socket.recv())
-            assert message_type in zmq_names.REQUEST_TYPES, \
-                "Request message type expected!"
-            message_id = socket.recv_string()
-            assert message_id != '', "Valid message id expected!"
-            context, message = socket.recv_loaded()
+            message_version = socket.recv_string()
+            assert message_version != b'', "Valid message version expected!"
 
-            return self._create_message(context, message, reply_id,
-                                        message_id, socket, message_type)
-        except (zmq.ZMQError, AssertionError, ValueError) as e:
+            receive_request_version = \
+                self._get_receive_request_version(message_version)
+            return receive_request_version(reply_id, socket)
+        except (zmq.ZMQError, AssertionError, ValueError,
+                zmq_version.UnsupportedMessageVersionError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
             # NOTE(gdavoian): drop the left parts of a broken message
             if socket.getsockopt(zmq.RCVMORE):
                 socket.recv_multipart()
+
+    def _receive_request_v_1_0(self, reply_id, socket):
+        message_type = int(socket.recv())
+        assert message_type in zmq_names.REQUEST_TYPES, "Request expected!"
+        message_id = socket.recv_string()
+        assert message_id != '', "Valid message id expected!"
+        context, message = socket.recv_loaded()
+
+        return self._create_message(context, message, '1.0', reply_id,
+                                    message_id, socket, message_type)
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy ROUTER consumer"), self.host)

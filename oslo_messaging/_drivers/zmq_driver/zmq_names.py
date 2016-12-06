@@ -19,15 +19,17 @@ zmq = zmq_async.import_zmq()
 
 FIELD_MSG_ID = 'message_id'
 FIELD_REPLY_ID = 'reply_id'
+FIELD_MSG_VERSION = 'message_version'
 FIELD_REPLY_BODY = 'reply_body'
 FIELD_FAILURE = 'failure'
 
 
 REPLY_ID_IDX = 0
 EMPTY_IDX = 1
-MESSAGE_TYPE_IDX = 2
-ROUTING_KEY_IDX = 3
-MESSAGE_ID_IDX = 4
+MESSAGE_VERSION_IDX = 2
+MESSAGE_TYPE_IDX = 3
+ROUTING_KEY_IDX = 4
+MESSAGE_ID_IDX = 5
 
 
 DEFAULT_TYPE = 0

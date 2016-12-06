@@ -35,7 +35,7 @@ class PublisherBase(object):
 
     def __init__(self, sockets_manager, sender, receiver):
 
-        """Construct publisher
+        """Construct publisher.
 
         Accept sockets manager, sender and receiver objects.
 
@@ -54,7 +54,7 @@ class PublisherBase(object):
 
     @abc.abstractmethod
     def acquire_connection(self, request):
-        """Get socket to publish request on it
+        """Get socket to publish request on it.
 
         :param request: request object
         :type senders: zmq_request.Request
@@ -62,7 +62,7 @@ class PublisherBase(object):
 
     @abc.abstractmethod
     def send_request(self, socket, request):
-        """Publish request on a socket
+        """Publish request on a socket.
 
         :param socket: socket object to publish request on
         :type socket: zmq_socket.ZmqSocket

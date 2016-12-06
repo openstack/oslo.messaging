@@ -22,6 +22,7 @@ import six
 from oslo_messaging._drivers.zmq_driver.client import zmq_response
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+from oslo_messaging._drivers.zmq_driver import zmq_version
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -52,6 +53,8 @@ class ReceiverBase(object):
         self._lock = threading.Lock()
         self._requests = {}
         self._poller = zmq_async.get_poller()
+        self._receive_response_versions = \
+            zmq_version.get_method_versions(self, 'receive_response')
         self._executor = zmq_async.get_executor(self._run_loop)
         self._executor.execute()
 
@@ -121,6 +124,12 @@ class ReceiverBase(object):
                       {"msg_type": zmq_names.message_type_str(message_type),
                        "msg_id": message_id})
 
+    def _get_receive_response_version(self, version):
+        receive_response_version = self._receive_response_versions.get(version)
+        if receive_response_version is None:
+            raise zmq_version.UnsupportedMessageVersionError(version)
+        return receive_response_version
+
 
 class ReceiverProxy(ReceiverBase):
 
@@ -128,6 +137,14 @@ class ReceiverProxy(ReceiverBase):
     def receive_response(self, socket):
         empty = socket.recv()
         assert empty == b'', "Empty delimiter expected!"
+        message_version = socket.recv_string()
+        assert message_version != b'', "Valid message version expected!"
+
+        receive_response_version = \
+            self._get_receive_response_version(message_version)
+        return receive_response_version(socket)
+
+    def _receive_response_v_1_0(self, socket):
         reply_id = socket.recv()
         assert reply_id != b'', "Valid reply id expected!"
         message_type = int(socket.recv())
@@ -153,6 +170,14 @@ class ReceiverDirect(ReceiverBase):
     def receive_response(self, socket):
         empty = socket.recv()
         assert empty == b'', "Empty delimiter expected!"
+        message_version = socket.recv_string()
+        assert message_version != b'', "Valid message version expected!"
+
+        receive_response_version = \
+            self._get_receive_response_version(message_version)
+        return receive_response_version(socket)
+
+    def _receive_response_v_1_0(self, socket):
         message_type = int(socket.recv())
         assert message_type in zmq_names.RESPONSE_TYPES, "Response expected!"
         message_id = socket.recv_string()

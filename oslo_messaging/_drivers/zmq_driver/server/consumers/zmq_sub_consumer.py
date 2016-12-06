@@ -25,6 +25,7 @@ from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 from oslo_messaging._drivers.zmq_driver import zmq_updater
+from oslo_messaging._drivers.zmq_driver import zmq_version
 from oslo_messaging._i18n import _LE, _LI
 
 LOG = logging.getLogger(__name__)
@@ -45,9 +46,11 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         self.sockets.append(self.socket)
         self.host = self.socket.handle.identity
         self._subscribe_to_topic()
+        self._receive_request_versions = \
+            zmq_version.get_method_versions(self, 'receive_request')
         self.connection_updater = SubscriberConnectionUpdater(
             conf, self.matchmaker, self.socket)
-        self.poller.register(self.socket, self.receive_message)
+        self.poller.register(self.socket, self.receive_request)
         LOG.info(_LI("[%s] Run SUB consumer"), self.host)
 
     def _generate_identity(self):
@@ -61,27 +64,39 @@ class SubConsumer(zmq_consumer_base.ConsumerBase):
         LOG.debug("[%(host)s] Subscribing to topic %(filter)s",
                   {"host": self.host, "filter": topic_filter})
 
-    def _receive_request(self, socket):
-        topic_filter = socket.recv()
+    def _get_receive_request_version(self, version):
+        receive_request_version = self._receive_request_versions.get(version)
+        if receive_request_version is None:
+            raise zmq_version.UnsupportedMessageVersionError(version)
+        return receive_request_version
+
+    def _receive_request_v_1_0(self, topic_filter, socket):
         message_type = int(socket.recv())
+        assert message_type in zmq_names.MULTISEND_TYPES, "Fanout expected!"
         message_id = socket.recv()
         context, message = socket.recv_loaded()
         LOG.debug("[%(host)s] Received on topic %(filter)s message %(msg_id)s "
-                  "%(msg_type)s",
+                  "(v%(msg_version)s)",
                   {'host': self.host,
                    'filter': topic_filter,
                    'msg_id': message_id,
-                   'msg_type': zmq_names.message_type_str(message_type)})
+                   'msg_version': '1.0'})
         return context, message
 
-    def receive_message(self, socket):
+    def receive_request(self, socket):
         try:
-            context, message = self._receive_request(socket)
-            if not message:
-                return None
+            topic_filter = socket.recv()
+            message_version = socket.recv_string()
+            receive_request_version = \
+                self._get_receive_request_version(message_version)
+            context, message = receive_request_version(topic_filter, socket)
             return zmq_incoming_message.ZmqIncomingMessage(context, message)
-        except (zmq.ZMQError, AssertionError) as e:
+        except (zmq.ZMQError, AssertionError, ValueError,
+                zmq_version.UnsupportedMessageVersionError) as e:
             LOG.error(_LE("Receiving message failed: %s"), str(e))
+            # NOTE(gdavoian): drop the left parts of a broken message
+            if socket.getsockopt(zmq.RCVMORE):
+                socket.recv_multipart()
 
     def cleanup(self):
         LOG.info(_LI("[%s] Destroy SUB consumer"), self.host)

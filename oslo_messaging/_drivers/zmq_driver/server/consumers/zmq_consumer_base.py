@@ -42,11 +42,11 @@ class ConsumerBase(object):
         self.context = zmq.Context()
 
     def stop(self):
-        """Stop consumer polling/updates"""
+        """Stop consumer polling/updating."""
 
     @abc.abstractmethod
-    def receive_message(self, target):
-        """Method for poller - receiving message routine"""
+    def receive_request(self, socket):
+        """Receive a request via a socket."""
 
     def cleanup(self):
         for socket in self.sockets:
@@ -81,7 +81,7 @@ class SingleSocketConsumer(ConsumerBase):
                        "port": socket.port})
             self.host = zmq_address.combine_address(
                 self.conf.oslo_messaging_zmq.rpc_zmq_host, socket.port)
-            self.poller.register(socket, self.receive_message)
+            self.poller.register(socket, self.receive_request)
             return socket
         except zmq.ZMQError as e:
             errmsg = _LE("Failed binding to port %(port)d: %(e)s")\
