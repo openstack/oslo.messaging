@@ -20,6 +20,7 @@ from oslo_config import cfg
 from six import moves
 
 import oslo_messaging
+from oslo_messaging._drivers import kafka_options
 from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging.notify import notifier
 from oslo_messaging.tests import utils as test_utils
@@ -305,22 +306,26 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
                         rpc_zmq_ipc_dir=zmq_ipc_dir)
         zmq_redis_port = os.environ.get('ZMQ_REDIS_PORT')
         if zmq_redis_port:
-            self.config(port=zmq_redis_port, group="matchmaker_redis")
-            self.config(check_timeout=10000, group="matchmaker_redis")
-            self.config(wait_timeout=1000, group="matchmaker_redis")
+            self.config(port=zmq_redis_port,
+                        check_timeout=10000,
+                        wait_timeout=1000,
+                        group="matchmaker_redis")
         zmq_use_pub_sub = os.environ.get('ZMQ_USE_PUB_SUB')
-        self.config(use_pub_sub=zmq_use_pub_sub,
-                    group='oslo_messaging_zmq')
         zmq_use_router_proxy = os.environ.get('ZMQ_USE_ROUTER_PROXY')
-        self.config(use_router_proxy=zmq_use_router_proxy,
-                    group='oslo_messaging_zmq')
         zmq_use_acks = os.environ.get('ZMQ_USE_ACKS')
-        self.config(rpc_use_acks=zmq_use_acks,
+        self.config(use_pub_sub=zmq_use_pub_sub,
+                    use_router_proxy=zmq_use_router_proxy,
+                    rpc_use_acks=zmq_use_acks,
                     group='oslo_messaging_zmq')
         zmq_use_dynamic_connections = \
             os.environ.get('ZMQ_USE_DYNAMIC_CONNECTIONS')
         self.config(use_dynamic_connections=zmq_use_dynamic_connections,
                     group='oslo_messaging_zmq')
+
+        kafka_options.register_opts(conf)
+
+        self.config(producer_batch_size=0,
+                    group='oslo_messaging_kafka')
 
 
 class NotificationFixture(fixtures.Fixture):

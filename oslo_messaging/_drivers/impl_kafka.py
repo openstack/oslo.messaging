@@ -26,7 +26,6 @@ import threading
 import kafka
 from kafka.client_async import selectors
 import kafka.errors
-from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
 import tenacity
@@ -319,15 +318,10 @@ class KafkaDriver(base.BaseDriver):
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
-
-        opt_group = cfg.OptGroup(name='oslo_messaging_kafka',
-                                 title='Kafka driver options')
-        conf.register_group(opt_group)
-        conf.register_opts(kafka_options.KAFKA_OPTS, group=opt_group)
-
         super(KafkaDriver, self).__init__(
             conf, url, default_exchange, allowed_remote_exmods)
 
+        kafka_options.register_opts(conf)
         # the pool configuration properties
         max_size = self.conf.oslo_messaging_kafka.pool_size
         min_size = self.conf.oslo_messaging_kafka.conn_pool_min_size
