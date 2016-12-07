@@ -74,7 +74,6 @@ class TestKafkaDriver(test_utils.BaseTestCase):
         self.messaging_conf.transport_driver = 'kafka'
         transport = oslo_messaging.get_transport(self.conf)
         self.driver = transport._driver
-        self.addCleanup(kafka_driver.Producer.cleanup)
 
     def test_send(self):
         target = oslo_messaging.Target(topic="topic_test")
@@ -87,8 +86,10 @@ class TestKafkaDriver(test_utils.BaseTestCase):
         with mock.patch("kafka.KafkaProducer") as fake_producer_class:
             fake_producer = fake_producer_class.return_value
             fake_producer.send.side_effect = kafka.errors.NoBrokersAvailable
-            self.driver.send_notification(target, {}, {"payload": ["test_1"]},
-                                          None, retry=3)
+            self.assertRaises(kafka.errors.NoBrokersAvailable,
+                              self.driver.send_notification,
+                              target, {}, {"payload": ["test_1"]},
+                              None, retry=3)
             self.assertEqual(3, fake_producer.send.call_count)
 
     def test_listen(self):
@@ -127,10 +128,11 @@ class TestKafkaConnection(test_utils.BaseTestCase):
         transport = oslo_messaging.get_transport(self.conf)
         self.driver = transport._driver
 
-    @mock.patch.object(kafka_driver.Connection, '_ensure_connection')
-    @mock.patch.object(kafka_driver.Connection, '_send_and_retry')
-    def test_notify(self, fake_send, fake_ensure_connection):
+    def test_notify(self):
         conn = self.driver._get_connection(common_driver.PURPOSE_SEND)
-        conn.notify_send("fake_topic", {"fake_ctxt": "fake_param"},
-                         {"fake_text": "fake_message_1"}, 10)
-        self.assertEqual(1, len(fake_send.mock_calls))
+
+        with mock.patch("kafka.KafkaProducer") as fake_producer_class:
+            fake_producer = fake_producer_class.return_value
+            conn.notify_send("fake_topic", {"fake_ctxt": "fake_param"},
+                             {"fake_text": "fake_message_1"}, 10)
+            self.assertEqual(1, len(fake_producer.send.mock_calls))
