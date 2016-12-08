@@ -181,7 +181,7 @@ class Connection(object):
 
     @with_reconnect()
     def _poll_messages(self, timeout):
-        return self.consumer.poll(timeout)
+        return self.consumer.poll(timeout * 1000.0)
 
     def consume(self, timeout=None):
         """Receive up to 'max_fetch_messages' messages.
