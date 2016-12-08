@@ -47,9 +47,6 @@ case $RPC_BACKEND in
         sudo apt-get update -y
         sudo apt-get install -y redis-server python-redis
         ;;
-    amqp1)
-	sudo yum install -y qpid-cpp-server qpid-proton-c-devel python-qpid-proton cyrus-sasl-lib cyrus-sasl-plain
-        ;;
     rabbit)
         sudo apt-get update -y
         sudo apt-get install -y rabbitmq-server

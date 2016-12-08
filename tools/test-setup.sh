@@ -28,6 +28,7 @@ PACKAGES=$(.tox/bindep/bin/bindep -b -f bindep.txt $BINDEP_PROFILE || true)
 
 # inspired from project-config install-distro-packages.sh
 if apt-get -v >/dev/null 2>&1 ; then
+    [ $BINDEP_PROFILE == amqp1 ] && sudo add-apt-repository -y ppa:qpid/testing
     sudo apt-get -qq update
     sudo PATH=/usr/sbin:/sbin:$PATH DEBIAN_FRONTEND=noninteractive \
         apt-get -q --option "Dpkg::Options::=--force-confold" \

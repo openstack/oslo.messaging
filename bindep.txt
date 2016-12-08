@@ -24,6 +24,7 @@ qpidd [platform:dpkg amqp1]
 sasl2-bin [platform:dpkg amqp1]
 uuid-dev [platform:dpkg amqp1]
 swig [platform:dpkg amqp1]
+libsasl2-modules [platform:dpkg amqp1]
 
 # AMQP1 rpm
 qpid-cpp-server [platform:rpm amqp1]
