@@ -353,7 +353,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         for i in six.moves.range(0, 205):
             notifier.info({}, 'test%s' % i, 'Hello World!')
         events = listener.get_events(timeout=3)
-        self.assertEqual(3, len(events), events)
+        self.assertEqual(3, len(events))
         self.assertEqual(100, len(events[0][1]))
         self.assertEqual(100, len(events[1][1]))
         self.assertEqual(5, len(events[2][1]))
