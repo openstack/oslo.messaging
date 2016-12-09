@@ -335,12 +335,15 @@ class Consumer(object):
             # bugs.launchpad.net/oslo.messaging/+bug/1609766
             # bugs.launchpad.net/neutron/+bug/1318721
 
+            # 406 error code relates to messages that are doubled ack'd
+
             # At any channel error, the RabbitMQ closes
             # the channel, but the amqp-lib quietly re-open
             # it. So, we must reset all tags and declare
             # all consumers again.
             conn._new_tags = set(conn._consumers.values())
-            if exc.code == 404:
+            if exc.code == 404 or (exc.code == 406 and
+                                   exc.method_name == 'Basic.ack'):
                 self.declare(conn)
                 self.queue.consume(callback=self._callback,
                                    consumer_tag=six.text_type(tag),
@@ -593,6 +596,24 @@ class Connection(object):
                   ' %(hostname)s:%(port)s',
                   self._get_connection_info())
 
+        # FIXME(gordc): wrapper to catch both kombu v3 and v4 errors
+        # remove this and only catch OperationalError when >4.0.0
+        if hasattr(kombu.exceptions, 'OperationalError'):
+            self.recoverable_errors = kombu.exceptions.OperationalError
+        else:
+            # NOTE(sileht): Some dummy driver like the in-memory one doesn't
+            # have notion of recoverable connection, so we must raise the
+            # original exception like kombu does in this case.
+            has_modern_errors = hasattr(
+                self.connection.transport, 'recoverable_connection_errors',
+            )
+            if has_modern_errors:
+                self.recoverable_errors = (
+                    self.connection.recoverable_channel_errors +
+                    self.connection.recoverable_connection_errors)
+            else:
+                self.recoverable_errors = ()
+
         # NOTE(sileht): kombu recommend to run heartbeat_check every
         # seconds, but we use a lock around the kombu connection
         # so, to not lock to much this lock to most of the time do nothing
@@ -707,7 +728,7 @@ class Connection(object):
         # NOTE(sileht): we reset the channel and ensure
         # the kombu underlying connection works
         self._set_current_channel(None)
-        self.ensure(method=lambda: self.connection.connection)
+        self.ensure(method=self.connection.connect)
         self.set_transport_socket_timeout()
 
     def ensure(self, method, retry=None,
@@ -792,19 +813,6 @@ class Connection(object):
             self._set_current_channel(channel)
             method()
 
-        # NOTE(sileht): Some dummy driver like the in-memory one doesn't
-        # have notion of recoverable connection, so we must raise the original
-        # exception like kombu does in this case.
-        has_modern_errors = hasattr(
-            self.connection.transport, 'recoverable_connection_errors',
-        )
-        if has_modern_errors:
-            recoverable_errors = (
-                self.connection.recoverable_channel_errors +
-                self.connection.recoverable_connection_errors)
-        else:
-            recoverable_errors = ()
-
         try:
             autoretry_method = self.connection.autoretry(
                 execute_method, channel=self.channel,
@@ -817,7 +825,7 @@ class Connection(object):
             ret, channel = autoretry_method()
             self._set_current_channel(channel)
             return ret
-        except recoverable_errors as exc:
+        except self.recoverable_errors as exc:
             LOG.debug("Received recoverable error from kombu:",
                       exc_info=True)
             error_callback and error_callback(exc)
@@ -883,13 +891,11 @@ class Connection(object):
 
     def reset(self):
         """Reset a connection so it can be used again."""
-        recoverable_errors = (self.connection.recoverable_channel_errors +
-                              self.connection.recoverable_connection_errors)
         with self._connection_lock:
             try:
                 for consumer, tag in self._consumers.items():
                     consumer.cancel(tag=tag)
-            except recoverable_errors:
+            except self.recoverable_errors:
                 self.ensure_connection()
             self._consumers.clear()
             self._active_tags.clear()
@@ -987,10 +993,6 @@ class Connection(object):
         while not self._heartbeat_exit_event.is_set():
             with self._connection_lock.for_heartbeat():
 
-                recoverable_errors = (
-                    self.connection.recoverable_channel_errors +
-                    self.connection.recoverable_connection_errors)
-
                 try:
                     try:
                         self._heartbeat_check()
@@ -1004,7 +1006,7 @@ class Connection(object):
                             self.connection.drain_events(timeout=0.001)
                         except socket.timeout:
                             pass
-                    except recoverable_errors as exc:
+                    except self.recoverable_errors as exc:
                         LOG.info(_LI("A recoverable connection/channel error "
                                      "occurred, trying to reconnect: %s"), exc)
                         self.ensure_connection()
@@ -1091,6 +1093,12 @@ class Connection(object):
                 except socket.timeout as exc:
                     poll_timeout = timer.check_return(
                         _raise_timeout, exc, maximum=self._poll_timeout)
+                except self.connection.channel_errors as exc:
+                    if exc.code == 406 and exc.method_name == 'Basic.ack':
+                        # NOTE(gordc): occasionally multiple workers will grab
+                        # same message and acknowledge it. if it happens, meh.
+                        raise self.connection.recoverable_channel_errors[0]
+                    raise
 
         with self._connection_lock:
             self.ensure(_consume,
@@ -1172,7 +1180,8 @@ class Connection(object):
     def _get_connection_info(self):
         info = self.connection.info()
         client_port = None
-        if self.channel and hasattr(self.channel.connection, 'sock'):
+        if (self.channel and hasattr(self.channel.connection, 'sock')
+                and self.channel.connection.sock):
             client_port = self.channel.connection.sock.getsockname()[1]
         info.update({'client_port': client_port,
                      'connection_id': self.connection_id})
