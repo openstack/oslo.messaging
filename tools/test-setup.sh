@@ -18,8 +18,13 @@ if [ "${JOB_NAME//gate-oslo.messaging-tox-py*-func-/}" == "${JOB_NAME}" ]; then
     exit 0
 fi
 
+# NOTE(sileht): we create the virtualenv only and use bindep directly
+# because tox doesn't have a quiet option...
+tox -ebindep --notest
+
+# NOTE(sileht): bindep return 1 if some packages have to be installed
 BINDEP_PROFILE=$(echo $JOB_NAME | cut -d- -f6)
-PACKAGES=$(tox -e bindep -- -b -f bindep.txt $BINDEP_PROFILE)
+PACKAGES=$(.tox/bindep/bin/bindep -b -f bindep.txt $BINDEP_PROFILE || true)
 
 # inspired from project-config install-distro-packages.sh
 if apt-get -v >/dev/null 2>&1 ; then
