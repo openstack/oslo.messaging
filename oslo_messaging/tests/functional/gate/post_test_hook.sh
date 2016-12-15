@@ -14,7 +14,16 @@
 
 # This script is executed inside post_test_hook function in devstack gate.
 
-RPC_BACKEND=$1
+
+# NOTE(sileht): we have to rename the zmq tox target to shorter name
+# this is to not break the current dsvm gating system until we switch to the tox one
+case $1 in
+    zeromq) RPC_BACKEND=zmq;;
+    zeromq-proxy) RPC_BACKEND=zmq-proxy;;
+    zeromq-pub-sub) RPC_BACKEND=zmq-pubsub;;
+    *) RPC_BACKEND=$1;;
+esac
+
 PYTHON=${2:-py27}
 
 function generate_testr_results {
@@ -43,7 +52,7 @@ fi
 
 # Install required packages
 case $RPC_BACKEND in
-    zeromq|zeromq-proxy|zeromq-pub-sub)
+    zmq|zmq-proxy|zmq-pubsub)
         sudo apt-get update -y
         sudo apt-get install -y redis-server python-redis
         ;;

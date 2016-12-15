@@ -13,11 +13,11 @@ libffi-devel [platform:rpm]
 # kombu/pika
 rabbitmq-server [platform:dpkg rabbit pika]
 
-# zeromq
-redis-sentinel [platform:ubuntu !platform:ubuntu-trusty zeromq]
-redis-server [platform:dpkg zeromq]
-python-redis [platform:dpkg zeromq]
-zookeeperd [platform:dpkg zeromq]
+# zmq
+redis-sentinel [platform:ubuntu !platform:ubuntu-trusty zmq]
+redis-server [platform:dpkg zmq]
+python-redis [platform:dpkg zmq]
+zookeeperd [platform:dpkg zmq]
 
 # AMQP1 dpkg
 qpidd [platform:dpkg amqp1]
