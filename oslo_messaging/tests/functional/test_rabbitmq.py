@@ -138,6 +138,9 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
             self.client.client.transport._driver._reply_q_conn,
         ]
 
-        for cctxt in connection_contexts:
-            socket = cctxt.connection.channel.connection.sock
-            self.assertEqual(port, socket.getpeername()[1])
+        ports = [cctxt.connection.channel.connection.sock.getpeername()[1]
+                 for cctxt in connection_contexts]
+
+        self.assertEqual([port] * len(ports), ports,
+                         "expected: %s, rpc-server: %s, rpc-client: %s, "
+                         "rpc-replies: %s" % tuple([port] + ports))
