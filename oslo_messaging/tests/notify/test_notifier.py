@@ -39,6 +39,14 @@ from six.moves import mock
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
+class JsonMessageMatcher(object):
+    def __init__(self, message):
+        self.message = message
+
+    def __eq__(self, other):
+        return self.message == jsonutils.loads(other)
+
+
 class _FakeTransport(object):
 
     def __init__(self, conf):
@@ -176,11 +184,10 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         if prepare_kwds:
             notifier = notifier.prepare(**prepare_kwds)
 
-        self.mox.StubOutWithMock(transport, '_send_notification')
+        transport._send_notification = mock.Mock()
 
         message_id = uuid.uuid4()
-        self.mox.StubOutWithMock(uuid, 'uuid4')
-        uuid.uuid4().AndReturn(message_id)
+        uuid.uuid4 = mock.Mock(return_value=message_id)
 
         mock_utcnow.return_value = datetime.datetime.utcnow()
 
@@ -199,6 +206,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         if self.v2:
             sends.append(dict(version=2.0))
 
+        calls = []
         for send_kwargs in sends:
             for topic in self.topics:
                 if hasattr(self, 'retry'):
@@ -207,14 +215,16 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                     send_kwargs['retry'] = None
                 target = oslo_messaging.Target(topic='%s.%s' % (topic,
                                                                 self.priority))
-                transport._send_notification(target, self.ctxt, message,
-                                             **send_kwargs).InAnyOrder()
-
-        self.mox.ReplayAll()
+                calls.append(mock.call(target,
+                                       self.ctxt,
+                                       message,
+                                       **send_kwargs))
 
         method = getattr(notifier, self.priority)
         method(self.ctxt, 'test.notify', self.payload)
 
+        uuid.uuid4.assert_called_once_with()
+        transport._send_notification.assert_has_calls(calls, any_order=True)
 
 TestMessagingNotifier.generate_scenarios()
 
@@ -238,18 +248,15 @@ class TestSerializer(test_utils.BaseTestCase):
                                            serializer=serializer)
 
         message_id = uuid.uuid4()
-        self.mox.StubOutWithMock(uuid, 'uuid4')
-        uuid.uuid4().AndReturn(message_id)
+        uuid.uuid4 = mock.Mock(return_value=message_id)
 
         mock_utcnow.return_value = datetime.datetime.utcnow()
 
-        self.mox.StubOutWithMock(serializer, 'serialize_context')
-        self.mox.StubOutWithMock(serializer, 'serialize_entity')
-        serializer.serialize_context(dict(user='bob')).\
-            AndReturn(dict(user='alice'))
-        serializer.serialize_entity(dict(user='bob'), 'bar').AndReturn('sbar')
+        serializer.serialize_context = mock.Mock()
+        serializer.serialize_context.return_value = dict(user='alice')
 
-        self.mox.ReplayAll()
+        serializer.serialize_entity = mock.Mock()
+        serializer.serialize_entity.return_value = 'sbar'
 
         notifier.info(dict(user='bob'), 'test.notify', 'bar')
 
@@ -264,6 +271,11 @@ class TestSerializer(test_utils.BaseTestCase):
 
         self.assertEqual([(dict(user='alice'), message, 'INFO', None)],
                          _impl_test.NOTIFICATIONS)
+
+        uuid.uuid4.assert_called_once_with()
+        serializer.serialize_context.assert_called_once_with(dict(user='bob'))
+        serializer.serialize_entity.assert_called_once_with(dict(user='bob'),
+                                                            'bar')
 
 
 class TestNotifierTopics(test_utils.BaseTestCase):
@@ -303,8 +315,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
 
         message_id = uuid.uuid4()
-        self.mox.StubOutWithMock(uuid, 'uuid4')
-        uuid.uuid4().AndReturn(message_id)
+        uuid.uuid4 = mock.Mock()
+        uuid.uuid4.return_value = message_id
 
         mock_utcnow.return_value = datetime.datetime.utcnow()
 
@@ -317,33 +329,33 @@ class TestLogNotifier(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        logger = self.mox.CreateMockAnything()
-
-        self.mox.StubOutWithMock(logging, 'getLogger')
-        logging.getLogger('oslo.messaging.notification.test.notify').\
-            AndReturn(logger)
-
-        logger.info(jsonutils.dumps(message))
-
-        self.mox.ReplayAll()
+        logger = mock.Mock()
+        logging.getLogger = mock.Mock()
+        logging.getLogger.return_value = logger
 
         notifier.info({}, 'test.notify', 'bar')
+
+        uuid.uuid4.assert_called_once_with()
+        logging.getLogger.assert_called_once_with('oslo.messaging.'
+                                                  'notification.test.notify')
+        logger.info.assert_called_once_with(JsonMessageMatcher(message))
 
     def test_sample_priority(self):
         # Ensure logger drops sample-level notifications.
         driver = _impl_log.LogDriver(None, None, None)
 
-        logger = self.mox.CreateMock(
-            logging.getLogger('oslo.messaging.notification.foo'))
+        logger = mock.Mock(spec=logging.getLogger('oslo.messaging.'
+                                                  'notification.foo'))
         logger.sample = None
-        self.mox.StubOutWithMock(logging, 'getLogger')
-        logging.getLogger('oslo.messaging.notification.foo').\
-            AndReturn(logger)
 
-        self.mox.ReplayAll()
+        logging.getLogger = mock.Mock()
+        logging.getLogger.return_value = logger
 
         msg = {'event_type': 'foo'}
         driver.notify(None, msg, "sample", None)
+
+        logging.getLogger.assert_called_once_with('oslo.messaging.'
+                                                  'notification.foo')
 
     def test_mask_passwords(self):
         # Ensure that passwords are masked with notifications

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import mock
+
 from oslo_config import cfg
 import testscenarios
 
@@ -54,7 +56,7 @@ class TestCastCall(test_utils.BaseTestCase):
         transport = _FakeTransport(self.conf)
         client = oslo_messaging.RPCClient(transport, oslo_messaging.Target())
 
-        self.mox.StubOutWithMock(transport, '_send')
+        transport._send = mock.Mock()
 
         msg = dict(method='foo', args=self.args)
         kwargs = {'retry': None}
@@ -62,11 +64,13 @@ class TestCastCall(test_utils.BaseTestCase):
             kwargs['wait_for_reply'] = True
             kwargs['timeout'] = None
 
-        transport._send(oslo_messaging.Target(), self.ctxt, msg, **kwargs)
-        self.mox.ReplayAll()
-
         method = client.call if self.call else client.cast
         method(self.ctxt, 'foo', **self.args)
+
+        transport._send.assert_called_once_with(oslo_messaging.Target(),
+                                                self.ctxt,
+                                                msg,
+                                                **kwargs)
 
 
 class TestCastToTarget(test_utils.BaseTestCase):
@@ -191,22 +195,24 @@ class TestCastToTarget(test_utils.BaseTestCase):
         transport = _FakeTransport(self.conf)
         client = oslo_messaging.RPCClient(transport, target)
 
-        self.mox.StubOutWithMock(transport, '_send')
+        transport._send = mock.Mock()
 
         msg = dict(method='foo', args={})
         if 'namespace' in self.expect:
             msg['namespace'] = self.expect['namespace']
         if 'version' in self.expect:
             msg['version'] = self.expect['version']
-        transport._send(expect_target, {}, msg, retry=None)
-
-        self.mox.ReplayAll()
 
         if self.prepare:
             client = client.prepare(**self.prepare)
             if self.double_prepare:
                 client = client.prepare(**self.prepare)
         client.cast({}, 'foo')
+
+        transport._send.assert_called_once_with(expect_target,
+                                                {},
+                                                msg,
+                                                retry=None)
 
 
 TestCastToTarget.generate_scenarios()
@@ -241,17 +247,19 @@ class TestCallTimeout(test_utils.BaseTestCase):
         client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
                                           timeout=self.ctor)
 
-        self.mox.StubOutWithMock(transport, '_send')
+        transport._send = mock.Mock()
 
         msg = dict(method='foo', args={})
         kwargs = dict(wait_for_reply=True, timeout=self.expect, retry=None)
-        transport._send(oslo_messaging.Target(), {}, msg, **kwargs)
-
-        self.mox.ReplayAll()
 
         if self.prepare is not _notset:
             client = client.prepare(timeout=self.prepare)
         client.call({}, 'foo')
+
+        transport._send.assert_called_once_with(oslo_messaging.Target(),
+                                                {},
+                                                msg,
+                                                **kwargs)
 
 
 class TestCallRetry(test_utils.BaseTestCase):
@@ -270,18 +278,20 @@ class TestCallRetry(test_utils.BaseTestCase):
         client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
                                           retry=self.ctor)
 
-        self.mox.StubOutWithMock(transport, '_send')
+        transport._send = mock.Mock()
 
         msg = dict(method='foo', args={})
         kwargs = dict(wait_for_reply=True, timeout=60,
                       retry=self.expect)
-        transport._send(oslo_messaging.Target(), {}, msg, **kwargs)
-
-        self.mox.ReplayAll()
 
         if self.prepare is not _notset:
             client = client.prepare(retry=self.prepare)
         client.call({}, 'foo')
+
+        transport._send.assert_called_once_with(oslo_messaging.Target(),
+                                                {},
+                                                msg,
+                                                **kwargs)
 
 
 class TestCallFanout(test_utils.BaseTestCase):
@@ -328,36 +338,45 @@ class TestSerializer(test_utils.BaseTestCase):
         client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
                                           serializer=serializer)
 
-        self.mox.StubOutWithMock(transport, '_send')
+        transport._send = mock.Mock()
 
         msg = dict(method='foo',
                    args=dict([(k, 's' + v) for k, v in self.args.items()]))
         kwargs = dict(wait_for_reply=True, timeout=None) if self.call else {}
         kwargs['retry'] = None
-        transport._send(oslo_messaging.Target(),
-                        dict(user='alice'),
-                        msg,
-                        **kwargs).AndReturn(self.retval)
 
-        self.mox.StubOutWithMock(serializer, 'serialize_entity')
-        self.mox.StubOutWithMock(serializer, 'deserialize_entity')
-        self.mox.StubOutWithMock(serializer, 'serialize_context')
+        transport._send.return_value = self.retval
 
+        serializer.serialize_entity = mock.Mock()
+        serializer.deserialize_entity = mock.Mock()
+        serializer.serialize_context = mock.Mock()
+
+        expected_side_effect = []
         for arg in self.args:
-            serializer.serialize_entity(self.ctxt, arg).AndReturn('s' + arg)
+            expected_side_effect.append('s' + arg)
+        serializer.serialize_entity.side_effect = expected_side_effect
 
         if self.call:
-            serializer.deserialize_entity(self.ctxt, self.retval).\
-                AndReturn('d' + self.retval)
+            serializer.deserialize_entity.return_value = 'd' + self.retval
 
-        serializer.serialize_context(self.ctxt).AndReturn(dict(user='alice'))
-
-        self.mox.ReplayAll()
+        serializer.serialize_context.return_value = dict(user='alice')
 
         method = client.call if self.call else client.cast
         retval = method(self.ctxt, 'foo', **self.args)
         if self.retval is not None:
             self.assertEqual('d' + self.retval, retval)
+
+        transport._send.assert_called_once_with(oslo_messaging.Target(),
+                                                dict(user='alice'),
+                                                msg,
+                                                **kwargs)
+        expected_calls = [mock.call(self.ctxt, arg) for arg in self.args]
+        self.assertEqual(expected_calls,
+                         serializer.serialize_entity.mock_calls)
+        if self.call:
+            serializer.deserialize_entity.assert_called_once_with(self.ctxt,
+                                                                  self.retval)
+        serializer.serialize_context.assert_called_once_with(self.ctxt)
 
 
 class TestVersionCap(test_utils.BaseTestCase):
@@ -418,7 +437,7 @@ class TestVersionCap(test_utils.BaseTestCase):
                                           version_cap=self.cap)
 
         if self.success:
-            self.mox.StubOutWithMock(transport, '_send')
+            transport._send = mock.Mock()
 
             if self.prepare_version is not _notset:
                 target = target(version=self.prepare_version)
@@ -431,10 +450,6 @@ class TestVersionCap(test_utils.BaseTestCase):
             if self.call:
                 kwargs['wait_for_reply'] = True
                 kwargs['timeout'] = None
-
-            transport._send(target, {}, msg, **kwargs)
-
-            self.mox.ReplayAll()
 
         prep_kwargs = {}
         if self.prepare_cap is not _notset:
@@ -452,7 +467,7 @@ class TestVersionCap(test_utils.BaseTestCase):
             self.assertFalse(self.success)
         else:
             self.assertTrue(self.success)
-
+            transport._send.assert_called_once_with(target, {}, msg, **kwargs)
 
 TestVersionCap.generate_scenarios()
 
