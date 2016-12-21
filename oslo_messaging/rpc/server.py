@@ -32,7 +32,7 @@ name and - optionally - the exchange to listen on. See Target for more details
 on these attributes.
 
 Multiple RPC Servers may listen to the same topic (and exchange)
-simultaineously. See RPCClient for details regarding how RPC requests are
+simultaneously. See RPCClient for details regarding how RPC requests are
 distributed to the Servers in this case.
 
 Each endpoint object may have a target attribute which may have namespace and
