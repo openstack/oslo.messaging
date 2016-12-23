@@ -115,6 +115,12 @@ EOF
 
 function _configure_qpidd {
 
+    QPIDD=$(which qpidd 2>/dev/null)
+    if [[ ! -x "$QPIDD" ]]; then
+        echo "FAILURE: qpidd broker not installed"
+        exit 1
+    fi
+
     [ -f "/usr/lib/qpid/daemon/acl.so" ] && LIBACL="load-module=/usr/lib/qpid/daemon/acl.so"
 
     cat > ${DATADIR}/qpidd.conf <<EOF
@@ -123,9 +129,11 @@ sasl-config=${DATADIR}/sasl2
 ${LIBACL}
 mgmt-enable=yes
 log-to-stderr=no
+data-dir=${DATADIR}/.qpidd
+pid-dir=${DATADIR}/.qpidd
 EOF
 
-if ! `$(which qpidd 2>/dev/null) --help | grep -q "sasl-service-name"`; then
+if ! `$QPIDD --help | grep -q "sasl-service-name"`; then
     echo "This version of $QPIDD does not support SASL authentication with AMQP 1.0"
     cat >> ${DATADIR}/qpidd.conf <<EOF
 auth=no
@@ -156,6 +164,7 @@ pwcheck_method: auxprop
 auxprop_plugin: sasldb
 sasldb_path: ${DATADIR}/qpidd.sasldb
 mech_list: PLAIN ANONYMOUS
+sql_select: dummy select
 EOF
 
 }
@@ -178,6 +187,7 @@ EOF
 }
 
 function _start_qpidd {
+    chmod -R a+r ${DATADIR}
     QPIDD=$(which qpidd 2>/dev/null)
     mkfifo ${DATADIR}/out
     $QPIDD --log-enable trace+ --log-to-file ${DATADIR}/out --config ${DATADIR}/qpidd.conf &
