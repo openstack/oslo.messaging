@@ -76,7 +76,6 @@ class DealerPublisherProxy(zmq_dealer_publisher_base.DealerPublisherBase):
     def cleanup(self):
         self.connection_updater.stop()
         self.routing_table.cleanup()
-        self.socket.close()
         super(DealerPublisherProxy, self).cleanup()
 
 

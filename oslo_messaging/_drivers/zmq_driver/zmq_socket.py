@@ -56,7 +56,7 @@ class ZmqSocket(object):
         # Put messages to only connected queues
         self.handle.setsockopt(zmq.IMMEDIATE, 1 if immediate else 0)
 
-        # Configure TCP KA
+        # Configure TCP keep alive
         keepalive = self.conf.oslo_messaging_zmq.zmq_tcp_keepalive
         if keepalive < 0:
             keepalive = -1
@@ -193,8 +193,7 @@ class ZmqSocket(object):
                       {"stype": stype, "sid": sid, "address": address, "e": e})
             raise rpc_common.RPCException(
                 "Failed connecting %(stype)s-%(sid)s to %(address)s: %(e)s" %
-                {"stype": stype, "sid": sid, "address": address, "e": e}
-            )
+                {"stype": stype, "sid": sid, "address": address, "e": e})
 
     def connect_to_host(self, host):
         address = zmq_address.get_tcp_direct_address(

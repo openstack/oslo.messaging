@@ -87,9 +87,15 @@ zmq_opts = [
                 help='Use PUB/SUB pattern for fanout methods. '
                      'PUB/SUB always uses proxy.'),
 
-    cfg.BoolOpt('use_router_proxy', default=True,
+    cfg.BoolOpt('use_router_proxy', default=False,
                 deprecated_group='DEFAULT',
                 help='Use ROUTER remote proxy.'),
+
+    cfg.BoolOpt('use_dynamic_connections', default=False,
+                help='This option makes direct connections dynamic or static. '
+                     'It makes sense only with use_router_proxy=False which '
+                     'means to use direct connections for direct message '
+                     'types (ignored otherwise).'),
 
     cfg.PortOpt('rpc_zmq_min_port',
                 default=49153,

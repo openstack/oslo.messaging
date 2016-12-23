@@ -60,7 +60,6 @@ class DealerConsumer(zmq_consumer_base.SingleSocketConsumer):
         try:
             socket = self.sockets_manager.get_socket_to_routers(
                 self._generate_identity())
-            self.sockets.append(socket)
             self.host = socket.handle.identity
             self.poller.register(socket, self.receive_request)
             return socket

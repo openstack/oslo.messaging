@@ -12,19 +12,26 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_base
 from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
 from oslo_messaging._drivers.zmq_driver.client import zmq_routing_table
 from oslo_messaging._drivers.zmq_driver.client import zmq_senders
+from oslo_messaging._drivers.zmq_driver.client import zmq_sockets_manager
+from oslo_messaging._drivers.zmq_driver import zmq_address
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_names
+
+
+LOG = logging.getLogger(__name__)
 
 zmq = zmq_async.import_zmq()
 
 
 class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
-    """DEALER-publisher using direct connections.
+    """DEALER-publisher using direct dynamic connections.
 
     Publishing directly to remote services assumes the following:
         -   All direct connections are dynamic - so they live per message,
@@ -86,3 +93,42 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
     def cleanup(self):
         self.routing_table.cleanup()
         super(DealerPublisherDirect, self).cleanup()
+
+
+class DealerPublisherDirectStatic(DealerPublisherDirect):
+    """DEALER-publisher using direct static connections.
+
+    For some reason direct static connections may be also useful.
+    Assume a case when some agents are not connected with control services
+    over RPC (Ironic or Cinder+Ceph), and RPC is used only between controllers.
+    In this case number of RPC connections doesn't matter (very small) so we
+    can use static connections without fear and have all performance benefits
+    from it.
+    """
+
+    def __init__(self, conf, matchmaker):
+        super(DealerPublisherDirectStatic, self).__init__(conf, matchmaker)
+        self.fanout_sockets = zmq_sockets_manager.SocketsManager(
+            conf, matchmaker, zmq.DEALER)
+
+    def acquire_connection(self, request):
+        if request.msg_type in zmq_names.MULTISEND_TYPES:
+            hosts = self.routing_table.get_fanout_hosts(request.target)
+            target_key = zmq_address.prefix_str(
+                request.target.topic,
+                zmq_names.socket_type_str(zmq.ROUTER))
+            return self.fanout_sockets.get_cached_socket(target_key, hosts,
+                                                         immediate=False)
+        else:
+            hosts = self.routing_table.get_all_round_robin_hosts(
+                request.target)
+            target_key = zmq_address.target_to_key(
+                request.target, zmq_names.socket_type_str(zmq.ROUTER))
+            return self.sockets_manager.get_cached_socket(target_key, hosts)
+
+    def _finally_unregister(self, socket, request):
+        self.receiver.untrack_request(request)
+
+    def cleanup(self):
+        self.fanout_sockets.cleanup()
+        super(DealerPublisherDirectStatic, self).cleanup()

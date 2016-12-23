@@ -317,6 +317,10 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         zmq_use_acks = os.environ.get('ZMQ_USE_ACKS')
         self.config(rpc_use_acks=zmq_use_acks,
                     group='oslo_messaging_zmq')
+        zmq_use_dynamic_connections = \
+            os.environ.get('ZMQ_USE_DYNAMIC_CONNECTIONS')
+        self.config(use_dynamic_connections=zmq_use_dynamic_connections,
+                    group='oslo_messaging_zmq')
 
 
 class NotificationFixture(fixtures.Fixture):

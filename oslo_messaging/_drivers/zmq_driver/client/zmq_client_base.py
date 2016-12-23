@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_direct
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
@@ -71,8 +72,15 @@ class ZmqClientBase(object):
 
     @staticmethod
     def _create_publisher_direct(conf, matchmaker):
-        publisher_direct = \
-            zmq_dealer_publisher_direct.DealerPublisherDirect(conf, matchmaker)
+        publisher_cls = zmq_dealer_publisher_direct.DealerPublisherDirectStatic
+        publisher_direct = publisher_cls(conf, matchmaker)
+        publisher_manager_cls = zmq_publisher_manager.PublisherManagerStatic
+        return publisher_manager_cls(publisher_direct)
+
+    @staticmethod
+    def _create_publisher_direct_dynamic(conf, matchmaker):
+        publisher_cls = zmq_dealer_publisher_direct.DealerPublisherDirect
+        publisher_direct = publisher_cls(conf, matchmaker)
         publisher_manager_cls = zmq_publisher_manager.PublisherManagerDynamic \
             if conf.oslo_messaging_zmq.use_pub_sub else \
             zmq_publisher_manager.PublisherManagerDynamicAsyncMultisend

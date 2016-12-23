@@ -42,30 +42,34 @@ class RoutingTableAdaptor(object):
         self._lock = threading.Lock()
 
     def get_round_robin_host(self, target):
+        target_key = self._fetch_round_robin_hosts_from_matchmaker(target)
+        rr_gen = self.round_robin_targets[target_key]
+        host = next(rr_gen)
+        LOG.debug("Host resolved for the current connection is %s" % host)
+        return host
+
+    def get_all_round_robin_hosts(self, target):
+        target_key = self._fetch_round_robin_hosts_from_matchmaker(target)
+        return self.routing_table.get_hosts_fanout(target_key)
+
+    def _fetch_round_robin_hosts_from_matchmaker(self, target):
         target_key = zmq_address.target_to_key(
             target, zmq_names.socket_type_str(self.listener_type))
 
         LOG.debug("Processing target %s for round-robin." % target_key)
 
         if target_key not in self.round_robin_targets:
-            self._fetch_round_robin_hosts_from_matchmaker(target, target_key)
-
-        rr_gen = self.round_robin_targets[target_key]
-        host = next(rr_gen)
-        LOG.debug("Host resolved for the current connection is %s" % host)
-        return host
-
-    def _fetch_round_robin_hosts_from_matchmaker(self, target, target_key):
-        with self._lock:
-            if target_key not in self.round_robin_targets:
-                LOG.debug("Target %s is not in cache. Check matchmaker server."
-                          % target_key)
-                hosts = self.matchmaker.get_hosts_retry(
-                    target, zmq_names.socket_type_str(self.listener_type))
-                LOG.debug("Received hosts %s" % hosts)
-                self.routing_table.update_hosts(target_key, hosts)
-                self.round_robin_targets[target_key] = \
-                    self.routing_table.get_hosts_round_robin(target_key)
+            with self._lock:
+                if target_key not in self.round_robin_targets:
+                    LOG.debug("Target %s is not in cache. Check matchmaker "
+                              "server." % target_key)
+                    hosts = self.matchmaker.get_hosts_retry(
+                        target, zmq_names.socket_type_str(self.listener_type))
+                    LOG.debug("Received hosts %s" % hosts)
+                    self.routing_table.update_hosts(target_key, hosts)
+                    self.round_robin_targets[target_key] = \
+                        self.routing_table.get_hosts_round_robin(target_key)
+        return target_key
 
     def get_fanout_hosts(self, target):
         target_key = zmq_address.prefix_str(

@@ -84,8 +84,7 @@ class PublisherBase(object):
     def _raise_timeout(request):
         raise oslo_messaging.MessagingTimeout(
             "Timeout %(tout)s seconds was reached for message %(msg_id)s" %
-            {"tout": request.timeout, "msg_id": request.message_id}
-        )
+            {"tout": request.timeout, "msg_id": request.message_id})
 
     def cleanup(self):
         """Cleanup publisher: stop receiving responses, close allocated

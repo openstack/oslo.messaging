@@ -11,8 +11,8 @@ export ZMQ_REDIS_PORT=65123
 export ZMQ_IPC_DIR=${DATADIR}
 export ZMQ_USE_PUB_SUB=false
 export ZMQ_USE_ROUTER_PROXY=false
+export ZMQ_USE_DYNAMIC_CONNECTIONS=false
 export ZMQ_USE_ACKS=false
-export ZMQ_USE_DYNAMIC_CONNECTIONS=true
 export TRANSPORT_URL="zmq+${ZMQ_MATCHMAKER}://127.0.0.1:${ZMQ_REDIS_PORT}"
 
 cat > ${DATADIR}/zmq.conf <<EOF

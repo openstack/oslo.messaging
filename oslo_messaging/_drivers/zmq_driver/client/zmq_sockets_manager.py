@@ -12,10 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
 from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._drivers.zmq_driver import zmq_socket
 
 zmq = zmq_async.import_zmq()
+
+LOG = logging.getLogger(__name__)
 
 
 class SocketsManager(object):
@@ -27,10 +31,25 @@ class SocketsManager(object):
         self.zmq_context = zmq.Context()
         self.socket_to_publishers = None
         self.socket_to_routers = None
+        self.sockets = {}
 
     def get_socket(self):
-        socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                      self.socket_type, immediate=False)
+        return zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                    self.socket_type, immediate=False)
+
+    def get_cached_socket(self, target_key, hosts=None, immediate=True):
+        hosts = [] if hosts is None else hosts
+        socket = self.sockets.get(target_key, None)
+        if socket is None:
+            LOG.debug("CREATING NEW socket for target_key %s " % target_key)
+            socket = zmq_socket.ZmqSocket(self.conf, self.zmq_context,
+                                          self.socket_type,
+                                          immediate=immediate)
+            self.sockets[target_key] = socket
+        for host in hosts:
+            socket.connect_to_host(host)
+        LOG.debug("Target key: %s socket:%s" % (target_key,
+                                                socket.handle.identity))
         return socket
 
     def get_socket_to_publishers(self, identity=None):
@@ -56,3 +75,11 @@ class SocketsManager(object):
         for be_router_address in routers:
             self.socket_to_routers.connect_to_host(be_router_address)
         return self.socket_to_routers
+
+    def cleanup(self):
+        if self.socket_to_publishers:
+            self.socket_to_publishers.close()
+        if self.socket_to_routers:
+            self.socket_to_routers.close()
+        for socket in self.sockets.values():
+            socket.close()
