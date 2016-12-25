@@ -114,10 +114,6 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
     def just_process(self, *args, **kargs):
         return "callback done"
 
-    def _get_log_call_startswith(self, filter):
-        return [call for call in self.logger.debug.mock_calls
-                if call[1][0].startswith(filter)]
-
     def _check_ports(self, port):
         getattr(self, '_check_ports_%s_driver' % self.driver)(port)
 
