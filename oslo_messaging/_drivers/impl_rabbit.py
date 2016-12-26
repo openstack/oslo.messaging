@@ -366,7 +366,7 @@ class Consumer(object):
         except Exception:
             LOG.exception(_LE("Failed to process message"
                               " ... skipping it."))
-            message.ack()
+            message.reject()
 
 
 class DummyConnectionLock(_utils.DummyLock):
