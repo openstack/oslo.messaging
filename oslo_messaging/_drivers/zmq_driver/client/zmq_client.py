@@ -66,10 +66,14 @@ class ZmqClientDirect(zmq_client_base.ZmqClientBase):
                 conf.oslo_messaging_zmq.use_router_proxy:
             raise WrongClientException()
 
+        publisher = self._create_publisher_direct_dynamic(conf, matchmaker) \
+            if conf.oslo_messaging_zmq.use_dynamic_connections else \
+            self._create_publisher_direct(conf, matchmaker)
+
         super(ZmqClientDirect, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
-                "default": self._create_publisher_direct(conf, matchmaker)
+                "default": publisher
             }
         )
 

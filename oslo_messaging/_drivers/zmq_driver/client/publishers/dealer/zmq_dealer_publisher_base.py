@@ -64,3 +64,7 @@ class DealerPublisherBase(zmq_publisher_base.PublisherBase):
                 reply.failure, request.allowed_remote_exmods)
         else:
             return reply.reply_body
+
+    def cleanup(self):
+        super(DealerPublisherBase, self).cleanup()
+        self.sockets_manager.cleanup()
