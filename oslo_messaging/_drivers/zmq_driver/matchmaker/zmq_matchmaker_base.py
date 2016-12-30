@@ -246,7 +246,7 @@ class MatchmakerDummy(MatchmakerBase):
         return self.get_hosts(target, listener_type)
 
     def get_hosts_fanout(self, target, listener_type):
-        key = zmq_address.prefix_str(target.topic, listener_type)
+        key = zmq_address.target_to_key(target, listener_type)
         hosts = list(self._cache[key])
 
         LOG.debug("[Dummy] get_hosts_fanout for target %(target)s: %(hosts)s",

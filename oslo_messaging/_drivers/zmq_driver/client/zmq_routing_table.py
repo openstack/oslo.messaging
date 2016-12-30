@@ -72,8 +72,8 @@ class RoutingTableAdaptor(object):
         return target_key
 
     def get_fanout_hosts(self, target):
-        target_key = zmq_address.prefix_str(
-            target.topic, zmq_names.socket_type_str(self.listener_type))
+        target_key = zmq_address.target_to_key(
+            target, zmq_names.socket_type_str(self.listener_type))
 
         LOG.debug("Processing target %s for fanout." % target_key)
 
