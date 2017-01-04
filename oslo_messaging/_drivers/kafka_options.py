@@ -50,3 +50,10 @@ KAFKA_OPTS = [
     cfg.IntOpt('producer_batch_size', default=16384,
                help='Size of batch for the producer async send')
 ]
+
+
+def register_opts(conf):
+    opt_group = cfg.OptGroup(name='oslo_messaging_kafka',
+                             title='Kafka driver options')
+    conf.register_group(opt_group)
+    conf.register_opts(KAFKA_OPTS, group=opt_group)
