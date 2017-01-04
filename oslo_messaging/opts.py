@@ -26,6 +26,7 @@ from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_pika
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers.impl_zmq import zmq_options
+from oslo_messaging._drivers import kafka_options
 from oslo_messaging._drivers.pika_driver import pika_connection_factory
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_redis
 from oslo_messaging.notify import notifier
@@ -53,6 +54,7 @@ _opts = [
                         pika_connection_factory.pika_opts,
                         impl_pika.pika_pool_opts, impl_pika.message_opts,
                         impl_pika.notification_opts, impl_pika.rpc_opts))),
+    ('oslo_messaging_kafka', kafka_options.KAFKA_OPTS),
 ]
 
 

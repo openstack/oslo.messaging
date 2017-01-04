@@ -27,4 +27,11 @@ pip install -c$localfile openstack-requirements
 edit-constraints $localfile -- $CLIENT_NAME
 
 pip install -c$localfile -U $*
+# NOTE(sileht) temporary overrided since requirements repo cap it to <1.0.0
+# due to monasca project that have some concern with newer version.
+# The driver is currently experimental, python-kafka<1.0.0 API have major issue
+# that can't make the oslo.messaging driver works, so we prefer having a working
+# driver with a non-synced dep, that the reverse
+pip install -U 'kafka-python>=1.3.1'
+
 exit $?

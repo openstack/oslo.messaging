@@ -32,7 +32,7 @@ class OptsTestCase(test_utils.BaseTestCase):
         super(OptsTestCase, self).setUp()
 
     def _test_list_opts(self, result):
-        self.assertEqual(6, len(result))
+        self.assertEqual(7, len(result))
 
         groups = [g for (g, l) in result]
         self.assertIn(None, groups)
@@ -41,6 +41,7 @@ class OptsTestCase(test_utils.BaseTestCase):
         self.assertIn('oslo_messaging_amqp', groups)
         self.assertIn('oslo_messaging_notifications', groups)
         self.assertIn('oslo_messaging_rabbit', groups)
+        self.assertIn('oslo_messaging_kafka', groups)
 
         opt_names = [o.name for (g, l) in result for o in l]
         self.assertIn('rpc_backend', opt_names)
