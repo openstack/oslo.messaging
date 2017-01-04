@@ -115,35 +115,6 @@ def with_reconnect(retries=None):
     return decorator
 
 
-class Producer(object):
-    _producer = None
-    _servers = None
-    _lock = threading.Lock()
-
-    @staticmethod
-    @with_reconnect()
-    def connect(servers, **kwargs):
-        return kafka.KafkaProducer(
-            bootstrap_servers=servers,
-            selector=KAFKA_SELECTOR,
-            **kwargs)
-
-    @classmethod
-    def producer(cls, servers, **kwargs):
-        with cls._lock:
-            if not cls._producer or cls._servers != servers:
-                cls._servers = servers
-                cls._producer = cls.connect(servers, **kwargs)
-        return cls._producer
-
-    @classmethod
-    def cleanup(cls):
-        with cls._lock:
-            if cls._producer:
-                cls._producer.close()
-            cls._producer = None
-
-
 class Connection(object):
 
     def __init__(self, conf, url, purpose):
@@ -154,6 +125,7 @@ class Connection(object):
         self.linger_ms = driver_conf.producer_batch_timeout * 1000
         self.conf = conf
         self.producer = None
+        self.producer_lock = threading.Lock()
         self.consumer = None
         self.consumer_timeout = float(driver_conf.kafka_consumer_timeout)
         self.max_fetch_bytes = driver_conf.kafka_max_fetch_bytes
@@ -189,25 +161,24 @@ class Connection(object):
         :param msg: messages for publishing
         :param retry: the number of retry
         """
-
-        message = pack_message(ctxt, msg)
-        self._ensure_connection()
-        self._send_and_retry(message, topic, retry)
-
-    def _send_and_retry(self, message, topic, retry):
-        if not isinstance(message, str):
-            message = jsonutils.dumps(message)
         retry = retry if retry >= 0 else None
+        message = pack_message(ctxt, msg)
+        message = jsonutils.dumps(message)
 
         @with_reconnect(retries=retry)
-        def _send(topic, message):
+        def wrapped_with_reconnect():
+            self._ensure_producer()
+            # NOTE(sileht): This returns a future, we can use get()
+            # if we want to block like other driver
             self.producer.send(topic, message)
 
         try:
-            _send(topic, message)
+            wrapped_with_reconnect()
         except Exception:
-            Producer.cleanup()
-            LOG.exception(_LE("Failed to send message"))
+            # NOTE(sileht): if something goes wrong close the producer
+            # connection
+            self._close_producer()
+            raise
 
     @with_reconnect()
     def _poll_messages(self, timeout):
@@ -239,12 +210,10 @@ class Connection(object):
         pass
 
     def close(self):
-        if self.producer:
-            self.producer.close()
-        self.producer = None
+        self._close_producer()
         if self.consumer:
             self.consumer.close()
-        self.consumer = None
+            self.consumer = None
 
     def commit(self):
         """Commit is used by subscribers belonging to the same group.
@@ -257,14 +226,23 @@ class Connection(object):
         """
         self.consumer.commit()
 
-    def _ensure_connection(self):
-        try:
-            self.producer = Producer.producer(self.hostaddrs,
-                                              linger_ms=self.linger_ms,
-                                              batch_size=self.batch_size)
-        except kafka.errors.KafkaError as e:
-            LOG.exception(_LE("KafkaProducer could not be initialized: %s"), e)
-            raise
+    def _close_producer(self):
+        with self.producer_lock:
+            if self.producer:
+                self.producer.close()
+                self.producer = None
+
+    def _ensure_producer(self):
+        if self.producer:
+            return
+        with self.producer_lock:
+            if self.producer:
+                return
+            self.producer = kafka.KafkaProducer(
+                bootstrap_servers=self.hostaddrs,
+                linger_ms=self.linger_ms,
+                batch_size=self.batch_size,
+                selector=KAFKA_SELECTOR)
 
     @with_reconnect()
     def declare_topic_consumer(self, topics, group=None):
