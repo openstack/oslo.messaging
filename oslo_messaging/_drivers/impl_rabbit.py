@@ -607,7 +607,8 @@ class Connection(object):
         self._heartbeat_support_log_emitted = False
 
         # NOTE(sileht): just ensure the connection is setuped at startup
-        self.ensure_connection()
+        with self._connection_lock:
+            self.ensure_connection()
 
         # NOTE(sileht): if purpose is PURPOSE_LISTEN
         # the consume code does the heartbeat stuff
