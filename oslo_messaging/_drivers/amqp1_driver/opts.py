@@ -34,17 +34,20 @@ amqp1_opts = [
     cfg.StrOpt('ssl_ca_file',
                default='',
                deprecated_group='amqp1',
-               help="CA certificate PEM file to verify server certificate"),
+               help="CA certificate PEM file used to verify the server's"
+               ' certificate'),
 
     cfg.StrOpt('ssl_cert_file',
                default='',
                deprecated_group='amqp1',
-               help='Identifying certificate PEM file to present to clients'),
+               help='Self-identifying certificate PEM file'
+               ' for client authentication'),
 
     cfg.StrOpt('ssl_key_file',
                default='',
                deprecated_group='amqp1',
-               help='Private key PEM file used to sign cert_file certificate'),
+               help='Private key PEM file used to sign ssl_cert_file'
+               ' certificate (optional)'),
 
     cfg.StrOpt('ssl_key_password',
                deprecated_group='amqp1',
@@ -54,6 +57,9 @@ amqp1_opts = [
     cfg.BoolOpt('allow_insecure_clients',
                 default=False,
                 deprecated_group='amqp1',
+                # marked as deprecated in Ocata
+                deprecated_for_removal=True,
+                deprecated_reason="Not applicable - not a SSL server",
                 help='Accept clients using either SSL or plain TCP'),
 
     cfg.StrOpt('sasl_mechanisms',
