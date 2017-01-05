@@ -69,31 +69,27 @@ class _SocketConnection(object):
 
     def read_socket(self):
         """Called to read from the socket."""
-        while True:
+        if self.socket:
             try:
-                rc = pyngus.read_socket_input(self.pyngus_conn, self.socket)
+                pyngus.read_socket_input(self.pyngus_conn, self.socket)
                 self.pyngus_conn.process(now())
-                return rc
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.pyngus_conn.close_input()
                 self.pyngus_conn.close_output()
                 self._handler.socket_error(str(e))
-                return pyngus.Connection.EOS
 
     def write_socket(self):
         """Called to write to the socket."""
-        while True:
+        if self.socket:
             try:
-                rc = pyngus.write_socket_output(self.pyngus_conn, self.socket)
+                pyngus.write_socket_output(self.pyngus_conn, self.socket)
                 self.pyngus_conn.process(now())
-                return rc
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.pyngus_conn.close_output()
                 self.pyngus_conn.close_input()
                 self._handler.socket_error(str(e))
-                return pyngus.Connection.EOS
 
     def connect(self, host):
         """Connect to host and start the AMQP protocol."""
@@ -358,7 +354,7 @@ class Thread(threading.Thread):
             deadline = self._scheduler._next_deadline
 
             pyngus_conn = self._connection and self._connection.pyngus_conn
-            if pyngus_conn:
+            if pyngus_conn and self._connection.socket:
                 if pyngus_conn.needs_input:
                     readfds.append(self._connection)
                 if pyngus_conn.has_output:
@@ -388,13 +384,12 @@ class Thread(threading.Thread):
             # Testing shows that polling improves latency over checking the
             # lists returned by select()
             self._requests.process_requests()
-            if pyngus_conn:
-                self._connection.read_socket()
-                if pyngus_conn.deadline:
-                    _now = now()
-                    if pyngus_conn.deadline <= _now:
-                        pyngus_conn.process(_now)
-                self._connection.write_socket()
+            self._connection.read_socket()
+            if pyngus_conn and pyngus_conn.deadline:
+                _now = now()
+                if pyngus_conn.deadline <= _now:
+                    pyngus_conn.process(_now)
+            self._connection.write_socket()
 
             self._scheduler._process()  # run any deferred requests
 

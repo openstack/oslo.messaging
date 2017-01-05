@@ -674,12 +674,12 @@ class TestAuthentication(test_utils.BaseTestCase):
         target = oslo_messaging.Target(topic="test-topic")
         _ListenerThread(
             driver.listen(target, None, None)._poll_style_listener, 1)
-        self.assertRaises(oslo_messaging.MessagingTimeout,
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           driver.send,
                           target, {"context": True},
                           {"method": "echo"},
                           wait_for_reply=True,
-                          timeout=2.0)
+                          retry=2)
         driver.cleanup()
 
 
@@ -771,7 +771,6 @@ mech_list: ${mechs}
         """Verify that a bad password given in TransportHost is
         rejected by the broker.
         """
-
         addr = "amqp://joe:badpass@%s:%d" % (self._broker.host,
                                              self._broker.port)
         url = oslo_messaging.TransportURL.parse(self.conf, addr)
@@ -779,12 +778,15 @@ mech_list: ${mechs}
         target = oslo_messaging.Target(topic="test-topic")
         _ListenerThread(
             driver.listen(target, None, None)._poll_style_listener, 1)
-        self.assertRaises(oslo_messaging.MessagingTimeout,
-                          driver.send,
-                          target, {"context": True},
-                          {"method": "echo"},
-                          wait_for_reply=True,
-                          timeout=2.0)
+        try:
+            driver.send(target, {"context": True}, {"method": "echo"},
+                        wait_for_reply=True, retry=2)
+        except oslo_messaging.MessageDeliveryFailure as e:
+            # verify the exception indicates the failure was an authentication
+            # error
+            self.assertTrue('amqp:unauthorized-access' in str(e))
+        else:
+            self.assertIsNone("Expected authentication failure")
         driver.cleanup()
 
     def test_authentication_bad_mechs(self):
@@ -800,12 +802,12 @@ mech_list: ${mechs}
         target = oslo_messaging.Target(topic="test-topic")
         _ListenerThread(
             driver.listen(target, None, None)._poll_style_listener, 1)
-        self.assertRaises(oslo_messaging.MessagingTimeout,
+        self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           driver.send,
                           target, {"context": True},
                           {"method": "echo"},
                           wait_for_reply=True,
-                          timeout=2.0)
+                          retry=0)
         driver.cleanup()
 
     def test_authentication_default_username(self):
