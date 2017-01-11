@@ -72,12 +72,14 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
             socket.connect_to_host(host)
 
     def acquire_connection(self, request):
-        socket = self.sockets_manager.get_socket()
         if request.msg_type in zmq_names.DIRECT_TYPES:
+            socket = self.sockets_manager.get_socket()
             self._get_round_robin_host_connection(request.target, socket)
+            return socket
         elif request.msg_type in zmq_names.MULTISEND_TYPES:
+            socket = self.sockets_manager.get_socket(immediate=False)
             self._get_fanout_connection(request.target, socket)
-        return socket
+            return socket
 
     def _finally_unregister(self, socket, request):
         super(DealerPublisherDirect, self)._finally_unregister(socket, request)

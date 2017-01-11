@@ -33,9 +33,9 @@ class SocketsManager(object):
         self.socket_to_routers = None
         self.sockets = {}
 
-    def get_socket(self):
+    def get_socket(self, immediate=True):
         return zmq_socket.ZmqSocket(self.conf, self.zmq_context,
-                                    self.socket_type, immediate=False)
+                                    self.socket_type, immediate=immediate)
 
     def get_cached_socket(self, target_key, hosts=None, immediate=True):
         hosts = [] if hosts is None else hosts
