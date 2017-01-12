@@ -97,6 +97,11 @@ zmq_opts = [
                      'means to use direct connections for direct message '
                      'types (ignored otherwise).'),
 
+    cfg.IntOpt('zmq_failover_connections', default=2,
+               help='How many additional connections to a host will be made '
+                    'for failover reasons. This option is actual only in '
+                    'dynamic connections mode.'),
+
     cfg.PortOpt('rpc_zmq_min_port',
                 default=49153,
                 deprecated_group='DEFAULT',

@@ -66,6 +66,10 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
     def _get_round_robin_host_connection(self, target, socket):
         host = self.routing_table.get_round_robin_host(target)
         socket.connect_to_host(host)
+        failover_hosts = self.routing_table.get_all_round_robin_hosts(target)
+        upper_bound = self.conf.oslo_messaging_zmq.zmq_failover_connections
+        for host in failover_hosts[:upper_bound]:
+            socket.connect_to_host(host)
 
     def _get_fanout_connection(self, target, socket):
         for host in self.routing_table.get_fanout_hosts(target):
