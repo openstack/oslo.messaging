@@ -109,11 +109,16 @@ amqp1_opts = [
                help='Time to pause between re-connecting an AMQP 1.0 link that'
                ' failed due to a recoverable error.'),
 
+    cfg.IntOpt('default_reply_retry',
+               default=0,
+               min=-1,
+               help='The maximum number of attempts to re-send a reply message'
+               ' which failed due to a recoverable error.'),
+
     cfg.IntOpt('default_reply_timeout',
                default=30,
                min=5,
-               help='The deadline for an rpc reply message delivery.'
-               ' Only used when caller does not provide a timeout expiry.'),
+               help='The deadline for an rpc reply message delivery.'),
 
     cfg.IntOpt('default_send_timeout',
                default=30,
