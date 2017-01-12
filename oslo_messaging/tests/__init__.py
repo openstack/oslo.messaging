@@ -13,14 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
+eventlet.monkey_patch()
+
 # Import oslotest before importing test submodules to setup six.moves for mock
 import oslotest
-
-try:
-    import eventlet
-except ImportError:
-    pass
-else:
-    # Ensure that eventlet monkey patching is enabled before loading the qpid
-    # module, otherwise qpid will hang
-    eventlet.monkey_patch()
