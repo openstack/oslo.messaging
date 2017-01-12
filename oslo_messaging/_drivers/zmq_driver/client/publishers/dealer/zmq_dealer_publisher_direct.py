@@ -114,18 +114,15 @@ class DealerPublisherDirectStatic(DealerPublisherDirect):
             conf, matchmaker, zmq.DEALER)
 
     def acquire_connection(self, request):
+        target_key = zmq_address.target_to_key(
+            request.target, zmq_names.socket_type_str(zmq.ROUTER))
         if request.msg_type in zmq_names.MULTISEND_TYPES:
             hosts = self.routing_table.get_fanout_hosts(request.target)
-            target_key = zmq_address.prefix_str(
-                request.target.topic,
-                zmq_names.socket_type_str(zmq.ROUTER))
             return self.fanout_sockets.get_cached_socket(target_key, hosts,
                                                          immediate=False)
         else:
             hosts = self.routing_table.get_all_round_robin_hosts(
                 request.target)
-            target_key = zmq_address.target_to_key(
-                request.target, zmq_names.socket_type_str(zmq.ROUTER))
             return self.sockets_manager.get_cached_socket(target_key, hosts)
 
     def _finally_unregister(self, socket, request):

@@ -224,7 +224,7 @@ class MatchmakerRedisBase(zmq_matchmaker_base.MatchmakerBase):
         return self._retry_method(target, listener_type, self.get_hosts)
 
     def get_hosts_fanout(self, target, listener_type):
-        key = zmq_address.prefix_str(target.topic, listener_type)
+        key = zmq_address.target_to_key(target, listener_type)
         hosts = list(self._smembers(key))
 
         LOG.debug("[Redis] get_hosts_fanout for target %(target)s: %(hosts)s",
