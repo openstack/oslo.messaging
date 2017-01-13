@@ -30,7 +30,7 @@ class StartupOrderTestCase(multiproc_utils.MultiprocTestCase):
 
         log_path = os.path.join(self.conf.oslo_messaging_zmq.rpc_zmq_ipc_dir,
                                 str(os.getpid()) + ".log")
-        sys.stdout = open(log_path, "w", buffering=0)
+        sys.stdout = open(log_path, "wb", buffering=0)
 
     def test_call_client_wait_for_server(self):
         server = self.spawn_server(wait_for_server=True)
