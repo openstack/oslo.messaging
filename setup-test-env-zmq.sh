@@ -12,7 +12,7 @@ export ZMQ_IPC_DIR=${DATADIR}
 export ZMQ_USE_PUB_SUB=false
 export ZMQ_USE_ROUTER_PROXY=false
 export ZMQ_USE_ACKS=false
-export ZMQ_USE_DYNAMIC_CONNECTIONS=true
+export ZMQ_USE_DYNAMIC_CONNECTIONS=false
 export TRANSPORT_URL="zmq+${ZMQ_MATCHMAKER}://127.0.0.1:${ZMQ_REDIS_PORT}"
 
 cat > ${DATADIR}/zmq.conf <<EOF
@@ -26,7 +26,5 @@ use_dynamic_connections=${ZMQ_USE_DYNAMIC_CONNECTIONS}
 EOF
 
 redis-server --port $ZMQ_REDIS_PORT &
-
-oslo-messaging-zmq-proxy --debug --url ${TRANSPORT_URL} --config-file ${DATADIR}/zmq.conf > ${DATADIR}/zmq-proxy.log 2>&1 &
 
 $*
