@@ -978,14 +978,9 @@ class Controller(pyngus.ConnectionEventHandler):
         if self.ssl_ca_file:
             conn_props["x-ssl-ca-file"] = self.ssl_ca_file
         if self.ssl_cert_file:
-            # assume this connection is for a server.  If client authentication
-            # support is developed, we'll need an explicit flag (server or
-            # client)
-            conn_props["x-ssl-server"] = True
             conn_props["x-ssl-identity"] = (self.ssl_cert_file,
                                             self.ssl_key_file,
                                             self.ssl_key_password)
-            conn_props["x-ssl-allow-cleartext"] = self.ssl_allow_insecure
         # SASL configuration:
         if self.sasl_mechanisms:
             conn_props["x-sasl-mechs"] = self.sasl_mechanisms
