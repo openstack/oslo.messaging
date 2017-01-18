@@ -93,8 +93,8 @@ class _SocketConnection(object):
 
     def connect(self, host):
         """Connect to host and start the AMQP protocol."""
-        addr = socket.getaddrinfo(host.hostname, host.port,
-                                  socket.AF_INET, socket.SOCK_STREAM)
+        addr = socket.getaddrinfo(host.hostname, host.port, socket.AF_UNSPEC,
+                                  socket.SOCK_STREAM)
         if not addr:
             key = "%s:%i" % (host.hostname, host.port)
             error = "Invalid peer address '%s'" % key
