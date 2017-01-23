@@ -105,8 +105,9 @@ class DealerPublisherProxyDynamic(
         if not self.publishers:
             raise zmq_matchmaker_base.MatchmakerUnavailable()
         socket = self.sockets_manager.get_socket()
-        random.shuffle(self.publishers)
-        for publisher in self.publishers:
+        publishers = list(self.publishers)
+        random.shuffle(publishers)
+        for publisher in publishers:
             socket.connect_to_host(publisher)
         return socket
 
