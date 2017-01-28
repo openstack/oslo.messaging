@@ -191,7 +191,7 @@ class Connection(object):
         """
 
         def _raise_timeout(exc):
-            raise driver_common.Timeout(exc.message)
+            raise driver_common.Timeout(str(exc))
 
         timer = driver_common.DecayingTimer(duration=timeout)
         timer.start()
