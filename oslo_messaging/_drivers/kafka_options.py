@@ -27,8 +27,8 @@ KAFKA_OPTS = [
     cfg.IntOpt('kafka_max_fetch_bytes', default=1024 * 1024,
                help='Max fetch bytes of Kafka consumer'),
 
-    cfg.IntOpt('kafka_consumer_timeout', default=1.0,
-               help='Default timeout(s) for Kafka consumers'),
+    cfg.FloatOpt('kafka_consumer_timeout', default=1.0,
+                 help='Default timeout(s) for Kafka consumers'),
 
     cfg.IntOpt('pool_size', default=10,
                help='Pool Size for Kafka Consumers'),

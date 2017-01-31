@@ -124,7 +124,7 @@ class Connection(object):
         self.producer = None
         self.producer_lock = threading.Lock()
         self.consumer = None
-        self.consumer_timeout = float(driver_conf.kafka_consumer_timeout)
+        self.consumer_timeout = driver_conf.kafka_consumer_timeout
         self.max_fetch_bytes = driver_conf.kafka_max_fetch_bytes
         self.group_id = driver_conf.consumer_group
         self.url = url
