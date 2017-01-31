@@ -69,9 +69,15 @@ class ServerThreadHelper(threading.Thread):
         self.daemon = True
         self._server = server
         self._stop_event = threading.Event()
+        self._start_event = threading.Event()
+
+    def start(self):
+        super(ServerThreadHelper, self).start()
+        self._start_event.wait()
 
     def run(self):
         self._server.start()
+        self._start_event.set()
         self._stop_event.wait()
         # Check start() does nothing with a running listener
         self._server.start()

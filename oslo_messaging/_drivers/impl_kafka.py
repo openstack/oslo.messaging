@@ -276,6 +276,11 @@ class KafkaListener(base.PollStyleListener):
         self.conn = conn
         self.incoming_queue = []
 
+        # FIXME(sileht): We do a first poll to ensure we topics are created
+        # This is a workaround mainly for functional tests, in real life
+        # this is fine if topics are not created synchroneously
+        self.poll(5)
+
     @base.batch_poll_helper
     def poll(self, timeout=None):
         while not self._stopped.is_set():
