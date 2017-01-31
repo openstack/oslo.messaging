@@ -267,6 +267,8 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             self.skipTest("QPID-6307")
         if self.url.startswith("zmq"):
             self.skipTest("ZeroMQ-PUB-SUB")
+        if self.url.startswith("kafka"):
+            self.skipTest("Kafka: Need to be fixed")
 
         listener_a = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['test-topic']))
