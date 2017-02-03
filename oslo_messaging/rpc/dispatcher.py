@@ -34,7 +34,6 @@ import sys
 
 import six
 
-from debtcollector.updating import updated_kwarg_default_value
 from oslo_messaging import _utils as utils
 from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
@@ -145,14 +144,6 @@ class RPCDispatcher(dispatcher.DispatcherBase):
 
 
     """
-    @updated_kwarg_default_value('access_policy', None, DefaultRPCAccessPolicy,
-                                 message='access_policy defaults to '
-                                         'LegacyRPCAccessPolicy which '
-                                         'exposes private methods. Explicitly '
-                                         'set access_policy to '
-                                         'DefaultRPCAccessPolicy or '
-                                         'ExplicitRPCAccessPolicy.',
-                                 version='?')
     def __init__(self, endpoints, serializer, access_policy=None):
         """Construct a rpc server dispatcher.
 
