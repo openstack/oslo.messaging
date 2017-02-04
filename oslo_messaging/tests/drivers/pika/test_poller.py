@@ -17,7 +17,7 @@ import time
 import unittest
 
 from concurrent import futures
-import mock
+from six.moves import mock
 
 from oslo_messaging._drivers.pika_driver import pika_exceptions as pika_drv_exc
 from oslo_messaging._drivers.pika_driver import pika_poller

@@ -13,9 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 from oslo_config import cfg
+from six.moves import mock
 import testscenarios
 
 import oslo_messaging

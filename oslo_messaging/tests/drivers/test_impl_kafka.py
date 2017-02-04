@@ -13,7 +13,7 @@
 # under the License.
 import kafka
 import kafka.errors
-import mock
+from six.moves import mock
 import testscenarios
 
 import oslo_messaging
@@ -117,7 +117,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
         self.driver.listeners.extend(listeners)
         self.driver.cleanup()
         for listener in listeners:
-            listener.close.assert_called_once()
+            listener.close.assert_called_once_with()
 
 
 class TestKafkaConnection(test_utils.BaseTestCase):
