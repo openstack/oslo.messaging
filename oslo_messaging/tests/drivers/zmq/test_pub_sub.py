@@ -63,7 +63,9 @@ class TestPubSub(zmq_common.ZmqBaseTestCase):
 
         self.publisher = zmq_publisher_proxy.PublisherProxy(
             self.conf, self.driver.matchmaker)
-        self.driver.matchmaker.register_publisher((self.publisher.host, ''))
+        self.driver.matchmaker.register_publisher(
+            (self.publisher.host, ''),
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
 
         self.listeners = []
         for _ in range(self.LISTENERS_COUNT):

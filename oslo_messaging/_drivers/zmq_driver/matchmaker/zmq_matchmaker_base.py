@@ -16,9 +16,11 @@ import collections
 import logging
 
 import six
+import time
 
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers.zmq_driver import zmq_address
+from oslo_messaging._drivers.zmq_driver import zmq_async
 from oslo_messaging._i18n import _LE
 
 LOG = logging.getLogger(__name__)
@@ -181,28 +183,48 @@ class MatchmakerDummy(MatchmakerBase):
         self._cache = collections.defaultdict(list)
         self._publishers = set()
         self._routers = set()
+        self._address = {}
+        self.executor = zmq_async.get_executor(method=self._loop)
+        self.executor.execute()
 
     def register_publisher(self, hostname, expire=-1):
         if hostname not in self._publishers:
             self._publishers.add(hostname)
+        self._address[hostname] = expire
 
     def unregister_publisher(self, hostname):
         if hostname in self._publishers:
             self._publishers.remove(hostname)
+        if hostname in self._address:
+            self._address.pop(hostname)
 
     def get_publishers(self):
-        return list(self._publishers)
+        hosts = [host for host in self._publishers
+                 if self._address[host] > 0]
+        return hosts
 
     def register_router(self, hostname, expire=-1):
         if hostname not in self._routers:
             self._routers.add(hostname)
+        self._address[hostname] = expire
 
     def unregister_router(self, hostname):
         if hostname in self._routers:
             self._routers.remove(hostname)
+        if hostname in self._address:
+            self._address.pop(hostname)
 
     def get_routers(self):
-        return list(self._routers)
+        hosts = [host for host in self._routers
+                 if self._address[host] > 0]
+        return hosts
+
+    def _loop(self):
+        for hostname in self._address:
+            expire = self._address[hostname]
+            if expire > 0:
+                self._address[hostname] = expire - 1
+        time.sleep(1)
 
     def register(self, target, hostname, listener_type, expire=-1):
         if target.server:
@@ -214,6 +236,8 @@ class MatchmakerDummy(MatchmakerBase):
         if hostname not in self._cache[key]:
             self._cache[key].append(hostname)
 
+        self._address[hostname] = expire
+
     def unregister(self, target, hostname, listener_type):
         if target.server:
             key = zmq_address.target_to_key(target, listener_type)
@@ -224,16 +248,21 @@ class MatchmakerDummy(MatchmakerBase):
         if hostname in self._cache[key]:
             self._cache[key].remove(hostname)
 
+        if hostname in self._address:
+            self._address.pop(hostname)
+
     def get_hosts(self, target, listener_type):
         hosts = []
 
         if target.server:
             key = zmq_address.target_to_key(target, listener_type)
-            hosts.extend(self._cache[key])
+            hosts.extend([host for host in self._cache[key]
+                         if self._address[host] > 0])
 
         if not hosts:
             key = zmq_address.prefix_str(target.topic, listener_type)
-            hosts.extend(self._cache[key])
+            hosts.extend([host for host in self._cache[key]
+                         if self._address[host] > 0])
 
         LOG.debug("[Dummy] get_hosts for target %(target)s: %(hosts)s",
                   {"target": target, "hosts": hosts})
@@ -246,8 +275,10 @@ class MatchmakerDummy(MatchmakerBase):
         return self.get_hosts(target, listener_type)
 
     def get_hosts_fanout(self, target, listener_type):
+        hosts = []
         key = zmq_address.target_to_key(target, listener_type)
-        hosts = list(self._cache[key])
+        hosts.extend([host for host in self._cache[key]
+                     if self._address[host] > 0])
 
         LOG.debug("[Dummy] get_hosts_fanout for target %(target)s: %(hosts)s",
                   {"target": target, "hosts": hosts})

@@ -65,21 +65,41 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
         self.host2 = b"test_host2"
 
     def test_register(self):
-        self.test_matcher.register(self.target, self.host1, "test")
+        self.test_matcher.register(
+            self.target,
+            self.host1,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
 
         self.assertEqual([self.host1],
                          self.test_matcher.get_hosts(self.target, "test"))
 
     def test_register_two_hosts(self):
-        self.test_matcher.register(self.target, self.host1, "test")
-        self.test_matcher.register(self.target, self.host2, "test")
+        self.test_matcher.register(
+            self.target,
+            self.host1,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
+        self.test_matcher.register(
+            self.target,
+            self.host2,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
 
         self.assertItemsEqual(self.test_matcher.get_hosts(self.target, "test"),
                               [self.host1, self.host2])
 
     def test_register_unregister(self):
-        self.test_matcher.register(self.target, self.host1, "test")
-        self.test_matcher.register(self.target, self.host2, "test")
+        self.test_matcher.register(
+            self.target,
+            self.host1,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
+        self.test_matcher.register(
+            self.target,
+            self.host2,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
 
         self.test_matcher.unregister(self.target, self.host2, "test")
 
@@ -87,8 +107,16 @@ class TestImplMatchmaker(test_utils.BaseTestCase):
                               [self.host1])
 
     def test_register_two_same_hosts(self):
-        self.test_matcher.register(self.target, self.host1, "test")
-        self.test_matcher.register(self.target, self.host1, "test")
+        self.test_matcher.register(
+            self.target,
+            self.host1,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
+        self.test_matcher.register(
+            self.target,
+            self.host1,
+            "test",
+            expire=self.conf.oslo_messaging_zmq.zmq_target_expire)
 
         self.assertEqual([self.host1],
                          self.test_matcher.get_hosts(self.target, "test"))
