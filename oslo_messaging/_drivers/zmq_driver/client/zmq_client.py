@@ -38,16 +38,20 @@ class ZmqClientMixDirectPubSub(zmq_client_base.ZmqClientBase):
                 conf.oslo_messaging_zmq.use_pub_sub:
             raise WrongClientException()
 
-        publisher_direct = self._create_publisher_direct(conf, matchmaker)
+        publisher = self._create_publisher_direct_dynamic(conf, matchmaker) \
+            if conf.oslo_messaging_zmq.use_dynamic_connections else \
+            self._create_publisher_direct(conf, matchmaker)
         publisher_proxy = self._create_publisher_proxy_dynamic(conf,
-                                                               matchmaker)
+                                                               matchmaker) \
+            if conf.oslo_messaging_zmq.use_dynamic_connections else \
+            self._create_publisher_proxy(conf, matchmaker)
 
         super(ZmqClientMixDirectPubSub, self).__init__(
             conf, matchmaker, allowed_remote_exmods,
             publishers={
                 zmq_names.CAST_FANOUT_TYPE: publisher_proxy,
                 zmq_names.NOTIFY_TYPE: publisher_proxy,
-                "default": publisher_direct
+                "default": publisher
             }
         )
 
