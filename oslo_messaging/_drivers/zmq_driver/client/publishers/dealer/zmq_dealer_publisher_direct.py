@@ -14,6 +14,8 @@
 
 import logging
 
+import tenacity
+
 from oslo_messaging._drivers.zmq_driver.client.publishers.dealer \
     import zmq_dealer_publisher_base
 from oslo_messaging._drivers.zmq_driver.client import zmq_receivers
@@ -55,7 +57,7 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
     """
 
     def __init__(self, conf, matchmaker):
-        sender = zmq_senders.RequestSenderDirect(conf)
+        sender = zmq_senders.RequestSenderDirect(conf, async=True)
         receiver = zmq_receivers.ReceiverDirect(conf)
         super(DealerPublisherDirect, self).__init__(conf, matchmaker,
                                                     sender, receiver)
@@ -90,11 +92,16 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
         self.receiver.unregister_socket(socket)
 
     def send_request(self, socket, request):
-        if request.msg_type in zmq_names.MULTISEND_TYPES:
-            for _ in range(socket.connections_count()):
+        @tenacity.retry(retry=tenacity.retry_if_exception_type(zmq.Again),
+                        stop=tenacity.stop_after_delay(
+                            self.conf.rpc_response_timeout))
+        def send_retrying():
+            if request.msg_type in zmq_names.MULTISEND_TYPES:
+                for _ in range(socket.connections_count()):
+                    self.sender.send(socket, request)
+            else:
                 self.sender.send(socket, request)
-        else:
-            self.sender.send(socket, request)
+        return send_retrying()
 
     def cleanup(self):
         self.routing_table.cleanup()
