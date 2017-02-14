@@ -47,9 +47,9 @@ class LoggingNotificationHandler(logging.Handler):
                  topic=None, serializer=None):
         self.notifier = notifier.Notifier(
             notifier.get_notification_transport(self.CONF, url),
-            publisher_id, driver,
-            topic,
-            serializer() if serializer else None)
+            publisher_id, driver, serializer() if serializer else None,
+            topics=(topic if isinstance(topic, list) or topic is None
+                    else [topic]))
         logging.Handler.__init__(self)
 
     def emit(self, record):

@@ -244,7 +244,7 @@ class TestSerializer(test_utils.BaseTestCase):
         notifier = oslo_messaging.Notifier(transport,
                                            'test.localhost',
                                            driver='test',
-                                           topic='test',
+                                           topics=['test'],
                                            serializer=serializer)
 
         message_id = uuid.uuid4()
@@ -295,9 +295,6 @@ class TestNotifierTopics(test_utils.BaseTestCase):
                     group='oslo_messaging_notifications')
         transport = _FakeTransport(self.conf)
 
-        notifier = oslo_messaging.Notifier(transport, 'test.localhost',
-                                           topic='topic1')
-        self.assertEqual(['topic1'], notifier._topics)
         notifier = oslo_messaging.Notifier(transport, 'test.localhost',
                                            topics=['topic1', 'topic2'])
         self.assertEqual(['topic1', 'topic2'], notifier._topics)

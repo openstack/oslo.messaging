@@ -345,7 +345,7 @@ class NotificationFixture(fixtures.Fixture):
         targets.append(oslo_messaging.Target(topic=self.name))
         transport = self.useFixture(TransportFixture(self.conf, self.url))
         self.server = self._get_server(transport, targets)
-        self._ctrl = self.notifier('internal', topic=self.name)
+        self._ctrl = self.notifier('internal', topics=[self.name])
         self._start()
         transport.wait()
 
@@ -369,12 +369,12 @@ class NotificationFixture(fixtures.Fixture):
         if self.thread.isAlive():
             raise Exception("Server did not shutdown properly")
 
-    def notifier(self, publisher, topic=None):
+    def notifier(self, publisher, topics=None):
         transport = self.useFixture(TransportFixture(self.conf, self.url))
         n = notifier.Notifier(transport.transport,
                               publisher,
                               driver='messaging',
-                              topic=topic or self.topics[0])
+                              topics=topics or self.topics)
         transport.wait()
         return n
 

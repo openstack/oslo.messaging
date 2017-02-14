@@ -240,8 +240,8 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     def test_multiple_topics(self):
         listener = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['a', 'b']))
-        a = listener.notifier('pub-a', topic='a')
-        b = listener.notifier('pub-b', topic='b')
+        a = listener.notifier('pub-a', topics=['a'])
+        b = listener.notifier('pub-b', topics=['b'])
 
         sent = {
             'pub-a': [a, 'test-a', 'payload-a'],
@@ -295,8 +295,8 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         listener_b = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['2']))
 
-        a = listener_a.notifier('pub-1', topic='1')
-        b = listener_b.notifier('pub-2', topic='2')
+        a = listener_a.notifier('pub-1', topics=['1'])
+        b = listener_b.notifier('pub-2', topics=['2'])
 
         a_out = [('test-1-%s' % c, 'payload-1-%s' % c) for c in 'abcdefgh']
         for event_type, payload in a_out:

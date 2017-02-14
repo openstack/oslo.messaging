@@ -115,9 +115,9 @@ class ListenerSetupMixin(object):
     def wait_for_messages(self, expect_messages, tracker_name='__default__'):
         self.trackers[tracker_name].wait_for_messages(expect_messages)
 
-    def _setup_notifier(self, transport, topic='testtopic',
+    def _setup_notifier(self, transport, topics=['testtopic'],
                         publisher_id='testpublisher'):
-        return oslo_messaging.Notifier(transport, topic=topic,
+        return oslo_messaging.Notifier(transport, topics=topics,
                                        driver='messaging',
                                        publisher_id=publisher_id)
 
@@ -279,9 +279,9 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                    oslo_messaging.Target(topic="topic2")]
         listener_thread = self._setup_listener(transport, [endpoint],
                                                targets=targets)
-        notifier = self._setup_notifier(transport, topic='topic1')
+        notifier = self._setup_notifier(transport, topics=['topic1'])
         notifier.info({'ctxt': '1'}, 'an_event.start1', 'test')
-        notifier = self._setup_notifier(transport, topic='topic2')
+        notifier = self._setup_notifier(transport, topics=['topic2'])
         notifier.info({'ctxt': '2'}, 'an_event.start2', 'test')
 
         self.wait_for_messages(2)
@@ -309,7 +309,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         listener_thread = self._setup_listener(transport, [endpoint],
                                                targets=targets)
 
-        notifier = self._setup_notifier(transport, topic="topic")
+        notifier = self._setup_notifier(transport, topics=["topic"])
 
         def mock_notifier_exchange(name):
             def side_effect(target, ctxt, message, version, retry):
@@ -407,7 +407,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         listener2_thread = self._setup_listener(transport, [endpoint2],
                                                 targets=targets, pool="pool2")
 
-        notifier = self._setup_notifier(transport, topic="topic")
+        notifier = self._setup_notifier(transport, topics=["topic"])
         notifier.info({'ctxt': '0'}, 'an_event.start', 'test message0')
         notifier.info({'ctxt': '1'}, 'an_event.start', 'test message1')
 
@@ -450,7 +450,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                              'an_event.start', 'test message%d' % i,
                              {'timestamp': mock.ANY, 'message_id': mock.ANY})
 
-        notifier = self._setup_notifier(transport, topic="topic")
+        notifier = self._setup_notifier(transport, topics=["topic"])
         mocked_endpoint1_calls = []
         for i in range(0, 25):
             notifier.info({'ctxt': '%d' % i}, 'an_event.start',

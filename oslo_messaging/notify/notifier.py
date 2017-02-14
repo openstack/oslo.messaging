@@ -20,7 +20,6 @@ import argparse
 import logging
 import uuid
 
-from debtcollector import renames
 from oslo_config import cfg
 from oslo_utils import timeutils
 import six
@@ -205,7 +204,7 @@ class Notifier(object):
         notifier = notifier.Notifier(transport,
                                      'compute.host',
                                      driver='messaging',
-                                     topic='notifications')
+                                     topics=['notifications'])
 
     Notifier objects are relatively expensive to instantiate (mostly the cost
     of loading notification drivers), so it is possible to specialize a given
@@ -215,13 +214,8 @@ class Notifier(object):
         notifier.info(ctxt, event_type, payload)
     """
 
-    @renames.renamed_kwarg('topic', 'topics',
-                           message="Please use topics instead of topic",
-                           version='4.5.0',
-                           removal_version='5.0.0')
     def __init__(self, transport, publisher_id=None,
-                 driver=None, topic=None,
-                 serializer=None, retry=None,
+                 driver=None, serializer=None, retry=None,
                  topics=None):
         """Construct a Notifier object.
 
@@ -232,8 +226,6 @@ class Notifier(object):
         :type publisher_id: str
         :param driver: a driver to lookup from oslo_messaging.notify.drivers
         :type driver: str
-        :param topic: the topic which to send messages on
-        :type topic: str
         :param serializer: an optional entity serializer
         :type serializer: Serializer
         :param retry: connection retries configuration (used by the messaging
@@ -258,8 +250,6 @@ class Notifier(object):
 
         if topics is not None:
             self._topics = topics
-        elif topic is not None:
-            self._topics = [topic]
         else:
             self._topics = conf.oslo_messaging_notifications.topics
         self._serializer = serializer or msg_serializer.NoOpSerializer()
