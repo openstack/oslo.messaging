@@ -17,9 +17,9 @@ import eventlet
 import threading
 
 from oslo_config import cfg
+from six.moves import mock
 import testscenarios
 
-import mock
 import oslo_messaging
 from oslo_messaging import rpc
 from oslo_messaging.rpc import server as rpc_server_module

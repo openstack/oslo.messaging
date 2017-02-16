@@ -12,7 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from six.moves import mock
 
 from oslo_messaging.tests import utils as test_utils
 

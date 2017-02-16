@@ -14,9 +14,9 @@
 #    under the License.
 
 import fixtures
-import mock
 from oslo_config import cfg
 import six
+from six.moves import mock
 from stevedore import driver
 import testscenarios
 

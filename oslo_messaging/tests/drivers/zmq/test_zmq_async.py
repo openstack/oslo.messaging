@@ -10,7 +10,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
+from six.moves import mock
 import testtools
 
 from oslo_messaging._drivers.zmq_driver.poller import green_poller

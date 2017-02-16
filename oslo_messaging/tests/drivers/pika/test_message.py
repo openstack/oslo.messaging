@@ -16,11 +16,10 @@ import functools
 import unittest
 
 from concurrent import futures
-from mock import mock
-from mock import patch
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import pika
+from six.moves import mock
 
 import oslo_messaging
 from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
@@ -151,8 +150,8 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
         self.assertEqual("payload_value",
                          message.message.get("payload_key", None))
 
-    @patch(("oslo_messaging._drivers.pika_driver.pika_message."
-            "PikaOutgoingMessage.send"))
+    @mock.patch(("oslo_messaging._drivers.pika_driver.pika_message."
+                 "PikaOutgoingMessage.send"))
     def test_reply_for_cast_message(self, send_reply_mock):
         message = pika_drv_msg.RpcPikaIncomingMessage(
             self._pika_engine, self._channel, self._method, self._properties,
@@ -171,9 +170,9 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
 
         self.assertEqual(0, send_reply_mock.call_count)
 
-    @patch("oslo_messaging._drivers.pika_driver.pika_message."
-           "RpcReplyPikaOutgoingMessage")
-    @patch("tenacity.retry")
+    @mock.patch("oslo_messaging._drivers.pika_driver.pika_message."
+                "RpcReplyPikaOutgoingMessage")
+    @mock.patch("tenacity.retry")
     def test_positive_reply_for_call_message(self,
                                              retry_mock,
                                              outgoing_message_mock):
@@ -206,9 +205,9 @@ class RpcPikaIncomingMessageTestCase(unittest.TestCase):
             stop=mock.ANY, retry=mock.ANY, wait=mock.ANY
         )
 
-    @patch("oslo_messaging._drivers.pika_driver.pika_message."
-           "RpcReplyPikaOutgoingMessage")
-    @patch("tenacity.retry")
+    @mock.patch("oslo_messaging._drivers.pika_driver.pika_message."
+                "RpcReplyPikaOutgoingMessage")
+    @mock.patch("tenacity.retry")
     def test_negative_reply_for_call_message(self,
                                              retry_mock,
                                              outgoing_message_mock):
@@ -319,8 +318,8 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         self._message = {"msg_type": 1, "msg_str": "hello"}
         self._context = {"request_id": 555, "token": "it is a token"}
 
-    @patch("oslo_serialization.jsonutils.dump_as_bytes",
-           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
+    @mock.patch("oslo_serialization.jsonutils.dump_as_bytes",
+                new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_with_confirmation(self):
         message = pika_drv_msg.PikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -363,8 +362,8 @@ class PikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertEqual({'version': '1.0'}, props.headers)
         self.assertTrue(props.message_id)
 
-    @patch("oslo_serialization.jsonutils.dump_as_bytes",
-           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
+    @mock.patch("oslo_serialization.jsonutils.dump_as_bytes",
+                new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_without_confirmation(self):
         message = pika_drv_msg.PikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -421,8 +420,8 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         self._message = {"msg_type": 1, "msg_str": "hello"}
         self._context = {"request_id": 555, "token": "it is a token"}
 
-    @patch("oslo_serialization.jsonutils.dump_as_bytes",
-           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
+    @mock.patch("oslo_serialization.jsonutils.dump_as_bytes",
+                new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_cast_message(self):
         message = pika_drv_msg.RpcPikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -467,8 +466,8 @@ class RpcPikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
 
-    @patch("oslo_serialization.jsonutils.dump_as_bytes",
-           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
+    @mock.patch("oslo_serialization.jsonutils.dump_as_bytes",
+                new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_send_call_message(self):
         message = pika_drv_msg.RpcPikaOutgoingMessage(
             self._pika_engine, self._message, self._context
@@ -542,8 +541,8 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
 
         self._msg_id = 12345567
 
-    @patch("oslo_serialization.jsonutils.dump_as_bytes",
-           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
+    @mock.patch("oslo_serialization.jsonutils.dump_as_bytes",
+                new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_success_message_send(self):
         message = pika_drv_msg.RpcReplyPikaOutgoingMessage(
             self._pika_engine, self._msg_id, reply="all_fine"
@@ -571,9 +570,9 @@ class RpcReplyPikaOutgoingMessageTestCase(unittest.TestCase):
         self.assertIsNone(props.reply_to)
         self.assertTrue(props.message_id)
 
-    @patch("traceback.format_exception", new=lambda x, y, z: z)
-    @patch("oslo_serialization.jsonutils.dump_as_bytes",
-           new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
+    @mock.patch("traceback.format_exception", new=lambda x, y, z: z)
+    @mock.patch("oslo_serialization.jsonutils.dump_as_bytes",
+                new=functools.partial(jsonutils.dump_as_bytes, sort_keys=True))
     def test_failure_message_send(self):
         failure_info = (oslo_messaging.MessagingException,
                         oslo_messaging.MessagingException("Error message"),
