@@ -24,9 +24,7 @@ import kombu
 import kombu.transport.memory
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from oslo_utils import versionutils
 from oslotest import mockpatch
-import pkg_resources
 import testscenarios
 
 import oslo_messaging
@@ -106,7 +104,7 @@ class TestHeartbeat(test_utils.BaseTestCase):
 
     def test_test_heartbeat_sent_connection_fail(self):
         self._do_test_heartbeat_sent(
-            heartbeat_side_effect=kombu.exceptions.ConnectionError,
+            heartbeat_side_effect=kombu.exceptions.OperationalError,
             info='A recoverable connection/channel error occurred, '
             'trying to reconnect: %s')
 
@@ -219,23 +217,11 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             conn._publish(exchange_mock, 'msg', routing_key='routing_key',
                           timeout=1)
 
-        # NOTE(gcb) kombu accept TTL as seconds instead of millisecond since
-        # version 3.0.25, so do conversion according to kombu version.
-        # TODO(gcb) remove this workaround when all supported branches
-        # with requirement kombu >=3.0.25
-        kombu_version = pkg_resources.get_distribution('kombu').version
-        if versionutils.is_compatible('3.0.25', kombu_version):
-            fake_publish.assert_called_with(
-                'msg', expiration=1,
-                exchange=exchange_mock,
-                compression=self.conf.oslo_messaging_rabbit.kombu_compression,
-                routing_key='routing_key')
-        else:
-            fake_publish.assert_called_with(
-                'msg', expiration=1000,
-                exchange=exchange_mock,
-                compression=self.conf.oslo_messaging_rabbit.kombu_compression,
-                routing_key='routing_key')
+        fake_publish.assert_called_with(
+            'msg', expiration=1,
+            exchange=exchange_mock,
+            compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+            routing_key='routing_key')
 
     @mock.patch('kombu.messaging.Producer.publish')
     def test_send_no_timeout(self, fake_publish):
@@ -279,7 +265,8 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
 
             with mock.patch('kombu.transport.virtual.Channel.close'):
                 # Ensure the exchange does not exists
-                self.assertRaises(exc, try_send, e_passive)
+                self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                                  try_send, e_passive)
                 # Create it
                 try_send(e_active)
                 # Ensure it creates it
@@ -287,12 +274,14 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
 
             with mock.patch('kombu.messaging.Producer.publish',
                             side_effect=exc):
-                # Ensure the exchange is already in cache
-                self.assertIn('foobar', conn._declared_exchanges)
-                # Reset connection
-                self.assertRaises(exc, try_send, e_passive)
-                # Ensure the cache is empty
-                self.assertEqual(0, len(conn._declared_exchanges))
+                with mock.patch('kombu.transport.virtual.Channel.close'):
+                    # Ensure the exchange is already in cache
+                    self.assertIn('foobar', conn._declared_exchanges)
+                    # Reset connection
+                    self.assertRaises(oslo_messaging.MessageDeliveryFailure,
+                                      try_send, e_passive)
+                    # Ensure the cache is empty
+                    self.assertEqual(0, len(conn._declared_exchanges))
 
             try_send(e_active)
             self.assertIn('foobar', conn._declared_exchanges)
@@ -336,7 +325,7 @@ class TestRabbitConsume(test_utils.BaseTestCase):
                 conn.connection.connection.recoverable_connection_errors = ()
                 conn.connection.connection.recoverable_channel_errors = ()
                 self.assertEqual(1, declare.call_count)
-                conn.connection.connection.transport.drain_events = mock.Mock()
+                conn.connection.connection.drain_events = mock.Mock()
                 # Ensure that a queue will be re-declared if the consume method
                 # of kombu.Queue raise amqp.NotFound
                 conn.consume()
@@ -360,7 +349,7 @@ class TestRabbitConsume(test_utils.BaseTestCase):
                     IOError,)
                 conn.connection.connection.recoverable_channel_errors = ()
                 self.assertEqual(1, declare.call_count)
-                conn.connection.connection.transport.drain_events = mock.Mock()
+                conn.connection.connection.drain_events = mock.Mock()
                 # Ensure that a queue will be re-declared after
                 # 'queue not found' exception despite on connection error.
                 conn.consume()
@@ -963,10 +952,6 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
                     heartbeat_timeout_threshold=0,
                     group="oslo_messaging_rabbit")
 
-        self.kombu_connect = mock.Mock()
-        self.useFixture(mockpatch.Patch(
-            'kombu.connection.Connection.connect',
-            side_effect=self.kombu_connect))
         self.useFixture(mockpatch.Patch(
             'kombu.connection.Connection.connection'))
         self.useFixture(mockpatch.Patch(
@@ -976,6 +961,10 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         url = oslo_messaging.TransportURL.parse(self.conf, None)
         self.connection = rabbit_driver.Connection(self.conf, url,
                                                    driver_common.PURPOSE_SEND)
+        self.kombu_connect = mock.Mock()
+        self.useFixture(mockpatch.Patch(
+            'kombu.connection.Connection.connect',
+            side_effect=self.kombu_connect))
         self.addCleanup(self.connection.close)
 
     def test_ensure_four_retry(self):

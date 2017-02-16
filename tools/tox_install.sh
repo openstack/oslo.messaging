@@ -27,5 +27,8 @@ pip install -c$localfile openstack-requirements
 edit-constraints $localfile -- $CLIENT_NAME
 
 pip install -c$localfile -U $*
+# NOTE(gordc): temporary override since kombu capped at <4.0.0
+pip install -U 'amqp>=2.0.0'
+pip install -U 'kombu>=4.0.0'
 
 exit $?
