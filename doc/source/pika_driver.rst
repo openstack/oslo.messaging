@@ -132,7 +132,7 @@ In section [oslo_messaging_pika]:
 #. notification_persistence (default=False): Persist notification messages,
 
 #. default_notification_exchange (default="${control_exchange}_notification"):
-   Exchange name for for sending notifications,
+   Exchange name for sending notifications,
 
 #. notification_listener_prefetch_count (default=100): Max number of not
    acknowledged message which RabbitMQ can send to notification listener,
