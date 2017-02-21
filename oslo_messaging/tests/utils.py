@@ -23,7 +23,6 @@ import threading
 
 from oslo_config import cfg
 from oslotest import base
-from oslotest import moxstubout
 
 
 TRUE_VALUES = ('true', '1', 'yes')
@@ -41,9 +40,6 @@ class BaseTestCase(base.BaseTestCase):
 
         self.conf.project = 'project'
         self.conf.prog = 'prog'
-
-        moxfixture = self.useFixture(moxstubout.MoxStubout())
-        self.stubs = moxfixture.stubs
 
     def config(self, **kw):
         """Override some configuration values.

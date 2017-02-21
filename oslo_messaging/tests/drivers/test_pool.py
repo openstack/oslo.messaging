@@ -16,6 +16,7 @@
 import threading
 import uuid
 
+import fixtures
 import testscenarios
 
 from oslo_messaging._drivers import pool
@@ -54,9 +55,9 @@ class PoolTestCase(test_utils.BaseTestCase):
         has been called by each thread.
         """
 
-        def __init__(self, cond, n_threads, stubs):
+        def __init__(self, cond, n_threads, test):
             self.cond = cond
-            self.stubs = stubs
+            self.test = test
             self.n_threads = n_threads
             self.n_waits = 0
             self.orig_wait = cond.wait
@@ -64,12 +65,14 @@ class PoolTestCase(test_utils.BaseTestCase):
             def count_waits(**kwargs):
                 self.n_waits += 1
                 self.orig_wait(**kwargs)
-            self.stubs.Set(self.cond, 'wait', count_waits)
+            self.test.useFixture(fixtures.MockPatchObject(
+                self.cond, 'wait', count_waits))
 
         def wait(self):
             while self.n_waits < self.n_threads:
                 pass
-            self.stubs.Set(self.cond, 'wait', self.orig_wait)
+            self.test.useFixture(fixtures.MockPatchObject(
+                self.cond, 'wait', self.orig_wait))
 
     def test_pool(self):
         kwargs = {}
@@ -82,9 +85,11 @@ class PoolTestCase(test_utils.BaseTestCase):
             def create_error():
                 raise RuntimeError
             orig_create = p.create
-            self.stubs.Set(p, 'create', create_error)
+            self.useFixture(fixtures.MockPatchObject(
+                p, 'create', create_error))
             self.assertRaises(RuntimeError, p.get)
-            self.stubs.Set(p, 'create', orig_create)
+            self.useFixture(fixtures.MockPatchObject(
+                p, 'create', orig_create))
 
         objs = []
         for i in range(self.n_iters):
@@ -95,7 +100,7 @@ class PoolTestCase(test_utils.BaseTestCase):
             o = p.get()
             self.assertIn(o, objs)
 
-        waiter = self.ThreadWaitWaiter(p._cond, self.n_iters, self.stubs)
+        waiter = self.ThreadWaitWaiter(p._cond, self.n_iters, self)
 
         threads = []
         for i in range(self.n_iters):

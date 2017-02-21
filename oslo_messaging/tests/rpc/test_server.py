@@ -17,6 +17,7 @@ import threading
 import warnings
 
 import eventlet
+import fixtures
 from oslo_config import cfg
 from six.moves import mock
 import testscenarios
@@ -362,8 +363,10 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
                 a = a[0]
             errors.append(str(msg) % a)
 
-        self.stubs.Set(rpc_server_module.LOG, 'debug', stub_debug)
-        self.stubs.Set(rpc_server_module.LOG, 'error', stub_error)
+        self.useFixture(fixtures.MockPatchObject(
+            rpc_server_module.LOG, 'debug', stub_debug))
+        self.useFixture(fixtures.MockPatchObject(
+            rpc_server_module.LOG, 'error', stub_error))
 
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
@@ -396,8 +399,10 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
                 a = a[0]
             errors.append(str(msg) % a)
 
-        self.stubs.Set(rpc_server_module.LOG, 'debug', stub_debug)
-        self.stubs.Set(rpc_server_module.LOG, 'error', stub_error)
+        self.useFixture(fixtures.MockPatchObject(
+            rpc_server_module.LOG, 'debug', stub_debug))
+        self.useFixture(fixtures.MockPatchObject(
+            rpc_server_module.LOG, 'error', stub_error))
 
         class TestEndpoint(object):
             @oslo_messaging.expected_exceptions(ValueError)
