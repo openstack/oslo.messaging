@@ -24,7 +24,6 @@ import kombu
 import kombu.transport.memory
 from oslo_config import cfg
 from oslo_serialization import jsonutils
-from oslotest import mockpatch
 import testscenarios
 
 import oslo_messaging
@@ -952,9 +951,9 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
                     heartbeat_timeout_threshold=0,
                     group="oslo_messaging_rabbit")
 
-        self.useFixture(mockpatch.Patch(
+        self.useFixture(fixtures.MockPatch(
             'kombu.connection.Connection.connection'))
-        self.useFixture(mockpatch.Patch(
+        self.useFixture(fixtures.MockPatch(
             'kombu.connection.Connection.channel'))
 
         # starting from the first broker in the list
@@ -962,7 +961,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.connection = rabbit_driver.Connection(self.conf, url,
                                                    driver_common.PURPOSE_SEND)
         self.kombu_connect = mock.Mock()
-        self.useFixture(mockpatch.Patch(
+        self.useFixture(fixtures.MockPatch(
             'kombu.connection.Connection.connect',
             side_effect=self.kombu_connect))
         self.addCleanup(self.connection.close)
