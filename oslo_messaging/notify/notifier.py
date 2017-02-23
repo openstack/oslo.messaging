@@ -54,6 +54,10 @@ _notifier_opts = [
                                       group='DEFAULT')
                 ],
                 help='AMQP topic used for OpenStack notifications.'),
+    cfg.IntOpt('retry', default=-1,
+               help='The maximum number of attempts to re-send a notification '
+                    'message which failed to be delivered due to a '
+                    'recoverable error. 0 - No retry, -1 - indefinite'),
 ]
 
 _LOG = logging.getLogger(__name__)
@@ -243,7 +247,10 @@ class Notifier(object):
 
         self.transport = transport
         self.publisher_id = publisher_id
-        self.retry = retry
+        if retry is not None:
+            self.retry = retry
+        else:
+            self.retry = conf.oslo_messaging_notifications.retry
 
         self._driver_names = ([driver] if driver is not None else
                               conf.oslo_messaging_notifications.driver)
