@@ -13,6 +13,8 @@
 
 from oslo_config import cfg
 
+from oslo_messaging._drivers import common
+
 KAFKA_OPTS = [
     cfg.StrOpt('kafka_default_host', default='localhost',
                deprecated_for_removal=True,
@@ -52,8 +54,9 @@ KAFKA_OPTS = [
 ]
 
 
-def register_opts(conf):
+def register_opts(conf, url):
     opt_group = cfg.OptGroup(name='oslo_messaging_kafka',
                              title='Kafka driver options')
     conf.register_group(opt_group)
     conf.register_opts(KAFKA_OPTS, group=opt_group)
+    return common.ConfigOptsProxy(conf, url)

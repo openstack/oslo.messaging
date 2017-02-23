@@ -1335,6 +1335,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_opts(rabbit_opts, group=opt_group)
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
         conf.register_opts(base.base_opts, group=opt_group)
+        conf = rpc_common.ConfigOptsProxy(conf, url)
 
         self.missing_destination_retry_timeout = (
             conf.oslo_messaging_rabbit.kombu_missing_consumer_retry_timeout)

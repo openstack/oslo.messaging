@@ -19,6 +19,7 @@ import pika_pool
 import tenacity
 
 from oslo_messaging._drivers import base
+from oslo_messaging._drivers import common
 from oslo_messaging._drivers.pika_driver import (pika_connection_factory as
                                                  pika_drv_conn_factory)
 from oslo_messaging._drivers.pika_driver import pika_commons as pika_drv_cmns
@@ -143,6 +144,7 @@ class PikaDriver(base.BaseDriver):
         conf.register_opts(message_opts, group=opt_group)
         conf.register_opts(rpc_opts, group=opt_group)
         conf.register_opts(notification_opts, group=opt_group)
+        conf = common.ConfigOptsProxy(conf, url)
 
         self._pika_engine = pika_drv_engine.PikaEngine(
             conf, url, default_exchange, allowed_remote_exmods

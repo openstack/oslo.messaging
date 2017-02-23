@@ -309,10 +309,10 @@ class KafkaDriver(base.BaseDriver):
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
+        conf = kafka_options.register_opts(conf, url)
         super(KafkaDriver, self).__init__(
             conf, url, default_exchange, allowed_remote_exmods)
 
-        kafka_options.register_opts(conf)
         # the pool configuration properties
         max_size = self.conf.oslo_messaging_kafka.pool_size
         min_size = self.conf.oslo_messaging_kafka.conn_pool_min_size
