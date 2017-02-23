@@ -144,7 +144,7 @@ class PikaDriver(base.BaseDriver):
         conf.register_opts(message_opts, group=opt_group)
         conf.register_opts(rpc_opts, group=opt_group)
         conf.register_opts(notification_opts, group=opt_group)
-        conf = common.ConfigOptsProxy(conf, url)
+        conf = common.ConfigOptsProxy(conf, url, opt_group.name)
 
         self._pika_engine = pika_drv_engine.PikaEngine(
             conf, url, default_exchange, allowed_remote_exmods

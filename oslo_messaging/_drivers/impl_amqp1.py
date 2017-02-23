@@ -200,7 +200,7 @@ class ProtonDriver(base.BaseDriver):
                                  title='AMQP 1.0 driver options')
         conf.register_group(opt_group)
         conf.register_opts(opts.amqp1_opts, group=opt_group)
-        conf = common.ConfigOptsProxy(conf, url)
+        conf = common.ConfigOptsProxy(conf, url, opt_group.name)
 
         self._hosts = url.hosts
         self._conf = conf

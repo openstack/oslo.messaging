@@ -210,4 +210,4 @@ def register_opts(conf, url):
     conf.register_opts(zmq_opts, group=opt_group)
     conf.register_opts(server._pool_opts)
     conf.register_opts(base.base_opts)
-    return common.ConfigOptsProxy(conf, url)
+    return common.ConfigOptsProxy(conf, url, opt_group.name)
