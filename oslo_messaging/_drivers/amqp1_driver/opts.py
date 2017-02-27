@@ -31,6 +31,12 @@ amqp1_opts = [
                 deprecated_group='amqp1',
                 help='Debug: dump AMQP frames to stdout'),
 
+    cfg.BoolOpt('ssl',
+                default=False,
+                help=("Attempt to connect via SSL. If no other ssl-related "
+                      "parameters are given, it will use the system's "
+                      "CA-bundle to verify the server's certificate.")),
+
     cfg.StrOpt('ssl_ca_file',
                default='',
                deprecated_group='amqp1',
