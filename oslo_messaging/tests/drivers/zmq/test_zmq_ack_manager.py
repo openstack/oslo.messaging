@@ -38,7 +38,7 @@ class TestZmqAckManager(test_utils.BaseTestCase):
 
         # register and set necessary config opts
         self.messaging_conf.transport_driver = 'zmq'
-        zmq_options.register_opts(self.conf)
+        zmq_options.register_opts(self.conf, mock.MagicMock())
         kwargs = {'rpc_zmq_matchmaker': 'dummy',
                   'use_pub_sub': False,
                   'use_router_proxy': True,

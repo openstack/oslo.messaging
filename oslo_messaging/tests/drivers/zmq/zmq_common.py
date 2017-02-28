@@ -16,6 +16,7 @@ import logging
 import threading
 
 import fixtures
+from six.moves import mock
 import testtools
 
 import oslo_messaging
@@ -72,7 +73,7 @@ class ZmqBaseTestCase(test_utils.BaseTestCase):
     def setUp(self):
         super(ZmqBaseTestCase, self).setUp()
         self.messaging_conf.transport_driver = 'zmq'
-        zmq_options.register_opts(self.conf)
+        zmq_options.register_opts(self.conf, mock.MagicMock())
 
         # Set config values
         self.internal_ipc_dir = self.useFixture(fixtures.TempDir()).path

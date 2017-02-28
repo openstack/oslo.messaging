@@ -94,7 +94,7 @@ class ZmqDriver(base.BaseDriver):
         if zmq is None:
             raise ImportError(_LE("ZeroMQ is not available!"))
 
-        zmq_options.register_opts(conf)
+        conf = zmq_options.register_opts(conf, url)
         self.conf = conf
         self.allowed_remote_exmods = allowed_remote_exmods
 

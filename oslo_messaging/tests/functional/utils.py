@@ -294,7 +294,9 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         if not self.url:
             self.skipTest("No transport url configured")
 
-        zmq_options.register_opts(conf)
+        transport_url = oslo_messaging.TransportURL.parse(conf, self.url)
+
+        zmq_options.register_opts(conf, transport_url)
 
         zmq_matchmaker = os.environ.get('ZMQ_MATCHMAKER')
         if zmq_matchmaker:
@@ -322,7 +324,7 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         self.config(use_dynamic_connections=zmq_use_dynamic_connections,
                     group='oslo_messaging_zmq')
 
-        kafka_options.register_opts(conf)
+        kafka_options.register_opts(conf, transport_url)
 
         self.config(producer_batch_size=0,
                     group='oslo_messaging_kafka')

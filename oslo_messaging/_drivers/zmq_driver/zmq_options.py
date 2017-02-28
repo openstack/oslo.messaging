@@ -17,6 +17,7 @@ import socket
 from oslo_config import cfg
 
 from oslo_messaging._drivers import base
+from oslo_messaging._drivers import common
 from oslo_messaging import server
 
 
@@ -203,9 +204,10 @@ zmq_opts = [
 ]
 
 
-def register_opts(conf):
+def register_opts(conf, url):
     opt_group = cfg.OptGroup(name='oslo_messaging_zmq',
                              title='ZeroMQ driver options')
     conf.register_opts(zmq_opts, group=opt_group)
     conf.register_opts(server._pool_opts)
     conf.register_opts(base.base_opts)
+    return common.ConfigOptsProxy(conf, url)
