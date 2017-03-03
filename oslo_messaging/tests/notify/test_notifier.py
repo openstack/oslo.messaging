@@ -226,6 +226,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         uuid.uuid4.assert_called_once_with()
         transport._send_notification.assert_has_calls(calls, any_order=True)
 
+        self.assertTrue(notifier.is_enabled())
+
 TestMessagingNotifier.generate_scenarios()
 
 
@@ -337,6 +339,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
                                                   'notification.test.notify')
         logger.info.assert_called_once_with(JsonMessageMatcher(message))
 
+        self.assertTrue(notifier.is_enabled())
+
     def test_sample_priority(self):
         # Ensure logger drops sample-level notifications.
         driver = _impl_log.LogDriver(None, None, None)
@@ -378,6 +382,8 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         transport = _FakeTransport(self.conf)
         self.notifier = oslo_messaging.Notifier(transport)
         self.router = self.notifier._driver_mgr['routing'].obj
+
+        self.assertTrue(self.notifier.is_enabled())
 
     def _fake_extension_manager(self, ext):
         return extension.ExtensionManager.make_test_instance(
@@ -593,3 +599,16 @@ group_1:
                     {}, mock.ANY, 'INFO', None)
                 rpc2_driver.notify.assert_called_once_with(
                     {}, mock.ANY, 'INFO', None)
+
+
+class TestNoOpNotifier(test_utils.BaseTestCase):
+
+    def test_notifier(self):
+        self.config(driver=['noop'],
+                    group='oslo_messaging_notifications')
+
+        transport = _FakeTransport(self.conf)
+
+        notifier = oslo_messaging.Notifier(transport, 'test.localhost')
+
+        self.assertFalse(notifier.is_enabled())
