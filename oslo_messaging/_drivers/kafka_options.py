@@ -59,4 +59,4 @@ def register_opts(conf, url):
                              title='Kafka driver options')
     conf.register_group(opt_group)
     conf.register_opts(KAFKA_OPTS, group=opt_group)
-    return common.ConfigOptsProxy(conf, url)
+    return common.ConfigOptsProxy(conf, url, opt_group.name)

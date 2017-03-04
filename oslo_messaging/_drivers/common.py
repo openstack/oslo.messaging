@@ -460,13 +460,21 @@ class ConfigOptsProxy(collections.Mapping):
     and valid) override corresponding values from the configuration.
     """
 
-    def __init__(self, conf, url):
+    def __init__(self, conf, url, group):
         self._conf = conf
         self._url = url
+        self._group = group
+        self._validate_query()
+
+    def _validate_query(self):
+        for name in self._url.query:
+            self.GroupAttrProxy(self._conf, self._group,
+                                self._conf[self._group],
+                                self._url)[name]
 
     def __getattr__(self, name):
         value = getattr(self._conf, name)
-        if isinstance(value, self._conf.GroupAttr):
+        if isinstance(value, self._conf.GroupAttr) and name == self._group:
             return self.GroupAttrProxy(self._conf, name, value, self._url)
         return value
 
