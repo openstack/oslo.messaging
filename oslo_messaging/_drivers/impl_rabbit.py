@@ -54,25 +54,29 @@ TCP_USER_TIMEOUT = 18
 
 
 rabbit_opts = [
-    cfg.StrOpt('kombu_ssl_version',
+    cfg.BoolOpt('ssl',
+                default=False,
+                deprecated_name='rabbit_use_ssl',
+                help='Connect over SSL.'),
+    cfg.StrOpt('ssl_version',
                default='',
-               deprecated_group='DEFAULT',
+               deprecated_name='kombu_ssl_version',
                help='SSL version to use (valid only if SSL enabled). '
                     'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
                     'TLSv1_1, and TLSv1_2 may be available on some '
                     'distributions.'
                ),
-    cfg.StrOpt('kombu_ssl_keyfile',
+    cfg.StrOpt('ssl_key_file',
                default='',
-               deprecated_group='DEFAULT',
+               deprecated_name='kombu_ssl_keyfile',
                help='SSL key file (valid only if SSL enabled).'),
-    cfg.StrOpt('kombu_ssl_certfile',
+    cfg.StrOpt('ssl_cert_file',
                default='',
-               deprecated_group='DEFAULT',
+               deprecated_name='kombu_ssl_certfile',
                help='SSL cert file (valid only if SSL enabled).'),
-    cfg.StrOpt('kombu_ssl_ca_certs',
+    cfg.StrOpt('ssl_ca_file',
                default='',
-               deprecated_group='DEFAULT',
+               deprecated_name='kombu_ssl_ca_certs',
                help='SSL certification authority file '
                     '(valid only if SSL enabled).'),
     cfg.FloatOpt('kombu_reconnect_delay',
@@ -116,10 +120,6 @@ rabbit_opts = [
                 deprecated_for_removal=True,
                 deprecated_reason="Replaced by [DEFAULT]/transport_url",
                 help='RabbitMQ HA cluster host:port pairs.'),
-    cfg.BoolOpt('rabbit_use_ssl',
-                default=False,
-                deprecated_group='DEFAULT',
-                help='Connect over SSL for RabbitMQ.'),
     cfg.StrOpt('rabbit_userid',
                default='guest',
                deprecated_group='DEFAULT',
@@ -479,17 +479,17 @@ class Connection(object):
         self.kombu_reconnect_delay = driver_conf.kombu_reconnect_delay
         self.amqp_durable_queues = driver_conf.amqp_durable_queues
         self.amqp_auto_delete = driver_conf.amqp_auto_delete
-        self.rabbit_use_ssl = driver_conf.rabbit_use_ssl
+        self.ssl = driver_conf.ssl
         self.kombu_missing_consumer_retry_timeout = \
             driver_conf.kombu_missing_consumer_retry_timeout
         self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
         self.kombu_compression = driver_conf.kombu_compression
 
-        if self.rabbit_use_ssl:
-            self.kombu_ssl_version = driver_conf.kombu_ssl_version
-            self.kombu_ssl_keyfile = driver_conf.kombu_ssl_keyfile
-            self.kombu_ssl_certfile = driver_conf.kombu_ssl_certfile
-            self.kombu_ssl_ca_certs = driver_conf.kombu_ssl_ca_certs
+        if self.ssl:
+            self.ssl_version = driver_conf.ssl_version
+            self.ssl_key_file = driver_conf.ssl_key_file
+            self.ssl_cert_file = driver_conf.ssl_cert_file
+            self.ssl_ca_file = driver_conf.ssl_ca_file
 
         # Try forever?
         if self.max_retries <= 0:
@@ -697,19 +697,19 @@ class Connection(object):
         """Handles fetching what ssl params should be used for the connection
         (if any).
         """
-        if self.rabbit_use_ssl:
+        if self.ssl:
             ssl_params = dict()
 
             # http://docs.python.org/library/ssl.html - ssl.wrap_socket
-            if self.kombu_ssl_version:
+            if self.ssl_version:
                 ssl_params['ssl_version'] = self.validate_ssl_version(
-                    self.kombu_ssl_version)
-            if self.kombu_ssl_keyfile:
-                ssl_params['keyfile'] = self.kombu_ssl_keyfile
-            if self.kombu_ssl_certfile:
-                ssl_params['certfile'] = self.kombu_ssl_certfile
-            if self.kombu_ssl_ca_certs:
-                ssl_params['ca_certs'] = self.kombu_ssl_ca_certs
+                    self.ssl_version)
+            if self.ssl_key_file:
+                ssl_params['keyfile'] = self.ssl_key_file
+            if self.ssl_cert_file:
+                ssl_params['certfile'] = self.ssl_cert_file
+            if self.ssl_ca_file:
+                ssl_params['ca_certs'] = self.ssl_ca_file
                 # We might want to allow variations in the
                 # future with this?
                 ssl_params['cert_reqs'] = ssl.CERT_REQUIRED
