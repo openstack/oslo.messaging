@@ -415,6 +415,14 @@ class Notifier(object):
         """
         self._notify(ctxt, event_type, payload, 'SAMPLE')
 
+    def is_enabled(self):
+        """Check if the notifier will emit notifications anywhere.
+
+        :return: false if the driver of the notifier is set only to noop, true
+                 otherwise
+        """
+        return self._driver_mgr.names() != ['noop']
+
 
 class _SubNotifier(Notifier):
 
