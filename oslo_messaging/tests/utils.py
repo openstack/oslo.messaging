@@ -43,7 +43,6 @@ class BaseTestCase(base.BaseTestCase):
         self.conf.prog = 'prog'
 
         moxfixture = self.useFixture(moxstubout.MoxStubout())
-        self.mox = moxfixture.mox
         self.stubs = moxfixture.stubs
 
     def config(self, **kw):
