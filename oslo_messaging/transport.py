@@ -29,6 +29,7 @@ __all__ = [
 
 import logging
 
+from debtcollector import removals
 from oslo_config import cfg
 import six
 from six.moves.urllib import parse
@@ -145,6 +146,8 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
+@removals.removed_kwarg('aliases',
+                        'Parameter aliases is deprecated for removal.')
 def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
     """A factory method for Transport objects.
 
@@ -172,7 +175,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
                                   transport will deserialize remote exceptions
                                   from
     :type allowed_remote_exmods: list
-    :param aliases: A map of transport alias to transport name
+    :param aliases: DEPRECATED: A map of transport alias to transport name
     :type aliases: dict
     """
     allowed_remote_exmods = allowed_remote_exmods or []
@@ -252,6 +255,8 @@ class TransportURL(object):
     :type query: dict
     """
 
+    @removals.removed_kwarg('aliases',
+                            'Parameter aliases is deprecated for removal.')
     def __init__(self, conf, transport=None, virtual_host=None, hosts=None,
                  aliases=None, query=None):
         self.conf = conf
@@ -282,7 +287,7 @@ class TransportURL(object):
         final_transport = self.aliases.get(transport, transport)
         if not self._deprecation_logged and final_transport != transport:
             # NOTE(sileht): The first step is deprecate this one cycle.
-            # To ensure deployer have updated they configuration during Octavia
+            # To ensure deployer have updated they configuration during Ocata
             # Then in P we will deprecate aliases kwargs of TransportURL() and
             # get_transport() for consuming application
             LOG.warning('legacy "rpc_backend" is deprecated, '
