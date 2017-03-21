@@ -52,7 +52,8 @@ _pool_opts = [
     cfg.IntOpt('executor_thread_pool_size',
                default=64,
                deprecated_name="rpc_thread_pool_size",
-               help='Size of executor thread pool.'),
+               help='Size of executor thread pool when'
+               ' executor is threading or eventlet.'),
 ]
 
 
@@ -339,6 +340,10 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
             LOG.info(_LI("blocking executor handles only one message at "
                          "once. threading or eventlet executor is "
                          "recommended."))
+        elif self.executor_type == "eventlet":
+            eventletutils.warn_eventlet_not_patched(
+                expected_patched_modules=['thread'],
+                what="the 'oslo.messaging eventlet executor'")
 
         self.listener = None
 
@@ -402,18 +407,10 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
 
         executor_opts = {}
 
-        if self.executor_type == "threading":
+        if self.executor_type in ("threading", "eventlet"):
             executor_opts["max_workers"] = (
                 override_pool_size or self.conf.executor_thread_pool_size
             )
-        elif self.executor_type == "eventlet":
-            eventletutils.warn_eventlet_not_patched(
-                expected_patched_modules=['thread'],
-                what="the 'oslo.messaging eventlet executor'")
-            executor_opts["max_workers"] = (
-                override_pool_size or self.conf.executor_thread_pool_size
-            )
-
         self._work_executor = self._executor_cls(**executor_opts)
 
         try:
