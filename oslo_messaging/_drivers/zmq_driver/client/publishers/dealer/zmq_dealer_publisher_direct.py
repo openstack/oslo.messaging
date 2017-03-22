@@ -92,9 +92,17 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
         self.receiver.unregister_socket(socket)
 
     def send_request(self, socket, request):
+        if hasattr(request, 'timeout'):
+            _stop = tenacity.stop_after_delay(request.timeout)
+        elif request.retry is not None and request.retry > 0:
+            # no rpc_response_timeout option if notification
+            _stop = tenacity.stop_after_attempt(request.retry)
+        else:
+            # well, now what?
+            _stop = tenacity.stop_after_delay(60)
+
         @tenacity.retry(retry=tenacity.retry_if_exception_type(zmq.Again),
-                        stop=tenacity.stop_after_delay(
-                            self.conf.rpc_response_timeout))
+                        stop=_stop)
         def send_retrying():
             if request.msg_type in zmq_names.MULTISEND_TYPES:
                 for _ in range(socket.connections_count()):

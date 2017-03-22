@@ -19,6 +19,7 @@ from oslo_config import cfg
 from oslo_messaging._drivers.zmq_driver.proxy import zmq_proxy
 from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging._i18n import _LI
+from oslo_messaging.transport import TransportURL
 
 LOG = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def main():
     opt_group = cfg.OptGroup(name='zmq_proxy_opts',
                              title='ZeroMQ proxy options')
     conf.register_opts(zmq_proxy.zmq_proxy_opts, group=opt_group)
-    zmq_options.register_opts(conf)
+    zmq_options.register_opts(conf, TransportURL.parse(conf))
     zmq_proxy.parse_command_line_args(conf)
 
     reactor = zmq_proxy.ZmqProxy(conf)
