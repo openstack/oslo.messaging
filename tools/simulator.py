@@ -457,7 +457,7 @@ class RPCClient(Client):
 
 class NotifyClient(Client):
     def __init__(self, client_id, transport, topic, wait_after_msg):
-        client = notify.Notifier(transport, driver='messaging', topic=topic)
+        client = notify.Notifier(transport, driver='messaging', topics=topic)
         client = client.prepare(publisher_id='publisher-%d' % client_id)
         method = _notify
         super(NotifyClient, self).__init__(client_id, client, method,
