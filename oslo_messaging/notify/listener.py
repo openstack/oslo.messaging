@@ -225,8 +225,8 @@ def get_notification_listener(transport, targets, endpoints,
     :type targets: list of Target
     :param endpoints: a list of endpoint objects
     :type endpoints: list
-    :param executor: name of a message executor - for example
-                     'eventlet', 'blocking'
+    :param executor: name of message executor - available values are
+                     'eventlet', 'blocking' and 'threading'
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer
@@ -261,8 +261,8 @@ def get_batch_notification_listener(transport, targets, endpoints,
     :type targets: list of Target
     :param endpoints: a list of endpoint objects
     :type endpoints: list
-    :param executor: name of a message executor - for example
-                     'eventlet', 'blocking'
+    :param executor: name of message executor - available values are
+                     'eventlet', 'blocking' and 'threading'
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer

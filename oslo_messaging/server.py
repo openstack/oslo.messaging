@@ -321,8 +321,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         :param dispatcher: has a dispatch() method which is invoked for each
                            incoming request
         :type dispatcher: DispatcherBase
-        :param executor: name of message executor - for example
-                         'eventlet', 'blocking'
+        :param executor: name of message executor - available values are
+                         'eventlet', 'blocking' and 'threading'
         :type executor: str
         """
         self.conf = transport.conf
