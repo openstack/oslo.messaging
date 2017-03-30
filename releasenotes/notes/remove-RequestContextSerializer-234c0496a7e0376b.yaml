@@ -1,0 +1,4 @@
+---
+upgrade:
+  - RequestContextSerializer was deprecated since 4.6, and it
+    isn't used by any other project, so we can remove it safely.
