@@ -829,6 +829,7 @@ class Controller(pyngus.ConnectionEventHandler):
         self._container_name = config.oslo_messaging_amqp.container_name
         self.idle_timeout = config.oslo_messaging_amqp.idle_timeout
         self.trace_protocol = config.oslo_messaging_amqp.trace
+        self.ssl = config.oslo_messaging_amqp.ssl
         self.ssl_ca_file = config.oslo_messaging_amqp.ssl_ca_file
         self.ssl_cert_file = config.oslo_messaging_amqp.ssl_cert_file
         self.ssl_key_file = config.oslo_messaging_amqp.ssl_key_file
@@ -975,6 +976,8 @@ class Controller(pyngus.ConnectionEventHandler):
             conn_props["idle-time-out"] = float(self.idle_timeout)
         if self.trace_protocol:
             conn_props["x-trace-protocol"] = self.trace_protocol
+        if self.ssl:
+            conn_props["x-ssl"] = self.ssl
         if self.ssl_ca_file:
             conn_props["x-ssl-ca-file"] = self.ssl_ca_file
         if self.ssl_cert_file:
