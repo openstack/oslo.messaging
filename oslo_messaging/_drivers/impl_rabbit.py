@@ -596,24 +596,6 @@ class Connection(object):
                   ' %(hostname)s:%(port)s',
                   self._get_connection_info())
 
-        # FIXME(gordc): wrapper to catch both kombu v3 and v4 errors
-        # remove this and only catch OperationalError when >4.0.0
-        if hasattr(kombu.exceptions, 'OperationalError'):
-            self.recoverable_errors = kombu.exceptions.OperationalError
-        else:
-            # NOTE(sileht): Some dummy driver like the in-memory one doesn't
-            # have notion of recoverable connection, so we must raise the
-            # original exception like kombu does in this case.
-            has_modern_errors = hasattr(
-                self.connection.transport, 'recoverable_connection_errors',
-            )
-            if has_modern_errors:
-                self.recoverable_errors = (
-                    self.connection.recoverable_channel_errors +
-                    self.connection.recoverable_connection_errors)
-            else:
-                self.recoverable_errors = ()
-
         # NOTE(sileht): kombu recommend to run heartbeat_check every
         # seconds, but we use a lock around the kombu connection
         # so, to not lock to much this lock to most of the time do nothing
@@ -825,7 +807,7 @@ class Connection(object):
             ret, channel = autoretry_method()
             self._set_current_channel(channel)
             return ret
-        except self.recoverable_errors as exc:
+        except kombu.exceptions.OperationalError as exc:
             LOG.debug("Received recoverable error from kombu:",
                       exc_info=True)
             error_callback and error_callback(exc)
@@ -895,7 +877,7 @@ class Connection(object):
             try:
                 for consumer, tag in self._consumers.items():
                     consumer.cancel(tag=tag)
-            except self.recoverable_errors:
+            except kombu.exceptions.OperationalError:
                 self.ensure_connection()
             self._consumers.clear()
             self._active_tags.clear()
@@ -1006,7 +988,7 @@ class Connection(object):
                             self.connection.drain_events(timeout=0.001)
                         except socket.timeout:
                             pass
-                    except self.recoverable_errors as exc:
+                    except kombu.exceptions.OperationalError as exc:
                         LOG.info(_LI("A recoverable connection/channel error "
                                      "occurred, trying to reconnect: %s"), exc)
                         self.ensure_connection()
