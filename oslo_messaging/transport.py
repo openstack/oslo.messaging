@@ -437,7 +437,7 @@ class TransportURL(object):
             username = password = port = None
 
             if '@' in host:
-                username, hostname = host.split('@', 1)
+                username, hostname = host.rsplit('@', 1)
                 if ':' in username:
                     username, password = username.split(':', 1)
                     password = parse.unquote(password)
