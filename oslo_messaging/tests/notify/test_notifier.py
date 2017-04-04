@@ -441,10 +441,12 @@ group_2:
             with mock.patch('stevedore.dispatch.DispatchExtensionManager',
                             return_value=self._fake_extension_manager(
                                 mock.MagicMock())):
-                self.router._load_notifiers()
-                groups = list(self.router.routing_groups.keys())
-                groups.sort()
-                self.assertEqual(['group_1', 'group_2'], groups)
+                with mock.patch('oslo_messaging.notify.'
+                                '_impl_routing.LOG'):
+                    self.router._load_notifiers()
+                    groups = list(self.router.routing_groups.keys())
+                    groups.sort()
+                    self.assertEqual(['group_1', 'group_2'], groups)
 
     def test_get_drivers_for_message_accepted_events(self):
         config = r"""
@@ -593,12 +595,15 @@ group_1:
                                config_file):
             with mock.patch('stevedore.dispatch.DispatchExtensionManager',
                             return_value=pm):
-                self.notifier.info({}, 'my_event', {})
-                self.assertFalse(bar_driver.info.called)
-                rpc_driver.notify.assert_called_once_with(
-                    {}, mock.ANY, 'INFO', None)
-                rpc2_driver.notify.assert_called_once_with(
-                    {}, mock.ANY, 'INFO', None)
+                with mock.patch('oslo_messaging.notify.'
+                                '_impl_routing.LOG'):
+
+                    self.notifier.info({}, 'my_event', {})
+                    self.assertFalse(bar_driver.info.called)
+                    rpc_driver.notify.assert_called_once_with(
+                        {}, mock.ANY, 'INFO', None)
+                    rpc2_driver.notify.assert_called_once_with(
+                        {}, mock.ANY, 'INFO', None)
 
 
 class TestNoOpNotifier(test_utils.BaseTestCase):
