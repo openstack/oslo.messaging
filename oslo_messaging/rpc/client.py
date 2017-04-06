@@ -282,7 +282,7 @@ class RPCClient(_BaseCallContext):
     However, this class can be used directly without wrapping it another class.
     For example::
 
-        transport = messaging.get_transport(cfg.CONF)
+        transport = messaging.get_rpc_transport(cfg.CONF)
         target = messaging.Target(topic='test', version='2.0')
         client = messaging.RPCClient(transport, target)
         client.call(ctxt, 'test', arg=arg)
@@ -440,12 +440,12 @@ class RPCClient(_BaseCallContext):
         method are handled are quite subtle.
 
         Firstly, if the remote exception is contained in one of the modules
-        listed in the allow_remote_exmods messaging.get_transport() parameter,
-        then it this exception will be re-raised by call(). However, such
-        locally re-raised remote exceptions are distinguishable from the same
-        exception type raised locally because re-raised remote exceptions are
-        modified such that their class name ends with the '_Remote' suffix so
-        you may do::
+        listed in the allow_remote_exmods messaging.get_rpc_transport()
+        parameter, then it this exception will be re-raised by call(). However,
+        such locally re-raised remote exceptions are distinguishable from the
+        same exception type raised locally because re-raised remote exceptions
+        are modified such that their class name ends with the '_Remote' suffix
+        so you may do::
 
             if ex.__class__.__name__.endswith('_Remote'):
                 # Some special case for locally re-raised remote exceptions

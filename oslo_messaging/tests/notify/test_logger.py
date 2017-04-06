@@ -58,7 +58,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logger(self, mock_utcnow):
-        with mock.patch('oslo_messaging.transport.get_transport',
+        with mock.patch('oslo_messaging.transport._get_transport',
                         return_value=test_notifier._FakeTransport(self.conf)):
             self.logger = oslo_messaging.LoggingNotificationHandler('test://')
 
@@ -102,7 +102,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logging_conf(self, mock_utcnow):
-        with mock.patch('oslo_messaging.transport.get_transport',
+        with mock.patch('oslo_messaging.transport._get_transport',
                         return_value=test_notifier._FakeTransport(self.conf)):
             logging.config.dictConfig({
                 'version': 1,

@@ -20,12 +20,12 @@ methods which may be invoked remotely by clients over a given transport.
 To create an RPC server, you supply a transport, target and a list of
 endpoints.
 
-A transport can be obtained simply by calling the get_transport() method::
+A transport can be obtained simply by calling the get_rpc_transport() method::
 
-    transport = messaging.get_transport(conf)
+    transport = messaging.get_rpc_transport(conf)
 
 which will load the appropriate transport driver according to the user's
-messaging configuration. See get_transport() for more details.
+messaging configuration. See get_rpc_transport() for more details.
 
 The target supplied when creating an RPC server expresses the topic, server
 name and - optionally - the exchange to listen on. See Target for more details
@@ -98,7 +98,7 @@ A simple example of an RPC server with multiple endpoints might be::
         def test(self, ctx, arg):
             return arg
 
-    transport = oslo_messaging.get_transport(cfg.CONF)
+    transport = oslo_messaging.get_rpc_transport(cfg.CONF)
     target = oslo_messaging.Target(topic='test', server='server1')
     endpoints = [
         ServerControlEndpoint(None),

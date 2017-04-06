@@ -77,8 +77,33 @@ class Transport(object):
     This is a mostly opaque handle for an underlying messaging transport
     driver.
 
-    It has a single 'conf' property which is the cfg.ConfigOpts instance used
-    to construct the transport object.
+    RPCs and Notifications may use separate messaging systems that utilize
+    different drivers, access permissions, message delivery, etc. To ensure
+    the correct messaging functionality, the corresponding method should be
+    used to construct a Transport object from transport configuration
+    gleaned from the user's configuration and, optionally, a transport URL.
+
+    The factory method for RPC Transport objects::
+
+        def get_rpc_transport(conf, url=None,
+                              allowed_remote_exmods=None)
+
+    If a transport URL is supplied as a parameter, any transport configuration
+    contained in it takes precedence. If no transport URL is supplied, but
+    there is a transport URL supplied in the user's configuration then that
+    URL will take the place of the URL parameter.
+
+    The factory method for Notification Transport objects::
+
+        def get_notification_transport(conf, url=None,
+                                       allowed_remote_exmods=None)
+
+    If no transport URL is provided, the URL in the notifications section of
+    the config file will be used.  If that URL is also absent, the same
+    transport as specified in the user's default section will be used.
+
+    The Transport has a single 'conf' property which is the cfg.ConfigOpts
+    instance used to construct the transport object.
     """
 
     def __init__(self, driver):
@@ -146,6 +171,31 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
+def _get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
+    allowed_remote_exmods = allowed_remote_exmods or []
+    conf.register_opts(_transport_opts)
+
+    if not isinstance(url, TransportURL):
+        url = TransportURL.parse(conf, url, aliases)
+
+    kwargs = dict(default_exchange=conf.control_exchange,
+                  allowed_remote_exmods=allowed_remote_exmods)
+
+    try:
+        mgr = driver.DriverManager('oslo.messaging.drivers',
+                                   url.transport.split('+')[0],
+                                   invoke_on_load=True,
+                                   invoke_args=[conf, url],
+                                   invoke_kwds=kwargs)
+    except RuntimeError as ex:
+        raise DriverLoadFailure(url.transport, ex)
+
+    return Transport(mgr.driver)
+
+
+@removals.remove(
+    message='use get_rpc_transport or get_notification_transport'
+)
 @removals.removed_kwarg('aliases',
                         'Parameter aliases is deprecated for removal.')
 def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
@@ -178,25 +228,8 @@ def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
     :param aliases: DEPRECATED: A map of transport alias to transport name
     :type aliases: dict
     """
-    allowed_remote_exmods = allowed_remote_exmods or []
-    conf.register_opts(_transport_opts)
-
-    if not isinstance(url, TransportURL):
-        url = TransportURL.parse(conf, url, aliases)
-
-    kwargs = dict(default_exchange=conf.control_exchange,
-                  allowed_remote_exmods=allowed_remote_exmods)
-
-    try:
-        mgr = driver.DriverManager('oslo.messaging.drivers',
-                                   url.transport.split('+')[0],
-                                   invoke_on_load=True,
-                                   invoke_args=[conf, url],
-                                   invoke_kwds=kwargs)
-    except RuntimeError as ex:
-        raise DriverLoadFailure(url.transport, ex)
-
-    return Transport(mgr.driver)
+    return _get_transport(conf, url,
+                          allowed_remote_exmods, aliases)
 
 
 class TransportHost(object):
