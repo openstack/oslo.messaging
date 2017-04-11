@@ -129,7 +129,7 @@ class ConfFixture(fixtures.Fixture):
 
     @transport_driver.setter
     def transport_driver(self, value):
-        self.conf.set_override('rpc_backend', value, enforce_type=True)
+        self.conf.set_override('rpc_backend', value)
 
     @property
     def response_timeout(self):
@@ -138,5 +138,4 @@ class ConfFixture(fixtures.Fixture):
 
     @response_timeout.setter
     def response_timeout(self, value):
-        self.conf.set_override('rpc_response_timeout', value,
-                               enforce_type=True)
+        self.conf.set_override('rpc_response_timeout', value)

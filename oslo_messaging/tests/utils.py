@@ -59,7 +59,7 @@ class BaseTestCase(base.BaseTestCase):
         """
         group = kw.pop('group', None)
         for k, v in kw.items():
-            self.conf.set_override(k, v, group, enforce_type=True)
+            self.conf.set_override(k, v, group)
 
 
 class ServerThreadHelper(threading.Thread):
