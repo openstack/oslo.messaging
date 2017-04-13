@@ -86,12 +86,18 @@ amqp1_opts = [
     cfg.StrOpt('username',
                default='',
                deprecated_group='amqp1',
+               deprecated_for_removal=True,
+               deprecated_reason='Should use configuration option '
+                                 'transport_url to provide the username.',
                help='User name for message broker authentication'),
 
     cfg.StrOpt('password',
                default='',
                deprecated_group='amqp1',
                secret=True,
+               deprecated_for_removal=True,
+               deprecated_reason='Should use configuration option '
+                                 'transport_url to provide the password.',
                help='Password for message broker authentication'),
 
     # Network connection failure retry options
