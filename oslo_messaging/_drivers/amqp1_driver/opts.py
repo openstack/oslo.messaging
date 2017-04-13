@@ -83,6 +83,10 @@ amqp1_opts = [
                deprecated_group='amqp1',
                help='Name of configuration file (without .conf suffix)'),
 
+    cfg.StrOpt('sasl_default_realm',
+               default='',
+               help='SASL realm to use if no realm present in username'),
+
     cfg.StrOpt('username',
                default='',
                deprecated_group='amqp1',

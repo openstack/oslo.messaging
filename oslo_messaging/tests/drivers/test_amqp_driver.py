@@ -711,7 +711,7 @@ class TestCyrusAuthentication(test_utils.BaseTestCase):
         # the temp dir after the first test is run
         os.makedirs(cls._conf_dir)
         db = os.path.join(cls._conf_dir, 'openstack.sasldb')
-        _t = "echo secret | saslpasswd2 -c -p -f ${db} joe"
+        _t = "echo secret | saslpasswd2 -c -p -f ${db} -u myrealm joe"
         cmd = Template(_t).substitute(db=db)
         try:
             subprocess.check_call(args=cmd, shell=True)
@@ -744,7 +744,7 @@ mech_list: ${mechs}
         _dir = TestCyrusAuthentication._conf_dir
         self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
                                   sasl_mechanisms=_mechs,
-                                  user_credentials=["\0joe\0secret"],
+                                  user_credentials=["\0joe@myrealm\0secret"],
                                   sasl_config_dir=_dir,
                                   sasl_config_name="openstack")
         self._broker.start()
@@ -757,45 +757,44 @@ mech_list: ${mechs}
             self._broker = None
         super(TestCyrusAuthentication, self).tearDown()
 
-    def test_authentication_ok(self):
-        """Verify that username and password given in TransportHost are
-        accepted by the broker.
-        """
-        addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
-                                            self._broker.port)
+    def _authentication_test(self, addr, retry=None):
         url = oslo_messaging.TransportURL.parse(self.conf, addr)
         driver = amqp_driver.ProtonDriver(self.conf, url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
             driver.listen(target, None, None)._poll_style_listener, 1)
-        rc = driver.send(target, {"context": True},
-                         {"method": "echo"}, wait_for_reply=True)
-        self.assertIsNotNone(rc)
-        listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
-        driver.cleanup()
+        try:
+            rc = driver.send(target, {"context": True},
+                             {"method": "echo"}, wait_for_reply=True,
+                             retry=retry)
+            self.assertIsNotNone(rc)
+            listener.join(timeout=30)
+            self.assertFalse(listener.isAlive())
+        finally:
+            driver.cleanup()
+
+    def test_authentication_ok(self):
+        """Verify that username and password given in TransportHost are
+        accepted by the broker.
+        """
+        addr = "amqp://joe@myrealm:secret@%s:%d" % (self._broker.host,
+                                                    self._broker.port)
+        self._authentication_test(addr)
 
     def test_authentication_failure(self):
         """Verify that a bad password given in TransportHost is
         rejected by the broker.
         """
-        addr = "amqp://joe:badpass@%s:%d" % (self._broker.host,
-                                             self._broker.port)
-        url = oslo_messaging.TransportURL.parse(self.conf, addr)
-        driver = amqp_driver.ProtonDriver(self.conf, url)
-        target = oslo_messaging.Target(topic="test-topic")
-        _ListenerThread(
-            driver.listen(target, None, None)._poll_style_listener, 1)
+        addr = "amqp://joe@myrealm:badpass@%s:%d" % (self._broker.host,
+                                                     self._broker.port)
         try:
-            driver.send(target, {"context": True}, {"method": "echo"},
-                        wait_for_reply=True, retry=2)
+            self._authentication_test(addr, retry=2)
         except oslo_messaging.MessageDeliveryFailure as e:
             # verify the exception indicates the failure was an authentication
             # error
             self.assertTrue('amqp:unauthorized-access' in str(e))
         else:
             self.assertIsNone("Expected authentication failure")
-        driver.cleanup()
 
     def test_authentication_bad_mechs(self):
         """Verify that the connection fails if the client's SASL mechanisms do
@@ -803,40 +802,41 @@ mech_list: ${mechs}
         """
         self.config(sasl_mechanisms="EXTERNAL ANONYMOUS",
                     group="oslo_messaging_amqp")
-        addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
-                                            self._broker.port)
-        url = oslo_messaging.TransportURL.parse(self.conf, addr)
-        driver = amqp_driver.ProtonDriver(self.conf, url)
-        target = oslo_messaging.Target(topic="test-topic")
-        _ListenerThread(
-            driver.listen(target, None, None)._poll_style_listener, 1)
+        addr = "amqp://joe@myrealm:secret@%s:%d" % (self._broker.host,
+                                                    self._broker.port)
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
-                          driver.send,
-                          target, {"context": True},
-                          {"method": "echo"},
-                          wait_for_reply=True,
+                          self._authentication_test,
+                          addr,
                           retry=0)
-        driver.cleanup()
 
     def test_authentication_default_username(self):
         """Verify that a configured username/password is used if none appears
         in the URL.
+        Deprecated: username password deprecated in favor of transport_url
         """
         addr = "amqp://%s:%d" % (self._broker.host, self._broker.port)
-        self.config(username="joe",
+        self.config(username="joe@myrealm",
                     password="secret",
                     group="oslo_messaging_amqp")
-        url = oslo_messaging.TransportURL.parse(self.conf, addr)
-        driver = amqp_driver.ProtonDriver(self.conf, url)
-        target = oslo_messaging.Target(topic="test-topic")
-        listener = _ListenerThread(
-            driver.listen(target, None, None)._poll_style_listener, 1)
-        rc = driver.send(target, {"context": True},
-                         {"method": "echo"}, wait_for_reply=True)
-        self.assertIsNotNone(rc)
-        listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
-        driver.cleanup()
+        self._authentication_test(addr)
+
+    def test_authentication_default_realm(self):
+        """Verify that default realm is used if none present in username"""
+        addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
+                                            self._broker.port)
+        self.config(sasl_default_realm="myrealm",
+                    group="oslo_messaging_amqp")
+        self._authentication_test(addr)
+
+    def test_authentication_ignore_default_realm(self):
+        """Verify that default realm is not used if realm present in
+        username
+        """
+        addr = "amqp://joe@myrealm:secret@%s:%d" % (self._broker.host,
+                                                    self._broker.port)
+        self.config(sasl_default_realm="bad-realm",
+                    group="oslo_messaging_amqp")
+        self._authentication_test(addr)
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
