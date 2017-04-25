@@ -763,13 +763,14 @@ class NotificationServer(Server):
 
 
 class Hosts(object):
-    """An order list of TransportHost addresses. Connection failover
-    progresses from one host to the next.  username and password come from the
-    configuration and are used only if no username/password was given in the
-    URL.
+    """An order list of TransportHost addresses. Connection failover progresses
+    from one host to the next.  username, password , and realm come from the
+    configuration and are used only if no username/password/realm is present in
+    the URL.
     """
     def __init__(self, entries=None, default_username=None,
-                 default_password=None):
+                 default_password=None,
+                 default_realm=None):
         if entries:
             self._entries = entries[:]
         else:
@@ -779,6 +780,8 @@ class Hosts(object):
             entry.port = entry.port or 5672
             entry.username = entry.username or default_username
             entry.password = entry.password or default_password
+            if default_realm and entry.username and '@' not in entry.username:
+                entry.username = entry.username + '@' + default_realm
         self._current = random.randint(0, len(self._entries) - 1)
 
     @property
@@ -840,7 +843,8 @@ class Controller(pyngus.ConnectionEventHandler):
         self.sasl_config_dir = config.oslo_messaging_amqp.sasl_config_dir
         self.sasl_config_name = config.oslo_messaging_amqp.sasl_config_name
         self.hosts = Hosts(hosts, config.oslo_messaging_amqp.username,
-                           config.oslo_messaging_amqp.password)
+                           config.oslo_messaging_amqp.password,
+                           config.oslo_messaging_amqp.sasl_default_realm)
         self.conn_retry_interval = \
             config.oslo_messaging_amqp.connection_retry_interval
         self.conn_retry_backoff = \
