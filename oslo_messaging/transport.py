@@ -365,6 +365,8 @@ class TransportURL(object):
 
         return url
 
+    @removals.removed_kwarg('aliases',
+                            'Parameter aliases is deprecated for removal.')
     @classmethod
     def parse(cls, conf, url=None, aliases=None):
         """Parse an url.
@@ -404,7 +406,7 @@ class TransportURL(object):
             conf.register_opts(_transport_opts)
         url = url or conf.transport_url
         if not url:
-            return cls(conf, aliases=aliases)
+            return cls(conf) if aliases is None else cls(conf, aliases=aliases)
 
         if not isinstance(url, six.string_types):
             raise InvalidTransportURL(url, 'Wrong URL type')
@@ -488,4 +490,7 @@ class TransportURL(object):
                         {'hosts_with_credentials': hosts_with_credentials,
                          'hosts_without_credentials':
                          hosts_without_credentials})
-        return cls(conf, transport, virtual_host, hosts, aliases, query)
+        if aliases is None:
+            return cls(conf, transport, virtual_host, hosts, query=query)
+        else:
+            return cls(conf, transport, virtual_host, hosts, aliases, query)
