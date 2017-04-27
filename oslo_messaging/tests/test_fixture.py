@@ -57,13 +57,13 @@ class TestConfFixture(test_utils.BaseTestCase):
     def test_old_notifications_config_override(self):
         conf = self.messaging_conf.conf
         conf.set_override(
-            "notification_driver", "messaging")
+            "notification_driver", ["messaging"])
         conf.set_override(
             "notification_transport_url", "http://xyz")
         conf.set_override(
             "notification_topics", ['topic1'])
 
-        self.assertEqual("messaging",
+        self.assertEqual(["messaging"],
                          conf.oslo_messaging_notifications.driver)
         self.assertEqual("http://xyz",
                          conf.oslo_messaging_notifications.transport_url)
