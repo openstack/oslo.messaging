@@ -339,8 +339,6 @@ class TestSerializer(test_utils.BaseTestCase):
 
         transport._send = mock.Mock()
 
-        msg = dict(method='foo',
-                   args=dict([(k, 's' + v) for k, v in self.args.items()]))
         kwargs = dict(wait_for_reply=True, timeout=None) if self.call else {}
         kwargs['retry'] = None
 
@@ -350,9 +348,12 @@ class TestSerializer(test_utils.BaseTestCase):
         serializer.deserialize_entity = mock.Mock()
         serializer.serialize_context = mock.Mock()
 
+        msg = dict(method='foo', args=dict())
         expected_side_effect = []
-        for arg in self.args:
-            expected_side_effect.append('s' + arg)
+        for k, v in self.args.items():
+            msg['args'][k] = 's' + v
+            expected_side_effect.append('s' + v)
+
         serializer.serialize_entity.side_effect = expected_side_effect
 
         if self.call:
