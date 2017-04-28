@@ -153,8 +153,10 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         super(TestMessagingNotifier, self).setUp()
 
         self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
-        self.stubs.Set(messaging, 'LOG', self.logger)
-        self.stubs.Set(msg_notifier, '_LOG', self.logger)
+        self.useFixture(fixtures.MockPatchObject(
+            messaging, 'LOG', self.logger))
+        self.useFixture(fixtures.MockPatchObject(
+            msg_notifier, '_LOG', self.logger))
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):

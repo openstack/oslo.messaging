@@ -12,6 +12,8 @@
 
 import logging
 
+import fixtures
+
 import oslo_messaging
 from oslo_messaging.notify import log_handler
 from oslo_messaging.tests.notify import test_notifier
@@ -38,7 +40,8 @@ class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
         def fake_notifier(*args, **kwargs):
             self.stub_flg = False
 
-        self.stubs.Set(notifier, 'error', fake_notifier)
+        self.useFixture(fixtures.MockPatchObject(
+            notifier, 'error', fake_notifier))
 
         logrecord = logging.LogRecord(name='name', level='WARN',
                                       pathname='/tmp', lineno=1, msg='Message',

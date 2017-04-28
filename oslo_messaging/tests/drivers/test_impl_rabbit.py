@@ -588,7 +588,8 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
                     cond.wait()
             return orig_reply_waiter(self, msg_id, timeout)
 
-        self.stubs.Set(amqpdriver.ReplyWaiter, 'wait', reply_waiter)
+        self.useFixture(fixtures.MockPatchObject(
+            amqpdriver.ReplyWaiter, 'wait', reply_waiter))
 
         def send_and_wait_for_reply(i, wait_for_reply):
             replies.append(driver.send(target,
