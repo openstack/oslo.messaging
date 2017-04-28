@@ -319,6 +319,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
         mock_utcnow.return_value = datetime.datetime.utcnow()
 
+        logger = mock.Mock()
+
         message = {
             'message_id': str(message_id),
             'publisher_id': 'test.localhost',
@@ -328,15 +330,15 @@ class TestLogNotifier(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        logger = mock.Mock()
-        logging.getLogger = mock.Mock()
-        logging.getLogger.return_value = logger
+        with mock.patch.object(logging, 'getLogger') as gl:
+            gl.return_value = logger
 
-        notifier.info({}, 'test.notify', 'bar')
+            notifier.info({}, 'test.notify', 'bar')
 
-        uuid.uuid4.assert_called_once_with()
-        logging.getLogger.assert_called_once_with('oslo.messaging.'
-                                                  'notification.test.notify')
+            uuid.uuid4.assert_called_once_with()
+            logging.getLogger.assert_called_once_with(
+                'oslo.messaging.notification.test.notify')
+
         logger.info.assert_called_once_with(JsonMessageMatcher(message))
 
         self.assertTrue(notifier.is_enabled())
@@ -349,14 +351,15 @@ class TestLogNotifier(test_utils.BaseTestCase):
                                                   'notification.foo'))
         logger.sample = None
 
-        logging.getLogger = mock.Mock()
-        logging.getLogger.return_value = logger
-
         msg = {'event_type': 'foo'}
-        driver.notify(None, msg, "sample", None)
 
-        logging.getLogger.assert_called_once_with('oslo.messaging.'
-                                                  'notification.foo')
+        with mock.patch.object(logging, 'getLogger') as gl:
+            gl.return_value = logger
+
+            driver.notify(None, msg, "sample", None)
+
+            logging.getLogger.assert_called_once_with('oslo.messaging.'
+                                                      'notification.foo')
 
     def test_mask_passwords(self):
         # Ensure that passwords are masked with notifications
