@@ -214,7 +214,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                 if hasattr(self, 'retry'):
                     send_kwargs['retry'] = self.retry
                 else:
-                    send_kwargs['retry'] = None
+                    send_kwargs['retry'] = -1
                 target = oslo_messaging.Target(topic='%s.%s' % (topic,
                                                                 self.priority))
                 calls.append(mock.call(target,
@@ -273,7 +273,7 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        self.assertEqual([(dict(user='alice'), message, 'INFO', None)],
+        self.assertEqual([(dict(user='alice'), message, 'INFO', -1)],
                          _impl_test.NOTIFICATIONS)
 
         uuid.uuid4.assert_called_once_with()
@@ -373,6 +373,31 @@ class TestLogNotifier(test_utils.BaseTestCase):
             driver.notify(None, message, 'info', 0)
 
         logger.info.assert_called_once_with(mask_str)
+
+
+class TestNotificationConfig(test_utils.BaseTestCase):
+
+    def test_retry_config(self):
+        conf = self.messaging_conf.conf
+        self.config(driver=['messaging'],
+                    group='oslo_messaging_notifications')
+
+        conf.set_override('retry', 3, group='oslo_messaging_notifications')
+        transport = _FakeTransport(conf)
+        notifier = oslo_messaging.Notifier(transport)
+
+        self.assertEqual(3, notifier.retry)
+
+    def test_notifier_retry_config(self):
+        conf = self.messaging_conf.conf
+        self.config(driver=['messaging'],
+                    group='oslo_messaging_notifications')
+
+        conf.set_override('retry', 3, group='oslo_messaging_notifications')
+        transport = _FakeTransport(conf)
+        notifier = oslo_messaging.Notifier(transport, retry=5)
+
+        self.assertEqual(5, notifier.retry)
 
 
 class TestRoutingNotifier(test_utils.BaseTestCase):
@@ -603,9 +628,9 @@ group_1:
                     self.notifier.info({}, 'my_event', {})
                     self.assertFalse(bar_driver.info.called)
                     rpc_driver.notify.assert_called_once_with(
-                        {}, mock.ANY, 'INFO', None)
+                        {}, mock.ANY, 'INFO', -1)
                     rpc2_driver.notify.assert_called_once_with(
-                        {}, mock.ANY, 'INFO', None)
+                        {}, mock.ANY, 'INFO', -1)
 
 
 class TestNoOpNotifier(test_utils.BaseTestCase):
