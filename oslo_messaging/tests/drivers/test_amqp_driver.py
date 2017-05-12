@@ -53,7 +53,8 @@ _proton = importutils.try_import("proton")
 CYRUS_ENABLED = (pyngus and pyngus.VERSION >= (2, 0, 0) and _proton
                  and getattr(_proton.SASL, "extended", lambda: False)())
 # same with SSL
-SSL_ENABLED = (_proton and getattr(_proton.SSL, "present", lambda: False)())
+# SSL_ENABLED = (_proton and getattr(_proton.SSL, "present", lambda: False)())
+SSL_ENABLED = False
 
 LOG = logging.getLogger(__name__)
 
