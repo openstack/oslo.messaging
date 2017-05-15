@@ -1472,11 +1472,10 @@ class TestSSL(test_utils.BaseTestCase):
         conf['c_name'] = 'client.com'
         self._ssl_config = conf
         ssl_setup = [
-            # create self-signed CA key and certificate:
-            Template('openssl genrsa -out ${ca_key} 2048').substitute(conf),
-            Template('openssl req -x509 -key ${ca_key} -subj'
-                     ' "/CN=Trusted.CA.com" -out'
-                     ' ${ca_cert}').substitute(conf),
+            # create self-signed CA certificate:
+            Template('openssl req -x509 -nodes -newkey rsa:2048'
+                     ' -subj "/CN=Trusted.CA.com" -keyout ${ca_key}'
+                     ' -out ${ca_cert}').substitute(conf),
             # create Server key and certificate:
             Template('openssl genrsa -out ${s_key} 2048').substitute(conf),
             Template('openssl req -new -key ${s_key} -subj /CN=${s_name}'
