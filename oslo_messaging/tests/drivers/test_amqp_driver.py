@@ -1420,16 +1420,24 @@ class TestMessageRetransmit(_AmqpBrokerTestCase):
                                                  None,
                                                  None)._poll_style_listener,
                                    1)
-        rc = driver.send(target, {"context": "whatever"},
-                         {"method": "echo", "id": "blah"},
-                         wait_for_reply=True,
-                         retry=2)  # initial send + up to 2 resends
-        self.assertIsNotNone(rc)
-        self.assertEqual(0, self._nack_count)
-        self.assertEqual(rc.get('correlation-id'), 'blah')
-        listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
-        driver.cleanup()
+        try:
+            rc = driver.send(target, {"context": "whatever"},
+                             {"method": "echo", "id": "blah"},
+                             wait_for_reply=True,
+                             retry=2)  # initial send + up to 2 resends
+        except Exception:
+            # Some test runs are expected to raise an exception,
+            # clean up the listener since no message was received
+            listener.kill(timeout=30)
+            raise
+        else:
+            self.assertIsNotNone(rc)
+            self.assertEqual(0, self._nack_count)
+            self.assertEqual(rc.get('correlation-id'), 'blah')
+            listener.join(timeout=30)
+        finally:
+            self.assertFalse(listener.isAlive())
+            driver.cleanup()
 
     def test_released(self):
         # should retry and succeed
