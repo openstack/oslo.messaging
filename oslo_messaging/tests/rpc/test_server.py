@@ -113,7 +113,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         super(TestRPCServer, self).setUp(conf=cfg.ConfigOpts())
 
     def test_constructor(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
         serializer = object()
@@ -135,7 +135,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertEqual('blocking', server.executor_type)
 
     def test_constructor_without_explicit_RPCAccessPolicy(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
         serializer = object()
@@ -148,7 +148,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertEqual(FutureWarning, w.category)
 
     def test_server_wait_method(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
         serializer = object()
@@ -180,7 +180,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertEqual(1, listener.cleanup.call_count)
 
     def test_no_target_server(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         server = oslo_messaging.get_rpc_server(
             transport,
@@ -195,7 +195,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             self.assertTrue(False)
 
     def test_no_server_topic(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(server='testserver')
         server = oslo_messaging.get_rpc_server(transport, target, [])
         try:
@@ -207,7 +207,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             self.assertTrue(False)
 
     def _test_no_client_topic(self, call=True):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         client = self._setup_client(transport, topic=None)
 
@@ -228,7 +228,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self._test_no_client_topic(call=False)
 
     def test_client_call_timeout(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         finished = False
         wait = threading.Condition()
@@ -256,7 +256,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self._stop_server(client, server_thread)
 
     def test_unknown_executor(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         try:
             oslo_messaging.get_rpc_server(transport, None, [], executor='foo')
@@ -267,7 +267,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             self.assertTrue(False)
 
     def test_cast(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         class TestEndpoint(object):
             def __init__(self):
@@ -288,7 +288,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertEqual(['dsfoo', 'dsbar'], endpoint.pings)
 
     def test_call(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         class TestEndpoint(object):
             def ping(self, ctxt, arg):
@@ -307,7 +307,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self._stop_server(client, server_thread)
 
     def test_direct_call(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         class TestEndpoint(object):
             def ping(self, ctxt, arg):
@@ -327,7 +327,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self._stop_server(client, server_thread)
 
     def test_context(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         class TestEndpoint(object):
             def ctxt_check(self, ctxt, key):
@@ -344,7 +344,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self._stop_server(client, server_thread)
 
     def test_failure(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         class TestEndpoint(object):
             def ping(self, ctxt, arg):
@@ -384,7 +384,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self._stop_server(client, server_thread)
 
     def test_expected_failure(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         debugs = []
         errors = []
@@ -529,9 +529,9 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         url1 = 'fake:///' + (self.exchange1 or '')
         url2 = 'fake:///' + (self.exchange2 or '')
 
-        transport1 = oslo_messaging.get_transport(self.conf, url=url1)
+        transport1 = oslo_messaging.get_rpc_transport(self.conf, url=url1)
         if url1 != url2:
-            transport2 = oslo_messaging.get_transport(self.conf, url=url1)
+            transport2 = oslo_messaging.get_rpc_transport(self.conf, url=url1)
         else:
             transport2 = transport1
 

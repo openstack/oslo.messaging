@@ -4,8 +4,6 @@ Transport
 
 .. currentmodule:: oslo_messaging
 
-.. autofunction:: get_transport
-
 .. autoclass:: Transport
 
 .. autoclass:: TransportURL

@@ -171,8 +171,8 @@ def get_notification_transport(conf, url=None,
                        group='oslo_messaging_notifications')
     if url is None:
         url = conf.oslo_messaging_notifications.transport_url
-    return msg_transport.get_transport(conf, url,
-                                       allowed_remote_exmods, aliases)
+    return msg_transport._get_transport(conf, url,
+                                        allowed_remote_exmods, aliases)
 
 
 class Notifier(object):

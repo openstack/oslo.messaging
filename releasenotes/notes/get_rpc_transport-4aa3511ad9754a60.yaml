@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Add get_rpc_transport call to make the API clear for the separation
+    of RPC and Notification messaging backends.
+deprecations:
+  - |
+    Deprecate get_transport and use get_rpc_transport or
+    get_notification_transport to make the API usage clear for the
+    separation of RPC and Notification messaging backends.
