@@ -227,6 +227,14 @@ class AMQPListener(base.PollStyleListener):
     @base.batch_poll_helper
     def poll(self, timeout=None):
         stopwatch = timeutils.StopWatch(duration=timeout).start()
+        
+        # if the listener is stopped, the loop cannot be executed, 
+        # resulting in no consumed messages returned.
+        if self._stopped.is_set():
+            do_pending_tasks(self._pending_tasks)
+            
+            if self.incoming:
+                return self.incoming.pop(0)
 
         while not self._stopped.is_set():
             do_pending_tasks(self._pending_tasks)
