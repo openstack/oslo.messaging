@@ -491,7 +491,7 @@ class AMQPDriverBase(base.BaseDriver):
                     log_msg += "exchange '%(exchange)s'" \
                                " topic '%(topic)s'" % {
                                    'exchange': exchange,
-                                   'topic': target.topic}
+                                   'topic': topic}
                     LOG.debug(log_msg)
                     conn.topic_send(exchange_name=exchange, topic=topic,
                                     msg=msg, timeout=timeout, retry=retry)
