@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from debtcollector import deprecate
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -127,15 +128,20 @@ rpc_opts = [
 class PikaDriver(base.BaseDriver):
     """Pika Driver
 
-    The ``pika`` driver is the successor to the existing rabbit/kombu driver.
-    It is based on the Pika client library and supports the RabbitMQ broker as
-    the messaging back end.
-
-    See :doc:`pika_driver` for details.
+    **Warning**: The ``pika`` driver has been deprecated and will be removed in
+    a future release.  It is recommended that all users of the ``pika`` driver
+    transition to using the ``rabbit`` driver.
     """
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
+
+        deprecate("The pika driver is no longer maintained. It has been"
+                  " deprecated",
+                  message="It is recommended that all users of the pika driver"
+                  " transition to using the rabbit driver.",
+                  version="pike", removal_version="rocky")
+
         opt_group = cfg.OptGroup(name='oslo_messaging_pika',
                                  title='Pika driver options')
         conf.register_group(opt_group)

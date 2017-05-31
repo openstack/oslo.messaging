@@ -4,6 +4,10 @@ Pika Driver Deployment Guide
 
 .. currentmodule:: oslo_messaging
 
+.. warning:: the Pika driver is no longer maintained and will be
+   removed from Oslo.Messaging at a future date.  It is recommended that
+   all users of the Pika driver transition to using the Rabbit driver.
+
 ============
 Introduction
 ============

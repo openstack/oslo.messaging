@@ -1,0 +1,8 @@
+---
+deprecations:
+  - The pika driver has been deprecated for removal in Rocky.  This
+    driver was developed as a replacement for the default rabbit
+    driver. However testing has not shown any appreciable improvement
+    over the default rabbit driver in terms of performance and
+    stability.
+
