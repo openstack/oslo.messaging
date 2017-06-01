@@ -47,12 +47,8 @@ Server will send the returned value back to the requesting client via the
 transport.
 
 The executor parameter controls how incoming messages will be received and
-dispatched. By default, the most simple executor is used - the blocking
-executor.  This executor processes inbound RPC requests on the server's thread,
-blocking it from processing additional requests until it finishes with the
-current request. This includes time spent sending the reply message to the
-transport if the method returns a result.  Refer to the Executor documentation
-for descriptions of the other types of executors.
+dispatched. Refer to the Executor documentation for descriptions of the types
+of executors.
 
 *Note:* If the "eventlet" executor is used, the threading and time library need
 to be monkeypatched.
@@ -105,7 +101,7 @@ A simple example of an RPC server with multiple endpoints might be::
         TestEndpoint(),
     ]
     server = oslo_messaging.get_rpc_server(transport, target, endpoints,
-                                           executor='blocking')
+                                           executor='eventlet')
     try:
         server.start()
         while True:
@@ -199,7 +195,7 @@ def get_rpc_server(transport, target, endpoints,
     :param endpoints: a list of endpoint objects
     :type endpoints: list
     :param executor: name of message executor - available values are
-                     'eventlet', 'blocking' and 'threading'
+                     'eventlet' and 'threading'
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer
