@@ -56,6 +56,13 @@ class MessageOperationsHandler(object):
             target=self._process_in_background)
         self._shutdown_thread.daemon = True
 
+        # HACK(sileht): this is set by the server.Server temporary
+        # to not have to rewrite the entire internal API to pass
+        # executor everywhere to make Listener aware of the server
+        # executor. All this hack is only for the blocking executor.
+        # And it's deprecated so...
+        self._executor = None
+
     def stop(self):
         self._shutdown.set()
 
@@ -85,9 +92,16 @@ class MessageOperationsHandler(object):
 
     def do(self, task):
         "Put the task in the queue and waits until the task is completed."
-        event = threading.Event()
-        self._tasks.put((task, event))
-        event.wait()
+        if self._executor is None:
+            raise RuntimeError("Unexpected error, no executor is setuped")
+        elif self._executor == "blocking":
+            # NOTE(sileht): Blocking will hang forever if we waiting the
+            # polling thread
+            task()
+        else:
+            event = threading.Event()
+            self._tasks.put((task, event))
+            event.wait()
 
 
 class AMQPIncomingMessage(base.RpcIncomingMessage):
