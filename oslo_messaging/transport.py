@@ -219,7 +219,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
 
     :param conf: the user configuration
     :type conf: cfg.ConfigOpts
-    :param url: a transport URL
+    :param url: a transport URL, see :py:class:`transport.TransportURL`
     :type url: str or TransportURL
     :param allowed_remote_exmods: a list of modules which a client using this
                                   transport will deserialize remote exceptions
@@ -267,12 +267,40 @@ class TransportURL(object):
 
     Transport URLs take the form::
 
-      transport://user:pass@host:port[,userN:passN@hostN:portN]/virtual_host?query
+      scheme://[user:pass@]host:port[,[userN:passN@]hostN:portN]/virtual_host?query
 
-    i.e. the scheme selects the transport driver, you may include multiple
-    hosts in netloc, the path part is a "virtual host" partition path and
-    the query part contains some driver-specific options which may override
-    corresponding values from a static configuration.
+    where:
+
+    scheme
+      Specifies the transport driver to use. Typically this is `rabbit` for the
+      RabbitMQ broker. See the documentation for other available transport
+      drivers.
+
+    [user:pass@]host:port
+      Specifies the network location of the broker. `user` and `pass` are the
+      optional username and password used for authentication with the broker.
+
+      `user` and `pass` may contain any of the following ASCII characters:
+        * Alphabetic (a-z and A-Z)
+        * Numeric (0-9)
+        * Special characters: & = $ - _ . + ! * ( )
+
+      `user` may include at most one `@` character for compatibility with some
+      implementations of SASL.
+
+      All other characters in `user` and `pass` must be encoded via '%nn'
+
+      You may include multiple different network locations separated by commas.
+      The client will connect to any of the available locations and will
+      automatically fail over to another should the connection fail.
+
+    virtual_host
+      Specifies the "virtual host" within the broker. Support for virtual hosts
+      is specific to the message bus used.
+
+    query
+      Permits passing driver-specific options which override the corresponding
+      values from the configuration file.
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
@@ -402,7 +430,8 @@ class TransportURL(object):
                             'Parameter aliases is deprecated for removal.')
     @classmethod
     def parse(cls, conf, url=None, aliases=None):
-        """Parse an url.
+        """Parse a URL as defined by :py:class:`TransportURL` and return a
+        TransportURL object.
 
         Assuming a URL takes the form of::
 

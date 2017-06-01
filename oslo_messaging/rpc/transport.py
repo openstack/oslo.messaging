@@ -36,7 +36,7 @@ def get_rpc_transport(conf, url=None,
 
     :param conf: the user configuration
     :type conf: cfg.ConfigOpts
-    :param url: a transport URL
+    :param url: a transport URL, see :py:class:`transport.TransportURL`
     :type url: str or TransportURL
     :param allowed_remote_exmods: a list of modules which a client using this
                                   transport will deserialize remote exceptions
