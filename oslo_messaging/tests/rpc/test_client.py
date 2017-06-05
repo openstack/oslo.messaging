@@ -348,13 +348,13 @@ class TestSerializer(test_utils.BaseTestCase):
         serializer.deserialize_entity = mock.Mock()
         serializer.serialize_context = mock.Mock()
 
+        def _stub(ctxt, arg):
+            return 's' + arg
+
         msg = dict(method='foo', args=dict())
-        expected_side_effect = []
         for k, v in self.args.items():
             msg['args'][k] = 's' + v
-            expected_side_effect.append('s' + v)
-
-        serializer.serialize_entity.side_effect = expected_side_effect
+        serializer.serialize_entity.side_effect = _stub
 
         if self.call:
             serializer.deserialize_entity.return_value = 'd' + self.retval
