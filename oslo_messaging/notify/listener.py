@@ -63,10 +63,7 @@ The message is acknowledged only if all endpoints either return
 oslo_messaging.NotificationResult.HANDLED or None.
 
 Each notification listener is associated with an executor which controls how
-incoming notification messages will be received and dispatched. By default, the
-most simple executor is used - the blocking executor. This executor processes
-inbound notifications on the server's thread, blocking it from processing
-additional notifications until it finishes with the current one. Refer to the
+incoming notification messages will be received and dispatched. Refer to the
 Executor documentation for descriptions of the other types of executors.
 
 *Note:* If the "eventlet" executor is used, the threading and time library need
@@ -213,8 +210,7 @@ def get_notification_listener(transport, targets, endpoints,
     """Construct a notification listener
 
     The executor parameter controls how incoming messages will be received and
-    dispatched. By default, the most simple executor is used - the blocking
-    executor.
+    dispatched.
 
     If the eventlet executor is used, the threading and time library need to be
     monkeypatched.
@@ -226,7 +222,7 @@ def get_notification_listener(transport, targets, endpoints,
     :param endpoints: a list of endpoint objects
     :type endpoints: list
     :param executor: name of message executor - available values are
-                     'eventlet', 'blocking' and 'threading'
+                     'eventlet' and 'threading'
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer
@@ -249,8 +245,7 @@ def get_batch_notification_listener(transport, targets, endpoints,
     """Construct a batch notification listener
 
     The executor parameter controls how incoming messages will be received and
-    dispatched. By default, the most simple executor is used - the blocking
-    executor.
+    dispatched.
 
     If the eventlet executor is used, the threading and time library need to be
     monkeypatched.
@@ -262,7 +257,7 @@ def get_batch_notification_listener(transport, targets, endpoints,
     :param endpoints: a list of endpoint objects
     :type endpoints: list
     :param executor: name of message executor - available values are
-                     'eventlet', 'blocking' and 'threading'
+                     'eventlet' and 'threading'
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer

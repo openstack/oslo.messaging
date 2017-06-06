@@ -132,7 +132,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         super(TestNotifyListener, self).setUp(conf=cfg.ConfigOpts())
         ListenerSetupMixin.setUp(self)
 
-    def test_constructor(self):
+    @mock.patch('debtcollector.deprecate')
+    def test_constructor(self, deprecate):
         transport = msg_notifier.get_notification_transport(
             self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo')
@@ -147,6 +148,11 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                               dispatcher.NotificationDispatcher)
         self.assertIs(listener.dispatcher.endpoints, endpoints)
         self.assertEqual('blocking', listener.executor_type)
+        deprecate.assert_called_once_with(
+            'blocking executor is deprecated. Executor default will be '
+            'removed. Use explicitly threading or eventlet instead',
+            removal_version='rocky', version='pike',
+            category=FutureWarning)
 
     def test_no_target_topic(self):
         transport = msg_notifier.get_notification_transport(

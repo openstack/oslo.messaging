@@ -30,6 +30,7 @@ import logging
 import threading
 import traceback
 
+import debtcollector
 from oslo_config import cfg
 from oslo_service import service
 from oslo_utils import eventletutils
@@ -38,7 +39,7 @@ import six
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
-from oslo_messaging._i18n import _LW, _LI
+from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
 LOG = logging.getLogger(__name__)
@@ -323,7 +324,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
                            incoming request
         :type dispatcher: DispatcherBase
         :param executor: name of message executor - available values are
-                         'eventlet', 'blocking' and 'threading'
+                         'eventlet' and 'threading'
         :type executor: str
         """
         self.conf = transport.conf
@@ -333,13 +334,11 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         self.dispatcher = dispatcher
         self.executor_type = executor
         if self.executor_type == 'blocking':
-            # NOTE(sileht): We keep blocking as default to not enforce the
-            # application to use threading or eventlet. Because application
-            # have to be preprepared accordingly for each one (monkeypatching,
-            # threadsafe, ...)
-            LOG.info(_LI("blocking executor handles only one message at "
-                         "once. threading or eventlet executor is "
-                         "recommended."))
+            debtcollector.deprecate(
+                'blocking executor is deprecated. Executor default will be '
+                'removed. Use explicitly threading or eventlet instead',
+                version="pike", removal_version="rocky",
+                category=FutureWarning)
         elif self.executor_type == "eventlet":
             eventletutils.warn_eventlet_not_patched(
                 expected_patched_modules=['thread'],
