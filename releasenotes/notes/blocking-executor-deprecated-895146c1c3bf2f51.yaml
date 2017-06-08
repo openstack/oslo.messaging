@@ -1,0 +1,6 @@
+---
+deprecations:
+  - The blocking executor has been deprecated for removal in Rocky. Its usage
+    was never recommended for applications, and it has no test coverage.
+    Applications should choose the appropriate threading model that maps their
+    usage instead.
