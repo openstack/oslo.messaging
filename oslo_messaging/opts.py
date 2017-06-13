@@ -26,7 +26,7 @@ from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_pika
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers.impl_zmq import zmq_options
-from oslo_messaging._drivers import kafka_options
+from oslo_messaging._drivers.kafka_driver import kafka_options
 from oslo_messaging._drivers.pika_driver import pika_connection_factory
 from oslo_messaging._drivers.zmq_driver.matchmaker import zmq_matchmaker_redis
 from oslo_messaging.notify import notifier

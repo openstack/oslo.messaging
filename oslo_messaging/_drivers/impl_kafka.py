@@ -32,7 +32,7 @@ import tenacity
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as driver_common
-from oslo_messaging._drivers import kafka_options
+from oslo_messaging._drivers.kafka_driver import kafka_options
 from oslo_messaging._drivers import pool as driver_pool
 from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LW

@@ -20,7 +20,7 @@ from oslo_config import cfg
 from six import moves
 
 import oslo_messaging
-from oslo_messaging._drivers import kafka_options
+from oslo_messaging._drivers.kafka_driver import kafka_options
 from oslo_messaging._drivers.zmq_driver import zmq_options
 from oslo_messaging.notify import notifier
 from oslo_messaging.tests import utils as test_utils
