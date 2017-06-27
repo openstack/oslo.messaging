@@ -768,11 +768,12 @@ class Hosts(object):
     configuration and are used only if no username/password/realm is present in
     the URL.
     """
-    def __init__(self, entries=None, default_username=None,
+    def __init__(self, url, default_username=None,
                  default_password=None,
                  default_realm=None):
-        if entries:
-            self._entries = entries[:]
+        self.virtual_host = url.virtual_host
+        if url.hosts:
+            self._entries = url.hosts[:]
         else:
             self._entries = [transport.TransportHost(hostname="localhost",
                                                      port=5672)]
@@ -797,7 +798,8 @@ class Hosts(object):
         return '<Hosts ' + str(self) + '>'
 
     def __str__(self):
-        return ", ".join(["%r" % th for th in self._entries])
+        r = ', vhost=%s' % self.virtual_host if self.virtual_host else ''
+        return ", ".join(["%r" % th for th in self._entries]) + r
 
 
 class Controller(pyngus.ConnectionEventHandler):
@@ -807,7 +809,7 @@ class Controller(pyngus.ConnectionEventHandler):
     work is done on the Eventloop thread, allowing the driver to run
     asynchronously from the messaging clients.
     """
-    def __init__(self, hosts, default_exchange, config):
+    def __init__(self, url, default_exchange, config):
         self.processor = None
         self._socket_connection = None
         self._node = platform.node() or "<UNKNOWN>"
@@ -839,10 +841,12 @@ class Controller(pyngus.ConnectionEventHandler):
         self.ssl_key_password = config.oslo_messaging_amqp.ssl_key_password
         self.ssl_allow_insecure = \
             config.oslo_messaging_amqp.allow_insecure_clients
+        self.ssl_verify_vhost = config.oslo_messaging_amqp.ssl_verify_vhost
+        self.pseudo_vhost = config.oslo_messaging_amqp.pseudo_vhost
         self.sasl_mechanisms = config.oslo_messaging_amqp.sasl_mechanisms
         self.sasl_config_dir = config.oslo_messaging_amqp.sasl_config_dir
         self.sasl_config_name = config.oslo_messaging_amqp.sasl_config_name
-        self.hosts = Hosts(hosts, config.oslo_messaging_amqp.username,
+        self.hosts = Hosts(url, config.oslo_messaging_amqp.username,
                            config.oslo_messaging_amqp.password,
                            config.oslo_messaging_amqp.sasl_default_realm)
         self.conn_retry_interval = \
@@ -974,20 +978,44 @@ class Controller(pyngus.ConnectionEventHandler):
         host = self.hosts.current
         conn_props = {'properties': {u'process': self._command,
                                      u'pid': self._pid,
-                                     u'node': self._node},
-                      'hostname': host.hostname}
+                                     u'node': self._node}}
+        # only set hostname in the AMQP 1.0 Open performative if the message
+        # bus can interpret it as the virtual host.  We leave it unspecified
+        # since apparently noone can agree on how it should be used otherwise!
+        if self.hosts.virtual_host and not self.pseudo_vhost:
+            conn_props['hostname'] = self.hosts.virtual_host
         if self.idle_timeout:
             conn_props["idle-time-out"] = float(self.idle_timeout)
         if self.trace_protocol:
             conn_props["x-trace-protocol"] = self.trace_protocol
+
+        # SSL configuration
+        ssl_enabled = False
         if self.ssl:
+            ssl_enabled = True
             conn_props["x-ssl"] = self.ssl
         if self.ssl_ca_file:
             conn_props["x-ssl-ca-file"] = self.ssl_ca_file
+            ssl_enabled = True
         if self.ssl_cert_file:
+            ssl_enabled = True
             conn_props["x-ssl-identity"] = (self.ssl_cert_file,
                                             self.ssl_key_file,
                                             self.ssl_key_password)
+        if ssl_enabled:
+            # Set the identity of the remote server for SSL to use when
+            # verifying the received certificate.  Typically this is the DNS
+            # name used to set up the TCP connections.  However some servers
+            # may provide a certificate for the virtual host instead.  If that
+            # is the case we need to use the virtual hostname instead.
+            # Refer to SSL Server Name Indication (SNI) for the entire story:
+            # https://tools.ietf.org/html/rfc6066
+            if self.ssl_verify_vhost:
+                if self.hosts.virtual_host:
+                    conn_props['x-ssl-peer-name'] = self.hosts.virtual_host
+            else:
+                conn_props['x-ssl-peer-name'] = host.hostname
+
         # SASL configuration:
         if self.sasl_mechanisms:
             conn_props["x-sasl-mechs"] = self.sasl_mechanisms
@@ -1052,9 +1080,12 @@ class Controller(pyngus.ConnectionEventHandler):
         point, we are ready to receive messages, so start all pending RPC
         requests.
         """
-        LOG.info(_LI("Messaging is active (%(hostname)s:%(port)s)"),
+        LOG.info(_LI("Messaging is active (%(hostname)s:%(port)s%(vhost)s)"),
                  {'hostname': self.hosts.current.hostname,
-                  'port': self.hosts.current.port})
+                  'port': self.hosts.current.port,
+                  'vhost': ("/" + self.hosts.virtual_host
+                            if self.hosts.virtual_host else "")})
+
         for sender in itervalues(self._all_senders):
             sender.attach(self._socket_connection.pyngus_conn,
                           self.reply_link, self.addresser)
@@ -1099,7 +1130,9 @@ class Controller(pyngus.ConnectionEventHandler):
         # allocate an addresser based on the advertised properties of the
         # message bus
         props = connection.remote_properties or {}
-        self.addresser = self.addresser_factory(props)
+        self.addresser = self.addresser_factory(props,
+                                                self.hosts.virtual_host
+                                                if self.pseudo_vhost else None)
         for servers in itervalues(self._servers):
             for server in itervalues(servers):
                 server.attach(self._socket_connection.pyngus_conn,

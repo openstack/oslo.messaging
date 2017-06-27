@@ -60,6 +60,17 @@ amqp1_opts = [
                secret=True,
                help='Password for decrypting ssl_key_file (if encrypted)'),
 
+    cfg.BoolOpt('ssl_verify_vhost',
+                default=False,
+                help="By default SSL checks that the name in the server's"
+                " certificate matches the hostname in the transport_url. In"
+                " some configurations it may be preferable to use the virtual"
+                " hostname instead, for example if the server uses the Server"
+                " Name Indication TLS extension (rfc6066) to provide a"
+                " certificate per virtual host. Set ssl_verify_vhost to True"
+                " if the server's SSL certificate uses the virtual host name"
+                " instead of the DNS name."),
+
     cfg.BoolOpt('allow_insecure_clients',
                 default=False,
                 deprecated_group='amqp1',
@@ -171,6 +182,17 @@ amqp1_opts = [
                "'routable' - use routable addresses\n"
                "'dynamic'  - use legacy addresses if the message bus does not"
                " support routing otherwise use routable addressing"),
+
+    cfg.BoolOpt('pseudo_vhost',
+                default=True,
+                help="Enable virtual host support for those message buses"
+                " that do not natively support virtual hosting (such as"
+                " qpidd). When set to true the virtual host name will be"
+                " added to all message bus addresses, effectively creating"
+                " a private 'subnet' per virtual host. Set to False if the"
+                " message bus supports virtual hosting using the 'hostname'"
+                " field in the AMQP 1.0 Open performative as the name of the"
+                " virtual host."),
 
     # Legacy addressing customization:
 

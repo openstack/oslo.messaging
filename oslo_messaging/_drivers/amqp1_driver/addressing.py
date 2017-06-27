@@ -104,40 +104,49 @@ class Addresser(object):
         """Address used for shared subscribers (competing consumers)
         """
 
+    def _concat(self, sep, items):
+        return sep.join(filter(bool, items))
+
 
 class LegacyAddresser(Addresser):
     """Legacy addresses are in the following format:
 
-    multicast: '$broadcast_prefix.$exchange.$topic.all'
-    unicast: '$server_prefix.$exchange.$topic.$server'
-    anycast: '$group_prefix.$exchange.$topic'
+    multicast: '$broadcast_prefix[.$vhost].$exchange.$topic.all'
+    unicast: '$server_prefix[.$vhost].$exchange.$topic.$server'
+    anycast: '$group_prefix[.$vhost].$exchange.$topic'
 
     Legacy addresses do not distinguish RPC traffic from Notification traffic
     """
     def __init__(self, default_exchange, server_prefix, broadcast_prefix,
-                 group_prefix):
+                 group_prefix, vhost):
         super(LegacyAddresser, self).__init__(default_exchange)
         self._server_prefix = server_prefix
         self._broadcast_prefix = broadcast_prefix
         self._group_prefix = group_prefix
+        self._vhost = vhost
 
     def multicast_address(self, target, service):
-        return self._concatenate([self._broadcast_prefix,
-                                  target.exchange or self._default_exchange,
-                                  target.topic, "all"])
+        return self._concat(".",
+                            [self._broadcast_prefix,
+                             self._vhost,
+                             target.exchange or self._default_exchange,
+                             target.topic,
+                             "all"])
 
     def unicast_address(self, target, service=SERVICE_RPC):
-        return self._concatenate([self._server_prefix,
-                                  target.exchange or self._default_exchange,
-                                  target.topic, target.server])
+        return self._concat(".",
+                            [self._server_prefix,
+                             self._vhost,
+                             target.exchange or self._default_exchange,
+                             target.topic,
+                             target.server])
 
     def anycast_address(self, target, service=SERVICE_RPC):
-        return self._concatenate([self._group_prefix,
-                                  target.exchange or self._default_exchange,
-                                  target.topic])
-
-    def _concatenate(self, items):
-        return ".".join(filter(bool, items))
+        return self._concat(".",
+                            [self._group_prefix,
+                             self._vhost,
+                             target.exchange or self._default_exchange,
+                             target.topic])
 
     # for debug:
     def _is_multicast(self, address):
@@ -162,21 +171,25 @@ class RoutableAddresser(Addresser):
     'anycast'. The delivery semantics are followed by information pulled from
     the Target.  The template is:
 
-    $prefix/$semantics/$exchange/$topic[/$server]
+    $prefix/$semantics[/$vhost]/$exchange/$topic[/$server]
 
     Examples based on the default prefix and semantic values:
 
-    rpc-unicast: "openstack.org/om/rpc/unicast/$exchange/$topic/$server"
-    notify-anycast: "openstack.org/om/notify/anycast/$exchange/$topic"
+    rpc-unicast: "openstack.org/om/rpc/unicast/my-exchange/my-topic/my-server"
+    notify-anycast: "openstack.org/om/notify/anycast/my-vhost/exchange/topic"
     """
 
     def __init__(self, default_exchange, rpc_exchange, rpc_prefix,
                  notify_exchange, notify_prefix, unicast_tag, multicast_tag,
-                 anycast_tag):
+                 anycast_tag, vhost):
         super(RoutableAddresser, self).__init__(default_exchange)
         if not self._default_exchange:
             self._default_exchange = "openstack"
+
         # templates for address generation:
+
+        self._vhost = vhost
+
         _rpc = rpc_prefix + "/"
         self._rpc_prefix = _rpc
         self._rpc_unicast = _rpc + unicast_tag
@@ -201,32 +214,34 @@ class RoutableAddresser(Addresser):
             prefix = self._rpc_multicast
         else:
             prefix = self._notify_multicast
-        return "%s/%s/%s" % (prefix,
+        return self._concat("/",
+                            [prefix,
+                             self._vhost,
                              target.exchange or self._exchange[service],
-                             target.topic)
+                             target.topic])
 
     def unicast_address(self, target, service=SERVICE_RPC):
         if service == SERVICE_RPC:
             prefix = self._rpc_unicast
         else:
             prefix = self._notify_unicast
-        if target.server:
-            return "%s/%s/%s/%s" % (prefix,
-                                    target.exchange or self._exchange[service],
-                                    target.topic,
-                                    target.server)
-        return "%s/%s/%s" % (prefix,
+        return self._concat("/",
+                            [prefix,
+                             self._vhost,
                              target.exchange or self._exchange[service],
-                             target.topic)
+                             target.topic,
+                             target.server])
 
     def anycast_address(self, target, service=SERVICE_RPC):
         if service == SERVICE_RPC:
             prefix = self._rpc_anycast
         else:
             prefix = self._notify_anycast
-        return "%s/%s/%s" % (prefix,
+        return self._concat("/",
+                            [prefix,
+                             self._vhost,
                              target.exchange or self._exchange[service],
-                             target.topic)
+                             target.topic])
 
     # for debug:
     def _is_multicast(self, address):
@@ -255,7 +270,7 @@ class AddresserFactory(object):
         self._mode = mode
         self._kwargs = kwargs
 
-    def __call__(self, remote_properties):
+    def __call__(self, remote_properties, vhost=None):
         # for backwards compatibility use legacy if dynamic and we're connected
         # to qpidd or we cannot identify the message bus.  This can be
         # overridden via the configuration.
@@ -275,7 +290,8 @@ class AddresserFactory(object):
             return LegacyAddresser(self._default_exchange,
                                    self._kwargs['legacy_server_prefix'],
                                    self._kwargs['legacy_broadcast_prefix'],
-                                   self._kwargs['legacy_group_prefix'])
+                                   self._kwargs['legacy_group_prefix'],
+                                   vhost)
         else:
             return RoutableAddresser(self._default_exchange,
                                      self._kwargs.get("rpc_exchange"),
@@ -284,4 +300,5 @@ class AddresserFactory(object):
                                      self._kwargs["notify_prefix"],
                                      self._kwargs["unicast"],
                                      self._kwargs["multicast"],
-                                     self._kwargs["anycast"])
+                                     self._kwargs["anycast"],
+                                     vhost)
