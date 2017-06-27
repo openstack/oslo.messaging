@@ -202,7 +202,6 @@ class ProtonDriver(base.BaseDriver):
         conf.register_opts(opts.amqp1_opts, group=opt_group)
         conf = common.ConfigOptsProxy(conf, url, opt_group.name)
 
-        self._hosts = url.hosts
         self._conf = conf
         self._default_exchange = default_exchange
 
@@ -257,7 +256,7 @@ class ProtonDriver(base.BaseDriver):
                         self._ctrl = None
                     # Create a Controller that connects to the messaging
                     # service:
-                    self._ctrl = controller.Controller(self._hosts,
+                    self._ctrl = controller.Controller(self._url,
                                                        self._default_exchange,
                                                        self._conf)
                     self._ctrl.connect()
