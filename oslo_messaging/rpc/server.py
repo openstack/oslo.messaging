@@ -73,6 +73,13 @@ complete after the Server has been stopped.
 
 A simple example of an RPC server with multiple endpoints might be::
 
+    # NOTE(changzhi): We are using eventlet executor and
+    # time.sleep(1), therefore, the server code needs to be
+    # monkey-patched.
+
+    import eventlet
+    eventlet.monkey_patch()
+
     from oslo_config import cfg
     import oslo_messaging
     import time
