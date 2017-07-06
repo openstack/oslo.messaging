@@ -50,7 +50,7 @@ pygments_style = 'sphinx'
 # Sphinx are currently 'default' and 'sphinxdoc'.
 # html_theme_path = ["."]
 # html_theme = '_theme'
-html_static_path = ['static']
+# html_static_path = ['static']
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project
