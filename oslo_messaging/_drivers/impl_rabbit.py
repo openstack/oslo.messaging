@@ -729,8 +729,8 @@ class Connection(object):
         if self._initial_pid != current_pid:
             LOG.warning(_LW("Process forked after connection established! "
                             "This can result in unpredictable behavior. "
-                            "See: http://docs.openstack.org/developer/"
-                            "oslo.messaging/transport.html"))
+                            "See: https://docs.openstack.org/oslo.messaging/"
+                            "latest/reference/transport.html"))
             self._initial_pid = current_pid
 
         if retry is None:
