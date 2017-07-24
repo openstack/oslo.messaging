@@ -30,6 +30,7 @@ import oslo_messaging
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
+from oslo_messaging.exceptions import MessageDeliveryFailure
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -284,6 +285,20 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
 
             try_send(e_active)
             self.assertIn('foobar', conn._declared_exchanges)
+
+    def test_send_exception_remap(self):
+        bad_exc = Exception("Non-oslo.messaging exception")
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        exchange_mock = mock.Mock()
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            with mock.patch('kombu.messaging.Producer.publish',
+                            side_effect=bad_exc):
+                self.assertRaises(MessageDeliveryFailure,
+                                  conn._ensure_publishing,
+                                  conn._publish, exchange_mock, 'msg')
 
 
 class TestRabbitConsume(test_utils.BaseTestCase):
