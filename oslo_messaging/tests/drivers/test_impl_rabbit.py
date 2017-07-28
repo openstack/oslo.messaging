@@ -961,10 +961,8 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         url = oslo_messaging.TransportURL.parse(self.conf, None)
         self.connection = rabbit_driver.Connection(self.conf, url,
                                                    driver_common.PURPOSE_SEND)
-        self.kombu_connect = mock.Mock()
         self.useFixture(fixtures.MockPatch(
-            'kombu.connection.Connection.connect',
-            side_effect=self.kombu_connect))
+            'kombu.connection.Connection.connect'))
         self.addCleanup(self.connection.close)
 
     def test_ensure_four_retry(self):
@@ -972,7 +970,6 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           self.connection.ensure, mock_callback,
                           retry=4)
-        self.assertEqual(5, self.kombu_connect.call_count)
         self.assertEqual(6, mock_callback.call_count)
 
     def test_ensure_one_retry(self):
@@ -980,7 +977,6 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           self.connection.ensure, mock_callback,
                           retry=1)
-        self.assertEqual(2, self.kombu_connect.call_count)
         self.assertEqual(3, mock_callback.call_count)
 
     def test_ensure_no_retry(self):
@@ -988,7 +984,6 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           self.connection.ensure, mock_callback,
                           retry=0)
-        self.assertEqual(1, self.kombu_connect.call_count)
         self.assertEqual(2, mock_callback.call_count)
 
 
