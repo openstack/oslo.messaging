@@ -10,7 +10,7 @@ different messaging transports.
    :maxdepth: 1
 
    contributor/index
-   configration/index
+   configuration/index
    admin/index
    user/index
    reference/index
