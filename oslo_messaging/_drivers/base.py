@@ -415,7 +415,7 @@ class BaseDriver(object):
         :param target: The message's destination address
         :type target: Target
         :param ctxt: Context metadata provided by sending application which
-            must transfered along with the message.
+            is transferred along with the message.
         :type ctxt: dict
         :param message: message provided by the caller
         :type message: dict
@@ -473,7 +473,7 @@ class BaseDriver(object):
         :param target: The message's destination address
         :type target: Target
         :param ctxt: Context metadata provided by sending application which
-            must transfered along with the message.
+            is transferred along with the message.
         :type ctxt: dict
         :param message: message provided by the caller
         :type message: dict
