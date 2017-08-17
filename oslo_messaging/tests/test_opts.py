@@ -24,11 +24,8 @@ except ImportError:
 from oslo_messaging.tests import utils as test_utils
 
 
+@testtools.skipIf(opts is None, "Options not importable")
 class OptsTestCase(test_utils.BaseTestCase):
-
-    @testtools.skipIf(opts is None, "Options not importable")
-    def setUp(self):
-        super(OptsTestCase, self).setUp()
 
     def _test_list_opts(self, result):
         self.assertEqual(7, len(result))
