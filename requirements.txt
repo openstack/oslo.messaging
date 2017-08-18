@@ -22,7 +22,7 @@ cachetools>=1.1.0 # MIT License
 WebOb>=1.7.1 # MIT
 
 # for the routing notifier
-PyYAML>=3.10.0 # MIT
+PyYAML>=3.10 # MIT
 
 # rabbit driver is the default
 # we set the amqp version to ensure heartbeat works
