@@ -99,9 +99,6 @@ class SerializeRemoteExceptionTestCase(test_utils.BaseTestCase):
         cls.scenarios = testscenarios.multiply_scenarios(cls._add_remote,
                                                          cls._exception_types)
 
-    def setUp(self):
-        super(SerializeRemoteExceptionTestCase, self).setUp()
-
     def test_serialize_remote_exception(self):
         try:
             try:
