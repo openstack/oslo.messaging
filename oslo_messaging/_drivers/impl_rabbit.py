@@ -807,9 +807,11 @@ class Connection(object):
             ret, channel = autoretry_method()
             self._set_current_channel(channel)
             return ret
-        except kombu.exceptions.OperationalError as exc:
-            LOG.debug("Received recoverable error from kombu:",
-                      exc_info=True)
+        except rpc_amqp.AMQPDestinationNotFound:
+            # NOTE(sileht): we must reraise this without
+            # trigger error_callback
+            raise
+        except Exception as exc:
             error_callback and error_callback(exc)
             self._set_current_channel(None)
             # NOTE(sileht): number of retry exceeded and the connection
@@ -821,13 +823,6 @@ class Connection(object):
                     'tries: %(err_str)s') % info
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
-        except rpc_amqp.AMQPDestinationNotFound:
-            # NOTE(sileht): we must reraise this without
-            # trigger error_callback
-            raise
-        except Exception as exc:
-            error_callback and error_callback(exc)
-            raise
 
     def _set_current_channel(self, new_channel):
         """Change the channel to use.
