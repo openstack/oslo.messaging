@@ -361,7 +361,7 @@ class BaseDriver(object):
 
     @abc.abstractmethod
     def send(self, target, ctxt, message,
-             wait_for_reply=None, timeout=None, envelope=False, retry=None):
+             wait_for_reply=None, timeout=None, retry=None):
         """Send a message to the given target and optionally wait for a reply.
         This method is used by the RPC client when sending RPC requests to a
         server.
