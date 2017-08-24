@@ -170,8 +170,8 @@ EOF
 }
 
 function _start_qdrouterd {
-    MAJOR=$(python -c 'import sys; print sys.version_info.major')
-    MINOR=$(python -c 'import sys; print sys.version_info.minor')
+    MAJOR=$(python -c 'import sys; print(sys.version_info.major)')
+    MINOR=$(python -c 'import sys; print(sys.version_info.minor)')
     # qdrouterd needs access to global site packages
     # create path file and place in virtual env working directory
     SITEDIR=${WORKDIR}/${ENVNAME}/lib/python${MAJOR}.${MINOR}/site-packages
