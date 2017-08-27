@@ -266,8 +266,7 @@ class ProtonDriver(base.BaseDriver):
 
     @_ensure_connect_called
     def send(self, target, ctxt, message,
-             wait_for_reply=False, timeout=None, envelope=False,
-             retry=None):
+             wait_for_reply=False, timeout=None, retry=None):
         """Send a message to the given target.
 
         :param target: destination for message
@@ -281,15 +280,13 @@ class ProtonDriver(base.BaseDriver):
         :param timeout: raise exception if send does not complete within
                         timeout seconds. None == no timeout.
         :type timeout: float
-        :param envelope: Encapsulate message in an envelope
-        :type envelope: bool
         :param retry: (optional) maximum re-send attempts on recoverable error
                       None or -1 means to retry forever
                       0 means no retry
                       N means N retries
         :type retry: int
 """
-        request = marshal_request(message, ctxt, envelope)
+        request = marshal_request(message, ctxt, envelope=False)
         expire = 0
         if timeout:
             expire = compute_timeout(timeout)  # when the caller times out
