@@ -51,17 +51,10 @@ configuration parameters in order to do so.
 Direct Messaging
 ----------------
 
-The direct messaging capabilities provided by the message router
-intermediary type are recommended for the oslo.messaging RPC
-messaging pattern.
-
-.. _Limited:
-
-Additionally, the message router intermediary may be used for the
-Notification messaging pattern with the consideration that
-notification messages will be dropped when there is no active
-consumer. The message router does not provide durability or
-store-and-forward capabilities for notification messages.
+The RPC messaging pattern is a synchronous exchange between
+client and server that is temporally bracketed. The direct messaging
+capabilities provided by the message router are optimal for the
+RPC messaging pattern.
 
 The driver can readily scale operation from working with a single
 instances of a message router to working with a large scale routed
@@ -70,14 +63,35 @@ mesh interconnect topology.
 Store and Forward
 -----------------
 
-The store and forward capabilities provide by the message broker
-intermediary type are recommended for the oslo.message Notification
-messaging pattern. This driver is able to work with a single instance
-of a message broker or a clustered broker deployment.
+The Notification messaging pattern is an asynchronous exchange from
+a notifier to a listener (e.g. consumer). The listener need not be
+present when the notification is sent. Thus, the store and forwarding
+capabilities provided by the message broker are required for the
+Notification messaging pattern.
+
+This driver is able to work with a single instance of a message broker
+or a clustered broker deployment.
+
+.. _Limited:
+
+It is recommended that the message router intermediary not be used
+for the Notification messaging pattern due to the consideration that
+notification messages will be dropped when there is no active
+consumer. The message router does not provide durability or
+store-and-forward capabilities for notification messages.
+
+Hybrid Messaging Backends
+-------------------------
 
 Oslo.messaging provides a mechanism to configure separate backends for
-RPC and Notification communications. This document provides deployment and
-configuration information for use of this driver in oslo.messaging.
+RPC and Notification communications. This is supported through the
+specification of separate RPC and Notification `transport urls`_ in the
+service configuration. This capability enables the optimal alignment
+of messaging patterns to messaging backend and allows for different
+messaging backend types to be deployed.
+
+This document provides deployment and configuration information for use
+of this driver in hybrid messaging configurations.
 
 Addressing
 ----------
@@ -236,7 +250,7 @@ this intermediary type are recommended for oslo.messaging RPC.
 
 The driver has been tested with `qpid-dispatch-router`_ router in a
 `devstack`_ environment. The version of qpid-dispatch-router
-**must** be at least 0.6.0. The qpid-dispatch-router also uses the
+**must** be at least 0.7.0. The qpid-dispatch-router also uses the
 Proton engine for its AMQP 1.0 support, so the Proton library must be
 installed on the system hosting the qpid-dispatch-router daemon.
 
@@ -268,6 +282,8 @@ done on the driver.
 =============
 Configuration
 =============
+
+.. _transport urls:
 
 Transport URL Enable
 --------------------
@@ -331,6 +347,9 @@ Message Send Options
 
 In section [oslo_messaging_amqp]:
 
+#. pre_settled: Send message types as pre-settled. Pre-settled messages
+   will not receive acknowledgement from the peer.
+
 #. link_retry_delay: Time to pause between re-connecting to an AMQP 1.0 link.
 
 #. default_reply_timeout: The deadline for an rpc reply message delivery.
@@ -382,6 +401,9 @@ SSL Options
 
 In section [oslo_messaging_amqp]:
 
+#. ssl: Attempt to connect via SSL. If no other ssl-related parameters
+   are given, use the system's CA-bundle to verify the server's certificate.
+
 #. ssl_ca_file: A file containing the trusted Certificate Authority's
    digital certificate (in PEM format). This certificate is used to
    authenticate the messaging backend.
@@ -402,11 +424,15 @@ SASL Options
 
 In section [oslo_messaging_amqp]:
 
+#. sasl_mechanisms: Space separated list of acceptable SASL mechanisms.
+
 #. sasl_config_dir: Path to the *directory* that contains the SASL
    configuration.
 
 #. sasl_config_name: The name of SASL configuration file (without
    .conf suffix) in sasl_config_dir
+
+#. sasl_default_realm: SASL realm to use if no realm present in username.
 
 #. username: SASL user identifier for authentication with the message
    bus. Can be overridden by URL.
@@ -534,8 +560,8 @@ DevStack Support
 ================
 
 The plugin for the AMQP 1.0 oslo.messaging driver is supported by
-DevStack. The plugin supports the use of either the broker or router
-intermediary.
+DevStack. The plugin supports the deployment of several different
+message bus configurations.
 
 In local.conf [localrc] section, the `devstack-plugin-amqp1`_  plugin
 repository must be enabled. For example:
@@ -553,19 +579,37 @@ configuration:
     AMQP1_USERNAME=queueuser
     AMQP1_PASSWORD=queuepassword
 
-To configure DevStack for operation of the router intermediary, set
-the AMQP1 service variable to "qdr":
+The AMQP1_SERVICE variable identifies the message bus configuration that
+will be used. In addition to the AMQP 1.0 driver being used for both the
+RPC and Notification messaging communications, a hybrid configuration is
+supported in the plugin that will deploy AMQP 1.0 for the RPC backend and
+the oslo_messaging rabbit driver for the Notification backend. Additionally,
+the plugin supports a setting for a pre-provisioned messaging bus that
+prevents the plugin from creating the messaging bus. The setting of the
+AMQP1_SERVICE variable will select which messaging intermediary will be used
+for the RPC and Notification messaging backends:
 
-::
++---------------+------------------+------------------+
+| AMQP1_SERVICE |   RPC Backend    |  Notify Backend  |
++---------------+------------------+------------------+
+|               |                  |                  |
+|     qpid      |   qpidd broker   |   qpidd broker   |
+|               |                  |                  |
++---------------+------------------+------------------+
+|               |                  |                  |
+|   qpid-dual   | qdrouterd router |   qpidd broker   |
+|               |                  |                  |
++---------------+------------------+------------------+
+|               |                  |                  |
+|  qpid-hybrid  | qdrouterd router |  rabbitmq broker |
+|               |                  |                  |
++---------------+------------------+------------------+
+|               |                  |                  |
+|   external    |  pre-provisioned | pre-provisioned  |
+|               |  message bus     | message bus      |
+|               |                  |                  |
++---------------+------------------+------------------+
 
-    AMQP1_SERVICE=qdr
-
-Alternatively, to configure DevStack for operation of the broker
-intermediary, set the AMQP1 service variable to "qpid":
-
-::
-
-    AMQP1_SERVICE=qpid
 
 .. _devstack-plugin-amqp1: https://github.com/openstack/devstack-plugin-amqp1.git
 
@@ -587,7 +631,7 @@ Packages for `Pyngus pypi`_ and the `Proton pypi`_ engine are available on Pypi.
 RHEL and Fedora
 ---------------
 
-Packages exist in EPEL for RHEL/Centos 7, and Fedora 24+.
+Packages exist in EPEL for RHEL/Centos 7, and Fedora 26+.
 Unfortunately, RHEL/Centos 6 base packages include a very old version
 of qpidd that does not support AMQP 1.0.  EPEL's policy does not allow
 a newer version of qpidd for RHEL/Centos 6.
@@ -638,7 +682,7 @@ pulled from the `Apache Qpid PPA`_ on Launchpad:
 The following packages must be installed on the system running the
 qdrouterd daemon:
 
-- qdrouterd (version 0.6.0+)
+- qdrouterd (version 0.8.0+)
 
 The following packages must be installed on the system running the
 qpidd daemon:
