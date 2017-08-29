@@ -151,6 +151,15 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         :param serializer: optional message serializer
         """
 
+        for ep in endpoints:
+            target = getattr(ep, 'target', None)
+            if target and not isinstance(target, msg_target.Target):
+                errmsg = "'target' is a reserved Endpoint attribute used" + \
+                         " for namespace and version filtering.  It must" + \
+                         " be of type oslo_messaging.Target. Do not" + \
+                         " define an Endpoint method named 'target'"
+                raise TypeError("%s: endpoint=%s" % (errmsg, ep))
+
         self.endpoints = endpoints
         self.serializer = serializer or msg_serializer.NoOpSerializer()
         self._default_target = msg_target.Target()

@@ -152,6 +152,72 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
         self.assertEqual(10, server.endpoint.ival)
 
+    def test_endpoint_version_namespace(self):
+        # verify endpoint version and namespace are checked
+        target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
+                                       server="server_" + str(uuid.uuid4()),
+                                       namespace="Name1",
+                                       version="7.5")
+
+        class _endpoint(object):
+            def __init__(self, target):
+                self.target = target()
+
+            def test(self, ctxt, echo):
+                return echo
+
+        transport = self.useFixture(
+            utils.TransportFixture(self.conf, self.url)
+        )
+        self.useFixture(
+            utils.RpcServerFixture(self.conf, self.url, target,
+                                   executor="threading",
+                                   endpoint=_endpoint(target)))
+        client1 = utils.ClientStub(transport.transport, target,
+                                   cast=False, timeout=5)
+        self.assertEqual("Hi there", client1.test(echo="Hi there"))
+
+        # unsupported version
+        target2 = target()
+        target2.version = "7.6"
+        client2 = utils.ClientStub(transport.transport,
+                                   target2,
+                                   cast=False, timeout=5)
+        self.assertRaises(oslo_messaging.rpc.client.RemoteError,
+                          client2.test,
+                          echo="Expect failure")
+
+        # no matching namespace
+        target3 = oslo_messaging.Target(topic=target.topic,
+                                        server=target.server,
+                                        version=target.version,
+                                        namespace="Name2")
+        client3 = utils.ClientStub(transport.transport,
+                                   target3,
+                                   cast=False, timeout=5)
+        self.assertRaises(oslo_messaging.rpc.client.RemoteError,
+                          client3.test,
+                          echo="Expect failure")
+
+    def test_bad_endpoint(self):
+        # 'target' attribute is reserved and should be of type Target
+
+        class _endpoint(object):
+            def target(self, ctxt, echo):
+                return echo
+
+        target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
+                                       server="server_" + str(uuid.uuid4()))
+        transport = self.useFixture(
+            utils.TransportFixture(self.conf, self.url)
+        )
+        self.assertRaises(TypeError,
+                          oslo_messaging.get_rpc_server,
+                          transport=transport.transport,
+                          target=target,
+                          endpoints=[_endpoint()],
+                          executor="threading")
+
 
 class CastTestCase(utils.SkipIfNoTransportURL):
     # Note: casts return immediately, so these tests utilise a special
