@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import fixtures
 import threading
 
 from oslo_config import cfg
@@ -131,6 +132,9 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
     def setUp(self):
         super(TestNotifyListener, self).setUp(conf=cfg.ConfigOpts())
         ListenerSetupMixin.setUp(self)
+        self.useFixture(fixtures.MonkeyPatch(
+            'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
+            new_value={}))
 
     @mock.patch('debtcollector.deprecate')
     def test_constructor(self, deprecate):
