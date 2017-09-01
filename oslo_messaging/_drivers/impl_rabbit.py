@@ -1027,14 +1027,13 @@ class Connection(object):
         timer = rpc_common.DecayingTimer(duration=timeout)
         timer.start()
 
-        def _raise_timeout(exc):
-            LOG.debug('Timed out waiting for RPC response: %s', exc)
+        def _raise_timeout():
             raise rpc_common.Timeout()
 
         def _recoverable_error_callback(exc):
             if not isinstance(exc, rpc_common.Timeout):
                 self._new_tags = set(self._consumers.values())
-            timer.check_return(_raise_timeout, exc)
+            timer.check_return(_raise_timeout)
 
         def _error_callback(exc):
             _recoverable_error_callback(exc)
@@ -1067,9 +1066,9 @@ class Connection(object):
                 try:
                     self.connection.drain_events(timeout=poll_timeout)
                     return
-                except socket.timeout as exc:
+                except socket.timeout:
                     poll_timeout = timer.check_return(
-                        _raise_timeout, exc, maximum=self._poll_timeout)
+                        _raise_timeout, maximum=self._poll_timeout)
                 except self.connection.channel_errors as exc:
                     if exc.code == 406 and exc.method_name == 'Basic.ack':
                         # NOTE(gordc): occasionally multiple workers will grab
