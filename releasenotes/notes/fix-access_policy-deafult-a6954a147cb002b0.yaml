@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Change the default value of RPC dispatcher access_policy
+    to DefaultRPCAccessPolicy.

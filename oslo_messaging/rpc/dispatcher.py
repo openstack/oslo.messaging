@@ -170,9 +170,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                 raise TypeError('access_policy must be a subclass of '
                                 'RPCAccessPolicyBase')
         else:
-            # TODO(pvinci): Change to DefaultRPCAccessPolicy when setting to
-            # DefaultRCPAccessPolicy no longer breaks in tempest tests.
-            self.access_policy = LegacyRPCAccessPolicy()
+            self.access_policy = DefaultRPCAccessPolicy()
 
     @staticmethod
     def _is_namespace(target, namespace):

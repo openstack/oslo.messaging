@@ -158,7 +158,6 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         oslo_messaging.get_rpc_server(transport, target,
                                       endpoints, serializer=serializer)
         self.assertEqual([
-            mock.call(mock.ANY, category=FutureWarning, stacklevel=3),
             mock.call("blocking executor is deprecated. Executor default will "
                       "be removed. Use explicitly threading or eventlet "
                       "instead in version 'pike' and will be removed in "

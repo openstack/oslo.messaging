@@ -130,8 +130,6 @@ __all__ = [
 import logging
 import sys
 
-from debtcollector.updating import updated_kwarg_default_value
-
 from oslo_messaging._i18n import _LE
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
@@ -187,15 +185,6 @@ class RPCServer(msg_server.MessageHandlingServer):
                 del failure
 
 
-@updated_kwarg_default_value('access_policy', None,
-                             rpc_dispatcher.DefaultRPCAccessPolicy,
-                             message='access_policy defaults to '
-                                     'LegacyRPCAccessPolicy which '
-                                     'exposes private methods. Explicitly '
-                                     'set access_policy to '
-                                     'DefaultRPCAccessPolicy or '
-                                     'ExplicitRPCAccessPolicy.',
-                             version='?')
 def get_rpc_server(transport, target, endpoints,
                    executor='blocking', serializer=None, access_policy=None):
     """Construct an RPC server.
@@ -212,7 +201,7 @@ def get_rpc_server(transport, target, endpoints,
     :param serializer: an optional entity serializer
     :type serializer: Serializer
     :param access_policy: an optional access policy.
-           Defaults to LegacyRPCAccessPolicy
+           Defaults to DefaultRPCAccessPolicy
     :type access_policy: RPCAccessPolicyBase
     """
     dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer,
