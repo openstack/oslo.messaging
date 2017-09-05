@@ -180,7 +180,7 @@ class RpcPikaIncomingMessage(PikaIncomingMessage, base.RpcIncomingMessage):
         :param failure: Tuple, should be a sys.exc_info() tuple.
             Should be None if RPC request was successfully processed.
 
-        :return RpcReplyPikaIncomingMessage, message with reply
+        :return RpcReplyPikaIncomingMessage: message with reply
         """
 
         if self.reply_q is None:

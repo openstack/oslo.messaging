@@ -218,7 +218,7 @@ class PikaPoller(base.Listener):
         exchange and (or) queue do not exist. Should be overridden in child
         classes
 
-        :return Dictionary, declared_queue_name -> no_ack_mode
+        :return Dictionary: declared_queue_name -> no_ack_mode
         """
         raise NotImplementedError(
             "It is base class. Please declare exchanges and queues here"
@@ -377,7 +377,7 @@ class RpcServicePikaPoller(PikaPoller):
         """Overrides base method and perform declaration of RabbitMQ exchanges
         and queues which correspond to oslo.messaging RPC target
 
-        :return Dictionary, declared_queue_name -> no_ack_mode
+        :return Dictionary: declared_queue_name -> no_ack_mode
         """
         queue_expiration = self._pika_engine.rpc_queue_expiration
 
@@ -465,7 +465,7 @@ class RpcReplyPikaPoller(PikaPoller):
         """Overrides base method and perform declaration of RabbitMQ exchange
         and queue used for RPC reply delivery
 
-        :return Dictionary, declared_queue_name -> no_ack_mode
+        :return Dictionary: declared_queue_name -> no_ack_mode
         """
         self._pika_engine.declare_queue_binding_by_channel(
             channel=self._channel,
@@ -513,7 +513,7 @@ class NotificationPikaPoller(PikaPoller):
         """Overrides base method and perform declaration of RabbitMQ exchanges
         and queues used for notification delivery
 
-        :return Dictionary, declared_queue_name -> no_ack_mode
+        :return Dictionary: declared_queue_name -> no_ack_mode
         """
         queues_to_consume = []
         for target, priority in self._targets_and_priorities:
