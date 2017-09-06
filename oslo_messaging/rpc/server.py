@@ -135,6 +135,7 @@ from debtcollector.updating import updated_kwarg_default_value
 from oslo_messaging._i18n import _LE
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
+from oslo_messaging import transport as msg_transport
 
 LOG = logging.getLogger(__name__)
 
@@ -142,6 +143,10 @@ LOG = logging.getLogger(__name__)
 class RPCServer(msg_server.MessageHandlingServer):
     def __init__(self, transport, target, dispatcher, executor='blocking'):
         super(RPCServer, self).__init__(transport, dispatcher, executor)
+        if not isinstance(transport, msg_transport.RPCTransport):
+            LOG.warning("Using notification transport for RPC. Please use "
+                        "get_rpc_transport to obtain an RPC transport "
+                        "instance.")
         self._target = target
 
     def _create_listener(self):

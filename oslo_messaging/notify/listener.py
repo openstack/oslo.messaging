@@ -132,6 +132,7 @@ import logging
 from oslo_messaging._i18n import _LE
 from oslo_messaging.notify import dispatcher as notify_dispatcher
 from oslo_messaging import server as msg_server
+from oslo_messaging import transport as msg_transport
 
 LOG = logging.getLogger(__name__)
 
@@ -163,6 +164,11 @@ class NotificationServerBase(msg_server.MessageHandlingServer):
 class NotificationServer(NotificationServerBase):
     def __init__(self, transport, targets, dispatcher, executor='blocking',
                  allow_requeue=True, pool=None):
+        if not isinstance(transport, msg_transport.NotificationTransport):
+            LOG.warning("Using RPC transport for notifications. Please use "
+                        "get_notification_transport to obtain a "
+                        "notification transport instance.")
+
         super(NotificationServer, self).__init__(
             transport, targets, dispatcher, executor, allow_requeue, pool, 1,
             None

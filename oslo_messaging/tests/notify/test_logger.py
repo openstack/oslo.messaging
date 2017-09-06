@@ -22,7 +22,6 @@ from oslo_utils import timeutils
 import testscenarios
 
 import oslo_messaging
-from oslo_messaging.tests.notify import test_notifier
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -58,8 +57,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logger(self, mock_utcnow):
+        fake_transport = oslo_messaging.get_notification_transport(self.conf)
         with mock.patch('oslo_messaging.transport._get_transport',
-                        return_value=test_notifier._FakeTransport(self.conf)):
+                        return_value=fake_transport):
             self.logger = oslo_messaging.LoggingNotificationHandler('test://')
 
         mock_utcnow.return_value = datetime.datetime.utcnow()
@@ -102,8 +102,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logging_conf(self, mock_utcnow):
+        fake_transport = oslo_messaging.get_notification_transport(self.conf)
         with mock.patch('oslo_messaging.transport._get_transport',
-                        return_value=test_notifier._FakeTransport(self.conf)):
+                        return_value=fake_transport):
             logging.config.dictConfig({
                 'version': 1,
                 'handlers': {
