@@ -346,7 +346,15 @@ class Thread(threading.Thread):
         """Run the proton event/timer loop."""
         LOG.debug("Starting Proton thread, container=%s",
                   self._container.name)
+        try:
+            self._main_loop()
+        except Exception:
+            # unknown error - fatal
+            LOG.exception("Fatal unhandled event loop error!")
+            raise
 
+    def _main_loop(self):
+        # Main event loop
         while not self._shutdown:
 
             readfds = [self._requests]

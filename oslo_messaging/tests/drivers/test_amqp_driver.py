@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import copy
 import logging
 import os
 import select
@@ -1515,19 +1516,12 @@ class TestSSL(test_utils.BaseTestCase):
                 self._tmpdir = None
                 self.skipTest("OpenSSL tools not installed - skipping")
 
-    def test_server_ok(self):
-        # test client authenticates server
-        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
-                                  sock_addr=self._ssl_config['s_name'],
-                                  ssl_config=self._ssl_config)
-        url = oslo_messaging.TransportURL.parse(self.conf, "amqp://%s:%d" %
-                                                (self._broker.host,
-                                                 self._broker.port))
+    def _ssl_server_ok(self, url):
         self._broker.start()
-
         self.config(ssl_ca_file=self._ssl_config['ca_cert'],
                     group='oslo_messaging_amqp')
-        driver = amqp_driver.ProtonDriver(self.conf, url)
+        tport_url = oslo_messaging.TransportURL.parse(self.conf, url)
+        driver = amqp_driver.ProtonDriver(self.conf, tport_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _ListenerThread(
             driver.listen(target, None, None)._poll_style_listener, 1)
@@ -1540,6 +1534,34 @@ class TestSSL(test_utils.BaseTestCase):
         listener.join(timeout=30)
         self.assertFalse(listener.isAlive())
         driver.cleanup()
+
+    def test_server_ok(self):
+        # test client authenticates server
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sock_addr=self._ssl_config['s_name'],
+                                  ssl_config=self._ssl_config)
+        url = "amqp://%s:%d" % (self._broker.host, self._broker.port)
+        self._ssl_server_ok(url)
+
+    def test_server_ignore_vhost_ok(self):
+        # test client authenticates server and ignores vhost
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sock_addr=self._ssl_config['s_name'],
+                                  ssl_config=self._ssl_config)
+        url = "amqp://%s:%d/my-vhost" % (self._broker.host, self._broker.port)
+        self._ssl_server_ok(url)
+
+    def test_server_check_vhost_ok(self):
+        # test client authenticates server using vhost as CN
+        # Use 'Invalid' from bad_cert CN
+        self.config(ssl_verify_vhost=True, group='oslo_messaging_amqp')
+        self._ssl_config['s_cert'] = self._ssl_config['bad_cert']
+        self._ssl_config['s_key'] = self._ssl_config['bad_key']
+        self._broker = FakeBroker(self.conf.oslo_messaging_amqp,
+                                  sock_addr=self._ssl_config['s_name'],
+                                  ssl_config=self._ssl_config)
+        url = "amqp://%s:%d/Invalid" % (self._broker.host, self._broker.port)
+        self._ssl_server_ok(url)
 
     @mock.patch('ssl.get_default_verify_paths')
     def test_server_ok_with_ssl_set_in_transport_url(self, mock_verify_paths):
@@ -1628,6 +1650,90 @@ class TestSSL(test_utils.BaseTestCase):
         if self._tmpdir:
             shutil.rmtree(self._tmpdir, ignore_errors=True)
         super(TestSSL, self).tearDown()
+
+
+@testtools.skipUnless(pyngus, "proton modules not present")
+class TestVHost(_AmqpBrokerTestCaseAuto):
+    """Verify the pseudo virtual host behavior"""
+
+    def _vhost_test(self):
+        """Verify that all messaging for a particular vhost stays on that vhost
+        """
+        self.config(pseudo_vhost=True,
+                    group="oslo_messaging_amqp")
+
+        vhosts = ["None", "HOSTA", "HOSTB", "HOSTC"]
+        target = oslo_messaging.Target(topic="test-topic")
+        fanout = oslo_messaging.Target(topic="test-topic", fanout=True)
+
+        listeners = {}
+        ldrivers = {}
+        sdrivers = {}
+
+        replies = {}
+        msgs = {}
+
+        for vhost in vhosts:
+            url = copy.copy(self._broker_url)
+            url.virtual_host = vhost if vhost != "None" else None
+            ldriver = amqp_driver.ProtonDriver(self.conf, url)
+            listeners[vhost] = _ListenerThread(
+                ldriver.listen(target, None, None)._poll_style_listener,
+                10)
+            ldrivers[vhost] = ldriver
+            sdrivers[vhost] = amqp_driver.ProtonDriver(self.conf, url)
+            replies[vhost] = []
+            msgs[vhost] = []
+
+        # send a fanout and a single rpc call to each listener
+        for vhost in vhosts:
+            if vhost == "HOSTC":   # expect no messages to HOSTC
+                continue
+            sdrivers[vhost].send(fanout,
+                                 {"context": vhost},
+                                 {"vhost": vhost,
+                                  "fanout": True,
+                                  "id": vhost})
+            replies[vhost].append(sdrivers[vhost].send(target,
+                                                       {"context": vhost},
+                                                       {"method": "echo",
+                                                        "id": vhost},
+                                                       wait_for_reply=True))
+        time.sleep(1)
+
+        for vhost in vhosts:
+            msgs[vhost] += listeners[vhost].get_messages()
+            if vhost == "HOSTC":
+                # HOSTC should get nothing
+                self.assertEqual(0, len(msgs[vhost]))
+                self.assertEqual(0, len(replies[vhost]))
+                continue
+
+            self.assertEqual(2, len(msgs[vhost]))
+            for m in msgs[vhost]:
+                # the id must match the vhost
+                self.assertEqual(vhost, m.message.get("id"))
+            self.assertEqual(1, len(replies[vhost]))
+            for m in replies[vhost]:
+                # same for correlation id
+                self.assertEqual(vhost, m.get("correlation-id"))
+
+        for vhost in vhosts:
+            listeners[vhost].kill()
+            ldrivers[vhost].cleanup
+            sdrivers[vhost].cleanup()
+
+    def test_vhost_routing(self):
+        """Test vhost using routable addresses
+        """
+        self.config(addressing_mode='routable', group="oslo_messaging_amqp")
+        self._vhost_test()
+
+    def test_vhost_legacy(self):
+        """Test vhost using legacy addresses
+        """
+        self.config(addressing_mode='legacy', group="oslo_messaging_amqp")
+        self._vhost_test()
 
 
 class FakeBroker(threading.Thread):
