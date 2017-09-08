@@ -142,10 +142,11 @@ class FakeExchange(object):
 
 
 class FakeExchangeManager(object):
+    _exchanges_lock = threading.Lock()
+    _exchanges = {}
+
     def __init__(self, default_exchange):
         self._default_exchange = default_exchange
-        self._exchanges_lock = threading.Lock()
-        self._exchanges = {}
 
     def get_exchange(self, name):
         if name is None:

@@ -35,9 +35,11 @@ load_tests = testscenarios.load_tests_apply_scenarios
 class ServerSetupMixin(object):
 
     class Server(object):
-        def __init__(self, transport, topic, server, endpoint, serializer):
+        def __init__(self, transport, topic, server, endpoint, serializer,
+                     exchange):
             self.controller = ServerSetupMixin.ServerController()
-            target = oslo_messaging.Target(topic=topic, server=server)
+            target = oslo_messaging.Target(topic=topic, server=server,
+                                           exchange=exchange)
             self.server = oslo_messaging.get_rpc_server(transport,
                                                         target,
                                                         [endpoint,
@@ -81,25 +83,25 @@ class ServerSetupMixin(object):
     def __init__(self):
         self.serializer = self.TestSerializer()
 
-    def _setup_server(self, transport, endpoint, topic=None, server=None):
+    def _setup_server(self, transport, endpoint, topic=None, server=None,
+                      exchange=None):
         server = self.Server(transport,
                              topic=topic or 'testtopic',
                              server=server or 'testserver',
                              endpoint=endpoint,
-                             serializer=self.serializer)
+                             serializer=self.serializer,
+                             exchange=exchange)
 
         server.start()
         return server
 
-    def _stop_server(self, client, server, topic=None):
-        if topic is not None:
-            client = client.prepare(topic=topic)
+    def _stop_server(self, client, server, topic=None, exchange=None):
         client.cast({}, 'stop')
         server.wait()
 
-    def _setup_client(self, transport, topic='testtopic'):
-        return oslo_messaging.RPCClient(transport,
-                                        oslo_messaging.Target(topic=topic),
+    def _setup_client(self, transport, topic='testtopic', exchange=None):
+        target = oslo_messaging.Target(topic=topic, exchange=exchange)
+        return oslo_messaging.RPCClient(transport, target=target,
                                         serializer=self.serializer)
 
 
@@ -111,6 +113,11 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
     def setUp(self):
         super(TestRPCServer, self).setUp(conf=cfg.ConfigOpts())
+        # FakeExchangeManager uses a class-level exchanges mapping; "reset" it
+        # before tests assert amount of items stored
+        self.useFixture(fixtures.MonkeyPatch(
+            'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
+            new_value={}))
 
     @mock.patch('warnings.warn')
     def test_constructor(self, warn):
@@ -300,14 +307,20 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertEqual(['dsfoo', 'dsbar'], endpoint.pings)
 
     def test_call(self):
-        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
+        # NOTE(milan): using a separate transport instance for each the client
+        # and the server to be able to check independent transport instances
+        # can communicate over same exchange&topic
+        transport_srv = oslo_messaging.get_rpc_transport(self.conf,
+                                                         url='fake:')
+        transport_cli = oslo_messaging.get_rpc_transport(self.conf,
+                                                         url='fake:')
 
         class TestEndpoint(object):
             def ping(self, ctxt, arg):
                 return arg
 
-        server_thread = self._setup_server(transport, TestEndpoint())
-        client = self._setup_client(transport)
+        server_thread = self._setup_server(transport_srv, TestEndpoint())
+        client = self._setup_client(transport_cli)
 
         self.assertIsNone(client.call({}, 'ping', arg=None))
         self.assertEqual(0, client.call({}, 'ping', arg=0))
@@ -498,8 +511,8 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
             single_server = params['server1'] == params['server2']
             return not (single_topic and single_server)
 
-        # fanout to multiple servers on same topic and exchange
-        # each endpoint will receive both messages
+        # fanout to multiple servers on same topic and exchange each endpoint
+        # will receive both messages
         def fanout_to_servers(scenario):
             params = scenario[1]
             fanout = params['fanout1'] or params['fanout2']
@@ -536,14 +549,16 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
 
     def setUp(self):
         super(TestMultipleServers, self).setUp(conf=cfg.ConfigOpts())
+        self.useFixture(fixtures.MonkeyPatch(
+            'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
+            new_value={}))
 
     def test_multiple_servers(self):
-        url1 = 'fake:///' + (self.exchange1 or '')
-        url2 = 'fake:///' + (self.exchange2 or '')
-
-        transport1 = oslo_messaging.get_rpc_transport(self.conf, url=url1)
-        if url1 != url2:
-            transport2 = oslo_messaging.get_rpc_transport(self.conf, url=url1)
+        transport1 = oslo_messaging.get_rpc_transport(self.conf,
+                                                      url='fake:')
+        if self.exchange1 != self.exchange2:
+            transport2 = oslo_messaging.get_rpc_transport(self.conf,
+                                                          url='fake:')
         else:
             transport2 = transport1
 
@@ -563,12 +578,18 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
             endpoint1 = endpoint2 = TestEndpoint()
 
         server1 = self._setup_server(transport1, endpoint1,
-                                     topic=self.topic1, server=self.server1)
+                                     topic=self.topic1,
+                                     exchange=self.exchange1,
+                                     server=self.server1)
         server2 = self._setup_server(transport2, endpoint2,
-                                     topic=self.topic2, server=self.server2)
+                                     topic=self.topic2,
+                                     exchange=self.exchange2,
+                                     server=self.server2)
 
-        client1 = self._setup_client(transport1, topic=self.topic1)
-        client2 = self._setup_client(transport2, topic=self.topic2)
+        client1 = self._setup_client(transport1, topic=self.topic1,
+                                     exchange=self.exchange1)
+        client2 = self._setup_client(transport2, topic=self.topic2,
+                                     exchange=self.exchange2)
 
         client1 = client1.prepare(server=self.server1)
         client2 = client2.prepare(server=self.server2)
@@ -584,9 +605,9 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         (client2.call if self.call2 else client2.cast)({}, 'ping', arg='2')
 
         self._stop_server(client1.prepare(fanout=None),
-                          server1, topic=self.topic1)
+                          server1, topic=self.topic1, exchange=self.exchange1)
         self._stop_server(client2.prepare(fanout=None),
-                          server2, topic=self.topic2)
+                          server2, topic=self.topic2, exchange=self.exchange2)
 
         def check(pings, expect):
             self.assertEqual(len(expect), len(pings))
