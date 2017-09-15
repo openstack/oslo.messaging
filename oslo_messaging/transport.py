@@ -153,6 +153,20 @@ class Transport(object):
         self._driver.cleanup()
 
 
+class RPCTransport(Transport):
+    """Transport object for RPC."""
+
+    def __init__(self, driver):
+        super(RPCTransport, self).__init__(driver)
+
+
+class NotificationTransport(Transport):
+    """Transport object for notifications."""
+
+    def __init__(self, driver):
+        super(NotificationTransport, self).__init__(driver)
+
+
 class InvalidTransportURL(exceptions.MessagingException):
     """Raised if transport URL is invalid."""
 
@@ -171,7 +185,8 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
-def _get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
+def _get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None,
+                   transport_cls=RPCTransport):
     allowed_remote_exmods = allowed_remote_exmods or []
     conf.register_opts(_transport_opts)
 
@@ -190,7 +205,7 @@ def _get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
     except RuntimeError as ex:
         raise DriverLoadFailure(url.transport, ex)
 
-    return Transport(mgr.driver)
+    return transport_cls(mgr.driver)
 
 
 @removals.remove(
@@ -229,7 +244,8 @@ def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
     :type aliases: dict
     """
     return _get_transport(conf, url,
-                          allowed_remote_exmods, aliases)
+                          allowed_remote_exmods, aliases,
+                          transport_cls=RPCTransport)
 
 
 class TransportHost(object):

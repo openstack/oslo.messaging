@@ -16,7 +16,6 @@ import fixtures
 
 import oslo_messaging
 from oslo_messaging.notify import log_handler
-from oslo_messaging.tests.notify import test_notifier
 from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
@@ -34,7 +33,7 @@ class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
                     group='oslo_messaging_notifications')
         self.stub_flg = True
 
-        transport = test_notifier._FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf)
         notifier = oslo_messaging.Notifier(transport)
 
         def fake_notifier(*args, **kwargs):

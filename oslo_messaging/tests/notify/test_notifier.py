@@ -47,15 +47,6 @@ class JsonMessageMatcher(object):
         return self.message == jsonutils.loads(other)
 
 
-class _FakeTransport(object):
-
-    def __init__(self, conf):
-        self.conf = conf
-
-    def _send_notification(self, target, ctxt, message, version, retry=None):
-        pass
-
-
 class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
 
     """Record logged exceptions and re-raise in cleanup.
@@ -72,6 +63,9 @@ class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
 
         def exception(self, msg, *args, **kwargs):
             self.exceptions.append(sys.exc_info()[1])
+
+        def warning(self, msg, *args, **kwargs):
+            return
 
     def setUp(self):
         super(_ReRaiseLoggedExceptionsFixture, self).setUp()
@@ -170,7 +164,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                     topics=self.topics,
                     group='oslo_messaging_notifications')
 
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         if hasattr(self, 'ctor_pub_id'):
             notifier = oslo_messaging.Notifier(transport,
@@ -241,7 +236,8 @@ class TestSerializer(test_utils.BaseTestCase):
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_serializer(self, mock_utcnow):
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         serializer = msg_serializer.NoOpSerializer()
 
@@ -289,7 +285,8 @@ class TestNotifierTopics(test_utils.BaseTestCase):
                     group='oslo_messaging_notifications')
         self.config(topics=['topic1', 'topic2'],
                     group='oslo_messaging_notifications')
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
         self.assertEqual(['topic1', 'topic2'], notifier._topics)
@@ -297,7 +294,8 @@ class TestNotifierTopics(test_utils.BaseTestCase):
     def test_topics_from_kwargs(self):
         self.config(driver=['log'],
                     group='oslo_messaging_notifications')
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost',
                                            topics=['topic1', 'topic2'])
@@ -311,7 +309,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.config(driver=['log'],
                     group='oslo_messaging_notifications')
 
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
 
@@ -386,7 +385,8 @@ class TestNotificationConfig(test_utils.BaseTestCase):
                     group='oslo_messaging_notifications')
 
         conf.set_override('retry', 3, group='oslo_messaging_notifications')
-        transport = _FakeTransport(conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
         notifier = oslo_messaging.Notifier(transport)
 
         self.assertEqual(3, notifier.retry)
@@ -397,7 +397,8 @@ class TestNotificationConfig(test_utils.BaseTestCase):
                     group='oslo_messaging_notifications')
 
         conf.set_override('retry', 3, group='oslo_messaging_notifications')
-        transport = _FakeTransport(conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
         notifier = oslo_messaging.Notifier(transport, retry=5)
 
         self.assertEqual(5, notifier.retry)
@@ -409,7 +410,8 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         self.config(driver=['routing'],
                     group='oslo_messaging_notifications')
 
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
         self.notifier = oslo_messaging.Notifier(transport)
         self.router = self.notifier._driver_mgr['routing'].obj
 
@@ -642,8 +644,21 @@ class TestNoOpNotifier(test_utils.BaseTestCase):
         self.config(driver=['noop'],
                     group='oslo_messaging_notifications')
 
-        transport = _FakeTransport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
 
         self.assertFalse(notifier.is_enabled())
+
+
+class TestNotifierTransportWarning(test_utils.BaseTestCase):
+
+    @mock.patch('oslo_messaging.notify.notifier._LOG')
+    def test_warning_when_rpc_transport(self, log):
+        transport = oslo_messaging.get_rpc_transport(self.conf)
+        oslo_messaging.Notifier(transport, 'test.localhost')
+        log.warning.assert_called_once_with(
+            "Using RPC transport for notifications. Please use "
+            "get_notification_transport to obtain a "
+            "notification transport instance.")

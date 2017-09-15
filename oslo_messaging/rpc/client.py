@@ -24,6 +24,7 @@ __all__ = [
 ]
 
 import abc
+import logging
 
 from oslo_config import cfg
 import six
@@ -32,6 +33,10 @@ from oslo_messaging._drivers import base as driver_base
 from oslo_messaging import _utils as utils
 from oslo_messaging import exceptions
 from oslo_messaging import serializer as msg_serializer
+from oslo_messaging import transport as msg_transport
+
+
+LOG = logging.getLogger(__name__)
 
 _client_opts = [
     cfg.IntOpt('rpc_response_timeout',
@@ -330,6 +335,11 @@ class RPCClient(_BaseCallContext):
         """
         if serializer is None:
             serializer = msg_serializer.NoOpSerializer()
+
+        if not isinstance(transport, msg_transport.RPCTransport):
+            LOG.warning("Using notification transport for RPC. Please use "
+                        "get_rpc_transport to obtain an RPC transport "
+                        "instance.")
 
         super(RPCClient, self).__init__(
             transport, target, serializer, timeout, version_cap, retry

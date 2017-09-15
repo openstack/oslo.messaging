@@ -449,6 +449,20 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
         self._stop_server(client, server_thread)
 
+    @mock.patch('oslo_messaging.rpc.server.LOG')
+    def test_warning_when_notifier_transport(self, log):
+        transport = oslo_messaging.get_notification_transport(self.conf)
+        target = oslo_messaging.Target(topic='foo', server='bar')
+        endpoints = [object()]
+        serializer = object()
+
+        oslo_messaging.get_rpc_server(transport, target,
+                                      endpoints, serializer=serializer)
+        log.warning.assert_called_once_with(
+            "Using notification transport for RPC. Please use "
+            "get_rpc_transport to obtain an RPC transport "
+            "instance.")
+
 
 class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
 

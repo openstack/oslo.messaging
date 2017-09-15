@@ -43,5 +43,6 @@ def get_rpc_transport(conf, url=None,
                                   from
     :type allowed_remote_exmods: list
     """
-    return msg_transport._get_transport(conf, url,
-                                        allowed_remote_exmods)
+    return msg_transport._get_transport(
+        conf, url, allowed_remote_exmods,
+        transport_cls=msg_transport.RPCTransport)

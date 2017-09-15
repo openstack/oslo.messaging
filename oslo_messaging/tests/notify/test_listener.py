@@ -23,7 +23,6 @@ import oslo_messaging
 from oslo_messaging.notify import dispatcher
 from oslo_messaging.notify import notifier as msg_notifier
 from oslo_messaging.tests import utils as test_utils
-import six
 from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -187,7 +186,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             self.assertTrue(False)
 
     def test_batch_timeout(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
@@ -195,7 +195,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                batch=(5, 1))
 
         notifier = self._setup_notifier(transport)
-        for i in six.moves.range(12):
+        for _ in range(12):
             notifier.info({}, 'an_event.start', 'test message')
 
         self.wait_for_messages(3)
@@ -213,7 +213,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                         mock.call(messages * 2)])
 
     def test_batch_size(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
@@ -221,7 +222,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                batch=(5, None))
 
         notifier = self._setup_notifier(transport)
-        for i in six.moves.range(10):
+        for _ in range(10):
             notifier.info({}, 'an_event.start', 'test message')
 
         self.wait_for_messages(2)
@@ -238,7 +239,8 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                         mock.call(messages * 5)])
 
     def test_batch_size_exception_path(self):
-        transport = oslo_messaging.get_transport(self.conf, url='fake:')
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
 
         endpoint = mock.Mock()
         endpoint.info.side_effect = [None, Exception('boom!')]
@@ -246,7 +248,7 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                batch=(5, None))
 
         notifier = self._setup_notifier(transport)
-        for i in six.moves.range(10):
+        for _ in range(10):
             notifier.info({}, 'an_event.start', 'test message')
 
         self.wait_for_messages(2)
@@ -510,3 +512,18 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         for call in mocked_endpoint1_calls:
             self.assertIn(call, endpoint2.info.mock_calls +
                           endpoint3.info.mock_calls)
+
+
+class TestListenerTransportWarning(test_utils.BaseTestCase):
+
+    @mock.patch('oslo_messaging.notify.listener.LOG')
+    def test_warning_when_rpc_transport(self, log):
+        transport = oslo_messaging.get_rpc_transport(self.conf)
+        target = oslo_messaging.Target(topic='foo')
+        endpoints = [object()]
+        oslo_messaging.get_notification_listener(
+            transport, [target], endpoints)
+        log.warning.assert_called_once_with(
+            "Using RPC transport for notifications. Please use "
+            "get_notification_transport to obtain a "
+            "notification transport instance.")

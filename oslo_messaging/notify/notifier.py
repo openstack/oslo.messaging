@@ -171,8 +171,9 @@ def get_notification_transport(conf, url=None,
                        group='oslo_messaging_notifications')
     if url is None:
         url = conf.oslo_messaging_notifications.transport_url
-    return msg_transport._get_transport(conf, url,
-                                        allowed_remote_exmods, aliases)
+    return msg_transport._get_transport(
+        conf, url, allowed_remote_exmods, aliases,
+        transport_cls=msg_transport.NotificationTransport)
 
 
 class Notifier(object):
@@ -245,6 +246,10 @@ class Notifier(object):
         conf.register_opts(_notifier_opts,
                            group='oslo_messaging_notifications')
 
+        if not isinstance(transport, msg_transport.NotificationTransport):
+            _LOG.warning("Using RPC transport for notifications. Please use "
+                         "get_notification_transport to obtain a "
+                         "notification transport instance.")
         self.transport = transport
         self.publisher_id = publisher_id
         if retry is not None:
