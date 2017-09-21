@@ -31,7 +31,7 @@ class TestKafkaDriverLoad(test_utils.BaseTestCase):
         self.messaging_conf.transport_driver = 'kafka'
 
     def test_driver_load(self):
-        transport = oslo_messaging.get_transport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf)
         self.assertIsInstance(transport._driver, kafka_driver.KafkaDriver)
 
 
@@ -57,7 +57,8 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
         self.messaging_conf.transport_driver = 'kafka'
 
     def test_transport_url(self):
-        transport = oslo_messaging.get_transport(self.conf, self.url)
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              self.url)
         self.addCleanup(transport.cleanup)
         driver = transport._driver
 
@@ -72,7 +73,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
     def setUp(self):
         super(TestKafkaDriver, self).setUp()
         self.messaging_conf.transport_driver = 'kafka'
-        transport = oslo_messaging.get_transport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf)
         self.driver = transport._driver
 
     def test_send(self):
@@ -125,7 +126,7 @@ class TestKafkaConnection(test_utils.BaseTestCase):
     def setUp(self):
         super(TestKafkaConnection, self).setUp()
         self.messaging_conf.transport_driver = 'kafka'
-        transport = oslo_messaging.get_transport(self.conf)
+        transport = oslo_messaging.get_notification_transport(self.conf)
         self.driver = transport._driver
 
     def test_notify(self):
@@ -135,4 +136,4 @@ class TestKafkaConnection(test_utils.BaseTestCase):
             fake_producer = fake_producer_class.return_value
             conn.notify_send("fake_topic", {"fake_ctxt": "fake_param"},
                              {"fake_text": "fake_message_1"}, 10)
-            self.assertEqual(1, len(fake_producer.send.mock_calls))
+            self.assertEqual(2, len(fake_producer.send.mock_calls))

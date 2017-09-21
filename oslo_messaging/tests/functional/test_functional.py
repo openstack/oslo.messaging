@@ -292,6 +292,10 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     # to be run in parallel
 
     def test_simple(self):
+        if self.url.startswith("kafka://"):
+            self.conf.set_override('consumer_group', 'test_simple',
+                                   group='oslo_messaging_kafka')
+
         listener = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['test_simple']))
         notifier = listener.notifier('abc')
@@ -304,6 +308,10 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual('abc', event[3])
 
     def test_multiple_topics(self):
+        if self.url.startswith("kafka://"):
+            self.conf.set_override('consumer_group', 'test_multiple_topics',
+                                   group='oslo_messaging_kafka')
+
         listener = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['a', 'b']))
         a = listener.notifier('pub-a', topics=['a'])
@@ -356,8 +364,17 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             self.assertThat(len(stream), matchers.GreaterThan(0))
 
     def test_independent_topics(self):
+        if self.url.startswith("kafka://"):
+            self.conf.set_override('consumer_group',
+                                   'test_independent_topics_a',
+                                   group='oslo_messaging_kafka')
         listener_a = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['1']))
+
+        if self.url.startswith("kafka://"):
+            self.conf.set_override('consumer_group',
+                                   'test_independent_topics_b',
+                                   group='oslo_messaging_kafka')
         listener_b = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['2']))
 
@@ -383,6 +400,10 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         check_received(listener_b, "pub-2", b_out)
 
     def test_all_categories(self):
+        if self.url.startswith("kafka://"):
+            self.conf.set_override('consumer_group', 'test_all_categories',
+                                   group='oslo_messaging_kafka')
+
         listener = self.useFixture(utils.NotificationFixture(
             self.conf, self.url, ['test_all_categories']))
         n = listener.notifier('abc')
@@ -411,6 +432,9 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
                 # end-to-end acknowledgement with router intermediary
                 # sender pends until batch_size or timeout reached
                 self.skipTest("qdrouterd backend")
+        if self.url.startswith("kafka://"):
+            self.conf.set_override('consumer_group', 'test_simple_batch',
+                                   group='oslo_messaging_kafka')
 
         listener = self.useFixture(
             utils.BatchNotificationFixture(self.conf, self.url,

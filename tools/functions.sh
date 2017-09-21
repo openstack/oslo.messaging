@@ -11,7 +11,10 @@ wait_for_line () {
 
 function clean_exit(){
     local error_code="$?"
-    kill -9 $(jobs -p)
+    for job in `jobs -p`
+    do
+        kill -9 $job
+    done
     rm -rf "$1"
     return $error_code
 }
