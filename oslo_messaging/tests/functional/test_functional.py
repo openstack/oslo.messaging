@@ -113,7 +113,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_timeout(self):
         transport = self.useFixture(
-            utils.TransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.url)
         )
         target = oslo_messaging.Target(topic="no_such_topic")
         c = utils.ClientStub(transport.transport, target, timeout=1)
@@ -130,7 +130,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_timeout_with_concurrently_queues(self):
         transport = self.useFixture(
-            utils.TransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.url)
         )
         target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
                                        server="server_" + str(uuid.uuid4()))
@@ -167,7 +167,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
                 return echo
 
         transport = self.useFixture(
-            utils.TransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.url)
         )
         self.useFixture(
             utils.RpcServerFixture(self.conf, self.url, target,
@@ -209,7 +209,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
                                        server="server_" + str(uuid.uuid4()))
         transport = self.useFixture(
-            utils.TransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.url)
         )
         self.assertRaises(TypeError,
                           oslo_messaging.get_rpc_server,

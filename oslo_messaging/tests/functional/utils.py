@@ -74,6 +74,24 @@ class TransportFixture(fixtures.Fixture):
         time.sleep(0.5)
 
 
+class RPCTransportFixture(TransportFixture):
+    """Fixture defined to setup RPC transport."""
+
+    def setUp(self):
+        super(RPCTransportFixture, self).setUp()
+        self.transport = oslo_messaging.get_rpc_transport(self.conf,
+                                                          url=self.url)
+
+
+class NotificationTransportFixture(TransportFixture):
+    """Fixture defined to setup notification transport."""
+
+    def setUp(self):
+        super(NotificationTransportFixture, self).setUp()
+        self.transport = oslo_messaging.get_notification_transport(
+            self.conf, url=self.url)
+
+
 class RpcServerFixture(fixtures.Fixture):
     """Fixture to setup the TestServerEndpoint."""
 
@@ -91,7 +109,7 @@ class RpcServerFixture(fixtures.Fixture):
     def setUp(self):
         super(RpcServerFixture, self).setUp()
         endpoints = [self.endpoint, self]
-        transport = self.useFixture(TransportFixture(self.conf, self.url))
+        transport = self.useFixture(RPCTransportFixture(self.conf, self.url))
         self.server = oslo_messaging.get_rpc_server(
             transport=transport.transport,
             target=self.target,
@@ -168,7 +186,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
             else:
                 raise ValueError("Invalid value for server: %r" % server)
 
-        transport = self.useFixture(TransportFixture(self.conf, self.url))
+        transport = self.useFixture(RPCTransportFixture(self.conf, self.url))
         client = ClientStub(transport.transport, target, cast=cast,
                             timeout=5)
         transport.wait()
@@ -345,7 +363,8 @@ class NotificationFixture(fixtures.Fixture):
         targets = [oslo_messaging.Target(topic=t) for t in self.topics]
         # add a special topic for internal notifications
         targets.append(oslo_messaging.Target(topic=self.name))
-        transport = self.useFixture(TransportFixture(self.conf, self.url))
+        transport = self.useFixture(NotificationTransportFixture(self.conf,
+                                                                 self.url))
         self.server = self._get_server(transport, targets)
         self._ctrl = self.notifier('internal', topics=[self.name])
         self._start()
@@ -372,7 +391,8 @@ class NotificationFixture(fixtures.Fixture):
             raise Exception("Server did not shutdown properly")
 
     def notifier(self, publisher, topics=None):
-        transport = self.useFixture(TransportFixture(self.conf, self.url))
+        transport = self.useFixture(NotificationTransportFixture(self.conf,
+                                                                 self.url))
         n = notifier.Notifier(transport.transport,
                               publisher,
                               driver='messaging',
