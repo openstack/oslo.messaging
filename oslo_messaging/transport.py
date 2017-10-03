@@ -43,8 +43,16 @@ LOG = logging.getLogger(__name__)
 _transport_opts = [
     cfg.StrOpt('transport_url',
                secret=True,
-               help='A URL representing the messaging driver to use and its '
-                    'full configuration.'),
+               help='The network address and optional user credentials for '
+                    'connecting to the messaging backend, in URL format. The '
+                    'expected format is:\n\n'
+                    'driver://[user:pass@]host:port[,[userN:passN@]hostN:'
+                    'portN]/virtual_host?query\n\n'
+                    'Example: rabbit://rabbitmq:password@127.0.0.1:5672//\n\n'
+                    'For full details on the fields in the URL see the '
+                    'documentation of oslo_messaging.TransportURL at '
+                    'https://docs.openstack.org/oslo.messaging/latest/'
+                    'reference/transport.html'),
     cfg.StrOpt('rpc_backend',
                deprecated_for_removal=True,
                deprecated_reason="Replaced by [DEFAULT]/transport_url",
@@ -283,11 +291,11 @@ class TransportURL(object):
 
     Transport URLs take the form::
 
-      scheme://[user:pass@]host:port[,[userN:passN@]hostN:portN]/virtual_host?query
+      driver://[user:pass@]host:port[,[userN:passN@]hostN:portN]/virtual_host?query
 
     where:
 
-    scheme
+    driver
       Specifies the transport driver to use. Typically this is `rabbit` for the
       RabbitMQ broker. See the documentation for other available transport
       drivers.
