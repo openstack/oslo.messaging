@@ -1,0 +1,12 @@
+- hosts: all
+  name: Test the pre run
+  tasks:
+
+    - shell:
+        cmd: |
+          set -x
+          echo "test pre phase"
+          export -p
+          ls -l
+          pwd
+        executable: /bin/bash

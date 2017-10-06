@@ -10,25 +10,23 @@ function is_fedora {
     [ -f /usr/bin/yum ] && cat /etc/*release | grep -q -e "Fedora"
 }
 
-# Looks like /home/jenkins/worspace/gate-oslo.messaging-tox-py27-func-rabbit-ubuntu-xenial
-JOB_NAME=${WORKSPACE##*/}
-
-if [ "${JOB_NAME//gate-oslo.messaging-tox-py*-func-/}" == "${JOB_NAME}" ]; then
-    # not a functional test
-    exit 0
-fi
-
 # NOTE(sileht): we create the virtualenv only and use bindep directly
 # because tox doesn't have a quiet option...
 tox -ebindep --notest
 
-# NOTE(sileht): bindep return 1 if some packages have to be installed
-BINDEP_PROFILE=$(echo $JOB_NAME | cut -d- -f6)
-PACKAGES=$(.tox/bindep/bin/bindep -b -f bindep.txt $BINDEP_PROFILE || true)
+# TODO(kgiusti) for now install all profile deps, need to fix this to
+# install only the deps needed by the particular test's profile
+PROFILES="rabbit zmq amqp1"
+PACKAGES=
+for PROFILE in $PROFILES; do
+    # NOTE(sileht): bindep return 1 if some packages have to be installed
+    PACKAGES="$PACKAGES $(.tox/bindep/bin/bindep -b -f bindep.txt $PROFILE || true)"
+done
+[ -n "$PACKAGES" ] || exit 0
 
 # inspired from project-config install-distro-packages.sh
 if apt-get -v >/dev/null 2>&1 ; then
-    [ $BINDEP_PROFILE == amqp1 ] && sudo add-apt-repository -y ppa:qpid/testing
+    sudo add-apt-repository -y ppa:qpid/testing
     sudo apt-get -qq update
     sudo PATH=/usr/sbin:/sbin:$PATH DEBIAN_FRONTEND=noninteractive \
         apt-get -q --option "Dpkg::Options::=--force-confold" \
