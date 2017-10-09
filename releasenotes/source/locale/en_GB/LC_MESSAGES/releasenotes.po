@@ -1,0 +1,140 @@
+# Andi Chandler <andi@gowling.com>, 2016. #zanata
+# Andi Chandler <andi@gowling.com>, 2017. #zanata
+msgid ""
+msgstr ""
+"Project-Id-Version: oslo.messaging Release Notes 5.33.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-10-08 16:51+0000\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2017-10-07 09:27+0000\n"
+"Last-Translator: Andi Chandler <andi@gowling.com>\n"
+"Language-Team: English (United Kingdom)\n"
+"Language: en-GB\n"
+"X-Generator: Zanata 3.9.6\n"
+"Plural-Forms: nplurals=2; plural=(n != 1)\n"
+
+msgid "*conn_pool_min_size* (default 2)"
+msgstr "*conn_pool_min_size* (default 2)"
+
+msgid "*conn_pool_ttl* (defaul 1200)"
+msgstr "*conn_pool_ttl* (defaul 1200)"
+
+msgid "*retry* (default=-1)"
+msgstr "*retry* (default=-1)"
+
+msgid "5.20.0"
+msgstr "5.20.0"
+
+msgid "5.24.0"
+msgstr "5.24.0"
+
+msgid "5.24.2"
+msgstr "5.24.2"
+
+msgid "5.26.0"
+msgstr "5.26.0"
+
+msgid "5.27.0"
+msgstr "5.27.0"
+
+msgid "5.6.0"
+msgstr "5.6.0"
+
+msgid ""
+"Add get_rpc_transport call to make the API clear for the separation of RPC "
+"and Notification messaging backends."
+msgstr ""
+"Add get_rpc_transport call to make the API clear for the separation of RPC "
+"and Notification messaging backends."
+
+msgid ""
+"Change the default value of RPC dispatcher access_policy to "
+"DefaultRPCAccessPolicy."
+msgstr ""
+"Change the default value of RPC dispatcher access_policy to "
+"DefaultRPCAccessPolicy."
+
+msgid "Configuration param 'retry' is added. Default is -1, indefinite"
+msgstr "Configuration param 'retry' is added. Default is -1, indefinite"
+
+msgid "Current Series Release Notes"
+msgstr "Current Series Release Notes"
+
+msgid "Default ttl is 1200s. Next configuration params was added"
+msgstr "Default TTL is 1200s. Next configuration params was added"
+
+msgid ""
+"Deprecate get_transport and use get_rpc_transport or "
+"get_notification_transport to make the API usage clear for the separation of "
+"RPC and Notification messaging backends."
+msgstr ""
+"Deprecate get_transport and use get_rpc_transport or "
+"get_notification_transport to make the API usage clear for the separation of "
+"RPC and Notification messaging backends."
+
+msgid "Deprecation Notes"
+msgstr "Deprecation Notes"
+
+msgid "Idle connections in the pool will be expired and closed."
+msgstr "Idle connections in the pool will be expired and closed."
+
+msgid "New Features"
+msgstr "New Features"
+
+msgid "Newton Series Release Notes"
+msgstr "Newton Series Release Notes"
+
+msgid "Ocata Series Release Notes"
+msgstr "Ocata Series Release Notes"
+
+msgid "Pike Series Release Notes"
+msgstr "Pike Series Release Notes"
+
+msgid ""
+"RequestContextSerializer was deprecated since 4.6, and it isn't used by any "
+"other project, so we can remove it safely."
+msgstr ""
+"RequestContextSerializer was deprecated since 4.6, and it isn't used by any "
+"other project, so we can remove it safely."
+
+msgid "Retry support for oslo_messaging_notifications driver"
+msgstr "Retry support for oslo_messaging_notifications driver"
+
+msgid ""
+"The blocking executor has been deprecated for removal in Rocky. Its usage "
+"was never recommended for applications, and it has no test coverage. "
+"Applications should choose the appropriate threading model that maps their "
+"usage instead."
+msgstr ""
+"The blocking executor has been deprecated for removal in Rocky. Its usage "
+"was never recommended for applications, and it has no test coverage. "
+"Applications should choose the appropriate threading model that maps their "
+"usage instead."
+
+msgid ""
+"The pika driver has been deprecated for removal in Rocky.  This driver was "
+"developed as a replacement for the default rabbit driver. However testing "
+"has not shown any appreciable improvement over the default rabbit driver in "
+"terms of performance and stability."
+msgstr ""
+"The Pika driver has been deprecated for removal in Rocky.  This driver was "
+"developed as a replacement for the default rabbit driver. However testing "
+"has not shown any appreciable improvement over the default rabbit driver in "
+"terms of performance and stability."
+
+msgid ""
+"The rabbitmq driver option ``DEFAULT/max_retries`` has been deprecated for "
+"removal (at a later point in the future) as it did not make logical sense "
+"for notifications and for RPC."
+msgstr ""
+"The RabbitMQ driver option ``DEFAULT/max_retries`` has been deprecated for "
+"removal (at a later point in the future) as it did not make logical sense "
+"for notifications and for RPC."
+
+msgid "Upgrade Notes"
+msgstr "Upgrade Notes"
+
+msgid "oslo.messaging Release Notes"
+msgstr "oslo.messaging Release Notes"
