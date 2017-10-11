@@ -1,6 +1,6 @@
-===========================
-Contributing oslo.messaging
-===========================
+==============================
+Contributing to oslo.messaging
+==============================
 
 .. toctree::
    :maxdepth: 2
