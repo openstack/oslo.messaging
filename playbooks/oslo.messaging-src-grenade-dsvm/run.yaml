@@ -1,0 +1,50 @@
+- hosts: all
+  name: Autoconverted job legacy-oslo.messaging-src-grenade-dsvm from old job gate-oslo.messaging-src-grenade-dsvm-ubuntu-xenial-nv
+  tasks:
+
+    - name: Ensure legacy workspace directory
+      file:
+        path: '{{ ansible_user_dir }}/workspace'
+        state: directory
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          cat > clonemap.yaml << EOF
+          clonemap:
+            - name: openstack-infra/devstack-gate
+              dest: devstack-gate
+          EOF
+          /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
+              git://git.openstack.org \
+              openstack-infra/devstack-gate
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'
+
+    - shell:
+        cmd: |
+          set -e
+          set -x
+          export PROJECTS="openstack-dev/grenade $PROJECTS"
+          export PYTHONUNBUFFERED=true
+          export DEVSTACK_GATE_TEMPEST=1
+          export DEVSTACK_GATE_GRENADE=pullup
+          export BRANCH_OVERRIDE=default
+          if [ "$BRANCH_OVERRIDE" != "default" ] ; then
+              export OVERRIDE_ZUUL_BRANCH=$BRANCH_OVERRIDE
+          fi
+          export DEVSTACK_PROJECT_FROM_GIT=$ZUUL_SHORT_PROJECT_NAME
+
+          # Even if the branch is overridden, make sure we use
+          # the correct branch using the OVERRIDE_*_PROJECT_BRANCH
+          # variable.
+          uc_project=`echo $DEVSTACK_PROJECT_FROM_GIT | tr [:lower:] [:upper:] | tr '-' '_' | sed 's/[^A-Z_]//'`
+          export "OVERRIDE_"$uc_project"_PROJECT_BRANCH"=$ZUUL_BRANCH
+
+          cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
+          ./safe-devstack-vm-gate-wrap.sh
+        executable: /bin/bash
+        chdir: '{{ ansible_user_dir }}/workspace'
+      environment: '{{ zuul | zuul_legacy_vars }}'

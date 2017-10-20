@@ -7,7 +7,7 @@ libffi-dev [platform:dpkg]
 gcc [platform:rpm]
 gcc-c++ [platform:rpm]
 make [platform:rpm]
-pkg-config [platform:rpm]
+pkgconfig [platform:rpm]
 libffi-devel [platform:rpm]
 
 # kombu/pika
