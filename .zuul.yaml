@@ -20,49 +20,49 @@
     name: oslo.messaging-tox-py27-func-rabbit
     parent: openstack-tox-py27
     vars:
-        tox_envlist: py27-func-rabbit
+      tox_envlist: py27-func-rabbit
 
 - job:
     name: oslo.messaging-tox-py27-func-zmq
     parent: openstack-tox-py27
     vars:
-        tox_envlist: py27-func-zmq
+      tox_envlist: py27-func-zmq
 
 - job:
     name: oslo.messaging-tox-py27-func-zmq-proxy
     parent: openstack-tox-py27
     vars:
-        tox_envlist: py27-func-zmq-proxy
+      tox_envlist: py27-func-zmq-proxy
 
 - job:
     name: oslo.messaging-tox-py27-func-zmq-pubsub
     parent: openstack-tox-py27
     vars:
-        tox_envlist: py27-func-zmq-pubsub
+      tox_envlist: py27-func-zmq-pubsub
 
 - job:
     name: oslo.messaging-tox-py35-func-amqp1
     parent: openstack-tox-py35
     vars:
-        tox_envlist: py35-func-amqp1
+      tox_envlist: py35-func-amqp1
 
 - job:
     name: oslo.messaging-tox-py35-func-rabbit
     parent: openstack-tox-py35
     vars:
-        tox_envlist: py35-func-rabbit
+      tox_envlist: py35-func-rabbit
 
 - job:
     name: oslo.messaging-tox-py35-func-zmq
     parent: openstack-tox-py35
     vars:
-        tox_envlist: py35-func-zmq
+      tox_envlist: py35-func-zmq
 
 - job:
     name: oslo.messaging-src-dsvm-full-rabbit-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-rabbit-default/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-rabbit-default/post
+    run: playbooks/oslo.messaging-src-dsvm-full-rabbit-default/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-rabbit-default/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -71,8 +71,8 @@
 - job:
     name: oslo.messaging-src-dsvm-full-pika-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-pika-default/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-pika-default/post
+    run: playbooks/oslo.messaging-src-dsvm-full-pika-default/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-pika-default/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -82,8 +82,8 @@
 - job:
     name: oslo.messaging-src-dsvm-full-amqp1-dual-centos-7
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-amqp1-dual-centos-7/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-amqp1-dual-centos-7/post
+    run: playbooks/oslo.messaging-src-dsvm-full-amqp1-dual-centos-7/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-amqp1-dual-centos-7/post.yaml
     timeout: 10800
     nodeset: legacy-centos-7
     required-projects:
@@ -94,8 +94,8 @@
 - job:
     name: oslo.messaging-src-dsvm-full-amqp1-hybrid
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-amqp1-hybrid/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-amqp1-hybrid/post
+    run: playbooks/oslo.messaging-src-dsvm-full-amqp1-hybrid/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-amqp1-hybrid/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -105,8 +105,8 @@
 - job:
     name: oslo.messaging-src-dsvm-full-kafka-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-kafka-default/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-kafka-default/post
+    run: playbooks/oslo.messaging-src-dsvm-full-kafka-default/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-kafka-default/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -116,8 +116,8 @@
 - job:
     name: oslo.messaging-src-dsvm-full-kafka-default-centos-7
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-kafka-default-centos-7/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-kafka-default-centos-7/post
+    run: playbooks/oslo.messaging-src-dsvm-full-kafka-default-centos-7/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-kafka-default-centos-7/post.yaml
     timeout: 10800
     nodeset: legacy-centos-7
     required-projects:
@@ -128,8 +128,8 @@
 - job:
     name: oslo.messaging-src-dsvm-full-zmq-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/run
-    post-run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/post
+    run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/run.yaml
+    post-run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/post.yaml
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
@@ -139,8 +139,8 @@
 - job:
     name: oslo.messaging-src-grenade-dsvm
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-grenade-dsvm/run
-    post-run: playbooks/oslo.messaging-src-grenade-dsvm/post
+    run: playbooks/oslo.messaging-src-grenade-dsvm/run.yaml
+    post-run: playbooks/oslo.messaging-src-grenade-dsvm/post.yaml
     timeout: 10800
     required-projects:
       - openstack-dev/grenade
@@ -153,8 +153,8 @@
 - job:
     name: oslo.messaging-src-grenade-dsvm-multinode
     parent: legacy-dsvm-base-multinode
-    run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/run
-    post-run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/post
+    run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/run.yaml
+    post-run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/post.yaml
     timeout: 10800
     required-projects:
       - openstack-dev/grenade
@@ -168,8 +168,8 @@
 - job:
     name: oslo.messaging-telemetry-dsvm-integration-amqp1
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/run
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/post
+    run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/run.yaml
+    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/post.yaml
     timeout: 4200
     required-projects:
       - openstack-infra/devstack-gate
@@ -186,8 +186,8 @@
 - job:
     name: oslo.messaging-telemetry-dsvm-integration-kafka
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/run
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/post
+    run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/run.yaml
+    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/post.yaml
     timeout: 4200
     required-projects:
       - openstack-infra/devstack-gate
@@ -204,8 +204,8 @@
 - job:
     name: oslo.messaging-telemetry-dsvm-integration-pika
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/run
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/post
+    run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/run.yaml
+    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/post.yaml
     timeout: 4200
     required-projects:
       - openstack-infra/devstack-gate
@@ -222,8 +222,8 @@
 - job:
     name: oslo.messaging-telemetry-dsvm-integration-zmq
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/run
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/post
+    run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/run.yaml
+    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/post.yaml
     timeout: 4200
     required-projects:
       - openstack-infra/devstack-gate
@@ -240,8 +240,8 @@
 - job:
     name: oslo.messaging-telemetry-dsvm-integration-rabbit
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/run
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/post
+    run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/run.yaml
+    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/post.yaml
     timeout: 7800
     required-projects:
       - openstack-infra/devstack-gate
@@ -257,8 +257,8 @@
 - job:
     name: oslo.messaging-tempest-neutron-dsvm-src-rabbit-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-rabbit-default/run
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-rabbit-default/post
+    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-rabbit-default/run.yaml
+    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-rabbit-default/post.yaml
     timeout: 7800
     required-projects:
       - openstack-infra/devstack-gate
@@ -269,8 +269,8 @@
 - job:
     name: oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid/run
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid/post
+    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid/run.yaml
+    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid/post.yaml
     timeout: 7800
     required-projects:
       - openstack-infra/devstack-gate
@@ -282,8 +282,8 @@
 - job:
     name: oslo.messaging-tempest-neutron-dsvm-src-kafka-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-kafka-default/run
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-kafka-default/post
+    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-kafka-default/run.yaml
+    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-kafka-default/post.yaml
     timeout: 7800
     required-projects:
       - openstack-infra/devstack-gate
@@ -295,8 +295,8 @@
 - job:
     name: oslo.messaging-tempest-neutron-dsvm-src-pika-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/run
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/post
+    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/run.yaml
+    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/post.yaml
     timeout: 7800
     required-projects:
       - openstack-infra/devstack-gate
@@ -308,8 +308,8 @@
 - job:
     name: oslo.messaging-tempest-neutron-dsvm-src-zmq-default
     parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/run
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/post
+    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/run.yaml
+    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/post.yaml
     timeout: 7800
     required-projects:
       - openstack-infra/devstack-gate
