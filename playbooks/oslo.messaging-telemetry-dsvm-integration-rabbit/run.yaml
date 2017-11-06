@@ -32,11 +32,7 @@
 
           export DEVSTACK_GATE_HEAT=1
           export DEVSTACK_GATE_NEUTRON=1
-          if [ "$ZUUL_BRANCH" == "stable/newton" ] ; then
-              export DEVSTACK_GATE_TEMPEST=0
-          else
-              export DEVSTACK_GATE_TEMPEST=1
-          fi
+          export DEVSTACK_GATE_TEMPEST=1
           export DEVSTACK_GATE_EXERCISES=0
           export DEVSTACK_GATE_INSTALL_TESTONLY=1
           export DEVSTACK_GATE_TEMPEST_NOTESTS=1
@@ -48,12 +44,6 @@
           # which Gnocchi version can be used with other OpenStack
           # components and the reverse.
           case "$ZUUL_BRANCH" in
-              "stable/newton")
-                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin gnocchi git://git.openstack.org/openstack/gnocchi"
-                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
-                  export OVERRIDE_GNOCCHI_PROJECT_BRANCH="stable/3.0"
-                  export PROJECTS="openstack/panko $PROJECTS openstack/gnocchi"
-                  ;;
               "stable/ocata")
                   export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin gnocchi git://git.openstack.org/openstack/gnocchi"
                   export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"

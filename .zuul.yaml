@@ -325,40 +325,30 @@
       jobs:
         - oslo.messaging-tox-py27-func-amqp1:
             voting: false
-            branches: ^(?!stable/newton).*$
         - oslo.messaging-tox-py27-func-kafka:
             voting: false
-            branches: ^(?!stable/newton).*$
-        - oslo.messaging-tox-py27-func-pika:
-            branches: ^(?!stable/newton).*$
-        - oslo.messaging-tox-py27-func-rabbit:
-            branches: ^(?!stable/newton).*$
+        - oslo.messaging-tox-py27-func-pika
+        - oslo.messaging-tox-py27-func-rabbit
         - oslo.messaging-tox-py27-func-zmq-proxy:
             voting: false
-            branches: ^(?!stable/newton).*$
         - oslo.messaging-tox-py27-func-zmq-pubsub:
             voting: false
-            branches: ^(?!stable/newton).*$
         - oslo.messaging-tox-py27-func-zmq:
             voting: false
-            branches: ^(?!stable/newton).*$
         - oslo.messaging-tox-py35-func-amqp1:
             voting: false
-            branches: ^(?!stable/newton).*$
         - oslo.messaging-tox-py35-func-rabbit:
             voting: false
-            branches: ^(?!stable/newton).*$
         - oslo.messaging-tox-py35-func-zmq:
             voting: false
-            branches: ^(?!stable/newton).*$
 
         - oslo.messaging-src-dsvm-full-rabbit-default
         - oslo.messaging-src-dsvm-full-amqp1-hybrid:
             voting: false
-            branches: ^(?!stable/(?:newton|ocata)).*$
+            branches: ^(?!stable/ocata).*$
         - oslo.messaging-src-dsvm-full-amqp1-dual-centos-7:
             voting: false
-            branches: ^(?!stable/(?:newton|ocata)).*$
+            branches: ^(?!stable/ocata).*$
         - oslo.messaging-src-dsvm-full-kafka-default-centos-7:
             voting: false
         - oslo.messaging-src-dsvm-full-kafka-default:
@@ -386,7 +376,7 @@
         - oslo.messaging-tempest-neutron-dsvm-src-rabbit-default
         - oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid:
             voting: false
-            branches: ^(?!stable/(?:newton|ocata)).*$
+            branches: ^(?!stable/ocata).*$
         - oslo.messaging-tempest-neutron-dsvm-src-kafka-default:
             voting: false
         - oslo.messaging-tempest-neutron-dsvm-src-pika-default:
@@ -396,10 +386,8 @@
 
     gate:
       jobs:
-        - oslo.messaging-tox-py27-func-rabbit:
-            branches: ^(?!stable/newton).*$
-        - oslo.messaging-tox-py27-func-pika:
-            branches: ^(?!stable/newton).*$
+        - oslo.messaging-tox-py27-func-rabbit
+        - oslo.messaging-tox-py27-func-pika
         - oslo.messaging-telemetry-dsvm-integration-rabbit
         - oslo.messaging-src-dsvm-full-rabbit-default
         - oslo.messaging-tempest-neutron-dsvm-src-rabbit-default
