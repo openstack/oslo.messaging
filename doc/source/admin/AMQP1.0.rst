@@ -211,25 +211,37 @@ as the API is a very low-level interface to the AMQP protocol.
 Instead, the driver uses the pure python `Pyngus`_ client API, which
 is layered on top of the protocol engine.
 
+In order to run the driver the Proton Python bindings, Proton
+library, Proton header files, and Pyngus must be installed.
+
 .. _Proton: http://qpid.apache.org/proton/index.html
 .. _Pyngus: https://github.com/kgiusti/pyngus
 
-In order to run the driver the Proton Python bindings, Proton
-library, Proton header files, and Pyngus must be installed. Pre-built
-packages for both Pyngus and the Proton protocol engine are available
-for various Linux distributions (see `packages`_ below). It is
-recommended to use the pre-built packages if they are available for
-your platform.
+Source packages for the `Pyngus client API`_ are available via PyPI.
+
+.. _Pyngus client API: https://pypi.python.org/pypi/pyngus
+
+Pyngus depends on the Proton Python bindings.  Source packages for the
+`Proton Python bindings`_ are also available via PyPI.
+
+.. _Proton Python bindings: https://pypi.python.org/pypi/python-qpid-proton
+
+Since the AMQP 1.0 driver is an optional extension to Oslo.Messaging
+these packages are not installed by default.  Use the 'amqp1' extras
+tag when installing Oslo.Messaging in order to pull in these extra
+packages:
+
+::
+
+   pip install oslo.messaging[amqp1]
 
 The Proton package includes a C extension that links to the Proton
-library. If this library is not installed, then the Proton install
-script will attempt to download the necessary Proton C source files from
-the Apache repository and build the library locally.
+library.  The C extension is built locally when the Proton source
+packages are install from PyPI.  In order to build the Proton C source
+locally, there are a number of tools and libraries that need to be
+present on the system:
 
-In order to build the Proton C source locally, there are a number of
-tools and libraries that need to be present:
-
-* The tools and library necessary for Python development
+* The tools and library necessary for Python C development
 * The `SWIG`_ wrapper generator
 * The `OpenSSL`_ development libraries and headers
 * The `Cyrus SASL`_ development libraries and headers
@@ -238,8 +250,13 @@ tools and libraries that need to be present:
 .. _OpenSSL: https://www.openssl.org
 .. _Cyrus SASL: https://cyrusimap.org
 
-**Note well**: Currently the Proton Pypi package only supports building
+**Note well**: Currently the Proton PyPI package only supports building
 the C extension on Linux systems.
+
+Pre-built packages for both Pyngus and Proton engine are available for
+various Linux distributions (see `packages`_ below). It is recommended
+to use the pre-built packages if they are available for your platform.
+
 
 Router Intermediary
 -------------------

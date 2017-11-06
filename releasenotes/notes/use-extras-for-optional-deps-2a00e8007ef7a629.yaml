@@ -1,0 +1,12 @@
+---
+prelude: >
+    Projects using any of the optional drivers can use extras to
+    pull in dependencies for that driver.
+upgrade:
+  - |
+    Projects using the AMQP 1.0 driver may now depend on
+    oslo.messaging[amqp1]. Projects using the Kafka driver may now
+    depend on oslo.messaging[kafka]
+
+
+
