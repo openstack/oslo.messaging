@@ -14,10 +14,15 @@ libffi-devel [platform:rpm]
 rabbitmq-server [platform:dpkg rabbit pika]
 
 # zmq
+redis [platform:rpm zmq]
 redis-sentinel [platform:ubuntu !platform:ubuntu-trusty zmq]
 redis-server [platform:dpkg zmq]
+dev-db/redis [platform:gentoo zmq]
 python-redis [platform:dpkg zmq]
 zookeeperd [platform:dpkg zmq]
+python-zmq [!platform:gentoo !platform:fedora !platform:suse zmq]
+python2-zmq [platform:fedora zmq]
+dev-python/pyzmq [platform:gentoo zmq]
 
 # AMQP1 dpkg
 qpidd [platform:dpkg amqp1]
