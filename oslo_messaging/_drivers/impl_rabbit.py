@@ -983,7 +983,8 @@ class Connection(object):
                             self.connection.drain_events(timeout=0.001)
                         except socket.timeout:
                             pass
-                    except kombu.exceptions.OperationalError as exc:
+                    except (socket.timeout,
+                            kombu.exceptions.OperationalError) as exc:
                         LOG.info(_LI("A recoverable connection/channel error "
                                      "occurred, trying to reconnect: %s"), exc)
                         self.ensure_connection()
