@@ -16,6 +16,7 @@
 
 import itertools
 import logging
+import operator
 
 import six
 
@@ -118,9 +119,9 @@ class BatchNotificationDispatcher(NotificationDispatcher):
         """Dispatch notification messages to the appropriate endpoint method.
         """
 
-        messages_grouped = itertools.groupby((
-            self._extract_user_message(m)
-            for m in incoming), lambda x: x[0])
+        messages_grouped = itertools.groupby(sorted(
+            (self._extract_user_message(m) for m in incoming),
+            key=operator.itemgetter(0)), operator.itemgetter(0))
 
         requeues = set()
         for priority, messages in messages_grouped:
