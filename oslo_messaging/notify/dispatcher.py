@@ -125,8 +125,6 @@ class BatchNotificationDispatcher(NotificationDispatcher):
         requeues = set()
         for priority, messages in messages_grouped:
             __, raw_messages, messages = six.moves.zip(*messages)
-            raw_messages = list(raw_messages)
-            messages = list(messages)
             if priority not in PRIORITIES:
                 LOG.warning(_LW('Unknown priority "%s"'), priority)
                 continue
@@ -141,7 +139,7 @@ class BatchNotificationDispatcher(NotificationDispatcher):
                                              message["metadata"],
                                              message["payload"])]
                 else:
-                    filtered_messages = messages
+                    filtered_messages = list(messages)
 
                 if not filtered_messages:
                     continue
