@@ -9,36 +9,42 @@
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-kafka
+      bindep_profile: kafka
 
 - job:
     name: oslo.messaging-tox-py27-func-pika
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-pika
+      bindep_profile: pika
 
 - job:
     name: oslo.messaging-tox-py27-func-rabbit
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-rabbit
+      bindep_profile: rabbit
 
 - job:
     name: oslo.messaging-tox-py27-func-zmq
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-zmq
+      bindep_profile: zmq
 
 - job:
     name: oslo.messaging-tox-py27-func-zmq-proxy
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-zmq-proxy
+      bindep_profile: zmq
 
 - job:
     name: oslo.messaging-tox-py27-func-zmq-pubsub
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-zmq-pubsub
+      bindep_profile: zmq
 
 - job:
     name: oslo.messaging-tox-py35-func-amqp1
@@ -51,12 +57,14 @@
     parent: openstack-tox-py35
     vars:
       tox_envlist: py35-func-rabbit
+      bindep_profile: rabbit
 
 - job:
     name: oslo.messaging-tox-py35-func-zmq
     parent: openstack-tox-py35
     vars:
       tox_envlist: py35-func-zmq
+      bindep_profile: zmq
 
 - job:
     name: oslo.messaging-src-dsvm-full-rabbit-default

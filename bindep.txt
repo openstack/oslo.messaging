@@ -34,3 +34,9 @@ cyrus-sasl-lib [platform:rpm amqp1]
 cyrus-sasl-plain [platform:rpm amqp1]
 libuuid-devel [platform:rpm amqp1]
 swig [platform:rpm amqp1]
+
+# kafka dpkg
+openjdk-8-jdk [platform:dpkg kafka]
+
+# kafka rpm
+java-1.8.0-openjdk [platform:rpm kafka]
