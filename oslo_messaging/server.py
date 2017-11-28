@@ -417,18 +417,6 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         except driver_base.TransportDriverError as ex:
             raise ServerListenError(self.target, ex)
 
-        # HACK(sileht): We temporary pass the executor to the rabbit
-        # listener to fix a race with the deprecated blocking executor.
-        # We do this hack because this is need only for 'synchronous'
-        # executor like blocking. And this one is deprecated. Making
-        # driver working in an sync and an async way is complicated
-        # and blocking have 0% tests coverage.
-        if hasattr(self.listener, '_poll_style_listener'):
-            l = self.listener._poll_style_listener
-            if hasattr(l, "_message_operations_handler"):
-                l._message_operations_handler._executor = (
-                    self.executor_type)
-
         self.listener.start(self._on_incoming)
 
     @ordered(after='start')

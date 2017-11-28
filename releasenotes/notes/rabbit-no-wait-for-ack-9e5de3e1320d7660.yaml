@@ -1,0 +1,12 @@
+---
+other:
+  - |
+    On rabbitmq, in the past, acknownlegement of messages was done within the
+    application callback thread/greenlet. This thread was blocked until the
+    message was ack. In newton, we rewrote the message acknownlegement to
+    ensure we haven't two threads writting the the socket at the same times.
+    Now all pendings ack are done by the main thread. They are no more reason
+    to block the application callback thread until the message is ack. Other
+    driver already release the application callback threads before the message
+    is acknownleged. This is also the case for rabbitmq, now.
+
