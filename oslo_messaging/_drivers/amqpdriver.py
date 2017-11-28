@@ -82,26 +82,14 @@ class MessageOperationsHandler(object):
 
         while True:
             try:
-                task, event = self._tasks.get(block=False)
+                task = self._tasks.get(block=False)
             except moves.queue.Empty:
                 break
-            try:
-                task()
-            finally:
-                event.set()
+            task()
 
     def do(self, task):
-        "Put the task in the queue and waits until the task is completed."
-        if self._executor is None:
-            raise RuntimeError("Unexpected error, no executor is setuped")
-        elif self._executor == "blocking":
-            # NOTE(sileht): Blocking will hang forever if we waiting the
-            # polling thread
-            task()
-        else:
-            event = threading.Event()
-            self._tasks.put((task, event))
-            event.wait()
+        "Put the task in the queue."
+        self._tasks.put(task)
 
 
 class AMQPIncomingMessage(base.RpcIncomingMessage):
