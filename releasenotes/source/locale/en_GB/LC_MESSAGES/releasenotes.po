@@ -2,9 +2,9 @@
 # Andi Chandler <andi@gowling.com>, 2017. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: oslo.messaging Release Notes 5.33.1\n"
+"Project-Id-Version: oslo.messaging Release Notes\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-10-08 16:51+0000\n"
+"POT-Creation-Date: 2017-12-02 22:06+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -88,6 +88,9 @@ msgstr "Newton Series Release Notes"
 
 msgid "Ocata Series Release Notes"
 msgstr "Ocata Series Release Notes"
+
+msgid "Other Notes"
+msgstr "Other Notes"
 
 msgid "Pike Series Release Notes"
 msgstr "Pike Series Release Notes"
