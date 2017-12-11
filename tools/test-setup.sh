@@ -4,7 +4,7 @@
 # it sets up the test system as needed.
 # Developer should setup their test systems in a similar way.
 
-# This setup needs to be run by a user that can run sudo.
+# This setup for amqp1 needs to be run by a user that can run sudo.
 
 function is_fedora {
     [ -f /usr/bin/yum ] && cat /etc/*release | grep -q -e "Fedora"
@@ -14,14 +14,12 @@ function is_fedora {
 # because tox doesn't have a quiet option...
 tox -ebindep --notest
 
-# TODO(kgiusti) for now install all profile deps, need to fix this to
-# install only the deps needed by the particular test's profile
-PROFILES="rabbit zmq amqp1"
-PACKAGES=
-for PROFILE in $PROFILES; do
-    # NOTE(sileht): bindep return 1 if some packages have to be installed
-    PACKAGES="$PACKAGES $(.tox/bindep/bin/bindep -b -f bindep.txt $PROFILE || true)"
-done
+# TODO(ansmith) for now setup amqp1 dependencies for any profile.
+# Fix this when test-setup is passed environment profile setting.
+
+# NOTE(sileht): bindep return 1 if some packages have to be installed
+PACKAGES="$(.tox/bindep/bin/bindep -b -f bindep.txt amqp1 || true)"
+
 [ -n "$PACKAGES" ] || exit 0
 
 # inspired from project-config install-distro-packages.sh
