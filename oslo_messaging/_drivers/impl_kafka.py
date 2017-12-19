@@ -162,7 +162,8 @@ class Connection(object):
             self._ensure_producer()
             # NOTE(sileht): This returns a future, we can use get()
             # if we want to block like other driver
-            self.producer.send(topic, message)
+            future = self.producer.send(topic, message)
+            future.get()
 
         try:
             wrapped_with_reconnect()
