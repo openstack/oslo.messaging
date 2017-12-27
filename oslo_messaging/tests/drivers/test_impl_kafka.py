@@ -17,7 +17,6 @@ from six.moves import mock
 import testscenarios
 
 import oslo_messaging
-from oslo_messaging._drivers import common as common_driver
 from oslo_messaging._drivers import impl_kafka as kafka_driver
 from oslo_messaging.tests import utils as test_utils
 
@@ -39,16 +38,24 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
         ('none', dict(url=None,
-                      expected=dict(hostaddrs=['localhost:9092']))),
+                      expected=dict(hostaddrs=['localhost:9092'],
+                                    vhost=None))),
         ('empty', dict(url='kafka:///',
-                       expected=dict(hostaddrs=['localhost:9092']))),
+                       expected=dict(hostaddrs=['localhost:9092'],
+                                     vhost=''))),
         ('host', dict(url='kafka://127.0.0.1',
-                      expected=dict(hostaddrs=['127.0.0.1:9092']))),
+                      expected=dict(hostaddrs=['127.0.0.1:9092'],
+                                    vhost=None))),
         ('port', dict(url='kafka://localhost:1234',
-                      expected=dict(hostaddrs=['localhost:1234']))),
+                      expected=dict(hostaddrs=['localhost:1234'],
+                                    vhost=None))),
+        ('vhost', dict(url='kafka://localhost:1234/my_host',
+                       expected=dict(hostaddrs=['localhost:1234'],
+                                     vhost='my_host'))),
         ('two', dict(url='kafka://localhost:1234,localhost2:1234',
                      expected=dict(hostaddrs=['localhost:1234',
-                                              'localhost2:1234']))),
+                                              'localhost2:1234'],
+                                   vhost=None))),
 
     ]
 
@@ -62,8 +69,8 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
         self.addCleanup(transport.cleanup)
         driver = transport._driver
 
-        conn = driver._get_connection(common_driver.PURPOSE_SEND)
-        self.assertEqual(self.expected['hostaddrs'], conn.hostaddrs)
+        self.assertEqual(self.expected['hostaddrs'], driver.pconn.hostaddrs)
+        self.assertEqual(self.expected['vhost'], driver.virtual_host)
 
 
 class TestKafkaDriver(test_utils.BaseTestCase):
@@ -130,10 +137,11 @@ class TestKafkaConnection(test_utils.BaseTestCase):
         self.driver = transport._driver
 
     def test_notify(self):
-        conn = self.driver._get_connection(common_driver.PURPOSE_SEND)
 
         with mock.patch("kafka.KafkaProducer") as fake_producer_class:
             fake_producer = fake_producer_class.return_value
-            conn.notify_send("fake_topic", {"fake_ctxt": "fake_param"},
-                             {"fake_text": "fake_message_1"}, 10)
+            self.driver.pconn.notify_send("fake_topic",
+                                          {"fake_ctxt": "fake_param"},
+                                          {"fake_text": "fake_message_1"},
+                                          10)
             self.assertEqual(2, len(fake_producer.send.mock_calls))

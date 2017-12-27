@@ -33,12 +33,18 @@ KAFKA_OPTS = [
                  help='Default timeout(s) for Kafka consumers'),
 
     cfg.IntOpt('pool_size', default=10,
+               deprecated_for_removal=True,
+               deprecated_reason='Driver no longer uses connection pool. ',
                help='Pool Size for Kafka Consumers'),
 
     cfg.IntOpt('conn_pool_min_size', default=2,
+               deprecated_for_removal=True,
+               deprecated_reason='Driver no longer uses connection pool. ',
                help='The pool size limit for connections expiration policy'),
 
     cfg.IntOpt('conn_pool_ttl', default=1200,
+               deprecated_for_removal=True,
+               deprecated_reason='Driver no longer uses connection pool. ',
                help='The time-to-live in sec of idle connections in the pool'),
 
     cfg.StrOpt('consumer_group', default="oslo_messaging_consumer",
