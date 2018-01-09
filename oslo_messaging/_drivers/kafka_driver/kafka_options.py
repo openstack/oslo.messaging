@@ -56,7 +56,14 @@ KAFKA_OPTS = [
                       "in seconds"),
 
     cfg.IntOpt('producer_batch_size', default=16384,
-               help='Size of batch for the producer async send')
+               help='Size of batch for the producer async send'),
+
+    cfg.BoolOpt('enable_auto_commit',
+                default=False,
+                help='Enable asynchronous consumer commits'),
+
+    cfg.IntOpt('max_poll_records', default=500,
+               help='The maximum number of records returned in a poll call')
 ]
 
 
