@@ -29,48 +29,27 @@
           set -e
           set -x
           export PYTHONUNBUFFERED=true
-
           export DEVSTACK_GATE_HEAT=1
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_GATE_TEMPEST=1
           export DEVSTACK_GATE_EXERCISES=0
           export DEVSTACK_GATE_INSTALL_TESTONLY=1
           export DEVSTACK_GATE_TEMPEST_NOTESTS=1
-
-          export PROJECTS="openstack/ceilometer openstack/aodh"
-
-          # NOTE(sileht): This job runs on Aodh and Ceilometer.
-          # Gnocchi uses an independent release cycle. So we map here
-          # which Gnocchi version can be used with other OpenStack
-          # components and the reverse.
-          case "$ZUUL_BRANCH" in
-              "stable/ocata")
-                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin gnocchi git://git.openstack.org/openstack/gnocchi"
-                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
-                  export OVERRIDE_GNOCCHI_PROJECT_BRANCH="stable/3.1"
-                  export PROJECTS="openstack/panko $PROJECTS openstack/gnocchi"
-                  ;;
-              *)
-                export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
-                export PROJECTS="openstack/panko $PROJECTS"
-                ;;
-          esac
+          export PROJECTS="openstack/ceilometer openstack/aodh openstack/panko openstack/telemetry-tempest-plugin"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin ceilometer git://git.openstack.org/openstack/ceilometer"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin aodh git://git.openstack.org/openstack/aodh"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin heat git://git.openstack.org/openstack/heat"
-
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin telemetry-tempest-plugin git://git.openstack.org/openstack/telemetry-tempest-plugin"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"CEILOMETER_BACKEND=gnocchi"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"GNOCCHI_ARCHIVE_POLICY=high"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"CEILOMETER_PIPELINE_INTERVAL=15"
-
           export DEVSTACK_PROJECT_FROM_GIT=$ZUUL_SHORT_PROJECT_NAME
-
           function post_test_hook {
-              cd /opt/stack/new/ceilometer/ceilometer/tests/integration/hooks/
+              cd /opt/stack/new/telemetry-tempest-plugin/telemetry_tempest_plugin/integration/hooks/
               ./post_test_hook.sh
           }
           export -f post_test_hook
-
           cp devstack-gate/devstack-vm-gate-wrap.sh ./safe-devstack-vm-gate-wrap.sh
           ./safe-devstack-vm-gate-wrap.sh
         executable: /bin/bash
