@@ -178,7 +178,7 @@
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/run.yaml
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/post.yaml
-    timeout: 4200
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/aodh
@@ -186,6 +186,7 @@
       - openstack/devstack-plugin-amqp1
       - openstack/oslo.messaging
       - openstack/panko
+      - openstack/telemetry-tempest-plugin
       # following are required when DEVSTACK_GATE_HEAT, which this
       # job turns on
       - openstack/dib-utils
@@ -250,13 +251,14 @@
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/run.yaml
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/post.yaml
-    timeout: 7800
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/oslo.messaging
       - openstack/panko
+      - openstack/telemetry-tempest-plugin
       # following are required when DEVSTACK_GATE_HEAT, which this
       # job turns on
       - openstack/dib-utils
