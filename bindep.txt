@@ -10,11 +10,9 @@ make [platform:rpm]
 pkgconfig [platform:rpm]
 libffi-devel [platform:rpm]
 
-# kombu/pika dpkg
-rabbitmq-server [platform:dpkg rabbit pika]
-
-# kombu/pika rpm
-rabbitmq-server [platform:rpm rabbit pika]
+# RabbitMQ message broker
+rabbitmq-server [platform:dpkg rabbit]
+rabbitmq-server [platform:rpm rabbit]
 
 # zmq
 redis [platform:rpm zmq]

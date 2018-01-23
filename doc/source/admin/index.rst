@@ -7,5 +7,4 @@ Deployment Guide
 
    drivers
    AMQP1.0
-   pika_driver
    zmq_driver

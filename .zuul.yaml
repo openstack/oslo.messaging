@@ -12,13 +12,6 @@
       bindep_profile: kafka
 
 - job:
-    name: oslo.messaging-tox-py27-func-pika
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-pika
-      bindep_profile: pika
-
-- job:
     name: oslo.messaging-tox-py27-func-rabbit
     parent: openstack-tox-py27
     vars:
@@ -74,17 +67,6 @@
     timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
-      - openstack/oslo.messaging
-
-- job:
-    name: oslo.messaging-src-dsvm-full-pika-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-pika-default/run.yaml
-    post-run: playbooks/oslo.messaging-src-dsvm-full-pika-default/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-pika
       - openstack/oslo.messaging
 
 - job:
@@ -212,24 +194,6 @@
       - openstack/diskimage-builder
 
 - job:
-    name: oslo.messaging-telemetry-dsvm-integration-pika
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/post.yaml
-    timeout: 4200
-    required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/devstack-plugin-pika
-      - openstack/oslo.messaging
-      - openstack/panko
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-- job:
     name: oslo.messaging-telemetry-dsvm-integration-zmq
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/run.yaml
@@ -305,19 +269,6 @@
       - openstack/tempest
 
 - job:
-    name: oslo.messaging-tempest-neutron-dsvm-src-pika-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/run.yaml
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/post.yaml
-    timeout: 7800
-    required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-pika
-      - openstack/neutron
-      - openstack/oslo.messaging
-      - openstack/tempest
-
-- job:
     name: oslo.messaging-tempest-neutron-dsvm-src-zmq-default
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/run.yaml
@@ -338,7 +289,6 @@
             voting: false
         - oslo.messaging-tox-py27-func-kafka:
             voting: false
-        - oslo.messaging-tox-py27-func-pika
         - oslo.messaging-tox-py27-func-rabbit
         - oslo.messaging-tox-py27-func-zmq-proxy:
             voting: false
@@ -364,8 +314,6 @@
             voting: false
         - oslo.messaging-src-dsvm-full-kafka-default:
             voting: false
-        - oslo.messaging-src-dsvm-full-pika-default:
-            voting: false
         - oslo.messaging-src-dsvm-full-zmq-default:
             voting: false
 
@@ -379,8 +327,6 @@
             voting: false
         - oslo.messaging-telemetry-dsvm-integration-kafka:
             voting: false
-        - oslo.messaging-telemetry-dsvm-integration-pika:
-            voting: false
         - oslo.messaging-telemetry-dsvm-integration-zmq:
             voting: false
 
@@ -390,15 +336,12 @@
             branches: ^(?!stable/ocata).*$
         - oslo.messaging-tempest-neutron-dsvm-src-kafka-default:
             voting: false
-        - oslo.messaging-tempest-neutron-dsvm-src-pika-default:
-            voting: false
         - oslo.messaging-tempest-neutron-dsvm-src-zmq-default:
             voting: false
 
     gate:
       jobs:
         - oslo.messaging-tox-py27-func-rabbit
-        - oslo.messaging-tox-py27-func-pika
         - oslo.messaging-telemetry-dsvm-integration-rabbit
         - oslo.messaging-src-dsvm-full-rabbit-default
         - oslo.messaging-tempest-neutron-dsvm-src-rabbit-default

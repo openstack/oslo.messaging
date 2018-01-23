@@ -1,0 +1,8 @@
+---
+prelude: >
+    The Pika-based driver for RabbitMQ has been removed.
+upgrade:
+  - |
+    Users of the Pika-based driver must change the prefix of all the
+    transport_url configuration options from "pika://..."  to
+    "rabbit://..." to use the default kombu based RabbitMQ driver.

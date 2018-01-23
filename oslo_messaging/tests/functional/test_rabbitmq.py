@@ -63,10 +63,6 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         self.n2 = self.pifpaf.env["PIFPAF_RABBITMQ_NODENAME2"]
         self.n3 = self.pifpaf.env["PIFPAF_RABBITMQ_NODENAME3"]
 
-        # NOTE(gdavoian): additional tweak for pika driver
-        if self.driver == "pika":
-            self.url = self.url.replace("rabbit", "pika")
-
         # ensure connections will be establish to the first node
         self.pifpaf.stop_node(self.n2)
         self.pifpaf.stop_node(self.n3)
@@ -115,19 +111,6 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         return "callback done"
 
     def _check_ports(self, port):
-        getattr(self, '_check_ports_%s_driver' % self.driver)(port)
-
-    def _check_ports_pika_driver(self, port):
-        rpc_server = self.servers.servers[0].server
-        # FIXME(sileht): Check other connections
-        connections = [
-            rpc_server.listener._connection
-        ]
-        for conn in connections:
-            self.assertEqual(
-                port, conn._impl.socket.getpeername()[1])
-
-    def _check_ports_rabbit_driver(self, port):
         rpc_server = self.servers.servers[0].server
         connection_contexts = [
             # rpc server

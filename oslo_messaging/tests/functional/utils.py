@@ -304,8 +304,6 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         driver = os.environ.get("TRANSPORT_DRIVER")
         if driver:
             self.url = os.environ.get('PIFPAF_URL')
-            if driver == "pika" and self.url:
-                self.url = self.url.replace("rabbit://", "pika://")
         else:
             self.url = os.environ.get('TRANSPORT_URL')
 
