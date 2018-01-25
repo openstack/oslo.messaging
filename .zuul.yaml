@@ -328,7 +328,6 @@
 
 
 - project:
-    name: openstack/oslo.messaging
     check:
       jobs:
         - oslo.messaging-tox-py27-func-amqp1:
