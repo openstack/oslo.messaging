@@ -153,6 +153,8 @@ class ConsumerConnection(Connection):
         self.consumer_timeout = driver_conf.kafka_consumer_timeout
         self.max_fetch_bytes = driver_conf.kafka_max_fetch_bytes
         self.group_id = driver_conf.consumer_group
+        self.enable_auto_commit = driver_conf.enable_auto_commit
+        self.max_poll_records = driver_conf.max_poll_records
         self._consume_loop_stopped = False
 
     @with_reconnect()
@@ -165,6 +167,10 @@ class ConsumerConnection(Connection):
             # NOTE(sileht): really ? you return payload but no messages...
             # simulate timeout to consume message again
             raise kafka.errors.ConsumerTimeout()
+
+        if not self.enable_auto_commit:
+            self.consumer.commit()
+
         return messages
 
     def consume(self, timeout=None):
@@ -204,14 +210,12 @@ class ConsumerConnection(Connection):
 
     @with_reconnect()
     def declare_topic_consumer(self, topics, group=None):
-        # TODO(Support for manual/auto_commit functionality)
-        # When auto_commit is False, consumer can manually notify
-        # the completion of the subscription.
-        # Currently we don't support for non auto commit option
         self.consumer = kafka.KafkaConsumer(
             *topics, group_id=(group or self.group_id),
+            enable_auto_commit=self.enable_auto_commit,
             bootstrap_servers=self.hostaddrs,
             max_partition_fetch_bytes=self.max_fetch_bytes,
+            max_poll_records=self.max_poll_records,
             selector=KAFKA_SELECTOR
         )
 

@@ -115,8 +115,10 @@ class TestKafkaDriver(test_utils.BaseTestCase):
                 targets_and_priorities, "kafka_test", 1000, 10)
             consumer.assert_called_once_with(
                 *expected_topics, group_id="kafka_test",
+                enable_auto_commit=mock.ANY,
                 bootstrap_servers=['localhost:9092'],
                 max_partition_fetch_bytes=mock.ANY,
+                max_poll_records=mock.ANY,
                 selector=mock.ANY
             )
 
