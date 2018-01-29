@@ -63,7 +63,20 @@ KAFKA_OPTS = [
                 help='Enable asynchronous consumer commits'),
 
     cfg.IntOpt('max_poll_records', default=500,
-               help='The maximum number of records returned in a poll call')
+               help='The maximum number of records returned in a poll call'),
+
+    cfg.StrOpt('security_protocol', default='PLAINTEXT',
+               choices=('PLAINTEXT', 'SASL_PLAINTEXT', 'SSL', 'SASL_SSL'),
+               help='Protocol used to communicate with brokers'),
+
+    cfg.StrOpt('sasl_mechanism',
+               default='PLAIN',
+               help='Mechanism when security protocol is SASL'),
+
+    cfg.StrOpt('ssl_cafile',
+               default='',
+               help='CA certificate PEM file used to verify the server'
+               ' certificate')
 ]
 
 
