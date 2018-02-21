@@ -88,19 +88,21 @@ class MessageOperationsHandler(object):
 class AMQPIncomingMessage(base.RpcIncomingMessage):
 
     def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q,
-                 obsolete_reply_queues, message_operations_handler):
+                 client_timeout, obsolete_reply_queues,
+                 message_operations_handler):
         super(AMQPIncomingMessage, self).__init__(ctxt, message)
         self.listener = listener
 
         self.unique_id = unique_id
         self.msg_id = msg_id
         self.reply_q = reply_q
+        self.client_timeout = client_timeout
         self._obsolete_reply_queues = obsolete_reply_queues
         self._message_operations_handler = message_operations_handler
         self.stopwatch = timeutils.StopWatch()
         self.stopwatch.start()
 
-    def _send_reply(self, conn, reply=None, failure=None):
+    def _send_reply(self, conn, reply=None, failure=None, ending=True):
         if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
                                                          self.msg_id):
             return
@@ -109,7 +111,7 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
             failure = rpc_common.serialize_remote_exception(failure)
         # NOTE(sileht): ending can be removed in N*, see Listener.wait()
         # for more detail.
-        msg = {'result': reply, 'failure': failure, 'ending': True,
+        msg = {'result': reply, 'failure': failure, 'ending': ending,
                '_msg_id': self.msg_id}
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
@@ -179,7 +181,9 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         self._message_operations_handler.do(self.message.requeue)
 
     def heartbeat(self):
-        LOG.debug("Message heartbeat not implemented")
+        with self.listener.driver._get_connection(
+                rpc_common.PURPOSE_SEND) as conn:
+            self._send_reply(conn, None, None, ending=False)
 
 
 class ObsoleteReplyQueuesCache(object):
@@ -259,6 +263,7 @@ class AMQPListener(base.PollStyleListener):
             unique_id,
             ctxt.msg_id,
             ctxt.reply_q,
+            ctxt.client_timeout,
             self._obsolete_reply_queues,
             self._message_operations_handler))
 
@@ -426,7 +431,7 @@ class ReplyWaiter(object):
         ending = data.get('ending', False)
         return result, ending
 
-    def wait(self, msg_id, timeout):
+    def wait(self, msg_id, timeout, call_monitor_timeout):
         # NOTE(sileht): for each msg_id we receive two amqp message
         # first one with the payload, a second one to ensure the other
         # have finish to send the payload
@@ -435,10 +440,21 @@ class ReplyWaiter(object):
         # support both cases for now.
         timer = rpc_common.DecayingTimer(duration=timeout)
         timer.start()
+        if call_monitor_timeout:
+            call_monitor_timer = rpc_common.DecayingTimer(
+                duration=call_monitor_timeout)
+            call_monitor_timer.start()
+        else:
+            call_monitor_timer = None
         final_reply = None
         ending = False
         while not ending:
             timeout = timer.check_return(self._raise_timeout_exception, msg_id)
+            if call_monitor_timer and timeout > 0:
+                cm_timeout = call_monitor_timer.check_return(
+                    self._raise_timeout_exception, msg_id)
+                if cm_timeout < timeout:
+                    timeout = cm_timeout
             try:
                 message = self.waiters.get(msg_id, timeout=timeout)
             except moves.queue.Empty:
@@ -450,6 +466,10 @@ class ReplyWaiter(object):
                 # empty `result` field or a second _send_reply() with
                 # ending=True and no `result` field.
                 final_reply = reply
+            elif ending is False:
+                LOG.debug('Call monitor heartbeat received; '
+                          'renewing timeout timer')
+                call_monitor_timer.restart()
         return final_reply
 
 
@@ -495,7 +515,7 @@ class AMQPDriverBase(base.BaseDriver):
         return self._reply_q
 
     def _send(self, target, ctxt, message,
-              wait_for_reply=None, timeout=None,
+              wait_for_reply=None, timeout=None, call_monitor_timeout=None,
               envelope=True, notify=False, retry=None):
 
         msg = message
@@ -504,6 +524,7 @@ class AMQPDriverBase(base.BaseDriver):
             msg_id = uuid.uuid4().hex
             msg.update({'_msg_id': msg_id})
             msg.update({'_reply_q': self._get_reply_q()})
+            msg.update({'_timeout': call_monitor_timeout})
 
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
@@ -548,7 +569,8 @@ class AMQPDriverBase(base.BaseDriver):
                                     msg=msg, timeout=timeout, retry=retry)
 
             if wait_for_reply:
-                result = self._waiter.wait(msg_id, timeout)
+                result = self._waiter.wait(msg_id, timeout,
+                                           call_monitor_timeout)
                 if isinstance(result, Exception):
                     raise result
                 return result
@@ -557,9 +579,9 @@ class AMQPDriverBase(base.BaseDriver):
                 self._waiter.unlisten(msg_id)
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             retry=None):
+             call_monitor_timeout=None, retry=None):
         return self._send(target, ctxt, message, wait_for_reply, timeout,
-                          retry=retry)
+                          call_monitor_timeout, retry=retry)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
         return self._send(target, ctxt, message,

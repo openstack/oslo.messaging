@@ -94,13 +94,15 @@ class _BaseCallContext(object):
     _marker = object()
 
     def __init__(self, transport, target, serializer,
-                 timeout=None, version_cap=None, retry=None):
+                 timeout=None, version_cap=None, retry=None,
+                 call_monitor_timeout=None):
         self.conf = transport.conf
 
         self.transport = transport
         self.target = target
         self.serializer = serializer
         self.timeout = timeout
+        self.call_monitor_timeout = call_monitor_timeout
         self.retry = retry
         self.version_cap = version_cap
 
@@ -166,11 +168,14 @@ class _BaseCallContext(object):
         if self.timeout is None:
             timeout = self.conf.rpc_response_timeout
 
+        cm_timeout = self.call_monitor_timeout
+
         self._check_version_cap(msg.get('version'))
 
         try:
             result = self.transport._send(self.target, msg_ctxt, msg,
                                           wait_for_reply=True, timeout=timeout,
+                                          call_monitor_timeout=cm_timeout,
                                           retry=self.retry)
         except driver_base.TransportDriverError as ex:
             raise ClientSendError(self.target, ex)
@@ -180,7 +185,8 @@ class _BaseCallContext(object):
     @abc.abstractmethod
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, version_cap=_marker, retry=_marker):
+                timeout=_marker, version_cap=_marker, retry=_marker,
+                call_monitor_timeout=_marker):
         """Prepare a method invocation context. See RPCClient.prepare()."""
 
 
@@ -192,7 +198,8 @@ class _CallContext(_BaseCallContext):
     def _prepare(cls, call_context,
                  exchange=_marker, topic=_marker, namespace=_marker,
                  version=_marker, server=_marker, fanout=_marker,
-                 timeout=_marker, version_cap=_marker, retry=_marker):
+                 timeout=_marker, version_cap=_marker, retry=_marker,
+                 call_monitor_timeout=_marker):
         cls._check_version(version)
         kwargs = dict(
             exchange=exchange,
@@ -211,18 +218,23 @@ class _CallContext(_BaseCallContext):
             version_cap = call_context.version_cap
         if retry is cls._marker:
             retry = call_context.retry
+        if call_monitor_timeout is cls._marker:
+            call_monitor_timeout = call_context.call_monitor_timeout
 
         return _CallContext(call_context.transport, target,
                             call_context.serializer,
-                            timeout, version_cap, retry)
+                            timeout, version_cap, retry,
+                            call_monitor_timeout)
 
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, version_cap=_marker, retry=_marker):
+                timeout=_marker, version_cap=_marker, retry=_marker,
+                call_monitor_timeout=_marker):
         return _CallContext._prepare(self,
                                      exchange, topic, namespace,
                                      version, server, fanout,
-                                     timeout, version_cap, retry)
+                                     timeout, version_cap, retry,
+                                     call_monitor_timeout)
 
 
 class RPCClient(_BaseCallContext):
@@ -314,7 +326,8 @@ class RPCClient(_BaseCallContext):
     _marker = _BaseCallContext._marker
 
     def __init__(self, transport, target,
-                 timeout=None, version_cap=None, serializer=None, retry=None):
+                 timeout=None, version_cap=None, serializer=None, retry=None,
+                 call_monitor_timeout=None):
         """Construct an RPC client.
 
         :param transport: a messaging transport handle
@@ -332,6 +345,13 @@ class RPCClient(_BaseCallContext):
                       0 means no retry is attempted.
                       N means attempt at most N retries.
         :type retry: int
+        :param call_monitor_timeout: an optional timeout (in seconds) for
+                                     active call heartbeating. If specified,
+                                     requires the server to heartbeat
+                                     long-running calls at this interval
+                                     (less than the overall timeout
+                                     parameter).
+        :type call_monitor_timeout: int
         """
         if serializer is None:
             serializer = msg_serializer.NoOpSerializer()
@@ -342,14 +362,16 @@ class RPCClient(_BaseCallContext):
                         "instance.")
 
         super(RPCClient, self).__init__(
-            transport, target, serializer, timeout, version_cap, retry
+            transport, target, serializer, timeout, version_cap, retry,
+            call_monitor_timeout
         )
 
         self.conf.register_opts(_client_opts)
 
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, version_cap=_marker, retry=_marker):
+                timeout=_marker, version_cap=_marker, retry=_marker,
+                call_monitor_timeout=_marker):
         """Prepare a method invocation context.
 
         Use this method to override client properties for an individual method
@@ -380,11 +402,19 @@ class RPCClient(_BaseCallContext):
                       0 means no retry is attempted.
                       N means attempt at most N retries.
         :type retry: int
+        :param call_monitor_timeout: an optional timeout (in seconds) for
+                                     active call heartbeating. If specified,
+                                     requires the server to heartbeat
+                                     long-running calls at this interval
+                                     (less than the overall timeout
+                                     parameter).
+        :type call_monitor_timeout: int
         """
         return _CallContext._prepare(self,
                                      exchange, topic, namespace,
                                      version, server, fanout,
-                                     timeout, version_cap, retry)
+                                     timeout, version_cap, retry,
+                                     call_monitor_timeout)
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method without blocking for a return value.

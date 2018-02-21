@@ -53,6 +53,7 @@ class TestCastCall(test_utils.BaseTestCase):
         if self.call:
             kwargs['wait_for_reply'] = True
             kwargs['timeout'] = None
+            kwargs['call_monitor_timeout'] = None
 
         method = client.call if self.call else client.cast
         method(self.ctxt, 'foo', **self.args)
@@ -215,19 +216,21 @@ class TestCallTimeout(test_utils.BaseTestCase):
 
     scenarios = [
         ('all_none',
-         dict(confval=None, ctor=None, prepare=_notset, expect=None)),
+         dict(confval=None, ctor=None, prepare=_notset, expect=None, cm=None)),
         ('confval',
-         dict(confval=21, ctor=None, prepare=_notset, expect=21)),
+         dict(confval=21, ctor=None, prepare=_notset, expect=21, cm=None)),
         ('ctor',
-         dict(confval=None, ctor=21.1, prepare=_notset, expect=21.1)),
+         dict(confval=None, ctor=21.1, prepare=_notset, expect=21.1, cm=None)),
         ('ctor_zero',
-         dict(confval=None, ctor=0, prepare=_notset, expect=0)),
+         dict(confval=None, ctor=0, prepare=_notset, expect=0, cm=None)),
         ('prepare',
-         dict(confval=None, ctor=None, prepare=21.1, expect=21.1)),
+         dict(confval=None, ctor=None, prepare=21.1, expect=21.1, cm=None)),
         ('prepare_override',
-         dict(confval=None, ctor=10.1, prepare=21.1, expect=21.1)),
+         dict(confval=None, ctor=10.1, prepare=21.1, expect=21.1, cm=None)),
         ('prepare_zero',
-         dict(confval=None, ctor=None, prepare=0, expect=0)),
+         dict(confval=None, ctor=None, prepare=0, expect=0, cm=None)),
+        ('call_monitor',
+         dict(confval=None, ctor=None, prepare=60, expect=60, cm=30)),
     ]
 
     def test_call_timeout(self):
@@ -235,12 +238,14 @@ class TestCallTimeout(test_utils.BaseTestCase):
 
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
-                                          timeout=self.ctor)
+                                          timeout=self.ctor,
+                                          call_monitor_timeout=self.cm)
 
         transport._send = mock.Mock()
 
         msg = dict(method='foo', args={})
-        kwargs = dict(wait_for_reply=True, timeout=self.expect, retry=None)
+        kwargs = dict(wait_for_reply=True, timeout=self.expect, retry=None,
+                      call_monitor_timeout=self.cm)
 
         if self.prepare is not _notset:
             client = client.prepare(timeout=self.prepare)
@@ -272,7 +277,7 @@ class TestCallRetry(test_utils.BaseTestCase):
 
         msg = dict(method='foo', args={})
         kwargs = dict(wait_for_reply=True, timeout=60,
-                      retry=self.expect)
+                      retry=self.expect, call_monitor_timeout=None)
 
         if self.prepare is not _notset:
             client = client.prepare(retry=self.prepare)
@@ -332,6 +337,8 @@ class TestSerializer(test_utils.BaseTestCase):
 
         kwargs = dict(wait_for_reply=True, timeout=None) if self.call else {}
         kwargs['retry'] = None
+        if self.call:
+            kwargs['call_monitor_timeout'] = None
 
         transport._send.return_value = self.retval
 
@@ -441,6 +448,7 @@ class TestVersionCap(test_utils.BaseTestCase):
             if self.call:
                 kwargs['wait_for_reply'] = True
                 kwargs['timeout'] = None
+                kwargs['call_monitor_timeout'] = None
 
         prep_kwargs = {}
         if self.prepare_cap is not _notset:

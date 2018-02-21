@@ -268,7 +268,8 @@ class ProtonDriver(base.BaseDriver):
 
     @_ensure_connect_called
     def send(self, target, ctxt, message,
-             wait_for_reply=False, timeout=None, retry=None):
+             wait_for_reply=False, timeout=None, call_monitor_timeout=None,
+             retry=None):
         """Send a message to the given target.
 
         :param target: destination for message
@@ -282,6 +283,10 @@ class ProtonDriver(base.BaseDriver):
         :param timeout: raise exception if send does not complete within
                         timeout seconds. None == no timeout.
         :type timeout: float
+        :param call_monitor_timeout: Maximum time the client will wait for the
+            call to complete or receive a message heartbeat indicating the
+            remote side is still executing.
+        :type call_monitor_timeout: float
         :param retry: (optional) maximum re-send attempts on recoverable error
                       None or -1 means to retry forever
                       0 means no retry

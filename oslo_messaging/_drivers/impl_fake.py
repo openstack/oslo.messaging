@@ -216,7 +216,7 @@ class FakeDriver(base.BaseDriver):
         return None
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             retry=None):
+             call_monitor_timeout=None, retry=None):
         # NOTE(sileht): retry doesn't need to be implemented, the fake
         # transport always works
         return self._send(target, ctxt, message, wait_for_reply, timeout)

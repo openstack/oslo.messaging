@@ -81,6 +81,7 @@ class IncomingMessage(object):
     def __init__(self, ctxt, message):
         self.ctxt = ctxt
         self.message = message
+        self.client_timeout = None
 
     def acknowledge(self):
         """Called by the server to acknowledge receipt of the message. When
@@ -362,7 +363,8 @@ class BaseDriver(object):
 
     @abc.abstractmethod
     def send(self, target, ctxt, message,
-             wait_for_reply=None, timeout=None, retry=None):
+             wait_for_reply=None, timeout=None, call_monitor_timeout=None,
+             retry=None):
         """Send a message to the given target and optionally wait for a reply.
         This method is used by the RPC client when sending RPC requests to a
         server.
@@ -426,6 +428,10 @@ class BaseDriver(object):
             operation to complete. Should this expire the :py:meth:`send` must
             raise a :py:exc:`MessagingTimeout` exception
         :type timeout: float
+        :param call_monitor_timeout: Maximum time the client will wait for the
+            call to complete or receive a message heartbeat indicating the
+            remote side is still executing.
+        :type call_monitor_timeout: float
         :param retry: maximum message send attempts permitted
         :type retry: int
         :returns: A reply message or None if no reply expected

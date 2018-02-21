@@ -76,6 +76,7 @@ def unpack_context(msg):
             context_dict[key[9:]] = value
     context_dict['msg_id'] = msg.pop('_msg_id', None)
     context_dict['reply_q'] = msg.pop('_reply_q', None)
+    context_dict['client_timeout'] = msg.pop('_timeout', None)
     return RpcContext.from_dict(context_dict)
 
 

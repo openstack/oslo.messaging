@@ -469,8 +469,11 @@ class TestSendReceive(test_utils.BaseTestCase):
     ]
 
     _timeout = [
-        ('no_timeout', dict(timeout=None)),
-        ('timeout', dict(timeout=0.01)),  # FIXME(markmc): timeout=0 is broken?
+        ('no_timeout', dict(timeout=None, call_monitor_timeout=None)),
+        ('timeout', dict(timeout=0.01,  # FIXME(markmc): timeout=0 is broken?
+                         call_monitor_timeout=None)),
+        ('call_monitor_timeout', dict(timeout=0.01,
+                                      call_monitor_timeout=0.02)),
     ]
 
     @classmethod
@@ -500,15 +503,20 @@ class TestSendReceive(test_utils.BaseTestCase):
         replies = []
         msgs = []
 
+        # FIXME(danms): Surely this is not the right way to do this...
+        self.ctxt['client_timeout'] = self.call_monitor_timeout
+
         def send_and_wait_for_reply(i):
             try:
 
                 timeout = self.timeout
+                cm_timeout = self.call_monitor_timeout
                 replies.append(driver.send(target,
                                            self.ctxt,
                                            {'tx_id': i},
                                            wait_for_reply=True,
-                                           timeout=timeout))
+                                           timeout=timeout,
+                                           call_monitor_timeout=cm_timeout))
                 self.assertFalse(self.failure)
                 self.assertIsNone(self.timeout)
             except (ZeroDivisionError, oslo_messaging.MessagingTimeout) as e:
@@ -594,14 +602,15 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         wait_conditions = []
         orig_reply_waiter = amqpdriver.ReplyWaiter.wait
 
-        def reply_waiter(self, msg_id, timeout):
+        def reply_waiter(self, msg_id, timeout, call_monitor_timeout):
             if wait_conditions:
                 cond = wait_conditions.pop()
                 with cond:
                     cond.notify()
                 with cond:
                     cond.wait()
-            return orig_reply_waiter(self, msg_id, timeout)
+            return orig_reply_waiter(self, msg_id, timeout,
+                                     call_monitor_timeout)
 
         self.useFixture(fixtures.MockPatchObject(
             amqpdriver.ReplyWaiter, 'wait', reply_waiter))
@@ -891,11 +900,12 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
     ]
 
     _context = [
-        ('empty_ctxt', dict(ctxt={}, expected_ctxt={})),
+        ('empty_ctxt', dict(ctxt={}, expected_ctxt={'client_timeout': None})),
         ('user_project_ctxt',
          dict(ctxt={'_context_user': 'mark',
                     '_context_project': 'snarkybunch'},
-              expected_ctxt={'user': 'mark', 'project': 'snarkybunch'})),
+              expected_ctxt={'user': 'mark', 'project': 'snarkybunch',
+                             'client_timeout': None})),
     ]
 
     _compression = [
@@ -940,6 +950,7 @@ class TestReplyWireFormat(test_utils.BaseTestCase):
             '_msg_id': uuid.uuid4().hex,
             '_unique_id': uuid.uuid4().hex,
             '_reply_q': 'reply_' + uuid.uuid4().hex,
+            '_timeout': None,
         })
 
         msg['oslo.message'] = jsonutils.dumps(msg['oslo.message'])

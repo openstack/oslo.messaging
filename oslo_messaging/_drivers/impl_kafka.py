@@ -375,7 +375,7 @@ class KafkaDriver(base.BaseDriver):
         self.listeners = []
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             retry=None):
+             call_monitor_timeout=None, retry=None):
         raise NotImplementedError(
             'The RPC implementation for Kafka is not implemented')
 
@@ -390,6 +390,10 @@ class KafkaDriver(base.BaseDriver):
         :type message: dict
         :param version: Messaging API version (currently not used)
         :type version: str
+        :param call_monitor_timeout: Maximum time the client will wait for the
+            call to complete before or receive a message heartbeat indicating
+            the remote side is still executing.
+        :type call_monitor_timeout: float
         :param retry: an optional default kafka consumer retries configuration
                       None means to retry forever
                       0 means no retry

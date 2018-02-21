@@ -152,6 +152,42 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
         self.assertEqual(10, server.endpoint.ival)
 
+    def test_monitor_long_call(self):
+        if not self.url.startswith("rabbit://"):
+            self.skipTest("backend does not support call monitoring")
+
+        transport = self.useFixture(utils.RPCTransportFixture(self.conf,
+                                                              self.url))
+        target = oslo_messaging.Target(topic='topic_' + str(uuid.uuid4()),
+                                       server='server_' + str(uuid.uuid4()))
+
+        class _endpoint(object):
+            def delay(self, ctxt, seconds):
+                time.sleep(seconds)
+                return seconds
+
+        self.useFixture(
+            utils.RpcServerFixture(self.conf, self.url, target,
+                                   executor='threading',
+                                   endpoint=_endpoint()))
+
+        # First case, no monitoring, ensure we timeout normally when the
+        # server side runs long
+        client1 = utils.ClientStub(transport.transport, target,
+                                   cast=False, timeout=1)
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          client1.delay, seconds=4)
+
+        # Second case, set a short call monitor timeout and a very
+        # long overall timeout. If we didn't honor the call monitor
+        # timeout, we would wait an hour, past the test timeout. If
+        # the server was not sending message heartbeats, we'd time out
+        # after two seconds.
+        client2 = utils.ClientStub(transport.transport, target,
+                                   cast=False, timeout=3600,
+                                   call_monitor_timeout=2)
+        self.assertEqual(4, client2.delay(seconds=4))
+
     def test_endpoint_version_namespace(self):
         # verify endpoint version and namespace are checked
         target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),

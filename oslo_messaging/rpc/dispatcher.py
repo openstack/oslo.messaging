@@ -30,7 +30,9 @@ __all__ = [
 
 from abc import ABCMeta
 from abc import abstractmethod
+import logging
 import sys
+import threading
 
 import six
 
@@ -39,6 +41,8 @@ from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import server as msg_server
 from oslo_messaging import target as msg_target
+
+LOG = logging.getLogger(__name__)
 
 
 class ExpectedException(Exception):
@@ -190,6 +194,32 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         result = func(ctxt, **new_args)
         return self.serializer.serialize_entity(ctxt, result)
 
+    def _watchdog(self, event, incoming):
+        # NOTE(danms): If the client declared that they are going to
+        # time out after N seconds, send the call-monitor heartbeat
+        # every N/2 seconds to make sure there is plenty of time to
+        # account for inbound and outbound queuing delays. Client
+        # timeouts must be integral and positive, otherwise we log and
+        # ignore.
+        try:
+            client_timeout = int(incoming.client_timeout)
+            cm_heartbeat_interval = client_timeout / 2
+        except ValueError:
+            client_timeout = cm_heartbeat_interval = 0
+
+        if cm_heartbeat_interval < 1:
+            LOG.warning('Client provided an invalid timeout value of %r' % (
+                incoming.client_timeout))
+            return
+
+        while not event.wait(cm_heartbeat_interval):
+            LOG.debug(
+                'Sending call-monitor heartbeat for active call to %(method)s '
+                '(interval=%(interval)i)' % (
+                    {'method': incoming.message.get('method'),
+                     'interval': cm_heartbeat_interval}))
+            incoming.heartbeat()
+
     def dispatch(self, incoming):
         """Dispatch an RPC message to the appropriate endpoint method.
 
@@ -205,6 +235,20 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         namespace = message.get('namespace')
         version = message.get('version', '1.0')
 
+        # NOTE(danms): This event and watchdog thread are used to send
+        # call-monitoring heartbeats for this message while the call
+        # is executing if it runs for some time. The thread will wait
+        # for the event to be signaled, which we do explicitly below
+        # after dispatching the method call.
+        completion_event = threading.Event()
+        watchdog_thread = threading.Thread(target=self._watchdog,
+                                           args=(completion_event, incoming))
+        if incoming.client_timeout:
+            # NOTE(danms): The client provided a timeout, so we start
+            # the watchdog thread. If the client is old or didn't send
+            # a timeout, we just never start the watchdog thread.
+            watchdog_thread.start()
+
         found_compatible = False
         for endpoint in self.endpoints:
             target = getattr(endpoint, 'target', None)
@@ -217,7 +261,12 @@ class RPCDispatcher(dispatcher.DispatcherBase):
 
             if hasattr(endpoint, method):
                 if self.access_policy.is_allowed(endpoint, method):
-                    return self._do_dispatch(endpoint, method, ctxt, args)
+                    try:
+                        return self._do_dispatch(endpoint, method, ctxt, args)
+                    finally:
+                        completion_event.set()
+                        if incoming.client_timeout:
+                            watchdog_thread.join()
 
             found_compatible = True
 

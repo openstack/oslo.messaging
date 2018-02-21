@@ -288,6 +288,7 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
                                                'message',
                                                wait_for_reply=None,
                                                timeout=None,
+                                               call_monitor_timeout=None,
                                                retry=None)
 
     def test_send_all_args(self):
@@ -297,7 +298,8 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
 
         t._send(self._target, 'ctxt', 'message',
                 wait_for_reply='wait_for_reply',
-                timeout='timeout', retry='retry')
+                timeout='timeout', call_monitor_timeout='cm_timeout',
+                retry='retry')
 
         t._driver.send.\
             assert_called_once_with(self._target,
@@ -305,6 +307,7 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
                                     'message',
                                     wait_for_reply='wait_for_reply',
                                     timeout='timeout',
+                                    call_monitor_timeout='cm_timeout',
                                     retry='retry')
 
     def test_send_notification(self):
