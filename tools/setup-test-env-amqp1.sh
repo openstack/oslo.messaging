@@ -22,6 +22,13 @@ function _setup_qpidd_user {
 }
 
 function _configure_qdrouterd {
+
+    QDR=$(type -p qdrouterd)
+    if [[ ! -x "$QDR" ]]; then
+        echo "FAILURE: Qpid Dispatch Router (qdrouterd) not installed"
+        exit 1
+    fi
+
     # create a stand alone router
     cat > ${DATADIR}/qdrouterd.conf <<EOF
 router {
@@ -35,9 +42,13 @@ router {
 EOF
 
     # create a listener for incoming connect to the router
+    # ip address field name changed to 'host' at 1.0+
+    local field_name
+    field_name=$([[ $($QDR -v) == 0.*.* ]] && echo addr || echo host)
+
     cat >> ${DATADIR}/qdrouterd.conf <<EOF
 listener {
-    addr: 0.0.0.0
+    ${field_name}: 0.0.0.0
     port: 65123
     role: normal
     authenticatePeer: yes
