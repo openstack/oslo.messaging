@@ -39,24 +39,47 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
     scenarios = [
         ('none', dict(url=None,
                       expected=dict(hostaddrs=['localhost:9092'],
+                                    username=None,
+                                    password=None,
                                     vhost=None))),
         ('empty', dict(url='kafka:///',
                        expected=dict(hostaddrs=['localhost:9092'],
+                                     username=None,
+                                     password=None,
                                      vhost=''))),
         ('host', dict(url='kafka://127.0.0.1',
                       expected=dict(hostaddrs=['127.0.0.1:9092'],
+                                    username=None,
+                                    password=None,
                                     vhost=None))),
         ('port', dict(url='kafka://localhost:1234',
                       expected=dict(hostaddrs=['localhost:1234'],
+                                    username=None,
+                                    password=None,
                                     vhost=None))),
         ('vhost', dict(url='kafka://localhost:1234/my_host',
                        expected=dict(hostaddrs=['localhost:1234'],
+                                     username=None,
+                                     password=None,
                                      vhost='my_host'))),
         ('two', dict(url='kafka://localhost:1234,localhost2:1234',
                      expected=dict(hostaddrs=['localhost:1234',
                                               'localhost2:1234'],
+                                   username=None,
+                                   password=None,
                                    vhost=None))),
-
+        ('user', dict(url='kafka://stack:stacksecret@localhost:9092/my_host',
+                      expected=dict(hostaddrs=['localhost:9092'],
+                                    username='stack',
+                                    password='stacksecret',
+                                    vhost='my_host'))),
+        ('user2', dict(url='kafka://stack:stacksecret@localhost:9092,'
+                       'stack2:stacksecret2@localhost:1234/my_host',
+                       expected=dict(hostaddrs=['localhost:9092',
+                                                'localhost:1234'],
+                                     username='stack',
+                                     password='stacksecret',
+                                     vhost='my_host'))),
     ]
 
     def setUp(self):
@@ -70,6 +93,8 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
         driver = transport._driver
 
         self.assertEqual(self.expected['hostaddrs'], driver.pconn.hostaddrs)
+        self.assertEqual(self.expected['username'], driver.pconn.username)
+        self.assertEqual(self.expected['password'], driver.pconn.password)
         self.assertEqual(self.expected['vhost'], driver.virtual_host)
 
 
@@ -119,6 +144,11 @@ class TestKafkaDriver(test_utils.BaseTestCase):
                 bootstrap_servers=['localhost:9092'],
                 max_partition_fetch_bytes=mock.ANY,
                 max_poll_records=mock.ANY,
+                security_protocol='PLAINTEXT',
+                sasl_mechanism='PLAIN',
+                sasl_plain_username=mock.ANY,
+                sasl_plain_password=mock.ANY,
+                ssl_cafile='',
                 selector=mock.ANY
             )
 

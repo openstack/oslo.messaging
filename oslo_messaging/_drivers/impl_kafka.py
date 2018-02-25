@@ -119,24 +119,39 @@ class Connection(object):
 
     def __init__(self, conf, url):
 
-        self.conf = conf
+        self.driver_conf = conf.oslo_messaging_kafka
+        self.security_protocol = self.driver_conf.security_protocol
+        self.sasl_mechanism = self.driver_conf.sasl_mechanism
+        self.ssl_cafile = self.driver_conf.ssl_cafile
         self.url = url
         self.virtual_host = url.virtual_host
         self._parse_url()
 
     def _parse_url(self):
-        driver_conf = self.conf.oslo_messaging_kafka
         self.hostaddrs = []
+        self.username = None
+        self.password = None
 
         for host in self.url.hosts:
+            # NOTE(ansmith): connections and failover are transparently
+            # managed by the client library. Credentials will be
+            # selectd from first host encountered in transport_url
+            if self.username is None:
+                self.username = host.username
+                self.password = host.password
+            else:
+                if self.username != host.username:
+                    LOG.warning(_LW("Different transport usernames detected"))
+
             if host.hostname:
                 self.hostaddrs.append("%s:%s" % (
                     host.hostname,
-                    host.port or driver_conf.kafka_default_port))
+                    host.port or self.driver_conf.kafka_default_port))
 
         if not self.hostaddrs:
-            self.hostaddrs.append("%s:%s" % (driver_conf.kafka_default_host,
-                                             driver_conf.kafka_default_port))
+            self.hostaddrs.append("%s:%s" %
+                                  (self.driver_conf.kafka_default_host,
+                                   self.driver_conf.kafka_default_port))
 
     def reset(self):
         """Reset a connection so it can be used again."""
@@ -148,13 +163,12 @@ class ConsumerConnection(Connection):
     def __init__(self, conf, url):
 
         super(ConsumerConnection, self).__init__(conf, url)
-        driver_conf = self.conf.oslo_messaging_kafka
         self.consumer = None
-        self.consumer_timeout = driver_conf.kafka_consumer_timeout
-        self.max_fetch_bytes = driver_conf.kafka_max_fetch_bytes
-        self.group_id = driver_conf.consumer_group
-        self.enable_auto_commit = driver_conf.enable_auto_commit
-        self.max_poll_records = driver_conf.max_poll_records
+        self.consumer_timeout = self.driver_conf.kafka_consumer_timeout
+        self.max_fetch_bytes = self.driver_conf.kafka_max_fetch_bytes
+        self.group_id = self.driver_conf.consumer_group
+        self.enable_auto_commit = self.driver_conf.enable_auto_commit
+        self.max_poll_records = self.driver_conf.max_poll_records
         self._consume_loop_stopped = False
 
     @with_reconnect()
@@ -216,6 +230,11 @@ class ConsumerConnection(Connection):
             bootstrap_servers=self.hostaddrs,
             max_partition_fetch_bytes=self.max_fetch_bytes,
             max_poll_records=self.max_poll_records,
+            security_protocol=self.security_protocol,
+            sasl_mechanism=self.sasl_mechanism,
+            sasl_plain_username=self.username,
+            sasl_plain_password=self.password,
+            ssl_cafile=self.ssl_cafile,
             selector=KAFKA_SELECTOR
         )
 
@@ -225,9 +244,8 @@ class ProducerConnection(Connection):
     def __init__(self, conf, url):
 
         super(ProducerConnection, self).__init__(conf, url)
-        driver_conf = self.conf.oslo_messaging_kafka
-        self.batch_size = driver_conf.producer_batch_size
-        self.linger_ms = driver_conf.producer_batch_timeout * 1000
+        self.batch_size = self.driver_conf.producer_batch_size
+        self.linger_ms = self.driver_conf.producer_batch_timeout * 1000
         self.producer = None
         self.producer_lock = threading.Lock()
 
@@ -278,6 +296,11 @@ class ProducerConnection(Connection):
                 bootstrap_servers=self.hostaddrs,
                 linger_ms=self.linger_ms,
                 batch_size=self.batch_size,
+                security_protocol=self.security_protocol,
+                sasl_mechanism=self.sasl_mechanism,
+                sasl_plain_username=self.username,
+                sasl_plain_password=self.password,
+                ssl_cafile=self.ssl_cafile,
                 selector=KAFKA_SELECTOR)
 
 
