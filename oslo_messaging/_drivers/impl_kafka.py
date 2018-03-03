@@ -315,6 +315,9 @@ class OsloKafkaMessage(base.RpcIncomingMessage):
     def reply(self, reply=None, failure=None):
         LOG.warning(_LW("reply is not supported"))
 
+    def heartbeat(self):
+        LOG.warning(_LW("heartbeat is not supported"))
+
 
 class KafkaListener(base.PollStyleListener):
 

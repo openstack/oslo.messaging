@@ -38,6 +38,9 @@ class FakeIncomingMessage(base.RpcIncomingMessage):
     def requeue(self):
         self.requeue_callback()
 
+    def heartbeat(self):
+        """Heartbeat is not supported."""
+
 
 class FakeListener(base.PollStyleListener):
 

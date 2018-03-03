@@ -178,6 +178,9 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         # the end.
         self._message_operations_handler.do(self.message.requeue)
 
+    def heartbeat(self):
+        LOG.debug("Message heartbeat not implemented")
+
 
 class ObsoleteReplyQueuesCache(object):
     """Cache of reply queue id that doesn't exists anymore.

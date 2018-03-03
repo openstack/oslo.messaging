@@ -154,6 +154,19 @@ class RpcIncomingMessage(IncomingMessage):
         :raises: Does not raise an exception
         """
 
+    @abc.abstractmethod
+    def heartbeat(self):
+        """Called by the server to send an RPC heartbeat message back to
+        the calling client.
+
+        If the client (is new enough to have) passed its timeout value during
+        the RPC call, this method will be called periodically by the server
+        to update the client's timeout timer while a long-running call is
+        executing.
+
+        :raises: Does not raise an exception
+        """
+
 
 @six.add_metaclass(abc.ABCMeta)
 class PollStyleListener(object):
