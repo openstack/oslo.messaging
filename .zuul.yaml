@@ -19,27 +19,6 @@
       bindep_profile: rabbit
 
 - job:
-    name: oslo.messaging-tox-py27-func-zmq
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-zmq
-      bindep_profile: zmq
-
-- job:
-    name: oslo.messaging-tox-py27-func-zmq-proxy
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-zmq-proxy
-      bindep_profile: zmq
-
-- job:
-    name: oslo.messaging-tox-py27-func-zmq-pubsub
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-zmq-pubsub
-      bindep_profile: zmq
-
-- job:
     name: oslo.messaging-tox-py35-func-amqp1
     parent: openstack-tox-py35
     vars:
@@ -51,13 +30,6 @@
     vars:
       tox_envlist: py35-func-rabbit
       bindep_profile: rabbit
-
-- job:
-    name: oslo.messaging-tox-py35-func-zmq
-    parent: openstack-tox-py35
-    vars:
-      tox_envlist: py35-func-zmq
-      bindep_profile: zmq
 
 - job:
     name: oslo.messaging-src-dsvm-full-rabbit-default
@@ -113,17 +85,6 @@
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/devstack-plugin-kafka
-      - openstack/oslo.messaging
-
-- job:
-    name: oslo.messaging-src-dsvm-full-zmq-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/run.yaml
-    post-run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-zmq
       - openstack/oslo.messaging
 
 - job:
@@ -194,24 +155,6 @@
       - openstack/diskimage-builder
 
 - job:
-    name: oslo.messaging-telemetry-dsvm-integration-zmq
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/post.yaml
-    timeout: 4200
-    required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/devstack-plugin-zmq
-      - openstack/oslo.messaging
-      - openstack/panko
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-- job:
     name: oslo.messaging-telemetry-dsvm-integration-rabbit
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/run.yaml
@@ -268,19 +211,6 @@
       - openstack/oslo.messaging
       - openstack/tempest
 
-- job:
-    name: oslo.messaging-tempest-neutron-dsvm-src-zmq-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/run.yaml
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/post.yaml
-    timeout: 7800
-    required-projects:
-      - openstack-infra/devstack-gate
-      - openstack/devstack-plugin-zmq
-      - openstack/neutron
-      - openstack/oslo.messaging
-      - openstack/tempest
-
 
 - project:
     check:
@@ -290,17 +220,9 @@
         - oslo.messaging-tox-py27-func-kafka:
             voting: false
         - oslo.messaging-tox-py27-func-rabbit
-        - oslo.messaging-tox-py27-func-zmq-proxy:
-            voting: false
-        - oslo.messaging-tox-py27-func-zmq-pubsub:
-            voting: false
-        - oslo.messaging-tox-py27-func-zmq:
-            voting: false
         - oslo.messaging-tox-py35-func-amqp1:
             voting: false
         - oslo.messaging-tox-py35-func-rabbit:
-            voting: false
-        - oslo.messaging-tox-py35-func-zmq:
             voting: false
 
         - oslo.messaging-src-dsvm-full-rabbit-default
@@ -314,8 +236,6 @@
             voting: false
         - oslo.messaging-src-dsvm-full-kafka-default:
             voting: false
-        - oslo.messaging-src-dsvm-full-zmq-default:
-            voting: false
 
         - oslo.messaging-src-grenade-dsvm:
             voting: false
@@ -327,16 +247,12 @@
             voting: false
         - oslo.messaging-telemetry-dsvm-integration-kafka:
             voting: false
-        - oslo.messaging-telemetry-dsvm-integration-zmq:
-            voting: false
 
         - oslo.messaging-tempest-neutron-dsvm-src-rabbit-default
         - oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid:
             voting: false
             branches: ^(?!stable/ocata).*$
         - oslo.messaging-tempest-neutron-dsvm-src-kafka-default:
-            voting: false
-        - oslo.messaging-tempest-neutron-dsvm-src-zmq-default:
             voting: false
 
     gate:
