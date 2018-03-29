@@ -257,6 +257,7 @@
         - oslo.messaging-tempest-neutron-dsvm-src-kafka-default:
             voting: false
 
+        - openstack-tox-lower-constraints
     gate:
       jobs:
         - oslo.messaging-tox-py27-func-rabbit
@@ -267,3 +268,4 @@
 
 
 
+        - openstack-tox-lower-constraints
