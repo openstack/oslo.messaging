@@ -198,7 +198,7 @@
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/run.yaml
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/post.yaml
-    timeout: 4200
+    timeout: 10800
     required-projects:
       - openstack-infra/devstack-gate
       - openstack/aodh
@@ -206,6 +206,9 @@
       - openstack/devstack-plugin-kafka
       - openstack/oslo.messaging
       - openstack/panko
+      - openstack/telemetry-tempest-plugin
+      - openstack/heat-tempest-plugin
+      - openstack/heat
       # following are required when DEVSTACK_GATE_HEAT, which this
       # job turns on
       - openstack/dib-utils
