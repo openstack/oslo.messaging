@@ -24,6 +24,8 @@ import threading
 
 import six
 
+from oslo_utils import eventletutils
+
 from oslo_messaging import _utils as utils
 from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
@@ -249,7 +251,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         # is executing if it runs for some time. The thread will wait
         # for the event to be signaled, which we do explicitly below
         # after dispatching the method call.
-        completion_event = threading.Event()
+        completion_event = eventletutils.Event()
         watchdog_thread = threading.Thread(target=self._watchdog,
                                            args=(completion_event, incoming))
         if incoming.client_timeout:
