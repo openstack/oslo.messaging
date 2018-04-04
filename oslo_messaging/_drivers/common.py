@@ -347,6 +347,9 @@ class DecayingTimer(object):
     def start(self):
         self._watch.start()
 
+    def restart(self):
+        self._watch.restart()
+
     def check_return(self, timeout_callback=None, *args, **kwargs):
         maximum = kwargs.pop('maximum', None)
         left = self._watch.leftover(return_none=True)
