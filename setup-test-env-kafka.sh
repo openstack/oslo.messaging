@@ -4,7 +4,7 @@ set -e
 . tools/functions.sh
 
 SCALA_VERSION=${SCALA_VERSION:-"2.12"}
-KAFKA_VERSION=${KAFKA_VERSION:-"1.0.0"}
+KAFKA_VERSION=${KAFKA_VERSION:-"1.1.0"}
 
 if [[ -z "$(which kafka-server-start)" ]] && [[ -z $(which kafka-server-start.sh) ]]; then
     DATADIR=$(mktemp -d /tmp/OSLOMSG-KAFKA.XXXXX)
