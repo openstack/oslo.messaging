@@ -259,7 +259,7 @@ class ProducerConnection(Connection):
         """
         retry = retry if retry >= 0 else None
         message = pack_message(ctxt, msg)
-        message = jsonutils.dumps(message)
+        message = jsonutils.dumps(message).encode('utf-8')
 
         @with_reconnect(retries=retry)
         def wrapped_with_reconnect():
