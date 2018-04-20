@@ -11,11 +11,11 @@ Oslo Messaging Library
 ======================
 
 .. image:: https://img.shields.io/pypi/v/oslo.messaging.svg
-    :target: https://pypi.python.org/pypi/oslo.messaging/
+    :target: https://pypi.org/project/oslo.messaging/
     :alt: Latest Version
 
 .. image:: https://img.shields.io/pypi/dm/oslo.messaging.svg
-    :target: https://pypi.python.org/pypi/oslo.messaging/
+    :target: https://pypi.org/project/oslo.messaging/
     :alt: Downloads
 
 The Oslo messaging API supports RPC and notifications over a number of

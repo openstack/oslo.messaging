@@ -219,12 +219,12 @@ library, Proton header files, and Pyngus must be installed.
 
 Source packages for the `Pyngus client API`_ are available via PyPI.
 
-.. _Pyngus client API: https://pypi.python.org/pypi/pyngus
+.. _Pyngus client API: https://pypi.org/project/pyngus
 
 Pyngus depends on the Proton Python bindings.  Source packages for the
 `Proton Python bindings`_ are also available via PyPI.
 
-.. _Proton Python bindings: https://pypi.python.org/pypi/python-qpid-proton
+.. _Proton Python bindings: https://pypi.org/project/python-qpid-proton
 
 Since the AMQP 1.0 driver is an optional extension to Oslo.Messaging
 these packages are not installed by default.  Use the 'amqp1' extras
@@ -641,8 +641,8 @@ PyPi
 
 Packages for `Pyngus pypi`_ and the `Proton pypi`_ engine are available on Pypi.
 
-.. _Pyngus pypi: https://pypi.python.org/pypi/pyngus
-.. _Proton pypi: https://pypi.python.org/pypi/python-qpid-proton
+.. _Pyngus pypi: https://pypi.org/project/pyngus
+.. _Proton pypi: https://pypi.org/project/python-qpid-proton
 
 
 RHEL and Fedora
