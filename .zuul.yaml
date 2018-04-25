@@ -25,6 +25,13 @@
       tox_envlist: py35-func-amqp1
 
 - job:
+    name: oslo.messaging-tox-py35-func-kafka
+    parent: openstack-tox-py35
+    vars:
+      tox_envlist: py35-func-kafka
+      bindep_profile: kafka
+
+- job:
     name: oslo.messaging-tox-py35-func-rabbit
     parent: openstack-tox-py35
     vars:
@@ -226,6 +233,8 @@
             voting: false
         - oslo.messaging-tox-py27-func-rabbit
         - oslo.messaging-tox-py35-func-amqp1:
+            voting: false
+        - oslo.messaging-tox-py35-func-kafka:
             voting: false
         - oslo.messaging-tox-py35-func-rabbit:
             voting: false
