@@ -36,3 +36,6 @@ class ZmqIncomingMessage(base.RpcIncomingMessage):
 
     def requeue(self):
         """Requeue is not supported."""
+
+    def heartbeat(self):
+        """Heartbeat is not supported."""

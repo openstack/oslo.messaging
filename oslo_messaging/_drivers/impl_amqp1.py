@@ -98,6 +98,9 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         self._correlation_id = message.id
         self._disposition = disposition
 
+    def heartbeat(self):
+        LOG.debug("Message heartbeat not implemented")
+
     def reply(self, reply=None, failure=None):
         """Schedule an RPCReplyTask to send the reply."""
         if self._reply_to:
