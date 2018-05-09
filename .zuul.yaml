@@ -254,7 +254,8 @@
 - project:
     check:
       jobs:
-        - oslo.messaging-devstack-amqp1
+        - oslo.messaging-devstack-amqp1:
+            voting: false
         - oslo.messaging-tox-py27-func-amqp1:
             voting: false
         - oslo.messaging-tox-py27-func-kafka:
