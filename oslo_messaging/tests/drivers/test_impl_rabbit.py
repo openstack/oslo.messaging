@@ -42,7 +42,7 @@ class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
     def setUp(self):
         super(TestDeprecatedRabbitDriverLoad, self).setUp(
             conf=cfg.ConfigOpts())
-        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.transport_url = 'rabbit:/'
         self.config(fake_rabbit=True, group="oslo_messaging_rabbit")
 
     def test_driver_load(self):
@@ -52,7 +52,7 @@ class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
         url = driver._get_connection()._url
 
         self.assertIsInstance(driver, rabbit_driver.RabbitDriver)
-        self.assertEqual('memory:////', url)
+        self.assertEqual('memory:///', url)
 
 
 class TestHeartbeat(test_utils.BaseTestCase):
@@ -137,12 +137,9 @@ class TestRabbitQos(test_utils.BaseTestCase):
 class TestRabbitDriverLoad(test_utils.BaseTestCase):
 
     scenarios = [
-        ('rabbit', dict(transport_driver='rabbit',
-                        url='amqp://guest:guest@localhost:5672//')),
-        ('kombu', dict(transport_driver='kombu',
-                       url='amqp://guest:guest@localhost:5672//')),
-        ('rabbit+memory', dict(transport_driver='kombu+memory',
-                               url='memory:///'))
+        ('rabbit', dict(transport_url='rabbit:/guest:guest@localhost:5672//')),
+        ('kombu', dict(transport_url='kombu:/guest:guest@localhost:5672//')),
+        ('rabbit+memory', dict(transport_url='kombu+memory:/'))
     ]
 
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
@@ -150,14 +147,12 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
     def test_driver_load(self, fake_ensure, fake_reset):
         self.config(heartbeat_timeout_threshold=60,
                     group='oslo_messaging_rabbit')
-        self.messaging_conf.transport_driver = self.transport_driver
+        self.messaging_conf.transport_url = self.transport_url
         transport = oslo_messaging.get_transport(self.conf)
         self.addCleanup(transport.cleanup)
         driver = transport._driver
-        url = driver._get_connection()._url
 
         self.assertIsInstance(driver, rabbit_driver.RabbitDriver)
-        self.assertEqual(self.url, url)
 
 
 class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
@@ -389,7 +384,7 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
         ('none', dict(url=None,
-                      expected=["amqp://guest:guest@localhost:5672//"])),
+                      expected=["amqp://guest:guest@localhost:5672/"])),
         ('memory', dict(url='kombu+memory:////',
                         expected=["memory:///"])),
         ('empty',
@@ -426,7 +421,7 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestRabbitTransportURL, self).setUp()
-        self.messaging_conf.transport_driver = 'rabbit'
+        self.messaging_conf.transport_url = 'rabbit:/'
         self.config(heartbeat_timeout_threshold=0,
                     group='oslo_messaging_rabbit')
 

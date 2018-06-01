@@ -49,10 +49,11 @@ class TestConfFixture(test_utils.BaseTestCase):
     def test_fixture_properties(self):
         conf = self.messaging_conf.conf
         self.messaging_conf.transport_driver = 'fake'
-        self.assertEqual('fake',
-                         self.messaging_conf.transport_driver)
-        self.assertEqual('fake',
-                         conf.rpc_backend)
+        self.messaging_conf.transport_url = 'fake:/vhost'
+        self.assertEqual('fake', self.messaging_conf.transport_driver)
+        self.assertEqual('fake', conf.rpc_backend)
+        self.assertEqual('fake:/vhost', self.messaging_conf.transport_url)
+        self.assertEqual('fake:/vhost', conf.transport_url)
 
     def test_old_notifications_config_override(self):
         conf = self.messaging_conf.conf

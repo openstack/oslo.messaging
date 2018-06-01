@@ -37,7 +37,7 @@ class ConfFixture(fixtures.Fixture):
     An example usage::
 
         self.messaging_conf = self.useFixture(messaging.ConfFixture(cfg.CONF))
-        self.messaging_conf.transport_driver = 'fake'
+        self.messaging_conf.transport_url = 'fake://'
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
@@ -130,6 +130,15 @@ class ConfFixture(fixtures.Fixture):
     @transport_driver.setter
     def transport_driver(self, value):
         self.conf.set_override('rpc_backend', value)
+
+    @property
+    def transport_url(self):
+        """The transport url"""
+        return self.conf.transport_url
+
+    @transport_url.setter
+    def transport_url(self, value):
+        self.conf.set_override('transport_url', value)
 
     @property
     def response_timeout(self):

@@ -35,7 +35,7 @@ class BaseTestCase(base.BaseTestCase):
 
         from oslo_messaging import conffixture
         self.messaging_conf = self.useFixture(conffixture.ConfFixture(conf))
-        self.messaging_conf.transport_driver = 'fake'
+        self.messaging_conf.transport_url = 'fake:/'
         self.conf = self.messaging_conf.conf
 
         self.conf.project = 'project'

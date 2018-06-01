@@ -119,7 +119,7 @@ class TestProtonDriverLoad(test_utils.BaseTestCase):
 
     def setUp(self):
         super(TestProtonDriverLoad, self).setUp()
-        self.messaging_conf.transport_driver = 'amqp'
+        self.messaging_conf.transport_url = 'amqp://'
 
     def test_driver_load(self):
         transport = oslo_messaging.get_transport(self.conf)
@@ -750,7 +750,7 @@ mech_list: ${mechs}
                                   sasl_config_dir=_dir,
                                   sasl_config_name="openstack")
         self._broker.start()
-        self.messaging_conf.transport_driver = 'amqp'
+        self.messaging_conf.transport_url = 'amqp://'
         self.conf = self.messaging_conf.conf
 
     def tearDown(self):
