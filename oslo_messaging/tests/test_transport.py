@@ -354,10 +354,13 @@ class TestTransportUrlCustomisation(test_utils.BaseTestCase):
         def transport_url_parse(url):
             return transport.TransportURL.parse(self.conf, url)
 
-        self.url1 = transport_url_parse("fake://vhost1?x=1&y=2&z=3")
-        self.url2 = transport_url_parse("fake://vhost2?foo=bar")
-        self.url3 = transport_url_parse("fake://vhost1?l=1&l=2&l=3")
-        self.url4 = transport_url_parse("fake://vhost2?d=x:1&d=y:2&d=z:3")
+        self.url1 = transport_url_parse(
+            "fake:/vhost1/localhost:5672/?x=1&y=2&z=3")
+        self.url2 = transport_url_parse("fake:/vhost2/localhost:5672/?foo=bar")
+        self.url3 = transport_url_parse(
+            "fake:/vhost1/localhost:5672/?l=1&l=2&l=3")
+        self.url4 = transport_url_parse(
+            "fake:/vhost2/localhost:5672/?d=x:1&d=y:2&d=z:3")
         self.url5 = transport_url_parse("fake://noport:/?")
 
     def test_hash(self):

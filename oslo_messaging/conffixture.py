@@ -37,7 +37,7 @@ class ConfFixture(fixtures.Fixture):
     An example usage::
 
         self.messaging_conf = self.useFixture(messaging.ConfFixture(cfg.CONF))
-        self.messaging_conf.transport_url = 'fake://'
+        self.messaging_conf.transport_url = 'fake:/'
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
