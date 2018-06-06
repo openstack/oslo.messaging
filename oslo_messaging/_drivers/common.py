@@ -27,7 +27,7 @@ import six
 
 import oslo_messaging
 from oslo_messaging._i18n import _
-from oslo_messaging._i18n import _LE
+from oslo_messaging._i18n import _LE, _LW
 from oslo_messaging import _utils as utils
 
 LOG = logging.getLogger(__name__)
@@ -229,7 +229,9 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
             raise TypeError("Can only deserialize Exceptions")
 
         failure = klass(*failure.get('args', []), **failure.get('kwargs', {}))
-    except (AttributeError, TypeError, ImportError):
+    except (AttributeError, TypeError, ImportError) as error:
+        LOG.warning(_LW("Failed to rebuild remote exception due to error: %s"),
+                    six.text_type(error))
         return oslo_messaging.RemoteError(name, failure.get('message'), trace)
 
     ex_type = type(failure)
