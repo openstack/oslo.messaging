@@ -15,6 +15,7 @@
 import os
 import threading
 
+from debtcollector import removals
 from stevedore import driver
 
 from oslo_messaging._drivers import base
@@ -60,6 +61,8 @@ class LazyDriverItem(object):
             self.item.cleanup()
 
 
+@removals.removed_class('ZmqDriver', version='Rocky', removal_version='Stein',
+                        message='The ZeroMQ driver is no longer supported')
 class ZmqDriver(base.BaseDriver):
 
     """ZeroMQ Driver implementation.

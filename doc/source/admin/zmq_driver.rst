@@ -8,6 +8,12 @@ ZeroMQ Driver Deployment Guide
 Introduction
 ============
 
+**Note:** The ZeroMQ driver has been **deprecated** and is no longer
+maintained.  Refer to the mailing list announcement for more
+`details`_.
+
+.. _details: http://lists.openstack.org/pipermail/openstack-dev/2018-March/128055.html
+
 0MQ (also known as ZeroMQ or zmq) is embeddable networking library
 but acts like a concurrency framework. It gives you sockets
 that carry atomic messages across various transports
