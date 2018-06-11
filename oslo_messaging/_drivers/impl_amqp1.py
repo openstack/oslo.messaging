@@ -45,6 +45,11 @@ controller = importutils.try_import(
 )
 LOG = logging.getLogger(__name__)
 
+# Build/Decode RPC Response messages
+# Body Format - json string containing a map with keys:
+# 'failure' - (optional) serialized exception from remote
+# 'response' - (if no failure provided) data returned by call
+
 
 def marshal_response(reply, failure):
     # TODO(grs): do replies have a context?
@@ -70,7 +75,14 @@ def unmarshal_response(message, allowed):
     return data.get("response")
 
 
-def marshal_request(request, context, envelope):
+# Build/Decode RPC Request and Notification messages
+# Body Format: json string containing a map with keys:
+# 'request' - possibly serialized application data
+# 'context' - context provided by the application
+# 'call_monitor_timeout' - optional time in seconds for RPC call monitoring
+
+def marshal_request(request, context, envelope=False,
+                    call_monitor_timeout=None):
     # NOTE(flaper87): Set inferred to True since rabbitmq-amqp-1.0 doesn't
     # have support for vbin8.
     msg = proton.Message(inferred=True)
@@ -80,6 +92,8 @@ def marshal_request(request, context, envelope):
         "request": request,
         "context": context
     }
+    if call_monitor_timeout is not None:
+        data["call_monitor_timeout"] = call_monitor_timeout
     msg.body = jsonutils.dumps(data)
     return msg
 
@@ -87,19 +101,36 @@ def marshal_request(request, context, envelope):
 def unmarshal_request(message):
     data = jsonutils.loads(message.body)
     msg = common.deserialize_msg(data.get("request"))
-    return (msg, data.get("context"))
+    return (msg, data.get("context"), data.get("call_monitor_timeout"))
 
 
 class ProtonIncomingMessage(base.RpcIncomingMessage):
-    def __init__(self, listener, ctxt, request, message, disposition):
+    def __init__(self, listener, message, disposition):
+        request, ctxt, client_timeout = unmarshal_request(message)
         super(ProtonIncomingMessage, self).__init__(ctxt, request)
         self.listener = listener
+        self.client_timeout = client_timeout
         self._reply_to = message.reply_to
         self._correlation_id = message.id
         self._disposition = disposition
 
     def heartbeat(self):
-        LOG.debug("Message heartbeat not implemented")
+        # heartbeats are sent "worst effort": non-blocking, no retries,
+        # pre-settled (no blocking for acks). We don't want the server thread
+        # being blocked because it is unable to send a heartbeat.
+        if not self._reply_to:
+            LOG.warning("Cannot send RPC heartbeat: no reply-to provided")
+            return
+        # send a null msg (no body). This will cause the client to simply reset
+        # its timeout (the null message is dropped).  Use time-to-live to
+        # prevent stale heartbeats from building up on the message bus
+        msg = proton.Message()
+        msg.correlation_id = self._correlation_id
+        msg.ttl = self.client_timeout
+        task = controller.SendTask("RPC KeepAlive", msg, self._reply_to,
+                                   deadline=None, retry=0, wait_for_ack=False)
+        self.listener.driver._ctrl.add_task(task)
+        task.wait()
 
     def reply(self, reply=None, failure=None):
         """Schedule an RPCReplyTask to send the reply."""
@@ -179,10 +210,9 @@ class ProtonListener(base.PollStyleListener):
         qentry = self.incoming.pop(timeout)
         if qentry is None:
             return None
-        message = qentry['message']
-        request, ctxt = unmarshal_request(message)
-        disposition = qentry['disposition']
-        return ProtonIncomingMessage(self, ctxt, request, message, disposition)
+        return ProtonIncomingMessage(self,
+                                     qentry['message'],
+                                     qentry['disposition'])
 
 
 class ProtonDriver(base.BaseDriver):
@@ -268,7 +298,8 @@ class ProtonDriver(base.BaseDriver):
 
     @_ensure_connect_called
     def send(self, target, ctxt, message,
-             wait_for_reply=False, timeout=None, call_monitor_timeout=None,
+             wait_for_reply=False,
+             timeout=None, call_monitor_timeout=None,
              retry=None):
         """Send a message to the given target.
 
@@ -292,14 +323,13 @@ class ProtonDriver(base.BaseDriver):
                       0 means no retry
                       N means N retries
         :type retry: int
-"""
-        request = marshal_request(message, ctxt, envelope=False)
-        expire = 0
+        """
+        request = marshal_request(message, ctxt, None,
+                                  call_monitor_timeout)
         if timeout:
-            expire = compute_timeout(timeout)  # when the caller times out
-            # amqp uses millisecond time values, timeout is seconds
-            request.ttl = int(timeout * 1000)
-            request.expiry_time = int(expire * 1000)
+            expire = compute_timeout(timeout)
+            request.ttl = timeout
+            request.expiry_time = compute_timeout(timeout)
         else:
             # no timeout provided by application.  If the backend is queueless
             # this could lead to a hang - provide a default to prevent this
@@ -307,8 +337,13 @@ class ProtonDriver(base.BaseDriver):
             expire = compute_timeout(self._default_send_timeout)
         if wait_for_reply:
             ack = not self._pre_settle_call
-            task = controller.RPCCallTask(target, request, expire, retry,
-                                          wait_for_ack=ack)
+            if call_monitor_timeout is None:
+                task = controller.RPCCallTask(target, request, expire, retry,
+                                              wait_for_ack=ack)
+            else:
+                task = controller.RPCMonitoredCallTask(target, request, expire,
+                                                       call_monitor_timeout,
+                                                       retry, wait_for_ack=ack)
         else:
             ack = not self._pre_settle_cast
             task = controller.SendTask("RPC Cast", request, target, expire,
@@ -344,7 +379,7 @@ class ProtonDriver(base.BaseDriver):
                       N means N retries
         :type retry: int
         """
-        request = marshal_request(message, ctxt, (version == 2.0))
+        request = marshal_request(message, ctxt, envelope=(version == 2.0))
         # no timeout is applied to notifications, however if the backend is
         # queueless this could lead to a hang - provide a default to prevent
         # this

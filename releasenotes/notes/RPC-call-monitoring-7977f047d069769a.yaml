@@ -1,0 +1,11 @@
+---
+prelude: >
+    RPCClient now supports RPC call monitoring for detecting the loss
+    of a server during an RPC call.
+features:
+  - |
+    RPC call monitoring is a new RPCClient feature.  Call monitoring
+    causes the RPC server to periodically send keepalive messages back
+    to the RPCClient while the RPC call is being processed.  This can
+    be used for early detection of a server failure without having to
+    wait for the full call timeout to expire.
