@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    ZeroMQ support has been deprecated. The ZeroMQ driver ``zmq://`` has
+    been unmaintained for over a year and no longer functions
+    properly. It is recommended to use one of the maintained backends
+    instead, such as RabbitMQ or AMQP 1.0.
