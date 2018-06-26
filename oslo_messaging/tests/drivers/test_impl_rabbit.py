@@ -22,7 +22,6 @@ import uuid
 import fixtures
 import kombu
 import kombu.transport.memory
-from oslo_config import cfg
 from oslo_serialization import jsonutils
 import testscenarios
 
@@ -35,24 +34,6 @@ from oslo_messaging.tests import utils as test_utils
 from six.moves import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
-
-
-class TestDeprecatedRabbitDriverLoad(test_utils.BaseTestCase):
-
-    def setUp(self):
-        super(TestDeprecatedRabbitDriverLoad, self).setUp(
-            conf=cfg.ConfigOpts())
-        self.messaging_conf.transport_url = 'rabbit:/'
-        self.config(fake_rabbit=True, group="oslo_messaging_rabbit")
-
-    def test_driver_load(self):
-        transport = oslo_messaging.get_transport(self.conf)
-        self.addCleanup(transport.cleanup)
-        driver = transport._driver
-        url = driver._get_connection()._url
-
-        self.assertIsInstance(driver, rabbit_driver.RabbitDriver)
-        self.assertEqual('memory:///', url)
 
 
 class TestHeartbeat(test_utils.BaseTestCase):

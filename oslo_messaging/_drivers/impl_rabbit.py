@@ -194,13 +194,6 @@ rabbit_opts = [
                default=2,
                help='How often times during the heartbeat_timeout_threshold '
                'we check the heartbeat.'),
-
-    # NOTE(sileht): deprecated option since oslo_messaging 1.5.0,
-    cfg.BoolOpt('fake_rabbit',
-                default=False,
-                deprecated_group='DEFAULT',
-                help='Deprecated, use rpc_backend=kombu+memory or '
-                'rpc_backend=fake'),
 ]
 
 LOG = logging.getLogger(__name__)
@@ -463,7 +456,6 @@ class Connection(object):
         self.interval_max = driver_conf.rabbit_interval_max
 
         self.login_method = driver_conf.rabbit_login_method
-        self.fake_rabbit = driver_conf.fake_rabbit
         self.virtual_host = driver_conf.rabbit_virtual_host
         self.rabbit_hosts = driver_conf.rabbit_hosts
         self.rabbit_port = driver_conf.rabbit_port
@@ -501,12 +493,7 @@ class Connection(object):
             virtual_host = self.virtual_host
 
         self._url = ''
-        if self.fake_rabbit:
-            LOG.warning(_LW("Deprecated: fake_rabbit option is deprecated, "
-                            "set rpc_backend to kombu+memory or use the fake "
-                            "driver instead."))
-            self._url = 'memory://%s/' % virtual_host
-        elif url.hosts:
+        if url.hosts:
             if url.transport.startswith('kombu+'):
                 LOG.warning(_LW('Selecting the kombu transport through the '
                                 'transport url (%s) is a experimental feature '
