@@ -117,7 +117,7 @@ class Pool(object):
                 _, item = self._items.pop()
                 yield item
             except IndexError:
-                raise StopIteration
+                return
 
     @abc.abstractmethod
     def create(self):

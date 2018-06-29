@@ -170,7 +170,7 @@ class RoutingTable(object):
         hosts, tm_original = self._get_hosts(target_key)
         for host in itertools.cycle(hosts):
             if self._is_target_changed(target_key, tm_original):
-                raise StopIteration()
+                return
             yield host
 
 
