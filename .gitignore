@@ -13,5 +13,5 @@ build/
 doc/build/
 doc/source/api/
 dist/
-.testrepository/
+.stestr/
 releasenotes/build
