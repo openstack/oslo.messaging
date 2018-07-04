@@ -838,7 +838,7 @@ class Hosts(object):
             entry.password = entry.password or default_password
             if default_realm and entry.username and '@' not in entry.username:
                 entry.username = entry.username + '@' + default_realm
-        self._current = random.randint(0, len(self._entries) - 1)
+        self._current = random.randint(0, len(self._entries) - 1)  # nosec
 
     @property
     def current(self):

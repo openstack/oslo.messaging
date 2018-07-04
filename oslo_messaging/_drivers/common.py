@@ -426,8 +426,9 @@ class ConnectionContext(Connection):
                     LOG.exception(_LE("Fail to reset the connection, drop it"))
                     try:
                         self.connection.close()
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        LOG.debug("pooled conn close failure (ignored): %s",
+                                  str(exc))
                     self.connection = self.connection_pool.create()
                 finally:
                     self.connection_pool.put(self.connection)
@@ -435,7 +436,8 @@ class ConnectionContext(Connection):
                 try:
                     self.connection.close()
                 except Exception:
-                    pass
+                    LOG.debug("pooled conn close failure (ignored): %s",
+                              str(exc))
             self.connection = None
 
     def __exit__(self, exc_type, exc_value, tb):
