@@ -76,18 +76,18 @@ class _ListenerThread(threading.Thread):
         self.messages = moves.queue.Queue()
         self.daemon = True
         self.started = threading.Event()
-        self._done = False
+        self._done = threading.Event()
         self.start()
         self.started.wait()
 
     def run(self):
         LOG.debug("Listener started")
         self.started.set()
-        while not self._done:
+        while not self._done.is_set():
             for in_msg in self.listener.poll(timeout=0.5):
                 self.messages.put(in_msg)
                 self.msg_count -= 1
-                self._done = self.msg_count == 0
+                self.msg_count == 0 and self._done.set()
                 if self._msg_ack:
                     in_msg.acknowledge()
                     if in_msg.message.get('method') == 'echo':
@@ -110,8 +110,57 @@ class _ListenerThread(threading.Thread):
         return msgs
 
     def kill(self, timeout=30):
-        self._done = True
+        self._done.set()
         self.join(timeout)
+
+
+class _SlowResponder(_ListenerThread):
+    # an RPC listener that pauses delay seconds before replying
+    def __init__(self, listener, delay, msg_count=1):
+        self._delay = delay
+        super(_SlowResponder, self).__init__(listener, msg_count)
+
+    def run(self):
+        LOG.debug("_SlowResponder started")
+        self.started.set()
+        while not self._done.is_set():
+            for in_msg in self.listener.poll(timeout=0.5):
+                time.sleep(self._delay)
+                in_msg.acknowledge()
+                in_msg.reply(reply={'correlation-id':
+                                    in_msg.message.get('id')})
+                self.messages.put(in_msg)
+                self.msg_count -= 1
+                self.msg_count == 0 and self._done.set()
+
+
+class _CallMonitor(_ListenerThread):
+    # an RPC listener that generates heartbeats before
+    # replying.
+    def __init__(self, listener, delay, hb_count, msg_count=1):
+        self._delay = delay
+        self._hb_count = hb_count
+        super(_CallMonitor, self).__init__(listener, msg_count)
+
+    def run(self):
+        LOG.debug("_CallMonitor started")
+        self.started.set()
+        while not self._done.is_set():
+            for in_msg in self.listener.poll(timeout=0.5):
+                hb_rate = in_msg.client_timeout / 2.0
+                deadline = time.time() + self._delay
+                while deadline > time.time():
+                    if self._done.wait(hb_rate):
+                        return
+                    if self._hb_count > 0:
+                        in_msg.heartbeat()
+                        self._hb_count -= 1
+                in_msg.acknowledge()
+                in_msg.reply(reply={'correlation-id':
+                                    in_msg.message.get('id')})
+                self.messages.put(in_msg)
+                self.msg_count -= 1
+                self.msg_count == 0 and self._done.set()
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
@@ -365,27 +414,11 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
     def test_call_late_reply(self):
         """What happens if reply arrives after timeout?"""
-
-        class _SlowResponder(_ListenerThread):
-            def __init__(self, listener, delay):
-                self._delay = delay
-                super(_SlowResponder, self).__init__(listener, 1)
-
-            def run(self):
-                self.started.set()
-                while not self._done:
-                    for in_msg in self.listener.poll(timeout=0.5):
-                        time.sleep(self._delay)
-                        in_msg.acknowledge()
-                        in_msg.reply(reply={'correlation-id':
-                                            in_msg.message.get('id')})
-                        self.messages.put(in_msg)
-                        self._done = True
-
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
         listener = _SlowResponder(
-            driver.listen(target, None, None)._poll_style_listener, 3)
+            driver.listen(target, None, None)._poll_style_listener,
+            delay=3)
 
         self.assertRaises(oslo_messaging.MessagingTimeout,
                           driver.send, target,
@@ -410,14 +443,14 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
             def run(self):
                 self.started.set()
-                while not self._done:
+                while not self._done.is_set():
                     for in_msg in self.listener.poll(timeout=0.5):
                         try:
                             raise RuntimeError("Oopsie!")
                         except RuntimeError:
                             in_msg.reply(reply=None,
                                          failure=sys.exc_info())
-                        self._done = True
+                        self._done.set()
 
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         target = oslo_messaging.Target(topic="test-topic")
@@ -442,13 +475,13 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
 
             def run(self):
                 self.started.set()
-                while not self._done:
+                while not self._done.is_set():
                     for in_msg in self.listener.poll(timeout=0.5):
                         # reply will never be acked (simulate drop):
                         in_msg._reply_to = "!no-ack!"
                         in_msg.reply(reply={'correlation-id':
                                             in_msg.message.get("id")})
-                        self._done = True
+                        self._done.set()
 
         driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
         driver._default_reply_timeout = 1
@@ -553,6 +586,66 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         _wait_until(predicate, 30)
         self.assertTrue(predicate())
 
+        driver.cleanup()
+
+    def test_call_monitor_ok(self):
+        # verify keepalive by delaying the reply > heartbeat interval
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _CallMonitor(
+            driver.listen(target, None, None)._poll_style_listener,
+            delay=11,
+            hb_count=100)
+        rc = driver.send(target,
+                         {"context": True},
+                         {"method": "echo", "id": "1"},
+                         wait_for_reply=True,
+                         timeout=60,
+                         call_monitor_timeout=5)
+        self.assertIsNotNone(rc)
+        self.assertEqual("1", rc.get('correlation-id'))
+        listener.join(timeout=30)
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_call_monitor_bad_no_heartbeat(self):
+        # verify call fails if keepalives stop coming
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _CallMonitor(
+            driver.listen(target, None, None)._poll_style_listener,
+            delay=11,
+            hb_count=1)
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send,
+                          target,
+                          {"context": True},
+                          {"method": "echo", "id": "1"},
+                          wait_for_reply=True,
+                          timeout=60,
+                          call_monitor_timeout=5)
+        listener.kill()
+        self.assertFalse(listener.isAlive())
+        driver.cleanup()
+
+    def test_call_monitor_bad_call_timeout(self):
+        # verify call fails if deadline hit regardless of heartbeat activity
+        driver = amqp_driver.ProtonDriver(self.conf, self._broker_url)
+        target = oslo_messaging.Target(topic="test-topic")
+        listener = _CallMonitor(
+            driver.listen(target, None, None)._poll_style_listener,
+            delay=20,
+            hb_count=100)
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          driver.send,
+                          target,
+                          {"context": True},
+                          {"method": "echo", "id": "1"},
+                          wait_for_reply=True,
+                          timeout=11,
+                          call_monitor_timeout=5)
+        listener.kill()
+        self.assertFalse(listener.isAlive())
         driver.cleanup()
 
 
