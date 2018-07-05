@@ -53,63 +53,39 @@ class GetTransportTestCase(test_utils.BaseTestCase):
     scenarios = [
         ('rpc_backend',
          dict(url=None, transport_url=None, rpc_backend='testbackend',
-              control_exchange=None, allowed=None, aliases=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend='testbackend',
                           exchange=None,
                           url='testbackend:',
                           allowed=[]))),
         ('transport_url',
          dict(url=None, transport_url='testtransport:', rpc_backend=None,
-              control_exchange=None, allowed=None, aliases=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend='testtransport',
                           exchange=None,
                           url='testtransport:',
                           allowed=[]))),
         ('url_param',
          dict(url='testtransport:', transport_url=None, rpc_backend=None,
-              control_exchange=None, allowed=None, aliases=None,
+              control_exchange=None, allowed=None,
               expect=dict(backend='testtransport',
                           exchange=None,
                           url='testtransport:',
                           allowed=[]))),
         ('control_exchange',
          dict(url=None, transport_url=None, rpc_backend='testbackend',
-              control_exchange='testexchange', allowed=None, aliases=None,
+              control_exchange='testexchange', allowed=None,
               expect=dict(backend='testbackend',
                           exchange='testexchange',
                           url='testbackend:',
                           allowed=[]))),
         ('allowed_remote_exmods',
          dict(url=None, transport_url=None, rpc_backend='testbackend',
-              control_exchange=None, allowed=['foo', 'bar'], aliases=None,
+              control_exchange=None, allowed=['foo', 'bar'],
               expect=dict(backend='testbackend',
                           exchange=None,
                           url='testbackend:',
                           allowed=['foo', 'bar']))),
-        ('rpc_backend_aliased',
-         dict(url=None, transport_url=None, rpc_backend='testfoo',
-              control_exchange=None, allowed=None,
-              aliases=dict(testfoo='testbackend'),
-              expect=dict(backend='testbackend',
-                          exchange=None,
-                          url='testbackend:',
-                          allowed=[]))),
-        ('transport_url_aliased',
-         dict(url=None, transport_url='testfoo:', rpc_backend=None,
-              control_exchange=None, allowed=None,
-              aliases=dict(testfoo='testtransport'),
-              expect=dict(backend='testtransport',
-                          exchange=None,
-                          url='testtransport:',
-                          allowed=[]))),
-        ('url_param_aliased',
-         dict(url='testfoo:', transport_url=None, rpc_backend=None,
-              control_exchange=None, allowed=None,
-              aliases=dict(testfoo='testtransport'),
-              expect=dict(backend='testtransport',
-                          exchange=None,
-                          url='testtransport:',
-                          allowed=[]))),
     ]
 
     @mock.patch('oslo_messaging.transport.LOG')
@@ -133,17 +109,7 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         kwargs = dict(url=self.url)
         if self.allowed is not None:
             kwargs['allowed_remote_exmods'] = self.allowed
-        if self.aliases is not None:
-            kwargs['aliases'] = self.aliases
         transport_ = oslo_messaging.get_transport(self.conf, **kwargs)
-
-        if self.aliases is not None:
-            self.assertEqual(
-                [mock.call('legacy "rpc_backend" is deprecated, '
-                           '"testfoo" must be replaced by '
-                           '"%s"' % self.aliases.get('testfoo'))],
-                fake_logger.warning.mock_calls
-            )
 
         self.assertIsNotNone(transport_)
         self.assertIs(transport_.conf, self.conf)
