@@ -57,7 +57,7 @@ class DealerPublisherDirect(zmq_dealer_publisher_base.DealerPublisherBase):
     """
 
     def __init__(self, conf, matchmaker):
-        sender = zmq_senders.RequestSenderDirect(conf, async=True)
+        sender = zmq_senders.RequestSenderDirect(conf, use_async=True)
         receiver = zmq_receivers.ReceiverDirect(conf)
         super(DealerPublisherDirect, self).__init__(conf, matchmaker,
                                                     sender, receiver)
