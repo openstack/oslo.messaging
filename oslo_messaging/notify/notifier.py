@@ -140,8 +140,7 @@ class Driver(object):
         pass
 
 
-def get_notification_transport(conf, url=None,
-                               allowed_remote_exmods=None, aliases=None):
+def get_notification_transport(conf, url=None, allowed_remote_exmods=None):
     """A factory method for Transport objects for notifications.
 
     This method should be used for notifications, in case notifications are
@@ -164,15 +163,13 @@ def get_notification_transport(conf, url=None,
                                   transport will deserialize remote exceptions
                                   from
     :type allowed_remote_exmods: list
-    :param aliases: A map of transport alias to transport name
-    :type aliases: dict
     """
     conf.register_opts(_notifier_opts,
                        group='oslo_messaging_notifications')
     if url is None:
         url = conf.oslo_messaging_notifications.transport_url
     return msg_transport._get_transport(
-        conf, url, allowed_remote_exmods, aliases,
+        conf, url, allowed_remote_exmods,
         transport_cls=msg_transport.NotificationTransport)
 
 

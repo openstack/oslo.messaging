@@ -195,13 +195,13 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
-def _get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None,
+def _get_transport(conf, url=None, allowed_remote_exmods=None,
                    transport_cls=RPCTransport):
     allowed_remote_exmods = allowed_remote_exmods or []
     conf.register_opts(_transport_opts)
 
     if not isinstance(url, TransportURL):
-        url = TransportURL.parse(conf, url, aliases)
+        url = TransportURL.parse(conf, url)
 
     kwargs = dict(default_exchange=conf.control_exchange,
                   allowed_remote_exmods=allowed_remote_exmods)
@@ -221,9 +221,7 @@ def _get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None,
 @removals.remove(
     message='use get_rpc_transport or get_notification_transport'
 )
-@removals.removed_kwarg('aliases',
-                        'Parameter aliases is deprecated for removal.')
-def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
+def get_transport(conf, url=None, allowed_remote_exmods=None):
     """A factory method for Transport objects.
 
     This method will construct a Transport object from transport configuration
@@ -250,11 +248,8 @@ def get_transport(conf, url=None, allowed_remote_exmods=None, aliases=None):
                                   transport will deserialize remote exceptions
                                   from
     :type allowed_remote_exmods: list
-    :param aliases: DEPRECATED: A map of transport alias to transport name
-    :type aliases: dict
     """
-    return _get_transport(conf, url,
-                          allowed_remote_exmods, aliases,
+    return _get_transport(conf, url, allowed_remote_exmods,
                           transport_cls=RPCTransport)
 
 
@@ -336,16 +331,12 @@ class TransportURL(object):
     :type virtual_host: str
     :param hosts: a list of TransportHost objects
     :type hosts: list
-    :param aliases: DEPRECATED: a map of transport alias to transport name
-    :type aliases: dict
     :param query: a dictionary of URL query parameters
     :type query: dict
     """
 
-    @removals.removed_kwarg('aliases',
-                            'Parameter aliases is deprecated for removal.')
     def __init__(self, conf, transport=None, virtual_host=None, hosts=None,
-                 aliases=None, query=None):
+                 query=None):
         self.conf = conf
         self.conf.register_opts(_transport_opts)
         self._transport = transport
@@ -354,10 +345,6 @@ class TransportURL(object):
             self.hosts = []
         else:
             self.hosts = hosts
-        if aliases is None:
-            self.aliases = {}
-        else:
-            self.aliases = aliases
         if query is None:
             self.query = {}
         else:
@@ -371,7 +358,7 @@ class TransportURL(object):
             transport = self.conf.rpc_backend
         else:
             transport = self._transport
-        final_transport = self.aliases.get(transport, transport)
+        final_transport = transport
         if not self._deprecation_logged and final_transport != transport:
             # NOTE(sileht): The first step is deprecate this one cycle.
             # To ensure deployer have updated they configuration during Ocata
@@ -452,10 +439,8 @@ class TransportURL(object):
 
         return url
 
-    @removals.removed_kwarg('aliases',
-                            'Parameter aliases is deprecated for removal.')
     @classmethod
-    def parse(cls, conf, url=None, aliases=None):
+    def parse(cls, conf, url=None):
         """Parse a URL as defined by :py:class:`TransportURL` and return a
         TransportURL object.
 
@@ -485,8 +470,6 @@ class TransportURL(object):
         :type conf: oslo.config.cfg.ConfigOpts
         :param url: The URL to parse
         :type url: str
-        :param aliases: A map of transport alias to transport name
-        :type aliases: dict
         :returns: A TransportURL
         """
 
@@ -494,7 +477,7 @@ class TransportURL(object):
             conf.register_opts(_transport_opts)
         url = url or conf.transport_url
         if not url:
-            return cls(conf) if aliases is None else cls(conf, aliases=aliases)
+            return cls(conf)
 
         if not isinstance(url, six.string_types):
             raise InvalidTransportURL(url, 'Wrong URL type')
@@ -578,7 +561,4 @@ class TransportURL(object):
                         {'hosts_with_credentials': hosts_with_credentials,
                          'hosts_without_credentials':
                          hosts_without_credentials})
-        if aliases is None:
-            return cls(conf, transport, virtual_host, hosts, query=query)
-        else:
-            return cls(conf, transport, virtual_host, hosts, aliases, query)
+        return cls(conf, transport, virtual_host, hosts, query)
