@@ -435,7 +435,7 @@ class ConnectionContext(Connection):
             else:
                 try:
                     self.connection.close()
-                except Exception:
+                except Exception as exc:
                     LOG.debug("pooled conn close failure (ignored): %s",
                               str(exc))
             self.connection = None
