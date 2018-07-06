@@ -750,7 +750,7 @@ class Connection(object):
                         else interval)
 
             info = {'err_str': exc, 'sleep_time': interval}
-            info.update(self._get_connection_info())
+            info.update(self._get_connection_info(conn_error=True))
 
             if 'Socket closed' in six.text_type(exc):
                 LOG.error(_LE('[%(connection_id)s] AMQP server'
@@ -761,8 +761,7 @@ class Connection(object):
                 LOG.error(_LE('[%(connection_id)s] AMQP server on '
                               '%(hostname)s:%(port)s is unreachable: '
                               '%(err_str)s. Trying again in '
-                              '%(sleep_time)d seconds. Client port: '
-                              '%(client_port)s'), info)
+                              '%(sleep_time)d seconds.'), info)
 
             # XXX(nic): when reconnecting to a RabbitMQ cluster
             # with mirrored queues in use, the attempt to release the
@@ -1154,12 +1153,17 @@ class Connection(object):
         with self._connection_lock:
             self.ensure(method, retry=retry, error_callback=_error_callback)
 
-    def _get_connection_info(self):
+    def _get_connection_info(self, conn_error=False):
+        # Bug #1745166: set 'conn_error' true if this is being called when the
+        # connection is in a known error state.  Otherwise attempting to access
+        # the connection's socket while it is in an error state will cause
+        # py-amqp to attempt reconnecting.
         ci = self.connection.info()
         info = dict([(k, ci.get(k)) for k in
                      ['hostname', 'port', 'transport']])
         client_port = None
-        if (self.channel and hasattr(self.channel.connection, 'sock')
+        if (not conn_error and self.channel
+                and hasattr(self.channel.connection, 'sock')
                 and self.channel.connection.sock):
             client_port = self.channel.connection.sock.getsockname()[1]
         info.update({'client_port': client_port,
