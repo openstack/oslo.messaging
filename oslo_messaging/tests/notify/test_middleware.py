@@ -130,7 +130,8 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             exception = call_args[2]['exception']
             self.assertIn('middleware.py', exception['traceback'][0])
             self.assertIn('It happens!', exception['traceback'][-1])
-            self.assertEqual("Exception('It happens!',)", exception['value'])
+            self.assertTrue(exception['value'] in ("Exception('It happens!',)",
+                                                   "Exception('It happens!')"))
 
     def test_process_request_fail(self):
         def notify_error(context, publisher_id, event_type,
