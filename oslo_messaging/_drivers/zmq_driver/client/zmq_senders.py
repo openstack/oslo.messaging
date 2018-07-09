@@ -31,9 +31,9 @@ zmq = zmq_async.import_zmq()
 class SenderBase(object):
     """Base request/response sending interface."""
 
-    def __init__(self, conf, async=False):
+    def __init__(self, conf, use_async=False):
         self.conf = conf
-        self.async = async
+        self.use_async = use_async
         self._lock = threading.Lock()
         self._send_versions = zmq_version.get_method_versions(self, 'send')
 
@@ -156,7 +156,7 @@ class RequestSenderDirect(RequestSenderBase):
                    "msg_version": request.message_version})
 
     def _send_v_1_0(self, socket, request):
-        flags = zmq.NOBLOCK if self.async else 0
+        flags = zmq.NOBLOCK if self.use_async else 0
         socket.send(b'', zmq.SNDMORE | flags)
         socket.send_string('1.0', zmq.SNDMORE | flags)
         socket.send(six.b(str(request.msg_type)), zmq.SNDMORE | flags)
