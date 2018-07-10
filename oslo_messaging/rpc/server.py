@@ -152,6 +152,9 @@ class RPCServer(msg_server.MessageHandlingServer):
 
     def _process_incoming(self, incoming):
         message = incoming[0]
+
+        # TODO(sileht): We should remove that at some point and do
+        # this directly in the driver
         try:
             message.acknowledge()
         except Exception:
