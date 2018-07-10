@@ -395,13 +395,11 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         choose to dispatch messages in a new thread, coroutine or simply the
         current thread.
         """
-        # Warn that restarting will be deprecated
         if self._started:
-            LOG.warning(_LW('Restarting a MessageHandlingServer is inherently '
-                            'racy. It is deprecated, and will become a noop '
-                            'in a future release of oslo.messaging. If you '
-                            'need to restart MessageHandlingServer you should '
-                            'instantiate a new object.'))
+            LOG.warning(_LW('The server has already been started. Ignoring'
+                            ' the redundant call to start().'))
+            return
+
         self._started = True
 
         executor_opts = {}
