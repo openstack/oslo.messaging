@@ -33,7 +33,6 @@
           export DEVSTACK_GATE_HEAT=1
           export DEVSTACK_GATE_NEUTRON=1
           export DEVSTACK_GATE_TEMPEST=1
-          export DEVSTACK_GATE_EXERCISES=0
           export DEVSTACK_GATE_INSTALL_TESTONLY=1
 
           export PROJECTS="openstack/ceilometer $PROJECTS"
