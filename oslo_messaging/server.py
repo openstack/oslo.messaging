@@ -426,7 +426,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         some messages, and underlying driver resources associated to this
         server are still in use. See 'wait' for more details.
         """
-        self.listener.stop()
+        if self.listener:
+            self.listener.stop()
         self._started = False
 
     @ordered(after='stop')
@@ -443,7 +444,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         self._work_executor.shutdown(wait=True)
 
         # Close listener connection after processing all messages
-        self.listener.cleanup()
+        if self.listener:
+            self.listener.cleanup()
 
     def reset(self):
         """Reset service.
