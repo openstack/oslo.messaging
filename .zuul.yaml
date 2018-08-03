@@ -410,3 +410,14 @@
 
 
 
+    templates:
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - publish-openstack-docs-pti
+      - check-requirements
+      - lib-forward-testing
+      - release-notes-jobs-python3
+      - periodic-stable-jobs
+    post:
+      jobs:
+        - openstack-tox-cover
