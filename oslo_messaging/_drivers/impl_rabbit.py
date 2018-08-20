@@ -1155,7 +1155,9 @@ class Connection(object):
             self.ensure(method, retry=retry, error_callback=_error_callback)
 
     def _get_connection_info(self):
-        info = self.connection.info()
+        ci = self.connection.info()
+        info = dict([(k, ci.get(k)) for k in
+                     ['hostname', 'port', 'transport']])
         client_port = None
         if (self.channel and hasattr(self.channel.connection, 'sock')
                 and self.channel.connection.sock):
