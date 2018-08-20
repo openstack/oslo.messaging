@@ -1145,7 +1145,9 @@ class Connection(object):
         # connection is in a known error state.  Otherwise attempting to access
         # the connection's socket while it is in an error state will cause
         # py-amqp to attempt reconnecting.
-        info = self.connection.info()
+        ci = self.connection.info()
+        info = dict([(k, ci.get(k)) for k in
+                     ['hostname', 'port', 'transport']])
         client_port = None
         if (not conn_error and self.channel
                 and hasattr(self.channel.connection, 'sock')
