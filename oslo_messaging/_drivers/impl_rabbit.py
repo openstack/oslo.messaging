@@ -1116,6 +1116,7 @@ class Connection(object):
         responses for call/multicall
         """
 
+        # TODO(obondarev): use default exchange since T release
         consumer = Consumer(exchange_name=topic,
                             queue_name=topic,
                             routing_key=topic,
@@ -1282,7 +1283,7 @@ class Connection(object):
 
     def direct_send(self, msg_id, msg):
         """Send a 'direct' message."""
-        exchange = kombu.entity.Exchange(name=msg_id,
+        exchange = kombu.entity.Exchange(name='',  # using default exchange
                                          type='direct',
                                          durable=False,
                                          auto_delete=True,
