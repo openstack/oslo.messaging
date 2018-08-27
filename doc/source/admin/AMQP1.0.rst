@@ -311,7 +311,7 @@ backends for RPC and Notify. The url is of the form:
     transport://user:pass@host1:port[,hostN:portN]/virtual_host
 
 Where the transport value specifies the rpc or notification backend as
-one of **amqp**, rabbit, zmq, etc.
+one of **amqp**, rabbit, kafka, etc.
 
 To specify and enable the AMQP 1.0 driver for RPC, in the section
 [DEFAULT] of the service configuration file, specify the

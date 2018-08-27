@@ -7,4 +7,3 @@ Deployment Guide
 
    drivers
    AMQP1.0
-   zmq_driver

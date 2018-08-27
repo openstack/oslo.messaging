@@ -51,8 +51,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.config(driver=['test'],
                     group='oslo_messaging_notifications')
         # NOTE(jamespage) disable thread information logging for testing
-        # as this causes test failures when zmq tests monkey_patch via
-        # eventlet
+        # as this can cause test failures when monkey_patch via eventlet
         logging.logThreads = 0
 
     @mock.patch('oslo_utils.timeutils.utcnow')

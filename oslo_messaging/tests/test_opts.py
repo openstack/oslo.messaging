@@ -28,12 +28,10 @@ from oslo_messaging.tests import utils as test_utils
 class OptsTestCase(test_utils.BaseTestCase):
 
     def _test_list_opts(self, result):
-        self.assertEqual(7, len(result))
+        self.assertEqual(5, len(result))
 
         groups = [g for (g, l) in result]
         self.assertIn(None, groups)
-        self.assertIn('matchmaker_redis', groups)
-        self.assertIn('oslo_messaging_zmq', groups)
         self.assertIn('oslo_messaging_amqp', groups)
         self.assertIn('oslo_messaging_notifications', groups)
         self.assertIn('oslo_messaging_rabbit', groups)

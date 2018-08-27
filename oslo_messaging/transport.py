@@ -58,7 +58,7 @@ _transport_opts = [
                deprecated_reason="Replaced by [DEFAULT]/transport_url",
                default='rabbit',
                help='The messaging driver to use, defaults to rabbit. Other '
-                    'drivers include amqp and zmq.'),
+                    'drivers include amqp.'),
 
     cfg.StrOpt('control_exchange',
                default='openstack',
