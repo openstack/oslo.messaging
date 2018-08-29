@@ -1,0 +1,8 @@
+---
+prelude: >
+    The ZMQ-based driver for RPC communications has been removed
+deprecations:
+  - |
+    The driver support for the ZeroMQ messaging library is removed.
+    Users of the oslo.messaging RPC services must use the supported
+    rabbit ("rabbit://...") or amqp1 ("amqp://..." )drivers.
