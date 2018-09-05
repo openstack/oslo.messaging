@@ -30,17 +30,9 @@ import six
 
 from oslo_messaging._drivers import common as rpc_common
 
-deprecated_durable_opts = [
-    cfg.DeprecatedOpt('amqp_durable_queues',
-                      group='DEFAULT'),
-    cfg.DeprecatedOpt('rabbit_durable_queues',
-                      group='DEFAULT')
-]
-
 amqp_opts = [
     cfg.BoolOpt('amqp_durable_queues',
                 default=False,
-                deprecated_opts=deprecated_durable_opts,
                 help='Use durable queues in AMQP.'),
     cfg.BoolOpt('amqp_auto_delete',
                 default=False,
