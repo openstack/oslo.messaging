@@ -37,21 +37,6 @@ class TestKafkaDriverLoad(test_utils.BaseTestCase):
 class TestKafkaTransportURL(test_utils.BaseTestCase):
 
     scenarios = [
-        ('none', dict(url=None,
-                      expected=dict(hostaddrs=['localhost:9092'],
-                                    username=None,
-                                    password=None,
-                                    vhost=''))),
-        ('empty', dict(url='kafka:///',
-                       expected=dict(hostaddrs=['localhost:9092'],
-                                     username=None,
-                                     password=None,
-                                     vhost=''))),
-        ('host', dict(url='kafka://127.0.0.1',
-                      expected=dict(hostaddrs=['127.0.0.1:9092'],
-                                    username=None,
-                                    password=None,
-                                    vhost=None))),
         ('port', dict(url='kafka://localhost:1234',
                       expected=dict(hostaddrs=['localhost:1234'],
                                     username=None,
@@ -141,7 +126,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
             consumer.assert_called_once_with(
                 *expected_topics, group_id="kafka_test",
                 enable_auto_commit=mock.ANY,
-                bootstrap_servers=['localhost:9092'],
+                bootstrap_servers=[],
                 max_partition_fetch_bytes=mock.ANY,
                 max_poll_records=mock.ANY,
                 security_protocol='PLAINTEXT',

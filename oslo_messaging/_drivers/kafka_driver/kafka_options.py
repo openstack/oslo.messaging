@@ -16,16 +16,6 @@ from oslo_config import cfg
 from oslo_messaging._drivers import common
 
 KAFKA_OPTS = [
-    cfg.StrOpt('kafka_default_host', default='localhost',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               help='Default Kafka broker Host'),
-
-    cfg.PortOpt('kafka_default_port', default=9092,
-                deprecated_for_removal=True,
-                deprecated_reason="Replaced by [DEFAULT]/transport_url",
-                help='Default Kafka broker Port'),
-
     cfg.IntOpt('kafka_max_fetch_bytes', default=1024 * 1024,
                help='Max fetch bytes of Kafka consumer'),
 
