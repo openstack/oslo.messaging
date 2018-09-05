@@ -71,14 +71,6 @@ amqp1_opts = [
                 " if the server's SSL certificate uses the virtual host name"
                 " instead of the DNS name."),
 
-    cfg.BoolOpt('allow_insecure_clients',
-                default=False,
-                deprecated_group='amqp1',
-                # marked as deprecated in Ocata
-                deprecated_for_removal=True,
-                deprecated_reason="Not applicable - not a SSL server",
-                help='Accept clients using either SSL or plain TCP'),
-
     cfg.StrOpt('sasl_mechanisms',
                default='',
                deprecated_group='amqp1',
@@ -97,23 +89,6 @@ amqp1_opts = [
     cfg.StrOpt('sasl_default_realm',
                default='',
                help='SASL realm to use if no realm present in username'),
-
-    cfg.StrOpt('username',
-               default='',
-               deprecated_group='amqp1',
-               deprecated_for_removal=True,
-               deprecated_reason='Should use configuration option '
-                                 'transport_url to provide the username.',
-               help='User name for message broker authentication'),
-
-    cfg.StrOpt('password',
-               default='',
-               deprecated_group='amqp1',
-               secret=True,
-               deprecated_for_removal=True,
-               deprecated_reason='Should use configuration option '
-                                 'transport_url to provide the password.',
-               help='Password for message broker authentication'),
 
     # Network connection failure retry options
 
