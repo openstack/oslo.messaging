@@ -214,6 +214,18 @@
 
 
 - project:
+    templates:
+      - check-requirements
+      - lib-forward-testing
+      - lib-forward-testing-python3
+      - openstack-cover-jobs
+      - openstack-lower-constraints-jobs
+      - openstack-python-jobs
+      - openstack-python35-jobs
+      - openstack-python36-jobs
+      - periodic-stable-jobs
+      - publish-openstack-docs-pti
+      - release-notes-jobs-python3
     check:
       jobs:
         - oslo.messaging-tox-py27-func-rabbit
@@ -249,24 +261,8 @@
         - oslo.messaging-telemetry-dsvm-integration-kafka:
             voting: false
 
-        - openstack-tox-lower-constraints
-
     gate:
       jobs:
         - oslo.messaging-tox-py27-func-rabbit
         - oslo.messaging-src-dsvm-full-rabbit
         - oslo.messaging-telemetry-dsvm-integration-rabbit
-        - openstack-tox-lower-constraints
-    templates:
-      - openstack-python-jobs
-      - openstack-python35-jobs
-      - publish-openstack-docs-pti
-      - check-requirements
-      - lib-forward-testing
-      - lib-forward-testing-python3
-      - release-notes-jobs-python3
-      - periodic-stable-jobs
-      - openstack-python36-jobs
-    post:
-      jobs:
-        - openstack-tox-cover
