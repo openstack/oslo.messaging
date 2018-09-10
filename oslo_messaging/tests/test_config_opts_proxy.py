@@ -26,7 +26,6 @@ class TestConfigOptsProxy(test_utils.BaseTestCase):
         group = 'oslo_messaging_rabbit'
         self.config(rabbit_retry_interval=1,
                     rabbit_qos_prefetch_count=0,
-                    rabbit_max_retries=3,
                     group=group)
         dummy_opts = [cfg.ListOpt('list_str', item_type=types.String(),
                                   default=[]),
@@ -53,7 +52,6 @@ class TestConfigOptsProxy(test_utils.BaseTestCase):
         self.assertEqual(1, conf.oslo_messaging_rabbit.rabbit_retry_interval)
         self.assertEqual(2,
                          conf.oslo_messaging_rabbit.rabbit_qos_prefetch_count)
-        self.assertEqual(3, conf.oslo_messaging_rabbit.rabbit_max_retries)
         self.assertEqual(['1', '2', '3'], conf.oslo_messaging_rabbit.list_str)
         self.assertEqual([1, 2, 3], conf.oslo_messaging_rabbit.list_int)
         self.assertEqual({'x': '1', 'y': '2', 'z': '3'},

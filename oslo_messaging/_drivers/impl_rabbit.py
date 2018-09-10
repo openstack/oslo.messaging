@@ -33,10 +33,10 @@ import kombu.messaging
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
-from oslo_utils import netutils
 import six
 from six.moves.urllib import parse
 
+import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import base
@@ -101,49 +101,11 @@ rabbit_opts = [
                     'the one we are currently connected to becomes '
                     'unavailable. Takes effect only if more than one '
                     'RabbitMQ node is provided in config.'),
-    cfg.StrOpt('rabbit_host',
-               default='localhost',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               help='The RabbitMQ broker address where a single node is '
-                    'used.'),
-    cfg.PortOpt('rabbit_port',
-                default=5672,
-                deprecated_group='DEFAULT',
-                deprecated_for_removal=True,
-                deprecated_reason="Replaced by [DEFAULT]/transport_url",
-                help='The RabbitMQ broker port where a single node is used.'),
-    cfg.ListOpt('rabbit_hosts',
-                default=['$rabbit_host:$rabbit_port'],
-                deprecated_group='DEFAULT',
-                deprecated_for_removal=True,
-                deprecated_reason="Replaced by [DEFAULT]/transport_url",
-                help='RabbitMQ HA cluster host:port pairs.'),
-    cfg.StrOpt('rabbit_userid',
-               default='guest',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               help='The RabbitMQ userid.'),
-    cfg.StrOpt('rabbit_password',
-               default='guest',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               help='The RabbitMQ password.',
-               secret=True),
     cfg.StrOpt('rabbit_login_method',
                choices=('PLAIN', 'AMQPLAIN', 'RABBIT-CR-DEMO'),
                default='AMQPLAIN',
                deprecated_group='DEFAULT',
                help='The RabbitMQ login method.'),
-    cfg.StrOpt('rabbit_virtual_host',
-               default='/',
-               deprecated_group='DEFAULT',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               help='The RabbitMQ virtual host.'),
     cfg.IntOpt('rabbit_retry_interval',
                default=1,
                help='How frequently to retry connecting with RabbitMQ.'),
@@ -156,12 +118,6 @@ rabbit_opts = [
                default=30,
                help='Maximum interval of RabbitMQ connection retries. '
                     'Default is 30 seconds.'),
-    cfg.IntOpt('rabbit_max_retries',
-               default=0,
-               deprecated_for_removal=True,
-               deprecated_group='DEFAULT',
-               help='Maximum number of RabbitMQ connection retries. '
-                    'Default is 0 (infinite retry count).'),
     cfg.BoolOpt('rabbit_ha_queues',
                 default=False,
                 deprecated_group='DEFAULT',
@@ -450,17 +406,11 @@ class Connection(object):
         # NOTE(viktors): Parse config options
         driver_conf = conf.oslo_messaging_rabbit
 
-        self.max_retries = driver_conf.rabbit_max_retries
         self.interval_start = driver_conf.rabbit_retry_interval
         self.interval_stepping = driver_conf.rabbit_retry_backoff
         self.interval_max = driver_conf.rabbit_interval_max
 
         self.login_method = driver_conf.rabbit_login_method
-        self.virtual_host = driver_conf.rabbit_virtual_host
-        self.rabbit_hosts = driver_conf.rabbit_hosts
-        self.rabbit_port = driver_conf.rabbit_port
-        self.rabbit_userid = driver_conf.rabbit_userid
-        self.rabbit_password = driver_conf.rabbit_password
         self.rabbit_ha_queues = driver_conf.rabbit_ha_queues
         self.rabbit_transient_queues_ttl = \
             driver_conf.rabbit_transient_queues_ttl
@@ -483,15 +433,6 @@ class Connection(object):
             self.ssl_cert_file = driver_conf.ssl_cert_file
             self.ssl_ca_file = driver_conf.ssl_ca_file
 
-        # Try forever?
-        if self.max_retries <= 0:
-            self.max_retries = None
-
-        if url.virtual_host is not None:
-            virtual_host = url.virtual_host
-        else:
-            virtual_host = self.virtual_host
-
         self._url = ''
         if url.hosts:
             if url.transport.startswith('kombu+'):
@@ -501,34 +442,22 @@ class Connection(object):
                             url.transport)
             if len(url.hosts) > 1:
                 random.shuffle(url.hosts)
-            for host in url.hosts:
-                transport = url.transport.replace('kombu+', '')
-                transport = transport.replace('rabbit', 'amqp')
-                self._url += '%s%s://%s:%s@%s:%s/%s' % (
-                    ";" if self._url else '',
-                    transport,
-                    parse.quote(host.username or ''),
-                    parse.quote(host.password or ''),
-                    self._parse_url_hostname(host.hostname) or '',
-                    str(host.port or 5672),
-                    virtual_host)
+            transformed_urls = [
+                self._transform_transport_url(url, host)
+                for host in url.hosts]
+            self._url = ';'.join(transformed_urls)
         elif url.transport.startswith('kombu+'):
             # NOTE(sileht): url have a + but no hosts
             # (like kombu+memory:///), pass it to kombu as-is
             transport = url.transport.replace('kombu+', '')
-            self._url = "%s://%s" % (transport, virtual_host)
-        else:
-            if len(self.rabbit_hosts) > 1:
-                random.shuffle(self.rabbit_hosts)
-            for adr in self.rabbit_hosts:
-                hostname, port = netutils.parse_host_port(
-                    adr, default_port=self.rabbit_port)
-                self._url += '%samqp://%s:%s@%s:%s/%s' % (
-                    ";" if self._url else '',
-                    parse.quote(self.rabbit_userid, ''),
-                    parse.quote(self.rabbit_password, ''),
-                    self._parse_url_hostname(hostname), port,
-                    virtual_host)
+            self._url = "%s://" % transport
+            if url.virtual_host:
+                self._url += url.virtual_host
+        elif not url.hosts:
+            host = oslo_messaging.transport.TransportHost('')
+            self._url = self._transform_transport_url(
+                url, host, default_username='guest', default_password='guest',
+                default_hostname='localhost')
 
         self._initial_pid = os.getpid()
 
@@ -656,6 +585,18 @@ class Connection(object):
         except KeyError:
             raise RuntimeError(_("Invalid SSL version : %s") % version)
 
+    def _transform_transport_url(self, url, host, default_username='',
+                                 default_password='', default_hostname=''):
+        transport = url.transport.replace('kombu+', '')
+        transport = transport.replace('rabbit', 'amqp')
+        return '%s://%s:%s@%s:%s/%s' % (
+            transport,
+            parse.quote(host.username or default_username),
+            parse.quote(host.password or default_password),
+            self._parse_url_hostname(host.hostname) or default_hostname,
+            str(host.port or 5672),
+            url.virtual_host)
+
     def _parse_url_hostname(self, hostname):
         """Handles hostname returned from urlparse and checks whether it's
         ipaddress. If it's ipaddress it ensures that it has brackets for IPv6.
@@ -704,8 +645,7 @@ class Connection(object):
                recoverable_error_callback=None, error_callback=None,
                timeout_is_error=True):
         """Will retry up to retry number of times.
-        retry = None means use the value of rabbit_max_retries
-        retry = -1 means to retry forever
+        retry = None or -1 means to retry forever
         retry = 0 means no retry
         retry = N means N retries
 
@@ -720,10 +660,8 @@ class Connection(object):
                             "latest/reference/transport.html"))
             self._initial_pid = current_pid
 
-        if retry is None:
-            retry = self.max_retries
         if retry is None or retry < 0:
-            retry = None
+            retry = float('inf')
 
         def on_error(exc, interval):
             LOG.debug("[%s] Received recoverable error from kombu:"
