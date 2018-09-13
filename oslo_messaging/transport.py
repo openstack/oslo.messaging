@@ -53,12 +53,6 @@ _transport_opts = [
                     'documentation of oslo_messaging.TransportURL at '
                     'https://docs.openstack.org/oslo.messaging/latest/'
                     'reference/transport.html'),
-    cfg.StrOpt('rpc_backend',
-               deprecated_for_removal=True,
-               deprecated_reason="Replaced by [DEFAULT]/transport_url",
-               default='rabbit',
-               help='The messaging driver to use, defaults to rabbit. Other '
-                    'drivers include amqp.'),
 
     cfg.StrOpt('control_exchange',
                default='openstack',
@@ -339,7 +333,7 @@ class TransportURL(object):
                  query=None):
         self.conf = conf
         self.conf.register_opts(_transport_opts)
-        self._transport = transport
+        self.transport = transport
         self.virtual_host = virtual_host
         if hosts is None:
             self.hosts = []
@@ -349,33 +343,6 @@ class TransportURL(object):
             self.query = {}
         else:
             self.query = query
-
-        self._deprecation_logged = False
-
-    @property
-    def transport(self):
-        if self._transport is None:
-            transport = self.conf.rpc_backend
-        else:
-            transport = self._transport
-        final_transport = transport
-        if not self._deprecation_logged and final_transport != transport:
-            # NOTE(sileht): The first step is deprecate this one cycle.
-            # To ensure deployer have updated they configuration during Ocata
-            # Then in P we will deprecate aliases kwargs of TransportURL() and
-            # get_transport() for consuming application
-            LOG.warning('legacy "rpc_backend" is deprecated, '
-                        '"%(legacy_transport)s" must be replaced by '
-                        '"%(final_transport)s"' % {
-                            'legacy_transport': transport,
-                            'final_transport': final_transport})
-            self._deprecation_logged = True
-
-        return final_transport
-
-    @transport.setter
-    def transport(self, value):
-        self._transport = value
 
     def __hash__(self):
         return hash((tuple(self.hosts), self.transport, self.virtual_host))

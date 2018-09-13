@@ -115,15 +115,6 @@ class ConfFixture(fixtures.Fixture):
         self.addCleanup(self.conf.reset)
 
     @property
-    def transport_driver(self):
-        """The transport driver - for example 'rabbit', 'amqp' or 'fake'."""
-        return self.conf.rpc_backend
-
-    @transport_driver.setter
-    def transport_driver(self, value):
-        self.conf.set_override('rpc_backend', value)
-
-    @property
     def transport_url(self):
         """The transport url"""
         return self.conf.transport_url
