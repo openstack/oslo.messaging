@@ -819,13 +819,10 @@ class NotificationServer(Server):
 
 class Hosts(object):
     """An order list of TransportHost addresses. Connection failover progresses
-    from one host to the next.  username, password , and realm come from the
-    configuration and are used only if no username/password/realm is present in
-    the URL.
+    from one host to the next.  The default realm comes from the configuration
+    and is only used if no realm is present in the URL.
     """
-    def __init__(self, url, default_username=None,
-                 default_password=None,
-                 default_realm=None):
+    def __init__(self, url, default_realm=None):
         self.virtual_host = url.virtual_host
         if url.hosts:
             self._entries = url.hosts[:]
@@ -834,8 +831,8 @@ class Hosts(object):
                                                      port=5672)]
         for entry in self._entries:
             entry.port = entry.port or 5672
-            entry.username = entry.username or default_username
-            entry.password = entry.password or default_password
+            entry.username = entry.username
+            entry.password = entry.password
             if default_realm and entry.username and '@' not in entry.username:
                 entry.username = entry.username + '@' + default_realm
         self._current = random.randint(0, len(self._entries) - 1)  # nosec
@@ -894,16 +891,12 @@ class Controller(pyngus.ConnectionEventHandler):
         self.ssl_cert_file = config.oslo_messaging_amqp.ssl_cert_file
         self.ssl_key_file = config.oslo_messaging_amqp.ssl_key_file
         self.ssl_key_password = config.oslo_messaging_amqp.ssl_key_password
-        self.ssl_allow_insecure = \
-            config.oslo_messaging_amqp.allow_insecure_clients
         self.ssl_verify_vhost = config.oslo_messaging_amqp.ssl_verify_vhost
         self.pseudo_vhost = config.oslo_messaging_amqp.pseudo_vhost
         self.sasl_mechanisms = config.oslo_messaging_amqp.sasl_mechanisms
         self.sasl_config_dir = config.oslo_messaging_amqp.sasl_config_dir
         self.sasl_config_name = config.oslo_messaging_amqp.sasl_config_name
-        self.hosts = Hosts(url, config.oslo_messaging_amqp.username,
-                           config.oslo_messaging_amqp.password,
-                           config.oslo_messaging_amqp.sasl_default_realm)
+        self.hosts = Hosts(url, config.oslo_messaging_amqp.sasl_default_realm)
         self.conn_retry_interval = \
             config.oslo_messaging_amqp.connection_retry_interval
         self.conn_retry_backoff = \

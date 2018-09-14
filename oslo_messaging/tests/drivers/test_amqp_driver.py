@@ -904,17 +904,6 @@ mech_list: ${mechs}
                           addr,
                           retry=0)
 
-    def test_authentication_default_username(self):
-        """Verify that a configured username/password is used if none appears
-        in the URL.
-        Deprecated: username password deprecated in favor of transport_url
-        """
-        addr = "amqp://%s:%d" % (self._broker.host, self._broker.port)
-        self.config(username="joe@myrealm",
-                    password="secret",
-                    group="oslo_messaging_amqp")
-        self._authentication_test(addr)
-
     def test_authentication_default_realm(self):
         """Verify that default realm is used if none present in username"""
         addr = "amqp://joe:secret@%s:%d" % (self._broker.host,
