@@ -144,14 +144,7 @@ class Connection(object):
                     LOG.warning(_LW("Different transport usernames detected"))
 
             if host.hostname:
-                self.hostaddrs.append("%s:%s" % (
-                    host.hostname,
-                    host.port or self.driver_conf.kafka_default_port))
-
-        if not self.hostaddrs:
-            self.hostaddrs.append("%s:%s" %
-                                  (self.driver_conf.kafka_default_host,
-                                   self.driver_conf.kafka_default_port))
+                self.hostaddrs.append("%s:%s" % (host.hostname, host.port))
 
     def reset(self):
         """Reset a connection so it can be used again."""
