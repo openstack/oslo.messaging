@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Threading issues with the kafka-python consumer client were identified
+    and documented. The driver has been updated to integrate the
+    confluent-kafka python library. The confluent-kafka client
+    leverages the high performance librdkafka C client and is safe
+    for multiple thread use.
+upgrade:
+  - |
+    With the change in the client library used, projects using the
+    Kafka driver should use extras oslo.messaging[kafka] to pull in
+    dependencies for the driver.

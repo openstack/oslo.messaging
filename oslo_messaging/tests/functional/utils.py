@@ -313,9 +313,6 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
 
         kafka_options.register_opts(conf, transport_url)
 
-        self.config(producer_batch_size=0,
-                    group='oslo_messaging_kafka')
-
 
 class NotificationFixture(fixtures.Fixture):
     def __init__(self, conf, url, topics, batch=None):

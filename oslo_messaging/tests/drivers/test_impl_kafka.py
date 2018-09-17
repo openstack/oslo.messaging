@@ -11,8 +11,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-import kafka
-import kafka.errors
 from six.moves import mock
 import testscenarios
 
@@ -77,6 +75,7 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
         self.addCleanup(transport.cleanup)
         driver = transport._driver
 
+        self.assertIsInstance(driver, kafka_driver.KafkaDriver)
         self.assertEqual(self.expected['hostaddrs'], driver.pconn.hostaddrs)
         self.assertEqual(self.expected['username'], driver.pconn.username)
         self.assertEqual(self.expected['password'], driver.pconn.password)
@@ -101,14 +100,20 @@ class TestKafkaDriver(test_utils.BaseTestCase):
     def test_send_notification(self):
         target = oslo_messaging.Target(topic="topic_test")
 
-        with mock.patch("kafka.KafkaProducer") as fake_producer_class:
-            fake_producer = fake_producer_class.return_value
-            fake_producer.send.side_effect = kafka.errors.NoBrokersAvailable
-            self.assertRaises(kafka.errors.NoBrokersAvailable,
-                              self.driver.send_notification,
-                              target, {}, {"payload": ["test_1"]},
-                              None, retry=3)
-            self.assertEqual(3, fake_producer.send.call_count)
+        with mock.patch("confluent_kafka.Producer") as producer:
+            self.driver.send_notification(
+                target, {}, {"payload": ["test_1"]},
+                None, retry=3)
+            producer.assert_called_once_with({
+                'bootstrap.servers': '',
+                'linger.ms': mock.ANY,
+                'batch.num.messages': mock.ANY,
+                'security.protocol': 'PLAINTEXT',
+                'sasl.mechanism': 'PLAIN',
+                'sasl.username': mock.ANY,
+                'sasl.password': mock.ANY,
+                'ssl.ca.location': ''
+            })
 
     def test_listen(self):
         target = oslo_messaging.Target(topic="topic_test")
@@ -119,23 +124,22 @@ class TestKafkaDriver(test_utils.BaseTestCase):
         targets_and_priorities = [
             (oslo_messaging.Target(topic="topic_test_1"), "sample"),
         ]
-        expected_topics = ["topic_test_1.sample"]
-        with mock.patch("kafka.KafkaConsumer") as consumer:
+        with mock.patch("confluent_kafka.Consumer") as consumer:
             self.driver.listen_for_notifications(
                 targets_and_priorities, "kafka_test", 1000, 10)
-            consumer.assert_called_once_with(
-                *expected_topics, group_id="kafka_test",
-                enable_auto_commit=mock.ANY,
-                bootstrap_servers=[],
-                max_partition_fetch_bytes=mock.ANY,
-                max_poll_records=mock.ANY,
-                security_protocol='PLAINTEXT',
-                sasl_mechanism='PLAIN',
-                sasl_plain_username=mock.ANY,
-                sasl_plain_password=mock.ANY,
-                ssl_cafile='',
-                selector=mock.ANY
-            )
+            consumer.assert_called_once_with({
+                'bootstrap.servers': '',
+                'enable.partition.eof': False,
+                'group.id': 'kafka_test',
+                'enable.auto.commit': mock.ANY,
+                'max.partition.fetch.bytes': mock.ANY,
+                'security.protocol': 'PLAINTEXT',
+                'sasl.mechanism': 'PLAIN',
+                'sasl.username': mock.ANY,
+                'sasl.password': mock.ANY,
+                'ssl.ca.location': '',
+                'default.topic.config': {'auto.offset.reset': 'latest'}
+            })
 
     def test_cleanup(self):
         listeners = [mock.MagicMock(), mock.MagicMock()]
@@ -155,10 +159,9 @@ class TestKafkaConnection(test_utils.BaseTestCase):
 
     def test_notify(self):
 
-        with mock.patch("kafka.KafkaProducer") as fake_producer_class:
-            fake_producer = fake_producer_class.return_value
+        with mock.patch("confluent_kafka.Producer") as producer:
             self.driver.pconn.notify_send("fake_topic",
                                           {"fake_ctxt": "fake_param"},
                                           {"fake_text": "fake_message_1"},
                                           10)
-            self.assertEqual(2, len(fake_producer.send.mock_calls))
+            assert producer.call_count == 1
