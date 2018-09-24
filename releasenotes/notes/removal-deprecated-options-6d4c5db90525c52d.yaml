@@ -1,0 +1,11 @@
+---
+upgrade:
+  - |
+    Remove deprecated configuration options from multiple drivers.
+
+    * The rpc_backend option from the [DEFAULT] section has been removed.
+    * The AMQP driver has removed the configuration options of allow_insecure_clients, username and password from the [oslo_messaging_amqp] section.
+    * The Kafa driver has removed the configuration options of kafka_default_host and kafka_default_port from the [oslo_messaging_kafka] section.
+    * The Rabbit driver has removed the configuration options of rabbit_host, rabbit_port, rabbit_hosts, rabbit_userid, rabbit_password, rabbit_virtual_host rabbit_max_retries and rabbit_durable_queues from the [oslo_messaging_rabbit] section.
+
+    Operators must switch to setting the transport_url directive in the [DEFAULT] section.
