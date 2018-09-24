@@ -37,9 +37,6 @@ class OptsTestCase(test_utils.BaseTestCase):
         self.assertIn('oslo_messaging_rabbit', groups)
         self.assertIn('oslo_messaging_kafka', groups)
 
-        opt_names = [o.name for (g, l) in result for o in l]
-        self.assertIn('rpc_backend', opt_names)
-
     def test_list_opts(self):
         self._test_list_opts(opts.list_opts())
 

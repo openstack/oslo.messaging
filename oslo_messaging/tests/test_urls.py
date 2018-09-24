@@ -131,8 +131,6 @@ class TestParseURL(test_utils.BaseTestCase):
     ]
 
     def test_parse_url(self):
-        self.config(rpc_backend=None)
-
         url = oslo_messaging.TransportURL.parse(self.conf, self.url)
 
         hosts = []
@@ -152,27 +150,18 @@ class TestParseURL(test_utils.BaseTestCase):
 class TestFormatURL(test_utils.BaseTestCase):
 
     scenarios = [
-        ('rpc_backend',
-         dict(rpc_backend='testbackend',
-              transport=None,
-              virtual_host=None,
-              hosts=[],
-              expected='testbackend:///')),
         ('transport',
-         dict(rpc_backend=None,
-              transport='testtransport',
+         dict(transport='testtransport',
               virtual_host=None,
               hosts=[],
               expected='testtransport:///')),
         ('virtual_host',
-         dict(rpc_backend=None,
-              transport='testtransport',
+         dict(transport='testtransport',
               virtual_host='/vhost',
               hosts=[],
               expected='testtransport:////vhost')),
         ('host',
-         dict(rpc_backend=None,
-              transport='testtransport',
+         dict(transport='testtransport',
               virtual_host='/',
               hosts=[
                   dict(hostname='host',
@@ -182,8 +171,7 @@ class TestFormatURL(test_utils.BaseTestCase):
               ],
               expected='testtransport://bob:secret@host:10//')),
         ('multi_host',
-         dict(rpc_backend=None,
-              transport='testtransport',
+         dict(transport='testtransport',
               virtual_host='',
               hosts=[
                   dict(hostname='h1',
@@ -197,8 +185,7 @@ class TestFormatURL(test_utils.BaseTestCase):
               ],
               expected='testtransport://b1:s1@h1:1000,b2:s2@h2:2000/')),
         ('quoting',
-         dict(rpc_backend=None,
-              transport='testtransport',
+         dict(transport='testtransport',
               virtual_host='/$',
               hosts=[
                   dict(hostname='host',
@@ -210,8 +197,6 @@ class TestFormatURL(test_utils.BaseTestCase):
     ]
 
     def test_parse_url(self):
-        self.config(rpc_backend=self.rpc_backend)
-
         hosts = []
         for host in self.hosts:
             hosts.append(oslo_messaging.TransportHost(host.get('hostname'),

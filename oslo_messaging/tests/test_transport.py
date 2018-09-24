@@ -51,36 +51,29 @@ class _FakeManager(object):
 class GetTransportTestCase(test_utils.BaseTestCase):
 
     scenarios = [
-        ('rpc_backend',
-         dict(url=None, transport_url=None, rpc_backend='testbackend',
-              control_exchange=None, allowed=None,
-              expect=dict(backend='testbackend',
-                          exchange=None,
-                          url='testbackend:',
-                          allowed=[]))),
         ('transport_url',
-         dict(url=None, transport_url='testtransport:', rpc_backend=None,
+         dict(url=None, transport_url='testtransport:',
               control_exchange=None, allowed=None,
               expect=dict(backend='testtransport',
                           exchange=None,
                           url='testtransport:',
                           allowed=[]))),
         ('url_param',
-         dict(url='testtransport:', transport_url=None, rpc_backend=None,
+         dict(url='testtransport:', transport_url=None,
               control_exchange=None, allowed=None,
               expect=dict(backend='testtransport',
                           exchange=None,
                           url='testtransport:',
                           allowed=[]))),
         ('control_exchange',
-         dict(url=None, transport_url=None, rpc_backend='testbackend',
+         dict(url=None, transport_url='testbackend:',
               control_exchange='testexchange', allowed=None,
               expect=dict(backend='testbackend',
                           exchange='testexchange',
                           url='testbackend:',
                           allowed=[]))),
         ('allowed_remote_exmods',
-         dict(url=None, transport_url=None, rpc_backend='testbackend',
+         dict(url=None, transport_url='testbackend:',
               control_exchange=None, allowed=['foo', 'bar'],
               expect=dict(backend='testbackend',
                           exchange=None,
@@ -90,8 +83,7 @@ class GetTransportTestCase(test_utils.BaseTestCase):
 
     @mock.patch('oslo_messaging.transport.LOG')
     def test_get_transport(self, fake_logger):
-        self.config(rpc_backend=self.rpc_backend,
-                    control_exchange=self.control_exchange,
+        self.config(control_exchange=self.control_exchange,
                     transport_url=self.transport_url)
 
         driver.DriverManager = mock.Mock()
@@ -127,29 +119,27 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 
     scenarios = [
         ('invalid_transport_url',
-         dict(url=None, transport_url='invalid', rpc_backend=None,
+         dict(url=None, transport_url='invalid',
               ex=dict(cls=oslo_messaging.InvalidTransportURL,
                       msg_contains='No scheme specified',
                       url='invalid'))),
         ('invalid_url_param',
-         dict(url='invalid', transport_url=None, rpc_backend=None,
+         dict(url='invalid', transport_url=None,
               ex=dict(cls=oslo_messaging.InvalidTransportURL,
                       msg_contains='No scheme specified',
                       url='invalid'))),
         ('driver_load_failure',
-         dict(url=None, transport_url=None, rpc_backend='testbackend',
+         dict(url=None, transport_url='testbackend:/',
               ex=dict(cls=oslo_messaging.DriverLoadFailure,
                       msg_contains='Failed to load',
                       driver='testbackend'))),
     ]
 
     def test_get_transport_sad(self):
-        self.config(rpc_backend=self.rpc_backend,
-                    transport_url=self.transport_url)
+        self.config(transport_url=self.transport_url)
+        driver.DriverManager = mock.Mock()
 
-        if self.rpc_backend:
-            driver.DriverManager = mock.Mock()
-
+        try:
             invoke_args = [self.conf,
                            oslo_messaging.TransportURL.parse(self.conf,
                                                              self.url)]
@@ -157,16 +147,10 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
                                allowed_remote_exmods=[])
 
             driver.DriverManager.side_effect = RuntimeError()
-        try:
             oslo_messaging.get_transport(self.conf, url=self.url)
-            self.assertFalse(True)
-
-            driver.DriverManager.\
-                assert_called_once_with('oslo.messaging.drivers',
-                                        self.rpc_backend,
-                                        invoke_on_load=True,
-                                        invoke_args=invoke_args,
-                                        invoke_kwds=invoke_kwds)
+            driver.DriverManager.assert_called_once_with(
+                'oslo.messaging.drivers', invoke_on_load=True,
+                invoke_args=invoke_args, invoke_kwds=invoke_kwds)
         except Exception as ex:
             ex_cls = self.ex.pop('cls')
             ex_msg_contains = self.ex.pop('msg_contains')
