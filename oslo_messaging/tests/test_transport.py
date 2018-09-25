@@ -137,31 +137,14 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 
     def test_get_transport_sad(self):
         self.config(transport_url=self.transport_url)
-        driver.DriverManager = mock.Mock()
-
-        try:
-            invoke_args = [self.conf,
-                           oslo_messaging.TransportURL.parse(self.conf,
-                                                             self.url)]
-            invoke_kwds = dict(default_exchange='openstack',
-                               allowed_remote_exmods=[])
-
-            driver.DriverManager.side_effect = RuntimeError()
-            oslo_messaging.get_transport(self.conf, url=self.url)
-            driver.DriverManager.assert_called_once_with(
-                'oslo.messaging.drivers', invoke_on_load=True,
-                invoke_args=invoke_args, invoke_kwds=invoke_kwds)
-        except Exception as ex:
-            ex_cls = self.ex.pop('cls')
-            ex_msg_contains = self.ex.pop('msg_contains')
-
-            self.assertIsInstance(ex, oslo_messaging.MessagingException)
-            self.assertIsInstance(ex, ex_cls)
-            self.assertIn(ex_msg_contains, six.text_type(ex))
-
-            for k, v in self.ex.items():
-                self.assertTrue(hasattr(ex, k))
-                self.assertEqual(v, str(getattr(ex, k)))
+        ex_cls = self.ex.pop('cls')
+        ex_msg_contains = self.ex.pop('msg_contains')
+        ex = self.assertRaises(
+            ex_cls, oslo_messaging.get_transport, self.conf, url=self.url)
+        self.assertIn(ex_msg_contains, six.text_type(ex))
+        for k, v in self.ex.items():
+            self.assertTrue(hasattr(ex, k))
+            self.assertEqual(v, str(getattr(ex, k)))
 
 
 # FIXME(markmc): this could be used elsewhere
