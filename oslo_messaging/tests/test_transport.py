@@ -51,6 +51,13 @@ class _FakeManager(object):
 class GetTransportTestCase(test_utils.BaseTestCase):
 
     scenarios = [
+        ('default',
+         dict(url=None, transport_url=None,
+              control_exchange=None, allowed=None,
+              expect=dict(backend='rabbit',
+                          exchange=None,
+                          url='rabbit:',
+                          allowed=[]))),
         ('transport_url',
          dict(url=None, transport_url='testtransport:',
               control_exchange=None, allowed=None,
@@ -83,8 +90,10 @@ class GetTransportTestCase(test_utils.BaseTestCase):
 
     @mock.patch('oslo_messaging.transport.LOG')
     def test_get_transport(self, fake_logger):
-        self.config(control_exchange=self.control_exchange,
-                    transport_url=self.transport_url)
+        self.messaging_conf.reset()
+        self.config(control_exchange=self.control_exchange)
+        if self.transport_url:
+            self.config(transport_url=self.transport_url)
 
         driver.DriverManager = mock.Mock()
 
