@@ -42,6 +42,7 @@ LOG = logging.getLogger(__name__)
 
 _transport_opts = [
     cfg.StrOpt('transport_url',
+               default="rabbit://",
                secret=True,
                help='The network address and optional user credentials for '
                     'connecting to the messaging backend, in URL format. The '
@@ -443,8 +444,6 @@ class TransportURL(object):
         if not url:
             conf.register_opts(_transport_opts)
         url = url or conf.transport_url
-        if not url:
-            return cls(conf)
 
         if not isinstance(url, six.string_types):
             raise InvalidTransportURL(url, 'Wrong URL type')
