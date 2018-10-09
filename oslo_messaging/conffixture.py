@@ -41,9 +41,11 @@ class ConfFixture(fixtures.Fixture):
 
     :param conf: a ConfigOpts instance
     :type conf: oslo.config.cfg.ConfigOpts
+    :param transport_url: override default transport_url value
+    :type transport_url: str
     """
 
-    def __init__(self, conf):
+    def __init__(self, conf, transport_url=None):
         self.conf = conf
         _import_opts(self.conf,
                      'oslo_messaging._drivers.impl_rabbit', 'rabbit_opts',
@@ -63,6 +65,9 @@ class ConfFixture(fixtures.Fixture):
                      'oslo_messaging.notify.notifier',
                      '_notifier_opts',
                      'oslo_messaging_notifications')
+
+        if transport_url is not None:
+            self.transport_url = transport_url
 
     def _setup_decorator(self):
         # Support older test cases that still use the set_override
