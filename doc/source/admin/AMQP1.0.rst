@@ -233,7 +233,7 @@ packages:
 
 ::
 
-   pip install oslo.messaging[amqp1]
+   python -m pip install oslo.messaging[amqp1]
 
 The Proton package includes a C extension that links to the Proton
 library.  The C extension is built locally when the Proton source
