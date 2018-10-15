@@ -378,7 +378,7 @@ class KafkaListener(base.PollStyleListener):
 class KafkaDriver(base.BaseDriver):
     """Kafka Driver
 
-    Note: Current implementation of this driver is experimental.
+    See :doc:`kafka` for details.
     """
 
     def __init__(self, conf, url, default_exchange=None,

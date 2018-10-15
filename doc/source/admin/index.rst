@@ -7,3 +7,4 @@ Deployment Guide
 
    drivers
    AMQP1.0
+   kafka
