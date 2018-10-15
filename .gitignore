@@ -1,7 +1,16 @@
+# Add patterns in here to exclude files created by tools integrated with this
+# repository, such as test frameworks from the project's recommended workflow,
+# rendered documentation and package builds.
+#
+# Don't add patterns to exclude files created by preferred personal tools
+# (editors, IDEs, your operating system itself even). These should instead be
+# maintained outside the repository, for example in a ~/.gitignore file added
+# with:
+#
+# git config --global core.excludesfile '~/.gitignore'
+
 AUTHORS
 ChangeLog
-*~
-*.swp
 *.pyc
 *.log
 .tox
