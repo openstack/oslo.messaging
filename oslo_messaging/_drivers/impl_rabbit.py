@@ -595,7 +595,7 @@ class Connection(object):
             parse.quote(host.password or default_password),
             self._parse_url_hostname(host.hostname) or default_hostname,
             str(host.port or 5672),
-            url.virtual_host)
+            url.virtual_host or '')
 
     def _parse_url_hostname(self, hostname):
         """Handles hostname returned from urlparse and checks whether it's
