@@ -34,6 +34,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
 import six
+import six.moves
 from six.moves.urllib import parse
 
 import oslo_messaging
@@ -786,11 +787,11 @@ class Connection(object):
         """Close/release this connection."""
         self._heartbeat_stop()
         if self.connection:
-            for consumer, tag in self._consumers.items():
-                if consumer.type == 'fanout':
-                    LOG.debug('[connection close] Deleting fanout '
-                              'queue: %s ' % consumer.queue.name)
-                    consumer.queue.delete()
+            for consumer in six.moves.filter(lambda c: c.type == 'fanout',
+                                             self._consumers):
+                LOG.debug('[connection close] Deleting fanout '
+                          'queue: %s ' % consumer.queue.name)
+                consumer.queue.delete()
             self._set_current_channel(None)
             self.connection.release()
             self.connection = None
