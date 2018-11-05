@@ -637,8 +637,13 @@ class Connection(object):
     def ensure_connection(self):
         # NOTE(sileht): we reset the channel and ensure
         # the kombu underlying connection works
+        def on_error(exc, interval):
+            LOG.error("Connection failed: %s (retrying in %s seconds)",
+                      str(exc), interval)
+
         self._set_current_channel(None)
-        self.ensure(method=self.connection.connect)
+        self.connection.ensure_connection(errback=on_error)
+        self._set_current_channel(self.connection.channel())
         self.set_transport_socket_timeout()
 
     def ensure(self, method, retry=None,

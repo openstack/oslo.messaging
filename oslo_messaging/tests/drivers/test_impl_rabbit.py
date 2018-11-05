@@ -123,7 +123,8 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
         ('rabbit+memory', dict(transport_url='kombu+memory:/'))
     ]
 
-    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
     def test_driver_load(self, fake_ensure, fake_reset):
         self.config(heartbeat_timeout_threshold=60,
@@ -155,7 +156,8 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
                                                 cert_reqs=ssl.CERT_REQUIRED))),
     ]
 
-    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
     @mock.patch('kombu.connection.Connection')
     def test_driver_load(self, connection_klass, fake_ensure):
         self.config(group="oslo_messaging_rabbit", **self.options)
@@ -406,7 +408,8 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
         self.config(heartbeat_timeout_threshold=0,
                     group='oslo_messaging_rabbit')
 
-    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.ensure')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
     def test_transport_url(self, fake_reset, fake_ensure):
         transport = oslo_messaging.get_transport(self.conf, self.url)
