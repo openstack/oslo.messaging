@@ -400,6 +400,9 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
         ('rabbit_ipv4',
          dict(url='rabbit://user:password@10.20.30.40:10/vhost',
               expected=['amqp://user:password@10.20.30.40:10/vhost'])),
+        ('rabbit_no_vhost_slash',
+         dict(url='rabbit://user:password@10.20.30.40:10',
+              expected=['amqp://user:password@10.20.30.40:10/'])),
     ]
 
     def setUp(self):
