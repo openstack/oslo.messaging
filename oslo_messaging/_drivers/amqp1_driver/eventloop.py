@@ -27,12 +27,17 @@ import errno
 import heapq
 import logging
 import math
-from monotonic import monotonic as now  # noqa
 import os
 import select
 import socket
 import threading
+import time
 import uuid
+
+if hasattr(time, 'monotonic'):
+    now = time.monotonic
+else:
+    from monotonic import monotonic as now  # noqa
 
 import pyngus
 

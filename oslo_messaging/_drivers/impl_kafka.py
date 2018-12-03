@@ -173,7 +173,7 @@ class ConsumerConnection(Connection):
         if not messages:
             # NOTE(sileht): really ? you return payload but no messages...
             # simulate timeout to consume message again
-            raise kafka.errors.ConsumerTimeout()
+            raise kafka.errors.ConsumerNoMoreData()
 
         if not self.enable_auto_commit:
             self.consumer.commit()
@@ -200,7 +200,7 @@ class ConsumerConnection(Connection):
                 return
             try:
                 return self._poll_messages(poll_timeout)
-            except kafka.errors.ConsumerTimeout as exc:
+            except kafka.errors.ConsumerNoMoreData as exc:
                 poll_timeout = timer.check_return(
                     _raise_timeout, exc, maximum=self.consumer_timeout)
             except Exception:

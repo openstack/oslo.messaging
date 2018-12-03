@@ -27,13 +27,18 @@ functions scheduled by the Controller.
 import abc
 import collections
 import logging
-from monotonic import monotonic as now  # noqa
 import os
 import platform
 import random
 import sys
 import threading
+import time
 import uuid
+
+if hasattr(time, 'monotonic'):
+    now = time.monotonic
+else:
+    from monotonic import monotonic as now  # noqa
 
 import proton
 import pyngus
