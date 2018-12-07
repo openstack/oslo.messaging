@@ -12,54 +12,30 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-# Following code fixes 2 issues with kafka-python and
-# The current release of eventlet (0.19.0) does not actually remove
-# select.poll [1]. Because of kafka-python.selectors34 selects
-# PollSelector instead of SelectSelector [2]. PollSelector relies on
-# select.poll, which does not work when eventlet/greenlet is used. This
-# bug in evenlet is fixed in the master branch [3], but there's no
-# release of eventlet that includes this fix at this point.
-
-import json
+import logging
 import threading
 
-import kafka
-from kafka.client_async import selectors
-import kafka.errors
-from oslo_log import log as logging
+import confluent_kafka
+from confluent_kafka import KafkaException
+from oslo_serialization import jsonutils
 from oslo_utils import eventletutils
-import tenacity
+from oslo_utils import importutils
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers.kafka_driver import kafka_options
-from oslo_messaging._i18n import _LE
-from oslo_messaging._i18n import _LW
-from oslo_serialization import jsonutils
 
-import logging as l
-l.basicConfig(level=l.INFO)
-l.getLogger("kafka").setLevel(l.WARN)
-l.getLogger("stevedore").setLevel(l.WARN)
-
-if eventletutils.is_monkey_patched('select'):
-    # monkeypatch the vendored SelectSelector._select like eventlet does
-    # https://github.com/eventlet/eventlet/blob/master/eventlet/green/selectors.py#L32
-    from eventlet.green import select
-    selectors.SelectSelector._select = staticmethod(select.select)
-
-    # Force to use the select selectors
-    KAFKA_SELECTOR = selectors.SelectSelector
-else:
-    KAFKA_SELECTOR = selectors.DefaultSelector
+if eventletutils.EVENTLET_AVAILABLE:
+    tpool = importutils.try_import('eventlet.tpool')
 
 LOG = logging.getLogger(__name__)
 
 
 def unpack_message(msg):
+    """Unpack context and msg."""
     context = {}
     message = None
-    msg = json.loads(msg)
+    msg = jsonutils.loads(msg)
     message = driver_common.deserialize_msg(msg)
     context = message['_context']
     del message['_context']
@@ -68,7 +44,6 @@ def unpack_message(msg):
 
 def pack_message(ctxt, msg):
     """Pack context into msg."""
-
     if isinstance(ctxt, dict):
         context_d = ctxt
     else:
@@ -97,25 +72,28 @@ def target_to_topic(target, priority=None, vhost=None):
     return concat(".", [target.topic, priority, vhost])
 
 
-def retry_on_retriable_kafka_error(exc):
-    return (isinstance(exc, kafka.errors.KafkaError) and exc.retriable)
+class ConsumerTimeout(KafkaException):
+    pass
 
 
-def with_reconnect(retries=None):
-    def decorator(func):
-        @tenacity.retry(
-            retry=tenacity.retry_if_exception(retry_on_retriable_kafka_error),
-            wait=tenacity.wait_fixed(1),
-            stop=tenacity.stop_after_attempt(retries),
-            reraise=True
-        )
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
+class AssignedPartition(object):
+    """This class is used by the ConsumerConnection to track the
+    assigned partitions.
+    """
+    def __init__(self, topic, partition):
+        super(AssignedPartition, self).__init__()
+        self.topic = topic
+        self.partition = partition
+        self.skey = '%s %d' % (self.topic, self.partition)
+
+    def to_dict(self):
+        return {'topic': self.topic, 'partition': self.partition}
 
 
 class Connection(object):
+    """This is the base class for consumer and producer connections for
+    transport attributes.
+    """
 
     def __init__(self, conf, url):
 
@@ -141,7 +119,7 @@ class Connection(object):
                 self.password = host.password
             else:
                 if self.username != host.username:
-                    LOG.warning(_LW("Different transport usernames detected"))
+                    LOG.warning("Different transport usernames detected")
 
             if host.hostname:
                 self.hostaddrs.append("%s:%s" % (host.hostname, host.port))
@@ -152,7 +130,8 @@ class Connection(object):
 
 
 class ConsumerConnection(Connection):
-
+    """This is the class for kafka topic/assigned partition consumer
+    """
     def __init__(self, conf, url):
 
         super(ConsumerConnection, self).__init__(conf, url)
@@ -160,28 +139,59 @@ class ConsumerConnection(Connection):
         self.consumer_timeout = self.driver_conf.kafka_consumer_timeout
         self.max_fetch_bytes = self.driver_conf.kafka_max_fetch_bytes
         self.group_id = self.driver_conf.consumer_group
-        self.enable_auto_commit = self.driver_conf.enable_auto_commit
+        self.use_auto_commit = self.driver_conf.enable_auto_commit
         self.max_poll_records = self.driver_conf.max_poll_records
         self._consume_loop_stopped = False
+        self.assignment_dict = dict()
 
-    @with_reconnect()
+    def find_assignment(self, topic, partition):
+        """Find and return existing assignment based on topic and partition"""
+        skey = '%s %d' % (topic, partition)
+        return self.assignment_dict.get(skey)
+
+    def on_assign(self, consumer, topic_partitions):
+        """Rebalance on_assign callback"""
+        assignment = [AssignedPartition(p.topic, p.partition)
+                      for p in topic_partitions]
+        self.assignment_dict = {a.skey: a for a in assignment}
+        for t in topic_partitions:
+            LOG.debug("Topic %s assigned to partition %d",
+                      t.topic, t.partition)
+
+    def on_revoke(self, consumer, topic_partitions):
+        """Rebalance on_revoke callback"""
+        self.assignment_dict = dict()
+        for t in topic_partitions:
+            LOG.debug("Topic %s revoked from partition %d",
+                      t.topic, t.partition)
+
     def _poll_messages(self, timeout):
-        messages = self.consumer.poll(timeout * 1000.0)
-        messages = [record.value
-                    for records in messages.values() if records
-                    for record in records]
-        if not messages:
-            # NOTE(sileht): really ? you return payload but no messages...
-            # simulate timeout to consume message again
-            raise kafka.errors.ConsumerNoMoreData()
+        """Consume messages, callbacks and return list of messages"""
+        msglist = self.consumer.consume(self.max_poll_records,
+                                        timeout)
 
-        if not self.enable_auto_commit:
-            self.consumer.commit()
+        if ((len(self.assignment_dict) == 0) or (len(msglist) == 0)):
+            raise ConsumerTimeout()
+
+        messages = []
+        for message in msglist:
+            if message is None:
+                break
+            a = self.find_assignment(message.topic(), message.partition())
+            if a is None:
+                LOG.warning(("Message for %s received on unassigned "
+                             "partition %d"),
+                            message.topic(), message.partition())
+            else:
+                messages.append(message.value())
+
+        if not self.use_auto_commit:
+            self.consumer.commit(asynchronous=False)
 
         return messages
 
     def consume(self, timeout=None):
-        """Receive up to 'max_fetch_messages' messages.
+        """Receive messages.
 
         :param timeout: poll timeout in seconds
         """
@@ -199,12 +209,14 @@ class ConsumerConnection(Connection):
             if self._consume_loop_stopped:
                 return
             try:
+                if eventletutils.is_monkey_patched('thread'):
+                    return tpool.execute(self._poll_messages, poll_timeout)
                 return self._poll_messages(poll_timeout)
-            except kafka.errors.ConsumerNoMoreData as exc:
+            except ConsumerTimeout as exc:
                 poll_timeout = timer.check_return(
                     _raise_timeout, exc, maximum=self.consumer_timeout)
             except Exception:
-                LOG.exception(_LE("Failed to consume messages"))
+                LOG.exception("Failed to consume messages")
                 return
 
     def stop_consuming(self):
@@ -215,21 +227,25 @@ class ConsumerConnection(Connection):
             self.consumer.close()
             self.consumer = None
 
-    @with_reconnect()
     def declare_topic_consumer(self, topics, group=None):
-        self.consumer = kafka.KafkaConsumer(
-            *topics, group_id=(group or self.group_id),
-            enable_auto_commit=self.enable_auto_commit,
-            bootstrap_servers=self.hostaddrs,
-            max_partition_fetch_bytes=self.max_fetch_bytes,
-            max_poll_records=self.max_poll_records,
-            security_protocol=self.security_protocol,
-            sasl_mechanism=self.sasl_mechanism,
-            sasl_plain_username=self.username,
-            sasl_plain_password=self.password,
-            ssl_cafile=self.ssl_cafile,
-            selector=KAFKA_SELECTOR
-        )
+        conf = {
+            'bootstrap.servers': ",".join(self.hostaddrs),
+            'group.id': (group or self.group_id),
+            'enable.auto.commit': self.use_auto_commit,
+            'max.partition.fetch.bytes': self.max_fetch_bytes,
+            'security.protocol': self.security_protocol,
+            'sasl.mechanism': self.sasl_mechanism,
+            'sasl.username': self.username,
+            'sasl.password': self.password,
+            'ssl.ca.location': self.ssl_cafile,
+            'enable.partition.eof': False,
+            'default.topic.config': {'auto.offset.reset': 'latest'}
+        }
+        LOG.debug("Subscribing to %s as %s", topics, (group or self.group_id))
+        self.consumer = confluent_kafka.Consumer(conf)
+        self.consumer.subscribe(topics,
+                                on_assign=self.on_assign,
+                                on_revoke=self.on_revoke)
 
 
 class ProducerConnection(Connection):
@@ -241,6 +257,20 @@ class ProducerConnection(Connection):
         self.linger_ms = self.driver_conf.producer_batch_timeout * 1000
         self.producer = None
         self.producer_lock = threading.Lock()
+
+    def _produce_message(self, topic, message):
+        while True:
+            try:
+                self.producer.produce(topic, message)
+            except KafkaException as e:
+                LOG.error("Produce message failed: %s" % str(e))
+            except BufferError:
+                LOG.debug("Produce message queue full, waiting for deliveries")
+                self.producer.poll(0.5)
+                continue
+            break
+
+        self.producer.poll(0)
 
     def notify_send(self, topic, ctxt, msg, retry):
         """Send messages to Kafka broker.
@@ -254,16 +284,11 @@ class ProducerConnection(Connection):
         message = pack_message(ctxt, msg)
         message = jsonutils.dumps(message).encode('utf-8')
 
-        @with_reconnect(retries=retry)
-        def wrapped_with_reconnect():
-            self._ensure_producer()
-            # NOTE(sileht): This returns a future, we can use get()
-            # if we want to block like other driver
-            future = self.producer.send(topic, message)
-            future.get()
-
         try:
-            wrapped_with_reconnect()
+            self._ensure_producer()
+            if eventletutils.is_monkey_patched('thread'):
+                return tpool.execute(self._produce_message, topic, message)
+            return self._produce_message(topic, message)
         except Exception:
             # NOTE(sileht): if something goes wrong close the producer
             # connection
@@ -276,7 +301,10 @@ class ProducerConnection(Connection):
     def _close_producer(self):
         with self.producer_lock:
             if self.producer:
-                self.producer.close()
+                try:
+                    self.producer.flush()
+                except KafkaException:
+                    LOG.error("Flush error during producer close")
                 self.producer = None
 
     def _ensure_producer(self):
@@ -285,16 +313,17 @@ class ProducerConnection(Connection):
         with self.producer_lock:
             if self.producer:
                 return
-            self.producer = kafka.KafkaProducer(
-                bootstrap_servers=self.hostaddrs,
-                linger_ms=self.linger_ms,
-                batch_size=self.batch_size,
-                security_protocol=self.security_protocol,
-                sasl_mechanism=self.sasl_mechanism,
-                sasl_plain_username=self.username,
-                sasl_plain_password=self.password,
-                ssl_cafile=self.ssl_cafile,
-                selector=KAFKA_SELECTOR)
+            conf = {
+                'bootstrap.servers': ",".join(self.hostaddrs),
+                'linger.ms': self.linger_ms,
+                'batch.num.messages': self.batch_size,
+                'security.protocol': self.security_protocol,
+                'sasl.mechanism': self.sasl_mechanism,
+                'sasl.username': self.username,
+                'sasl.password': self.password,
+                'ssl.ca.location': self.ssl_cafile
+            }
+            self.producer = confluent_kafka.Producer(conf)
 
 
 class OsloKafkaMessage(base.RpcIncomingMessage):
@@ -303,13 +332,13 @@ class OsloKafkaMessage(base.RpcIncomingMessage):
         super(OsloKafkaMessage, self).__init__(ctxt, message)
 
     def requeue(self):
-        LOG.warning(_LW("requeue is not supported"))
+        LOG.warning("requeue is not supported")
 
     def reply(self, reply=None, failure=None):
-        LOG.warning(_LW("reply is not supported"))
+        LOG.warning("reply is not supported")
 
     def heartbeat(self):
-        LOG.warning(_LW("heartbeat is not supported"))
+        LOG.warning("heartbeat is not supported")
 
 
 class KafkaListener(base.PollStyleListener):
@@ -347,8 +376,9 @@ class KafkaListener(base.PollStyleListener):
 
 
 class KafkaDriver(base.BaseDriver):
-    """Note: Current implementation of this driver is experimental.
-    We will have functional and/or integrated testing enabled for this driver.
+    """Kafka Driver
+
+    Note: Current implementation of this driver is experimental.
     """
 
     def __init__(self, conf, url, default_exchange=None,
@@ -366,6 +396,7 @@ class KafkaDriver(base.BaseDriver):
         for c in self.listeners:
             c.close()
         self.listeners = []
+        LOG.info("Kafka messaging driver shutdown")
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
              call_monitor_timeout=None, retry=None):
@@ -414,9 +445,9 @@ class KafkaDriver(base.BaseDriver):
         :type pool: string
         """
         conn = ConsumerConnection(self.conf, self._url)
-        topics = set()
+        topics = []
         for target, priority in targets_and_priorities:
-            topics.add(target_to_topic(target, priority))
+            topics.append(target_to_topic(target, priority))
 
         conn.declare_topic_consumer(topics, pool)
 

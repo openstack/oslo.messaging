@@ -328,8 +328,13 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     # NOTE(sileht): Each test must not use the same topics
     # to be run in parallel
 
+    # NOTE(ansmith): kafka partition assignment delay requires
+    # longer timeouts for test completion
+
     def test_simple(self):
+        get_timeout = 1
         if self.url.startswith("kafka://"):
+            get_timeout = 5
             self.conf.set_override('consumer_group', 'test_simple',
                                    group='oslo_messaging_kafka')
 
@@ -338,14 +343,16 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         notifier = listener.notifier('abc')
 
         notifier.info({}, 'test', 'Hello World!')
-        event = listener.events.get(timeout=1)
+        event = listener.events.get(timeout=get_timeout)
         self.assertEqual('info', event[0])
         self.assertEqual('test', event[1])
         self.assertEqual('Hello World!', event[2])
         self.assertEqual('abc', event[3])
 
     def test_multiple_topics(self):
+        get_timeout = 1
         if self.url.startswith("kafka://"):
+            get_timeout = 5
             self.conf.set_override('consumer_group', 'test_multiple_topics',
                                    group='oslo_messaging_kafka')
 
@@ -363,7 +370,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
         received = {}
         while len(received) < len(sent):
-            e = listener.events.get(timeout=1)
+            e = listener.events.get(timeout=get_timeout)
             received[e[3]] = e
 
         for key in received:
@@ -374,10 +381,15 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(expected[2], actual[2])
 
     def test_multiple_servers(self):
+        timeout = 0.5
         if self.url.startswith("amqp:"):
             self.skipTest("QPID-6307")
-        if self.url.startswith("kafka"):
-            self.skipTest("Kafka: Need to be fixed")
+        if self.url.startswith("kafka://"):
+            self.skipTest("Kafka: needs to be fixed")
+            timeout = 5
+            self.conf.set_override('consumer_group',
+                                   'test_multiple_servers',
+                                   group='oslo_messaging_kafka')
 
         listener_a = self.useFixture(
             utils.NotificationFixture(self.conf, self.url, ['test-topic']))
@@ -391,15 +403,17 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         for event_type, payload in events_out:
             n.info({}, event_type, payload)
 
-        events_in = [[(e[1], e[2]) for e in listener_a.get_events()],
-                     [(e[1], e[2]) for e in listener_b.get_events()]]
+        events_in = [[(e[1], e[2]) for e in listener_a.get_events(timeout)],
+                     [(e[1], e[2]) for e in listener_b.get_events(timeout)]]
 
         self.assertThat(events_in, utils.IsValidDistributionOf(events_out))
         for stream in events_in:
             self.assertThat(len(stream), matchers.GreaterThan(0))
 
     def test_independent_topics(self):
+        get_timeout = 0.5
         if self.url.startswith("kafka://"):
+            get_timeout = 5
             self.conf.set_override('consumer_group',
                                    'test_independent_topics_a',
                                    group='oslo_messaging_kafka')
@@ -425,7 +439,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             b.info({}, event_type, payload)
 
         def check_received(listener, publisher, messages):
-            actuals = sorted([listener.events.get(timeout=0.5)
+            actuals = sorted([listener.events.get(timeout=get_timeout)
                               for __ in range(len(a_out))])
             expected = sorted([['info', m[0], m[1], publisher]
                                for m in messages])
@@ -435,7 +449,9 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         check_received(listener_b, "pub-2", b_out)
 
     def test_all_categories(self):
+        get_timeout = 1
         if self.url.startswith("kafka://"):
+            get_timeout = 5
             self.conf.set_override('consumer_group', 'test_all_categories',
                                    group='oslo_messaging_kafka')
 
@@ -451,7 +467,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         # order between events with different categories is not guaranteed
         received = {}
         for expected in events:
-            e = listener.events.get(timeout=1)
+            e = listener.events.get(timeout=get_timeout)
             received[e[0]] = e
 
         for expected in events:
@@ -461,6 +477,8 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(expected[3], actual[2])
 
     def test_simple_batch(self):
+        get_timeout = 3
+        batch_timeout = 2
         if self.url.startswith("amqp:"):
             backend = os.environ.get("AMQP1_BACKEND")
             if backend == "qdrouterd":
@@ -468,18 +486,21 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
                 # sender pends until batch_size or timeout reached
                 self.skipTest("qdrouterd backend")
         if self.url.startswith("kafka://"):
+            get_timeout = 10
+            batch_timeout = 5
             self.conf.set_override('consumer_group', 'test_simple_batch',
                                    group='oslo_messaging_kafka')
 
         listener = self.useFixture(
             utils.BatchNotificationFixture(self.conf, self.url,
                                            ['test_simple_batch'],
-                                           batch_size=100, batch_timeout=2))
+                                           batch_size=100,
+                                           batch_timeout=batch_timeout))
         notifier = listener.notifier('abc')
 
         for i in six.moves.range(0, 205):
             notifier.info({}, 'test%s' % i, 'Hello World!')
-        events = listener.get_events(timeout=3)
+        events = listener.get_events(timeout=get_timeout)
         self.assertEqual(3, len(events))
         self.assertEqual(100, len(events[0][1]))
         self.assertEqual(100, len(events[1][1]))
