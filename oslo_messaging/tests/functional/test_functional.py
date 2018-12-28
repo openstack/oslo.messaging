@@ -153,8 +153,8 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual(10, server.endpoint.ival)
 
     def test_monitor_long_call(self):
-        if not (self.url.startswith("rabbit://")
-                or self.url.startswith("amqp://")):
+        if not (self.url.startswith("rabbit://") or
+                self.url.startswith("amqp://")):
             self.skipTest("backend does not support call monitoring")
 
         transport = self.useFixture(utils.RPCTransportFixture(self.conf,

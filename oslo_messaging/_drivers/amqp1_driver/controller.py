@@ -35,11 +35,6 @@ import threading
 import time
 import uuid
 
-if hasattr(time, 'monotonic'):
-    now = time.monotonic
-else:
-    from monotonic import monotonic as now  # noqa
-
 import proton
 import pyngus
 from six import iteritems
@@ -55,6 +50,11 @@ from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
 from oslo_messaging.target import Target
 from oslo_messaging import transport
+
+if hasattr(time, 'monotonic'):
+    now = time.monotonic
+else:
+    from monotonic import monotonic as now  # noqa
 
 LOG = logging.getLogger(__name__)
 
@@ -491,8 +491,8 @@ class Sender(pyngus.SenderEventHandler):
                 self._unacked.discard(send_task)
                 if state == Sender._ACCEPTED:
                     send_task._on_ack(Sender._ACCEPTED, info)
-                elif (state == Sender._RELEASED
-                      or (state == Sender._MODIFIED and
+                elif (state == Sender._RELEASED or
+                      (state == Sender._MODIFIED and
                           # assuming delivery-failed means in-doubt:
                           not info.get("delivery-failed") and
                           not info.get("undeliverable-here"))):
@@ -1337,5 +1337,5 @@ class Controller(pyngus.ConnectionEventHandler):
     @property
     def _active(self):
         # Is the connection up
-        return (self._socket_connection
-                and self._socket_connection.pyngus_conn.active)
+        return (self._socket_connection and
+                self._socket_connection.pyngus_conn.active)

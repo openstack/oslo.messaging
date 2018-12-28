@@ -12,14 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['Serializer', 'NoOpSerializer', 'JsonPayloadSerializer']
-
 """Provides the definition of a message serialization handler"""
 
 import abc
 
 from oslo_serialization import jsonutils
 import six
+
+__all__ = ['Serializer', 'NoOpSerializer', 'JsonPayloadSerializer']
 
 
 @six.add_metaclass(abc.ABCMeta)

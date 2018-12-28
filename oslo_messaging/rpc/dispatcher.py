@@ -16,18 +16,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = [
-    'NoSuchMethod',
-    'RPCAccessPolicyBase',
-    'LegacyRPCAccessPolicy',
-    'DefaultRPCAccessPolicy',
-    'ExplicitRPCAccessPolicy',
-    'RPCDispatcher',
-    'RPCDispatcherError',
-    'UnsupportedVersion',
-    'ExpectedException',
-]
-
 from abc import ABCMeta
 from abc import abstractmethod
 import logging
@@ -41,6 +29,18 @@ from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import server as msg_server
 from oslo_messaging import target as msg_target
+
+__all__ = [
+    'NoSuchMethod',
+    'RPCAccessPolicyBase',
+    'LegacyRPCAccessPolicy',
+    'DefaultRPCAccessPolicy',
+    'ExplicitRPCAccessPolicy',
+    'RPCDispatcher',
+    'RPCDispatcherError',
+    'UnsupportedVersion',
+    'ExpectedException',
+]
 
 LOG = logging.getLogger(__name__)
 

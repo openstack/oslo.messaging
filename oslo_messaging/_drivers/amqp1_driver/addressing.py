@@ -285,8 +285,8 @@ class AddresserFactory(object):
                     " present.")
             LOG.warning(w)
 
-        if self._mode == 'legacy' or (self._mode == 'dynamic'
-                                      and product == 'qpid-cpp'):
+        if self._mode == 'legacy' or (self._mode == 'dynamic' and
+                                      product == 'qpid-cpp'):
             return LegacyAddresser(self._default_exchange,
                                    self._kwargs['legacy_server_prefix'],
                                    self._kwargs['legacy_broadcast_prefix'],

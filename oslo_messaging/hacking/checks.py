@@ -157,8 +157,8 @@ class CheckForLoggingIssues(BaseASTChecker):
         """Return the fully qualified name or a Name or Attribute."""
         if isinstance(node, ast.Name):
             return node.id
-        elif (isinstance(node, ast.Attribute)
-                and isinstance(node.value, (ast.Name, ast.Attribute))):
+        elif (isinstance(node, ast.Attribute) and
+                isinstance(node.value, (ast.Name, ast.Attribute))):
             method_name = node.attr
             obj_name = self._find_name(node.value)
             if obj_name is None:
@@ -189,8 +189,8 @@ class CheckForLoggingIssues(BaseASTChecker):
         """
         attr_node_types = (ast.Name, ast.Attribute)
 
-        if (len(node.targets) != 1
-                or not isinstance(node.targets[0], attr_node_types)):
+        if (len(node.targets) != 1 or
+                not isinstance(node.targets[0], attr_node_types)):
             # say no to: "x, y = ..."
             return super(CheckForLoggingIssues, self).generic_visit(node)
 
@@ -211,13 +211,13 @@ class CheckForLoggingIssues(BaseASTChecker):
             return super(CheckForLoggingIssues, self).generic_visit(node)
 
         # is this a call to an i18n function?
-        if (isinstance(node.value.func, ast.Name)
-                and node.value.func.id in self.i18n_names):
+        if (isinstance(node.value.func, ast.Name) and
+                node.value.func.id in self.i18n_names):
             self.assignments[target_name] = node.value.func.id
             return super(CheckForLoggingIssues, self).generic_visit(node)
 
-        if (not isinstance(node.value.func, ast.Attribute)
-                or not isinstance(node.value.func.value, attr_node_types)):
+        if (not isinstance(node.value.func, ast.Attribute) or
+                not isinstance(node.value.func.value, attr_node_types)):
             # function must be an attribute on an object like
             # logging.getLogger
             return super(CheckForLoggingIssues, self).generic_visit(node)
@@ -225,8 +225,8 @@ class CheckForLoggingIssues(BaseASTChecker):
         object_name = self._find_name(node.value.func.value)
         func_name = node.value.func.attr
 
-        if (object_name in self.logger_module_names
-                and func_name == 'getLogger'):
+        if (object_name in self.logger_module_names and
+                func_name == 'getLogger'):
             self.logger_names.append(target_name)
 
         return super(CheckForLoggingIssues, self).generic_visit(node)
@@ -250,8 +250,8 @@ class CheckForLoggingIssues(BaseASTChecker):
                 self.add_error(msg, message=self.USING_DEPRECATED_WARN)
 
             # must be a logger instance and one of the support logging methods
-            if (obj_name not in self.logger_names
-                    or method_name not in self.TRANS_HELPER_MAP):
+            if (obj_name not in self.logger_names or
+                    method_name not in self.TRANS_HELPER_MAP):
                 return super(CheckForLoggingIssues, self).generic_visit(node)
 
             # the call must have arguments
@@ -269,15 +269,15 @@ class CheckForLoggingIssues(BaseASTChecker):
         msg = node.args[0]  # first arg to a logging method is the msg
 
         # if first arg is a call to a i18n name
-        if (isinstance(msg, ast.Call)
-                and isinstance(msg.func, ast.Name)
-                and msg.func.id in self.i18n_names):
+        if (isinstance(msg, ast.Call) and
+                isinstance(msg.func, ast.Name) and
+                msg.func.id in self.i18n_names):
             self.add_error(msg, message=self.DEBUG_CHECK_DESC)
 
         # if the first arg is a reference to a i18n call
-        elif (isinstance(msg, ast.Name)
-                and msg.id in self.assignments
-                and not self._is_raised_later(node, msg.id)):
+        elif (isinstance(msg, ast.Name) and
+                msg.id in self.assignments and
+                not self._is_raised_later(node, msg.id)):
             self.add_error(msg, message=self.DEBUG_CHECK_DESC)
 
     def _process_non_debug(self, node, method_name):
@@ -321,11 +321,11 @@ class CheckForLoggingIssues(BaseASTChecker):
                 return
 
             helper_method_name = self.TRANS_HELPER_MAP[method_name]
-            if (self.assignments[msg.id] != helper_method_name
-                    and not self._is_raised_later(node, msg.id)):
+            if (self.assignments[msg.id] != helper_method_name and
+                    not self._is_raised_later(node, msg.id)):
                 self.add_error(msg, message=self.NONDEBUG_CHECK_DESC)
-            elif (self.assignments[msg.id] == helper_method_name
-                    and self._is_raised_later(node, msg.id)):
+            elif (self.assignments[msg.id] == helper_method_name and
+                    self._is_raised_later(node, msg.id)):
                 self.add_error(msg, message=self.EXCESS_HELPER_CHECK_DESC)
 
     def _is_raised_later(self, node, name):

@@ -13,10 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = [
-    'list_opts'
-]
-
 import copy
 import itertools
 
@@ -30,6 +26,9 @@ from oslo_messaging.rpc import client
 from oslo_messaging import server
 from oslo_messaging import transport
 
+__all__ = [
+    'list_opts'
+]
 
 _global_opt_lists = [
     drivers_base.base_opts,

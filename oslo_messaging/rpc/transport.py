@@ -13,11 +13,12 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
+from oslo_messaging import transport as msg_transport
+
 __all__ = [
     'get_rpc_transport'
 ]
-
-from oslo_messaging import transport as msg_transport
 
 
 def get_rpc_transport(conf, url=None,
