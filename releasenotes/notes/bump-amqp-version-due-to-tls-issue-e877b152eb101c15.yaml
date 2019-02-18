@@ -1,0 +1,16 @@
+---
+critical:
+  - |
+    In combination with amqp<=2.4.0, ``oslo.messaging`` was unreliable
+    when configured with TLS (as is generally recommended). Users would
+    see frequent errors such as this::
+
+      MessagingTimeout: Timed out waiting for a reply to message ID ae039d1695984addbfaaef032ce4fda3
+
+    Such issues would typically lead to downstream service timeouts,
+    with no recourse available other than disabling TLS altogether
+    (see `bug 1800957
+    <https://bugs.launchpad.net/oslo.messaging/+bug/1800957>`_).
+
+    The underlying issue is fixed in amqp version 2.4.1, which is now
+    the minimum version that ``oslo.messaging`` requires.

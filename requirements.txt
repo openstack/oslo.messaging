@@ -26,7 +26,7 @@ PyYAML>=3.12 # MIT
 
 # rabbit driver is the default
 # we set the amqp version to ensure heartbeat works
-amqp>=2.4.0 # BSD
+amqp>=2.4.1 # BSD
 kombu!=4.0.2,>=4.0.0 # BSD
 
 # middleware
