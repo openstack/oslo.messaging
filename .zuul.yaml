@@ -254,7 +254,8 @@
         - oslo.messaging-src-grenade-dsvm-multinode:
             voting: false
 
-        - oslo.messaging-telemetry-dsvm-integration-rabbit
+        - oslo.messaging-telemetry-dsvm-integration-rabbit:
+            voting: false
         - oslo.messaging-telemetry-dsvm-integration-amqp1:
             voting: false
         - oslo.messaging-telemetry-dsvm-integration-kafka:
@@ -264,4 +265,3 @@
       jobs:
         - oslo.messaging-tox-py27-func-rabbit
         - oslo.messaging-src-dsvm-full-rabbit
-        - oslo.messaging-telemetry-dsvm-integration-rabbit
