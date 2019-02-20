@@ -13,6 +13,7 @@
 #    under the License.
 
 import testscenarios
+import time
 
 import oslo_messaging
 from oslo_messaging import rpc
@@ -180,7 +181,8 @@ class TestDispatcher(test_utils.BaseTestCase):
         dispatcher = oslo_messaging.RPCDispatcher(endpoints, serializer,
                                                   self.access_policy)
 
-        incoming = mock.Mock(ctxt=self.ctxt, message=self.msg)
+        incoming = mock.Mock(ctxt=self.ctxt, message=self.msg,
+                             client_timeout=0)
 
         res = None
 
@@ -252,6 +254,7 @@ class TestSerializer(test_utils.BaseTestCase):
         incoming = mock.Mock()
         incoming.ctxt = self.ctxt
         incoming.message = dict(method='foo', args=self.args)
+        incoming.client_timeout = 0
         retval = dispatcher.dispatch(incoming)
         if self.retval is not None:
             self.assertEqual('s' + self.retval, retval)
@@ -265,3 +268,38 @@ class TestSerializer(test_utils.BaseTestCase):
 
         serializer.serialize_entity.assert_called_once_with(self.dctxt,
                                                             self.retval)
+
+
+class TestMonitorFailure(test_utils.BaseTestCase):
+    """Test what happens when the call monitor watchdog hits an exception when
+    sending the heartbeat.
+    """
+
+    class _SleepyEndpoint(object):
+        def __init__(self, target=None):
+            self.target = target
+
+        def sleep(self, ctxt, **kwargs):
+            time.sleep(kwargs['timeout'])
+            return True
+
+    def test_heartbeat_failure(self):
+
+        endpoints = [self._SleepyEndpoint()]
+        dispatcher = oslo_messaging.RPCDispatcher(endpoints,
+                                                  serializer=None)
+
+        # sleep long enough for the client_timeout to expire multiple times
+        # the timeout is (client_timeout/2) and must be > 1.0
+        message = {'method': 'sleep',
+                   'args': {'timeout': 3.5}}
+        ctxt = {'test': 'value'}
+
+        incoming = mock.Mock(ctxt=ctxt, message=message, client_timeout=2.0)
+        incoming.heartbeat = mock.Mock(side_effect=Exception('BOOM!'))
+        res = dispatcher.dispatch(incoming)
+        self.assertTrue(res)
+
+        # only one call to heartbeat should be made since the watchdog thread
+        # should exit on the first exception thrown
+        self.assertEqual(1, incoming.heartbeat.call_count)
