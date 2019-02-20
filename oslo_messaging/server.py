@@ -16,13 +16,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = [
-    'ExecutorLoadFailure',
-    'MessageHandlingServer',
-    'MessagingServerError',
-    'ServerListenError',
-]
-
 import abc
 import functools
 import inspect
@@ -41,6 +34,13 @@ from stevedore import driver
 from oslo_messaging._drivers import base as driver_base
 from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
+
+__all__ = [
+    'ExecutorLoadFailure',
+    'MessageHandlingServer',
+    'MessagingServerError',
+    'ServerListenError',
+]
 
 LOG = logging.getLogger(__name__)
 

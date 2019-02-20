@@ -16,13 +16,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = [
-    'ClientSendError',
-    'RPCClient',
-    'RPCVersionCapError',
-    'RemoteError',
-]
-
 import abc
 import logging
 
@@ -35,6 +28,12 @@ from oslo_messaging import exceptions
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import transport as msg_transport
 
+__all__ = [
+    'ClientSendError',
+    'RPCClient',
+    'RPCVersionCapError',
+    'RemoteError',
+]
 
 LOG = logging.getLogger(__name__)
 

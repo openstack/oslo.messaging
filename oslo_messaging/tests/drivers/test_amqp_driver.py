@@ -51,8 +51,8 @@ if pyngus:
 # The Cyrus-based SASL tests can only be run if the installed version of proton
 # has been built with Cyrus SASL support.
 _proton = importutils.try_import("proton")
-CYRUS_ENABLED = (pyngus and pyngus.VERSION >= (2, 0, 0) and _proton
-                 and getattr(_proton.SASL, "extended", lambda: False)())
+CYRUS_ENABLED = (pyngus and pyngus.VERSION >= (2, 0, 0) and _proton and
+                 getattr(_proton.SASL, "extended", lambda: False)())
 # same with SSL
 # SSL_ENABLED = (_proton and getattr(_proton.SSL, "present", lambda: False)())
 SSL_ENABLED = False
@@ -1305,10 +1305,10 @@ class TestAddressing(test_utils.BaseTestCase):
         s1_payload = [m.message.get('msg') for m in rl[0].get_messages()]
         s2_payload = [m.message.get('msg') for m in rl[1].get_messages()]
 
-        self.assertTrue("Server1" in s1_payload
-                        and "Server2" not in s1_payload)
-        self.assertTrue("Server2" in s2_payload
-                        and "Server1" not in s2_payload)
+        self.assertTrue("Server1" in s1_payload and
+                        "Server2" not in s1_payload)
+        self.assertTrue("Server2" in s2_payload and
+                        "Server1" not in s2_payload)
         self.assertEqual(s1_payload.count("Fanout"), 1)
         self.assertEqual(s2_payload.count("Fanout"), 1)
         self.assertEqual((s1_payload + s2_payload).count("Anycast1"), 1)

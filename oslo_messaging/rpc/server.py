@@ -121,12 +121,6 @@ A simple example of an RPC server with multiple endpoints might be::
 
 """
 
-__all__ = [
-    'get_rpc_server',
-    'expected_exceptions',
-    'expose'
-]
-
 import logging
 import sys
 
@@ -134,6 +128,12 @@ from oslo_messaging._i18n import _LE
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
 from oslo_messaging import transport as msg_transport
+
+__all__ = [
+    'get_rpc_server',
+    'expected_exceptions',
+    'expose'
+]
 
 LOG = logging.getLogger(__name__)
 

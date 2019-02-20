@@ -1094,9 +1094,9 @@ class Connection(object):
         info = dict([(k, ci.get(k)) for k in
                      ['hostname', 'port', 'transport']])
         client_port = None
-        if (not conn_error and self.channel
-                and hasattr(self.channel.connection, 'sock')
-                and self.channel.connection.sock):
+        if (not conn_error and self.channel and
+                hasattr(self.channel.connection, 'sock') and
+                self.channel.connection.sock):
             client_port = self.channel.connection.sock.getsockname()[1]
         info.update({'client_port': client_port,
                      'connection_id': self.connection_id})

@@ -13,12 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['ConfFixture']
-
 import sys
 
 import fixtures
 from functools import wraps
+
+__all__ = ['ConfFixture']
 
 
 def _import_opts(conf, module, opts, group=None):

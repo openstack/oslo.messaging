@@ -17,16 +17,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = [
-    'DriverLoadFailure',
-    'InvalidTransportURL',
-    'Transport',
-    'TransportHost',
-    'TransportURL',
-    'get_transport',
-    'set_transport_defaults',
-]
-
 import logging
 
 from debtcollector import removals
@@ -37,6 +27,16 @@ from stevedore import driver
 
 from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
+
+__all__ = [
+    'DriverLoadFailure',
+    'InvalidTransportURL',
+    'Transport',
+    'TransportHost',
+    'TransportURL',
+    'get_transport',
+    'set_transport_defaults',
+]
 
 LOG = logging.getLogger(__name__)
 

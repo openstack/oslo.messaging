@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['AMQPDriverBase']
-
 import logging
 import threading
 import time
@@ -32,6 +30,8 @@ from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
 from oslo_messaging._i18n import _LW
+
+__all__ = ['AMQPDriverBase']
 
 LOG = logging.getLogger(__name__)
 
