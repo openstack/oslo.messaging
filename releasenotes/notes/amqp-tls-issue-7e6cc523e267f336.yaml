@@ -1,0 +1,17 @@
+---
+issues:
+  - |
+    A bug in the ``amqp`` python library can cause the connection to the
+    RabbitMQ broker to hang when using SSL/TLS. This results in
+    frequent errors such as this::
+
+      MessagingTimeout: Timed out waiting for a reply to message ID ae039d1695984addbfaaef032ce4fda3
+
+    (see `bug 1800957
+    <https://bugs.launchpad.net/oslo.messaging/+bug/1800957>`_).
+
+    This bug has been fixed in `v2.4.1 of amqp
+    <https://github.com/celery/py-amqp/commit/bf122a05a21a8cc5bca314b0979f32c8026fc66e>`_.
+
+    It is recommended that deployments using SSL/TLS upgrade the amqp
+    library to v2.4.1 or later.
