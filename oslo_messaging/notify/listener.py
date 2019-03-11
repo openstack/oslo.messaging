@@ -20,22 +20,6 @@ A notification listener subscribes to the topic - and optionally exchange - in
 the supplied target.  Notification messages sent by notifier clients to the
 target's topic/exchange are received by the listener.
 
-If multiple listeners subscribe to the same target, the notification will be
-received by only one of the listeners. The receiving listener is selected from
-the group using a best-effort round-robin algorithm.
-
-This delivery pattern can be altered somewhat by specifying a pool name for the
-listener. Listeners with the same pool name behave like a subgroup within the
-group of listeners subscribed to the same topic/exchange.  Each subgroup of
-listeners will receive a copy of the notification to be consumed by one member
-of the subgroup. Therefore, multiple copies of the notification will be
-delivered - one to the group of listeners that have no pool name (if they
-exist), and one to each subgroup of listeners that share the same pool name.
-
-Note that not all transport drivers have implemented support for listener
-pools. Those drivers that do not support pools will raise a NotImplementedError
-if a pool name is specified to get_notification_listener().
-
 A notification listener exposes a number of endpoints, each of which contain a
 set of methods. Each method's name corresponds to a notification's priority.
 When a notification is received it is dispatched to the method named like the
@@ -61,6 +45,28 @@ support requeueing, it will raise NotImplementedError at this point.
 
 The message is acknowledged only if all endpoints either return
 oslo_messaging.NotificationResult.HANDLED or None.
+
+*NOTE*: If multiple listeners subscribe to the same target, the notification
+will be received by only *one* of the listeners. The receiving listener is
+selected from the group using a best-effort round-robin algorithm.
+
+This delivery pattern can be altered somewhat by specifying a pool name for the
+listener. Listeners with the same pool name behave like a subgroup within the
+group of listeners subscribed to the same topic/exchange.  Each subgroup of
+listeners will receive a copy of the notification to be consumed by one member
+of the subgroup. Therefore, multiple copies of the notification will be
+delivered - one to the group of listeners that have no pool name (if they
+exist), and one to each subgroup of listeners that share the same pool name.
+
+**NOTE WELL:** This means that the Notifier always publishes notifications to a
+non-pooled Listener as well as the pooled Listeners. Therefore any application
+that uses listener pools **must have at least one listener that consumes from
+the non-pooled queue** (i.e. one or more listeners that do not set the *pool*
+parameter.
+
+Note that not all transport drivers have implemented support for listener
+pools. Those drivers that do not support pools will raise a NotImplementedError
+if a pool name is specified to get_notification_listener().
 
 Each notification listener is associated with an executor which controls how
 incoming notification messages will be received and dispatched. Refer to the
