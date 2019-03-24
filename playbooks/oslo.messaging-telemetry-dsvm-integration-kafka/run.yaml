@@ -18,7 +18,7 @@
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              git://git.openstack.org \
+              https://git.openstack.org \
               openstack-infra/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -37,15 +37,15 @@
           export DEVSTACK_GATE_TEMPEST_NOTESTS=1
           export PROJECTS="openstack/ceilometer openstack/aodh openstack/panko openstack/telemetry-tempest-plugin openstack/heat openstack/heat-tempest-plugin"
           export PROJECTS="openstack/devstack-plugin-kafka $PROJECTS"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin ceilometer git://git.openstack.org/openstack/ceilometer"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin aodh git://git.openstack.org/openstack/aodh"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin heat git://git.openstack.org/openstack/heat"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko https://git.openstack.org/openstack/panko"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin ceilometer https://git.openstack.org/openstack/ceilometer"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin aodh https://git.openstack.org/openstack/aodh"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin heat https://git.openstack.org/openstack/heat"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"INSTALL_TEMPEST=False"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"CEILOMETER_BACKEND=gnocchi"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"GNOCCHI_ARCHIVE_POLICY=high"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"CEILOMETER_PIPELINE_INTERVAL=15"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin devstack-plugin-kafka git://git.openstack.org/openstack/devstack-plugin-kafka"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin devstack-plugin-kafka https://git.openstack.org/openstack/devstack-plugin-kafka"
           export DEVSTACK_PROJECT_FROM_GIT=$ZUUL_SHORT_PROJECT_NAME
           function post_test_hook {
               cd /opt/stack/new/telemetry-tempest-plugin/playbooks/legacy/telemetry-dsvm-integration-tempest-plugin
