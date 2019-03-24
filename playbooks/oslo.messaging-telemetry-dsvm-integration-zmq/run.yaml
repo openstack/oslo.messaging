@@ -18,7 +18,7 @@
               dest: devstack-gate
           EOF
           /usr/zuul-env/bin/zuul-cloner -m clonemap.yaml --cache-dir /opt/git \
-              git://git.openstack.org \
+              https://git.openstack.org \
               openstack-infra/devstack-gate
         executable: /bin/bash
         chdir: '{{ ansible_user_dir }}/workspace'
@@ -42,19 +42,19 @@
 
           case "$ZUUL_BRANCH" in
               "stable/ocata")
-                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin gnocchi git://git.openstack.org/openstack/gnocchi"
-                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
+                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin gnocchi https://git.openstack.org/openstack/gnocchi"
+                  export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko https://git.openstack.org/openstack/panko"
                   export OVERRIDE_GNOCCHI_PROJECT_BRANCH="stable/3.1"
                   export PROJECTS="openstack/panko $PROJECTS openstack/gnocchi"
                   ;;
               *)
-                export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko git://git.openstack.org/openstack/panko"
+                export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin panko https://git.openstack.org/openstack/panko"
                 export PROJECTS="openstack/panko $PROJECTS"
                 ;;
           esac
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin ceilometer git://git.openstack.org/openstack/ceilometer"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin aodh git://git.openstack.org/openstack/aodh"
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin heat git://git.openstack.org/openstack/heat"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin ceilometer https://git.openstack.org/openstack/ceilometer"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin aodh https://git.openstack.org/openstack/aodh"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin heat https://git.openstack.org/openstack/heat"
 
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"CEILOMETER_BACKEND=gnocchi"
 
@@ -62,7 +62,7 @@
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"CEILOMETER_PIPELINE_INTERVAL=5"
           export DEVSTACK_LOCAL_CONFIG+=$'\n'"GNOCCHI_STORAGE_BACKEND=file"
 
-          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin devstack-plugin-zmq git://git.openstack.org/openstack/devstack-plugin-zmq"
+          export DEVSTACK_LOCAL_CONFIG+=$'\n'"enable_plugin devstack-plugin-zmq https://git.openstack.org/openstack/devstack-plugin-zmq"
 
           export DEVSTACK_PROJECT_FROM_GIT="oslo.messaging"
 
