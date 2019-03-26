@@ -399,11 +399,32 @@ class ConnectionContext(Connection):
         """Create a new connection, or get one from the pool."""
         self.connection = None
         self.connection_pool = connection_pool
+
+        # NOTE(sileht): Even if rabbit only has one Connection class this
+        # connection can be used for only one of two purposes:
+        #
+        # * receiving messages from the broker (read actions on the socket)
+        # * sending messages to the broker (write actions on the socket)
+        #
+        # Using one Connection class instance for both purposes will result in
+        # eventlet complaining about multiple greenthreads that read/write the
+        # same fd concurrently. This is because 'send' and 'listen' run in
+        # different greenthreads and the code inside a connection class is not
+        # concurrency safe. The 'purpose' parameter ensures that no connection
+        # is used for both sending and receiving messages.
+        #
+        # The rabbitmq driver allocates connections in the following manner:
+        # * driver.listen*(): each call creates a new dedicated
+        #   'PURPOSE_LISTEN' connection for the listener
+        # * driver.send*(): senders are assigned a connection from a pool of
+        #   'PURPOSE_SEND' connections maintained by the driver.
+        # * One 'PURPOSE_LISTEN' connection is dedicated to waiting for replies
+        #   to rpc calls.
+
         pooled = purpose == PURPOSE_SEND
         if pooled:
             self.connection = connection_pool.get()
         else:
-            # a non-pooled connection is requested, so create a new connection
             self.connection = connection_pool.create(purpose)
         self.pooled = pooled
         self.connection.pooled = pooled
