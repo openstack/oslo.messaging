@@ -146,7 +146,7 @@ rabbit_opts = [
                default=60,
                help="Number of seconds after which the Rabbit broker is "
                "considered down if heartbeat's keep-alive fails "
-               "(0 disable the heartbeat). EXPERIMENTAL"),
+               "(0 disables heartbeat)."),
     cfg.IntOpt('heartbeat_rate',
                default=2,
                help='How often times during the heartbeat_timeout_threshold '
