@@ -15,7 +15,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import collections
+# TODO(smcginnis) update this once six has support for collections.abc
+# (https://github.com/benjaminp/six/pull/241) or clean up once we drop py2.7.
+try:
+    from collections.abc import Mapping
+except ImportError:
+    from collections import Mapping
+
 import copy
 import logging
 import sys
@@ -481,7 +487,7 @@ class ConnectionContext(Connection):
             raise InvalidRPCConnectionReuse()
 
 
-class ConfigOptsProxy(collections.Mapping):
+class ConfigOptsProxy(Mapping):
     """Proxy for oslo_config.cfg.ConfigOpts.
 
     Values from the query part of the transport url (if they are both present
@@ -518,7 +524,7 @@ class ConfigOptsProxy(collections.Mapping):
     def __len__(self):
         return len(self._conf)
 
-    class GroupAttrProxy(collections.Mapping):
+    class GroupAttrProxy(Mapping):
         """Internal helper proxy for oslo_config.cfg.ConfigOpts.GroupAttr."""
 
         _VOID_MARKER = object()
