@@ -75,7 +75,7 @@
       devstack_localrc:
         AMQP1_SERVICE: qpid-hybrid
       devstack_plugins:
-        devstack-plugin-amqp1: git://git.openstack.org/openstack/devstack-plugin-amqp1
+        devstack-plugin-amqp1: https://git.openstack.org/openstack/devstack-plugin-amqp1
       zuul_copy_output:
         '{{ devstack_log_dir }}/qdrouterd.log': logs
 
@@ -100,7 +100,7 @@
       - openstack/devstack-plugin-kafka
     vars:
       devstack_plugins:
-        devstack-plugin-kafka: git://git.openstack.org/openstack/devstack-plugin-kafka
+        devstack-plugin-kafka: https://git.openstack.org/openstack/devstack-plugin-kafka
       zuul_copy_output:
         '{{ devstack_log_dir }}/server.log': logs
 
