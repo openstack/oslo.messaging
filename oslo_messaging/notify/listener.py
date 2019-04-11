@@ -135,7 +135,6 @@ and arguments from primitive types.
 import itertools
 import logging
 
-from oslo_messaging._i18n import _LE
 from oslo_messaging.notify import dispatcher as notify_dispatcher
 from oslo_messaging import server as msg_server
 from oslo_messaging import transport as msg_transport
@@ -185,7 +184,7 @@ class NotificationServer(NotificationServerBase):
         try:
             res = self.dispatcher.dispatch(message)
         except Exception:
-            LOG.exception(_LE('Exception during message handling.'))
+            LOG.exception('Exception during message handling.')
             res = notify_dispatcher.NotificationResult.REQUEUE
 
         try:
@@ -195,7 +194,7 @@ class NotificationServer(NotificationServerBase):
             else:
                 message.acknowledge()
         except Exception:
-            LOG.exception(_LE("Fail to ack/requeue message."))
+            LOG.exception("Fail to ack/requeue message.")
 
 
 class BatchNotificationServer(NotificationServerBase):
@@ -205,7 +204,7 @@ class BatchNotificationServer(NotificationServerBase):
             not_processed_messages = self.dispatcher.dispatch(incoming)
         except Exception:
             not_processed_messages = set(incoming)
-            LOG.exception(_LE('Exception during messages handling.'))
+            LOG.exception('Exception during messages handling.')
         for m in incoming:
             try:
                 if m in not_processed_messages and self._allow_requeue:
@@ -213,7 +212,7 @@ class BatchNotificationServer(NotificationServerBase):
                 else:
                     m.acknowledge()
             except Exception:
-                LOG.exception(_LE("Fail to ack/requeue message."))
+                LOG.exception("Fail to ack/requeue message.")
 
 
 def get_notification_listener(transport, targets, endpoints,

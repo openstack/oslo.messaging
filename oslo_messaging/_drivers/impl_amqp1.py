@@ -36,7 +36,6 @@ from oslo_messaging._drivers.amqp1_driver.eventloop import compute_timeout
 from oslo_messaging._drivers.amqp1_driver import opts
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
-from oslo_messaging._i18n import _LI, _LW
 
 
 proton = importutils.try_import('proton')
@@ -260,7 +259,7 @@ class ProtonDriver(base.BaseDriver):
         bad_opts = set(ps).difference(['rpc-call', 'rpc-reply',
                                       'rpc-cast', 'notify'])
         if bad_opts:
-            LOG.warning(_LW("Ignoring unrecognized pre_settle value(s): %s"),
+            LOG.warning("Ignoring unrecognized pre_settle value(s): %s",
                         " ".join(bad_opts))
 
     def _ensure_connect_called(func):
@@ -284,8 +283,8 @@ class ProtonDriver(base.BaseDriver):
                         # touch the existing Controller - it is owned by the
                         # parent.  Best we can do here is simply drop it and
                         # hope we get lucky.
-                        LOG.warning(_LW("Process forked after connection "
-                                        "established!"))
+                        LOG.warning("Process forked after connection "
+                                    "established!")
                         self._ctrl = None
                     # Create a Controller that connects to the messaging
                     # service:
@@ -434,7 +433,7 @@ class ProtonDriver(base.BaseDriver):
         if self._ctrl:
             self._ctrl.shutdown()
             self._ctrl = None
-        LOG.info(_LI("AMQP 1.0 messaging driver shutdown"))
+        LOG.info("AMQP 1.0 messaging driver shutdown")
 
     def require_features(self, requeue=True):
         pass

@@ -39,7 +39,6 @@ send fail with a MessageDeliveryFailure after the given number of retries.
 import logging
 
 import oslo_messaging
-from oslo_messaging._i18n import _LE
 from oslo_messaging.notify import notifier
 
 LOG = logging.getLogger(__name__)
@@ -69,9 +68,9 @@ class MessagingDriver(notifier.Driver):
                                                   version=self.version,
                                                   retry=retry)
             except Exception:
-                LOG.exception(_LE("Could not send notification to %(topic)s. "
-                                  "Payload=%(message)s"),
-                              dict(topic=topic, message=message))
+                LOG.exception("Could not send notification to %(topic)s. "
+                              "Payload=%(message)s",
+                              {'topic': topic, 'message': message})
 
 
 class MessagingV2Driver(MessagingDriver):

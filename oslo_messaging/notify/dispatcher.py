@@ -20,7 +20,6 @@ import operator
 
 import six
 
-from oslo_messaging._i18n import _LW
 from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
 
@@ -59,7 +58,7 @@ class NotificationDispatcher(dispatcher.DispatcherBase):
         priority, raw_message, message = self._extract_user_message(incoming)
 
         if priority not in PRIORITIES:
-            LOG.warning(_LW('Unknown priority "%s"'), priority)
+            LOG.warning('Unknown priority "%s"', priority)
             return
 
         for screen, callback in self._callbacks_by_priority.get(priority,
@@ -127,7 +126,7 @@ class BatchNotificationDispatcher(NotificationDispatcher):
         for priority, messages in messages_grouped:
             __, raw_messages, messages = six.moves.zip(*messages)
             if priority not in PRIORITIES:
-                LOG.warning(_LW('Unknown priority "%s"'), priority)
+                LOG.warning('Unknown priority "%s"', priority)
                 continue
             for screen, callback in self._callbacks_by_priority.get(priority,
                                                                     []):
