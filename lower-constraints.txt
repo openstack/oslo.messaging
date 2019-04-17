@@ -54,7 +54,7 @@ Paste==2.0.2
 PasteDeploy==1.5.0
 pbr==2.0.0
 pep8==1.5.7
-pifpaf==0.10.0
+pifpaf==2.2.0
 prettytable==0.7.2
 pycparser==2.18
 pyflakes==0.8.1
