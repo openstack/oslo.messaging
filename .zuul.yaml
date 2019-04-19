@@ -73,7 +73,7 @@
     post-run: playbooks/oslo.messaging-src-dsvm-full-rabbit-default/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/oslo.messaging
 
 - job:
@@ -83,7 +83,7 @@
     post-run: playbooks/oslo.messaging-src-dsvm-full-pika-default/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-pika
       - openstack/oslo.messaging
 
@@ -95,7 +95,7 @@
     timeout: 10800
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-amqp1
       - openstack/oslo.messaging
 
@@ -106,7 +106,7 @@
     post-run: playbooks/oslo.messaging-src-dsvm-full-amqp1-hybrid/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-amqp1
       - openstack/oslo.messaging
 
@@ -117,7 +117,7 @@
     post-run: playbooks/oslo.messaging-src-dsvm-full-kafka-default/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-kafka
       - openstack/oslo.messaging
 
@@ -129,7 +129,7 @@
     timeout: 10800
     nodeset: legacy-centos-7
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-kafka
       - openstack/oslo.messaging
 
@@ -140,7 +140,7 @@
     post-run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-zmq
       - openstack/oslo.messaging
 
@@ -151,8 +151,8 @@
     post-run: playbooks/oslo.messaging-src-grenade-dsvm/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-dev/grenade
-      - openstack-infra/devstack-gate
+      - openstack/grenade
+      - openstack/devstack-gate
       - openstack/oslo.messaging
     irrelevant-files:
       - ^(test-|)requirements.txt$
@@ -165,8 +165,8 @@
     post-run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-dev/grenade
-      - openstack-infra/devstack-gate
+      - openstack/grenade
+      - openstack/devstack-gate
       - openstack/oslo.messaging
     irrelevant-files:
       - ^(test-|)requirements.txt$
@@ -180,7 +180,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/devstack-plugin-amqp1
@@ -200,7 +200,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/devstack-plugin-kafka
@@ -221,7 +221,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/post.yaml
     timeout: 4200
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/devstack-plugin-pika
@@ -239,7 +239,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/post.yaml
     timeout: 4200
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/devstack-plugin-zmq
@@ -257,7 +257,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/oslo.messaging
@@ -276,7 +276,7 @@
     post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-rabbit-default/post.yaml
     timeout: 7800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/neutron
       - openstack/oslo.messaging
       - openstack/tempest
@@ -288,7 +288,7 @@
     post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid/post.yaml
     timeout: 7800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-amqp1
       - openstack/neutron
       - openstack/oslo.messaging
@@ -301,7 +301,7 @@
     post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-kafka-default/post.yaml
     timeout: 7800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-kafka
       - openstack/neutron
       - openstack/oslo.messaging
@@ -314,7 +314,7 @@
     post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/post.yaml
     timeout: 7800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-pika
       - openstack/neutron
       - openstack/oslo.messaging
@@ -327,7 +327,7 @@
     post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/post.yaml
     timeout: 7800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/devstack-plugin-zmq
       - openstack/neutron
       - openstack/oslo.messaging
