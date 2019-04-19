@@ -75,7 +75,7 @@
       devstack_localrc:
         AMQP1_SERVICE: qpid-hybrid
       devstack_plugins:
-        devstack-plugin-amqp1: https://git.openstack.org/openstack/devstack-plugin-amqp1
+        devstack-plugin-amqp1: https://opendev.org/openstack/devstack-plugin-amqp1
       zuul_copy_output:
         '{{ devstack_log_dir }}/qdrouterd.log': logs
 
@@ -100,7 +100,7 @@
       - openstack/devstack-plugin-kafka
     vars:
       devstack_plugins:
-        devstack-plugin-kafka: https://git.openstack.org/openstack/devstack-plugin-kafka
+        devstack-plugin-kafka: https://opendev.org/openstack/devstack-plugin-kafka
       zuul_copy_output:
         '{{ devstack_log_dir }}/server.log': logs
 
@@ -124,8 +124,8 @@
     post-run: playbooks/oslo.messaging-src-grenade-dsvm/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-dev/grenade
-      - openstack-infra/devstack-gate
+      - openstack/grenade
+      - openstack/devstack-gate
       - openstack/oslo.messaging
     irrelevant-files:
       - ^(test-|)requirements.txt$
@@ -138,8 +138,8 @@
     post-run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-dev/grenade
-      - openstack-infra/devstack-gate
+      - openstack/grenade
+      - openstack/devstack-gate
       - openstack/oslo.messaging
     irrelevant-files:
       - ^(test-|)requirements.txt$
@@ -154,7 +154,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/devstack-plugin-amqp1
@@ -176,7 +176,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/devstack-plugin-kafka
@@ -198,7 +198,7 @@
     post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/post.yaml
     timeout: 10800
     required-projects:
-      - openstack-infra/devstack-gate
+      - openstack/devstack-gate
       - openstack/aodh
       - openstack/ceilometer
       - openstack/oslo.messaging
