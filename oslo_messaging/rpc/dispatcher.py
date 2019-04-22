@@ -218,7 +218,16 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                 '(interval=%(interval)i)' % (
                     {'method': incoming.message.get('method'),
                      'interval': cm_heartbeat_interval}))
-            incoming.heartbeat()
+            try:
+                incoming.heartbeat()
+            except Exception as exc:
+                # The heartbeat message failed to send.  Likely the broker or
+                # client has died. Nothing to do here but exit the watchdog
+                # thread. If the client is still alive (dead broker) then its
+                # RPC will timeout as expected.
+                LOG.debug("Call-monitor heartbeat failed: %(exc)s"
+                          % ({'exc': exc}))
+                break
 
     def dispatch(self, incoming):
         """Dispatch an RPC message to the appropriate endpoint method.

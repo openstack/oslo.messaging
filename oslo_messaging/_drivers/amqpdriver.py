@@ -30,6 +30,7 @@ from oslo_messaging._i18n import _
 from oslo_messaging._i18n import _LE
 from oslo_messaging._i18n import _LI
 from oslo_messaging._i18n import _LW
+from oslo_messaging import MessageDeliveryFailure
 
 __all__ = ['AMQPDriverBase']
 
@@ -168,9 +169,15 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
                     return
 
     def heartbeat(self):
+        # generate a keep alive for RPC call monitoring
         with self.listener.driver._get_connection(
                 rpc_common.PURPOSE_SEND) as conn:
-            self._send_reply(conn, None, None, ending=False)
+            try:
+                self._send_reply(conn, None, None, ending=False)
+            except rpc_amqp.AMQPDestinationNotFound:
+                # internal exception that indicates queue/exchange gone -
+                # broker unreachable.
+                raise MessageDeliveryFailure("Heartbeat send failed")
 
     # NOTE(sileht): Those have already be ack in RpcListener IO thread
     # We keep them as noop until all drivers do the same
