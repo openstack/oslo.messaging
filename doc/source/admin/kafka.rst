@@ -18,8 +18,8 @@ More detail regarding the driver's implementation is available from
 the `adding kafka driver specification`_ and the `update kafka driver
 specification`_ .
 
-.. _adding kafka driver specification: https://git.openstack.org/cgit/openstack/oslo-specs/tree/specs/liberty/adding-kafka-support.rst
-.. _update kafka driver specification: https://git.openstack.org/cgit/openstack/oslo-specs/tree/specs/queens/update-kafka-support.rst
+.. _adding kafka driver specification: https://opendev.org/openstack/oslo-specs/src/branch/master/specs/liberty/adding-kafka-support.rst
+.. _update kafka driver specification: https://opendev.org/openstack/oslo-specs/src/branch/master/specs/queens/update-kafka-support.rst
 
 ========
 Overview
@@ -211,7 +211,7 @@ plugin repository must be enabled. For example:
 ::
 
     [[local|localrc]]
-    enable_plugin kafka https://git.openstack.org/openstack/devstack-plugin-kafka
+    enable_plugin kafka https://opendev.org/openstack/devstack-plugin-kafka
 
 
 Set the Kafka and Scala version and location variables if needed for

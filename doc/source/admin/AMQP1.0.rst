@@ -24,7 +24,7 @@ More detail regarding the AMQP 1.0 Protocol is available from the
 More detail regarding the driver's implementation is available from
 the `oslo specification`_.
 
-.. _oslo specification: https://git.openstack.org/cgit/openstack/oslo-specs/tree/specs/juno/amqp10-driver-implementation.rst
+.. _oslo specification: https://opendev.org/openstack/oslo-specs/src/branch/master/specs/juno/amqp10-driver-implementation.rst
 
 ========
 Abstract
@@ -586,7 +586,7 @@ repository must be enabled. For example:
 ::
 
     [[local|localrc]]
-    enable_plugin amqp1 https://git.openstack.org/openstack/devstack-plugin-amqp1
+    enable_plugin amqp1 https://opendev.org/openstack/devstack-plugin-amqp1
 
 Set the username and password variables if needed for the
 configuration:

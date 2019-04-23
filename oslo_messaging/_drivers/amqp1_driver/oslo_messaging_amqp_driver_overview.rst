@@ -1136,9 +1136,9 @@ References
 ==========
 
 .. [1] https://blueprints.launchpad.net/oslo.messaging/+spec/amqp10-driver-implementation
-.. [2] https://git.openstack.org/cgit/openstack/oslo-specs/tree/specs/juno/amqp10-driver-implementation.rst
-.. [3] https://review.openstack.org/#/c/314603/
+.. [2] https://opendev.org/openstack/oslo-specs/src/branch/master/specs/juno/amqp10-driver-implementation.rst
+.. [3] https://review.opendev.org/#/c/314603/
 .. [4] https://github.com/kgiusti/pyngus
 .. [5] https://github.com/apache/qpid-proton
-.. [6] https://review.openstack.org/#/c/317285/
-.. [7] https://git.openstack.org/openstack/oslo.messaging
+.. [6] https://review.opendev.org/#/c/317285/
+.. [7] https://opendev.org/openstack/oslo.messaging
