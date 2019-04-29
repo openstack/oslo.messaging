@@ -549,7 +549,7 @@ def spawn_notify_clients(threads, topic, transport, message_count,
                          wait_after_msg, timeout, duration):
     p = eventlet.GreenPool(size=threads)
     for i in six.moves.range(threads):
-        client_builder = functools.partial(NotifyClient, i, transport, topic,
+        client_builder = functools.partial(NotifyClient, i, transport, [topic],
                                            wait_after_msg)
         p.spawn_n(send_messages, i, client_builder, message_count, duration)
     p.waitall()
