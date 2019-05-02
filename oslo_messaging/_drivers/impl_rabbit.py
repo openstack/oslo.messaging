@@ -897,6 +897,14 @@ class Connection(object):
     def _heartbeat_thread_job(self):
         """Thread that maintains inactive connections
         """
+        # NOTE(hberaud): Python2 doesn't have ConnectionRefusedError
+        # defined so to switch connections destination on failure
+        # with python2 and python3 we need to wrapp adapt connection refused
+        try:
+            ConnectRefuseError = ConnectionRefusedError
+        except NameError:
+            ConnectRefuseError = socket.error
+
         while not self._heartbeat_exit_event.is_set():
             with self._connection_lock.for_heartbeat():
 
@@ -913,7 +921,17 @@ class Connection(object):
                             self.connection.drain_events(timeout=0.001)
                         except socket.timeout:
                             pass
+                    # NOTE(hberaud): In a clustered rabbitmq when
+                    # a node disappears, we get a ConnectionRefusedError
+                    # because the socket get disconnected.
+                    # The socket access yields a OSError because the heartbeat
+                    # tries to reach an unreachable host (No route to host).
+                    # Catch these exceptions to ensure that we call
+                    # ensure_connection for switching the
+                    # connection destination.
                     except (socket.timeout,
+                            ConnectRefuseError,
+                            OSError,
                             kombu.exceptions.OperationalError) as exc:
                         LOG.info(_LI("A recoverable connection/channel error "
                                      "occurred, trying to reconnect: %s"), exc)
