@@ -23,6 +23,6 @@ different messaging transports.
 
 * License: Apache License, Version 2.0
 * Documentation: https://docs.openstack.org/oslo.messaging/latest/
-* Source: https://git.openstack.org/cgit/openstack/oslo.messaging
+* Source: https://opendev.org/openstack/oslo.messaging
 * Bugs: https://bugs.launchpad.net/oslo.messaging
 * Release notes: https://docs.openstack.org/releasenotes/oslo.messaging/
