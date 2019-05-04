@@ -32,7 +32,6 @@ import six
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
-from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
 __all__ = [
@@ -126,7 +125,7 @@ class _OrderedTask(object):
 
         while condition():
             if log_timer is not None and log_timer.expired():
-                LOG.warning(_LW('Possible hang: %s'), msg)
+                LOG.warning('Possible hang: %s', msg)
                 LOG.debug(''.join(traceback.format_stack()))
                 # Only log once. After than we wait indefinitely without
                 # logging.
@@ -396,8 +395,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
         current thread.
         """
         if self._started:
-            LOG.warning(_LW('The server has already been started. Ignoring'
-                            ' the redundant call to start().'))
+            LOG.warning('The server has already been started. Ignoring '
+                        'the redundant call to start().')
             return
 
         self._started = True

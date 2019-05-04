@@ -124,7 +124,6 @@ A simple example of an RPC server with multiple endpoints might be::
 import logging
 import sys
 
-from oslo_messaging._i18n import _LE
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
 from oslo_messaging import transport as msg_transport
@@ -158,7 +157,7 @@ class RPCServer(msg_server.MessageHandlingServer):
         try:
             message.acknowledge()
         except Exception:
-            LOG.exception(_LE("Can not acknowledge message. Skip processing"))
+            LOG.exception("Can not acknowledge message. Skip processing")
             return
 
         failure = None
@@ -172,7 +171,7 @@ class RPCServer(msg_server.MessageHandlingServer):
             # by another exception raised by a log handler during
             # LOG.exception(). So keep a copy and delete it later.
             failure = sys.exc_info()
-            LOG.exception(_LE('Exception during message handling'))
+            LOG.exception('Exception during message handling')
 
         try:
             if failure is None:
@@ -180,7 +179,7 @@ class RPCServer(msg_server.MessageHandlingServer):
             else:
                 message.reply(failure=failure)
         except Exception:
-            LOG.exception(_LE("Can not send reply for message"))
+            LOG.exception("Can not send reply for message")
         finally:
                 # NOTE(dhellmann): Remove circular object reference
                 # between the current stack frame and the traceback in

@@ -43,10 +43,6 @@ from oslo_messaging._drivers import amqpdriver
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers import pool
-from oslo_messaging._i18n import _
-from oslo_messaging._i18n import _LE
-from oslo_messaging._i18n import _LI
-from oslo_messaging._i18n import _LW
 from oslo_messaging import _utils
 from oslo_messaging import exceptions
 
@@ -273,11 +269,11 @@ class Consumer(object):
                         'queue': self.queue_name,
                         'err_str': exc
                         }
-                LOG.error(_LE('Internal amqp error (541) '
-                              'during queue declare,'
-                              'retrying in %(sleep_time)s seconds. '
-                              'Queue: [%(queue)s], '
-                              'error message: [%(err_str)s]'), info)
+                LOG.error('Internal amqp error (541) '
+                          'during queue declare,'
+                          'retrying in %(sleep_time)s seconds. '
+                          'Queue: [%(queue)s], '
+                          'error message: [%(err_str)s]', info)
                 time.sleep(interval)
                 self.queue.declare()
             else:
@@ -338,8 +334,7 @@ class Consumer(object):
         try:
             self.callback(RabbitMessage(message))
         except Exception:
-            LOG.exception(_LE("Failed to process message"
-                              " ... skipping it."))
+            LOG.exception("Failed to process message ... skipping it.")
             message.reject()
 
 
@@ -458,9 +453,9 @@ class Connection(object):
         self._url = ''
         if url.hosts:
             if url.transport.startswith('kombu+'):
-                LOG.warning(_LW('Selecting the kombu transport through the '
-                                'transport url (%s) is a experimental feature '
-                                'and this is not yet supported.'),
+                LOG.warning('Selecting the kombu transport through the '
+                            'transport url (%s) is a experimental feature '
+                            'and this is not yet supported.',
                             url.transport)
             if len(url.hosts) > 1:
                 random.shuffle(url.hosts)
@@ -605,7 +600,7 @@ class Connection(object):
         try:
             return cls._SSL_PROTOCOLS[key]
         except KeyError:
-            raise RuntimeError(_("Invalid SSL version : %s") % version)
+            raise RuntimeError("Invalid SSL version : %s" % version)
 
     def _transform_transport_url(self, url, host, default_username='',
                                  default_password='', default_hostname=''):
@@ -650,11 +645,11 @@ class Connection(object):
 
     @staticmethod
     def _on_connection_blocked(reason):
-        LOG.error(_LE("The broker has blocked the connection: %s"), reason)
+        LOG.error("The broker has blocked the connection: %s", reason)
 
     @staticmethod
     def _on_connection_unblocked():
-        LOG.info(_LI("The broker has unblocked the connection"))
+        LOG.info("The broker has unblocked the connection")
 
     def ensure_connection(self):
         # NOTE(sileht): we reset the channel and ensure
@@ -681,10 +676,10 @@ class Connection(object):
 
         current_pid = os.getpid()
         if self._initial_pid != current_pid:
-            LOG.warning(_LW("Process forked after connection established! "
-                            "This can result in unpredictable behavior. "
-                            "See: https://docs.openstack.org/oslo.messaging/"
-                            "latest/reference/transport.html"))
+            LOG.warning("Process forked after connection established! "
+                        "This can result in unpredictable behavior. "
+                        "See: https://docs.openstack.org/oslo.messaging/"
+                        "latest/reference/transport.html")
             self._initial_pid = current_pid
 
         if retry is None or retry < 0:
@@ -705,15 +700,15 @@ class Connection(object):
             info.update(self._get_connection_info(conn_error=True))
 
             if 'Socket closed' in six.text_type(exc):
-                LOG.error(_LE('[%(connection_id)s] AMQP server'
-                              ' %(hostname)s:%(port)s closed'
-                              ' the connection. Check login credentials:'
-                              ' %(err_str)s'), info)
+                LOG.error('[%(connection_id)s] AMQP server'
+                          ' %(hostname)s:%(port)s closed'
+                          ' the connection. Check login credentials:'
+                          ' %(err_str)s', info)
             else:
-                LOG.error(_LE('[%(connection_id)s] AMQP server on '
-                              '%(hostname)s:%(port)s is unreachable: '
-                              '%(err_str)s. Trying again in '
-                              '%(sleep_time)d seconds.'), info)
+                LOG.error('[%(connection_id)s] AMQP server on '
+                          '%(hostname)s:%(port)s is unreachable: '
+                          '%(err_str)s. Trying again in '
+                          '%(sleep_time)d seconds.', info)
 
             # XXX(nic): when reconnecting to a RabbitMQ cluster
             # with mirrored queues in use, the attempt to release the
@@ -737,9 +732,9 @@ class Connection(object):
             self._set_current_channel(new_channel)
             self.set_transport_socket_timeout()
 
-            LOG.info(_LI('[%(connection_id)s] Reconnected to AMQP server on '
-                         '%(hostname)s:%(port)s via [%(transport)s] client '
-                         'with port %(client_port)s.'),
+            LOG.info('[%(connection_id)s] Reconnected to AMQP server on '
+                     '%(hostname)s:%(port)s via [%(transport)s] client '
+                     'with port %(client_port)s.',
                      self._get_connection_info())
 
         def execute_method(channel):
@@ -769,9 +764,9 @@ class Connection(object):
             # is still broken
             info = {'err_str': exc, 'retry': retry}
             info.update(self.connection.info())
-            msg = _('Unable to connect to AMQP server on '
-                    '%(hostname)s:%(port)s after %(retry)s '
-                    'tries: %(err_str)s') % info
+            msg = ('Unable to connect to AMQP server on '
+                   '%(hostname)s:%(port)s after %(retry)s '
+                   'tries: %(err_str)s' % info)
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
 
@@ -837,8 +832,8 @@ class Connection(object):
         if self.connection.supports_heartbeats:
             return True
         elif not self._heartbeat_support_log_emitted:
-            LOG.warning(_LW("Heartbeat support requested but it is not "
-                            "supported by the kombu driver or the broker"))
+            LOG.warning("Heartbeat support requested but it is not "
+                        "supported by the kombu driver or the broker")
             self._heartbeat_support_log_emitted = True
         return False
 
@@ -936,12 +931,12 @@ class Connection(object):
                             pass
                     except (socket.timeout,
                             kombu.exceptions.OperationalError) as exc:
-                        LOG.info(_LI("A recoverable connection/channel error "
-                                     "occurred, trying to reconnect: %s"), exc)
+                        LOG.info("A recoverable connection/channel error "
+                                 "occurred, trying to reconnect: %s", exc)
                         self.ensure_connection()
                 except Exception:
-                    LOG.warning(_LW("Unexpected error during heartbeart "
-                                    "thread processing, retrying..."))
+                    LOG.warning("Unexpected error during heartbeart "
+                                "thread processing, retrying...")
                     LOG.debug('Exception', exc_info=True)
 
             self._heartbeat_exit_event.wait(
@@ -955,8 +950,8 @@ class Connection(object):
 
         def _connect_error(exc):
             log_info = {'topic': consumer.routing_key, 'err_str': exc}
-            LOG.error(_LE("Failed to declare consumer for topic '%(topic)s': "
-                          "%(err_str)s"), log_info)
+            LOG.error("Failed to declare consumer for topic '%(topic)s': "
+                      "%(err_str)s", log_info)
 
         def _declare_consumer():
             consumer.declare(self)
@@ -989,8 +984,7 @@ class Connection(object):
 
         def _error_callback(exc):
             _recoverable_error_callback(exc)
-            LOG.error(_LE('Failed to consume message from queue: %s'),
-                      exc)
+            LOG.error('Failed to consume message from queue: %s', exc)
 
         def _consume():
             # NOTE(sileht): in case the acknowledgment or requeue of a
@@ -1097,8 +1091,8 @@ class Connection(object):
 
         def _error_callback(exc):
             log_info = {'topic': exchange.name, 'err_str': exc}
-            LOG.error(_LE("Failed to publish message to topic "
-                          "'%(topic)s': %(err_str)s"), log_info)
+            LOG.error("Failed to publish message to topic "
+                      "'%(topic)s': %(err_str)s", log_info)
             LOG.debug('Exception', exc_info=exc)
 
         method = functools.partial(method, exchange, msg, routing_key, timeout)

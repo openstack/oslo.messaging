@@ -32,8 +32,6 @@ from oslo_utils import timeutils
 import six
 
 import oslo_messaging
-from oslo_messaging._i18n import _
-from oslo_messaging._i18n import _LE, _LW
 from oslo_messaging import _utils as utils
 
 LOG = logging.getLogger(__name__)
@@ -81,7 +79,7 @@ _REMOTE_POSTFIX = '_Remote'
 
 
 class RPCException(Exception):
-    msg_fmt = _("An unknown RPC related exception occurred.")
+    msg_fmt = "An unknown RPC related exception occurred."
 
     def __init__(self, message=None, **kwargs):
         self.kwargs = kwargs
@@ -93,8 +91,8 @@ class RPCException(Exception):
             except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception(_LE('Exception in string format operation, '
-                                  'kwargs are:'))
+                LOG.exception('Exception in string format operation, '
+                              'kwargs are:')
                 for name, value in kwargs.items():
                     LOG.error("%s: %s", name, value)
                 # at least get the core message out if something happened
@@ -109,9 +107,9 @@ class Timeout(RPCException):
     This exception is raised if the rpc_response_timeout is reached while
     waiting for a response from the remote side.
     """
-    msg_fmt = _('Timeout while waiting on RPC response - '
-                'topic: "%(topic)s", RPC method: "%(method)s" '
-                'info: "%(info)s"')
+    msg_fmt = ('Timeout while waiting on RPC response - '
+               'topic: "%(topic)s", RPC method: "%(method)s" '
+               'info: "%(info)s"')
 
     def __init__(self, info=None, topic=None, method=None):
         """Initiates Timeout object.
@@ -126,31 +124,31 @@ class Timeout(RPCException):
         self.method = method
         super(Timeout, self).__init__(
             None,
-            info=info or _('<unknown>'),
-            topic=topic or _('<unknown>'),
-            method=method or _('<unknown>'))
+            info=info or '<unknown>',
+            topic=topic or '<unknown>',
+            method=method or '<unknown>')
 
 
 class DuplicateMessageError(RPCException):
-    msg_fmt = _("Found duplicate message(%(msg_id)s). Skipping it.")
+    msg_fmt = "Found duplicate message(%(msg_id)s). Skipping it."
 
 
 class InvalidRPCConnectionReuse(RPCException):
-    msg_fmt = _("Invalid reuse of an RPC connection.")
+    msg_fmt = "Invalid reuse of an RPC connection."
 
 
 class UnsupportedRpcVersion(RPCException):
-    msg_fmt = _("Specified RPC version, %(version)s, not supported by "
-                "this endpoint.")
+    msg_fmt = ("Specified RPC version, %(version)s, not supported by "
+               "this endpoint.")
 
 
 class UnsupportedRpcEnvelopeVersion(RPCException):
-    msg_fmt = _("Specified RPC envelope version, %(version)s, "
-                "not supported by this endpoint.")
+    msg_fmt = ("Specified RPC envelope version, %(version)s, "
+               "not supported by this endpoint.")
 
 
 class RpcVersionCapError(RPCException):
-    msg_fmt = _("Specified RPC version cap, %(version_cap)s, is too low")
+    msg_fmt = "Specified RPC version cap, %(version_cap)s, is too low"
 
 
 class Connection(object):
@@ -236,7 +234,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
 
         failure = klass(*failure.get('args', []), **failure.get('kwargs', {}))
     except (AttributeError, TypeError, ImportError) as error:
-        LOG.warning(_LW("Failed to rebuild remote exception due to error: %s"),
+        LOG.warning("Failed to rebuild remote exception due to error: %s",
                     six.text_type(error))
         return oslo_messaging.RemoteError(name, failure.get('message'), trace)
 
@@ -450,7 +448,7 @@ class ConnectionContext(Connection):
                 try:
                     self.connection.reset()
                 except Exception:
-                    LOG.exception(_LE("Fail to reset the connection, drop it"))
+                    LOG.exception("Fail to reset the connection, drop it")
                     try:
                         self.connection.close()
                     except Exception as exc:

@@ -25,7 +25,6 @@ import six
 from six.moves.urllib import parse
 from stevedore import driver
 
-from oslo_messaging._i18n import _LW
 from oslo_messaging import exceptions
 
 __all__ = [
@@ -520,10 +519,10 @@ class TransportURL(object):
 
         if (len(hosts_with_credentials) > 0 and
                 len(hosts_without_credentials) > 0):
-            LOG.warning(_LW("All hosts must be set with username/password or "
-                            "not at the same time. Hosts with credentials "
-                            "are: %(hosts_with_credentials)s. Hosts without "
-                            "credentials are %(hosts_without_credentials)s."),
+            LOG.warning("All hosts must be set with username/password or "
+                        "not at the same time. Hosts with credentials "
+                        "are: %(hosts_with_credentials)s. Hosts without "
+                        "credentials are %(hosts_without_credentials)s.",
                         {'hosts_with_credentials': hosts_with_credentials,
                          'hosts_without_credentials':
                          hosts_without_credentials})

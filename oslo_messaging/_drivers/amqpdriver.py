@@ -26,10 +26,6 @@ import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
-from oslo_messaging._i18n import _
-from oslo_messaging._i18n import _LE
-from oslo_messaging._i18n import _LI
-from oslo_messaging._i18n import _LW
 from oslo_messaging import MessageDeliveryFailure
 
 __all__ = ['AMQPDriverBase']
@@ -160,12 +156,14 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
                     time.sleep(0.25)
                 else:
                     self._obsolete_reply_queues.add(self.reply_q, self.msg_id)
-                    LOG.info(_LI("The reply %(msg_id)s cannot be sent  "
-                                 "%(reply_q)s reply queue don't exist after "
-                                 "%(duration)s sec abandoning..."), {
-                                     'msg_id': self.msg_id,
-                                     'reply_q': self.reply_q,
-                                     'duration': duration})
+                    infos = {
+                        'msg_id': self.msg_id,
+                        'reply_q': self.reply_q,
+                        'duration': duration
+                    }
+                    LOG.info("The reply %(msg_id)s cannot be sent  "
+                             "%(reply_q)s reply queue don't exist after "
+                             "%(duration)s sec abandoning...", infos)
                     return
 
     def heartbeat(self):
@@ -259,9 +257,8 @@ class ObsoleteReplyQueuesCache(object):
         self._no_reply_log(reply_q, msg_id)
 
     def _no_reply_log(self, reply_q, msg_id):
-        LOG.warning(_LW("%(reply_queue)s doesn't exists, drop reply to "
-                        "%(msg_id)s"), {'reply_queue': reply_q,
-                                        'msg_id': msg_id})
+        LOG.warning("%(reply_queue)s doesn't exists, drop reply to "
+                    "%(msg_id)s", {'reply_queue': reply_q, "msg_id": msg_id})
 
 
 class AMQPListener(base.PollStyleListener):
@@ -406,7 +403,7 @@ class ReplyWaiters(object):
     def put(self, msg_id, message_data):
         queue = self._queues.get(msg_id)
         if not queue:
-            LOG.info(_LI('No calling threads waiting for msg_id : %s'), msg_id)
+            LOG.info('No calling threads waiting for msg_id : %s', msg_id)
             LOG.debug(' queues: %(queues)s, message: %(message)s',
                       {'queues': len(self._queues), 'message': message_data})
         else:
@@ -416,10 +413,10 @@ class ReplyWaiters(object):
         self._queues[msg_id] = moves.queue.Queue()
         queues_length = len(self._queues)
         if queues_length > self._wrn_threshold:
-            LOG.warning(_LW('Number of call queues is %(queues_length)s, '
-                            'greater than warning threshold: %(old_threshold)s'
-                            '. There could be a leak. Increasing threshold to:'
-                            ' %(threshold)s'),
+            LOG.warning('Number of call queues is %(queues_length)s, '
+                        'greater than warning threshold: %(old_threshold)s. '
+                        'There could be a leak. Increasing threshold to: '
+                        '%(threshold)s',
                         {'queues_length': queues_length,
                          'old_threshold': self._wrn_threshold,
                          'threshold': self._wrn_threshold * 2})
@@ -460,8 +457,7 @@ class ReplyWaiter(object):
                 current_timeout = max(current_timeout * 2,
                                       ACK_REQUEUE_EVERY_SECONDS_MAX)
             except Exception:
-                LOG.exception(_LE("Failed to process incoming message, "
-                              "retrying..."))
+                LOG.exception("Failed to process incoming message, retrying..")
             else:
                 current_timeout = ACK_REQUEUE_EVERY_SECONDS_MIN
 
@@ -485,7 +481,7 @@ class ReplyWaiter(object):
     @staticmethod
     def _raise_timeout_exception(msg_id):
         raise oslo_messaging.MessagingTimeout(
-            _('Timed out waiting for a reply to message ID %s.') % msg_id)
+            'Timed out waiting for a reply to message ID %s.', msg_id)
 
     def _process_reply(self, data):
         self.msg_id_cache.check_duplicate_message(data)
@@ -612,11 +608,9 @@ class AMQPDriverBase(base.BaseDriver):
             with self._get_connection(rpc_common.PURPOSE_SEND) as conn:
                 if notify:
                     exchange = self._get_exchange(target)
-                    log_msg += "NOTIFY exchange '%(exchange)s'" \
-                               " topic '%(topic)s'" % {
-                                   'exchange': exchange,
-                                   'topic': target.topic}
-                    LOG.debug(log_msg)
+                    LOG.debug(log_msg + "NOTIFY exchange '%(exchange)s'"
+                              " topic '%(topic)s'", {'exchange': exchange,
+                                                     'topic': target.topic})
                     conn.notify_send(exchange, target.topic, msg, retry=retry)
                 elif target.fanout:
                     log_msg += "FANOUT topic '%(topic)s'" % {
@@ -628,11 +622,9 @@ class AMQPDriverBase(base.BaseDriver):
                     exchange = self._get_exchange(target)
                     if target.server:
                         topic = '%s.%s' % (target.topic, target.server)
-                    log_msg += "exchange '%(exchange)s'" \
-                               " topic '%(topic)s'" % {
-                                   'exchange': exchange,
-                                   'topic': topic}
-                    LOG.debug(log_msg)
+                    LOG.debug(log_msg + "exchange '%(exchange)s'"
+                              " topic '%(topic)s'", {'exchange': exchange,
+                                                     'topic': topic})
                     conn.topic_send(exchange_name=exchange, topic=topic,
                                     msg=msg, timeout=timeout, retry=retry)
 

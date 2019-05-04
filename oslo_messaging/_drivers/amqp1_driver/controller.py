@@ -46,7 +46,6 @@ from oslo_messaging._drivers.amqp1_driver.addressing import keyify
 from oslo_messaging._drivers.amqp1_driver.addressing import SERVICE_NOTIFY
 from oslo_messaging._drivers.amqp1_driver.addressing import SERVICE_RPC
 from oslo_messaging._drivers.amqp1_driver import eventloop
-from oslo_messaging._i18n import _LE, _LI, _LW
 from oslo_messaging import exceptions
 from oslo_messaging.target import Target
 from oslo_messaging import transport
@@ -311,7 +310,7 @@ class MessageDispositionTask(Task):
             self._disposition(self._released)
         except Exception as e:
             # there's really nothing we can do about a failed disposition.
-            LOG.exception(_LE("Message acknowledgment failed: %s"), e)
+            LOG.exception("Message acknowledgment failed: %s", e)
 
 
 class Sender(pyngus.SenderEventHandler):
@@ -418,8 +417,8 @@ class Sender(pyngus.SenderEventHandler):
     def sender_remote_closed(self, sender_link, pn_condition):
         # The remote has initiated a close.  This could happen when the message
         # bus is shutting down, or it detected an error
-        LOG.warning(_LW("sender %(addr)s failed due to remote initiated close:"
-                        " condition=%(cond)s"),
+        LOG.warning("Sender %(addr)s failed due to remote initiated close:"
+                    " condition=%(cond)s",
                     {'addr': self._address, 'cond': pn_condition})
         self._link.close()
         # sender_closed() will be called once the link completes closing
@@ -429,7 +428,7 @@ class Sender(pyngus.SenderEventHandler):
 
     def sender_failed(self, sender_link, error):
         """Protocol error occurred."""
-        LOG.warning(_LW("sender %(addr)s failed error=%(error)s"),
+        LOG.warning("Sender %(addr)s failed error=%(error)s",
                     {'addr': self._address, 'error': error})
         self._handle_sender_closed(str(error))
 
@@ -639,13 +638,13 @@ class Replies(pyngus.ReceiverEventHandler):
         receiver link has initiated closing the connection.
         """
         if pn_condition:
-            LOG.error(_LE("Reply subscription closed by peer: %s"),
+            LOG.error("Reply subscription closed by peer: %s",
                       pn_condition)
         receiver.close()
 
     def receiver_failed(self, receiver_link, error):
         """Protocol error occurred."""
-        LOG.error(_LE("Link to reply queue failed. error=%(error)s"),
+        LOG.error("Link to reply queue failed. error=%(error)s",
                   {"error": error})
         self._on_down()
 
@@ -661,8 +660,8 @@ class Replies(pyngus.ReceiverEventHandler):
             self._correlation[key](message)
             receiver.message_accepted(handle)
         except KeyError:
-            LOG.warning(_LW("Can't find receiver for response msg id=%s, "
-                            "dropping!"), key)
+            LOG.warning("Can't find receiver for response msg id=%s, "
+                        "dropping!", key)
             receiver.message_modified(handle, True, True, None)
         # ensure we have enough credit
         if receiver.capacity <= self._capacity_low:
@@ -728,13 +727,13 @@ class Server(pyngus.ReceiverEventHandler):
                 "addr": receiver.source_address or receiver.target_address,
                 "err_msg": pn_condition
             }
-            LOG.error(_LE("Server subscription %(addr)s closed "
-                          "by peer: %(err_msg)s"), vals)
+            LOG.error("Server subscription %(addr)s closed "
+                      "by peer: %(err_msg)s", vals)
         receiver.close()
 
     def receiver_failed(self, receiver_link, error):
         """Protocol error occurred."""
-        LOG.error(_LE("Listener link queue failed. error=%(error)s"),
+        LOG.error("Listener link queue failed. error=%(error)s",
                   {"error": error})
         self.receiver_closed(receiver_link)
 
@@ -960,7 +959,7 @@ class Controller(pyngus.ConnectionEventHandler):
 
     def shutdown(self, timeout=30):
         """Shutdown the messaging service."""
-        LOG.info(_LI("Shutting down the AMQP 1.0 connection"))
+        LOG.info("Shutting down the AMQP 1.0 connection")
         if self.processor:
             self.processor.wakeup(self._start_shutdown)
             LOG.debug("Waiting for eventloop to exit")
@@ -1092,7 +1091,7 @@ class Controller(pyngus.ConnectionEventHandler):
             try:
                 self._tasks.get(False)._execute(self)
             except Exception as e:
-                LOG.exception(_LE("Error processing task: %s"), e)
+                LOG.exception("Error processing task: %s", e)
             count += 1
 
         # if we hit _max_task_batch, resume task processing later:
@@ -1133,7 +1132,7 @@ class Controller(pyngus.ConnectionEventHandler):
         point, we are ready to receive messages, so start all pending RPC
         requests.
         """
-        LOG.info(_LI("Messaging is active (%(hostname)s:%(port)s%(vhost)s)"),
+        LOG.info("Messaging is active (%(hostname)s:%(port)s%(vhost)s)",
                  {'hostname': self.hosts.current.hostname,
                   'port': self.hosts.current.port,
                   'vhost': ("/" + self.hosts.virtual_host
@@ -1156,7 +1155,7 @@ class Controller(pyngus.ConnectionEventHandler):
 
     def socket_error(self, error):
         """Called by eventloop when a socket error occurs."""
-        LOG.error(_LE("Socket failure: %s"), error)
+        LOG.error("Socket failure: %s", error)
         self._handle_connection_loss(str(error))
 
     # Pyngus connection event callbacks (and their helpers), all invoked from
@@ -1217,7 +1216,7 @@ class Controller(pyngus.ConnectionEventHandler):
         # connection. Acknowledge the close, and try to reconnect/failover
         # later once the connection has closed (connection_closed is called).
         if reason:
-            LOG.info(_LI("Connection closed by peer: %s"), reason)
+            LOG.info("Connection closed by peer: %s", reason)
         self._detach_senders()
         self._detach_servers()
         self.reply_link.detach()
@@ -1230,8 +1229,8 @@ class Controller(pyngus.ConnectionEventHandler):
         """
         if outcome == proton.SASL.OK:
             return
-        LOG.error(_LE("AUTHENTICATION FAILURE: Cannot connect to "
-                      "%(hostname)s:%(port)s as user %(username)s"),
+        LOG.error("AUTHENTICATION FAILURE: Cannot connect to "
+                  "%(hostname)s:%(port)s as user %(username)s",
                   {'hostname': self.hosts.current.hostname,
                    'port': self.hosts.current.port,
                    'username': self.hosts.current.username})
@@ -1252,7 +1251,7 @@ class Controller(pyngus.ConnectionEventHandler):
             # service.  Try to re-establish the connection:
             if not self._reconnecting:
                 self._reconnecting = True
-                LOG.info(_LI("delaying reconnect attempt for %d seconds"),
+                LOG.info("Delaying reconnect attempt for %d seconds",
                          self._delay)
                 self.processor.defer(lambda: self._do_reconnect(reason),
                                      self._delay)
@@ -1270,7 +1269,7 @@ class Controller(pyngus.ConnectionEventHandler):
         if not self._closing:
             self._hard_reset(reason)
             host = self.hosts.next()
-            LOG.info(_LI("Reconnecting to: %(hostname)s:%(port)s"),
+            LOG.info("Reconnecting to: %(hostname)s:%(port)s",
                      {'hostname': host.hostname, 'port': host.port})
             self._socket_connection.connect(host)
 
