@@ -28,7 +28,8 @@ kafka-python>=1.3.1 # Apache-2.0
 coverage!=4.4,>=4.0 # Apache-2.0
 
 # this is required for the docs build jobs
-sphinx>=1.6.2 # BSD
+sphinx>=1.6.2,!=1.6.6,<2.0.0;python_version=='2.7'  # BSD
+sphinx>=1.6.2,!=1.6.6;python_version>='3.4'  # BSD
 openstackdocstheme>=1.16.0 # Apache-2.0
 reno!=2.3.1,>=1.8.0 # Apache-2.0
 
@@ -37,7 +38,7 @@ reno!=2.3.1,>=1.8.0 # Apache-2.0
 pyngus>=2.0.2 # Apache-2.0
 
 # Bandit security code scanner
-bandit>=1.1.0 # Apache-2.0
+bandit>=1.1.0,<1.6.0 # Apache-2.0
 
 eventlet!=0.18.3,!=0.20.1,<0.21.0,>=0.18.2 # MIT
 greenlet>=0.3.2 # MIT
