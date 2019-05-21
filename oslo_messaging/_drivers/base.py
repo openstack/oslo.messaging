@@ -20,7 +20,6 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 import six
 
-
 from oslo_messaging import exceptions
 
 base_opts = [
@@ -41,6 +40,7 @@ def batch_poll_helper(func):
     :py:meth:`PollStyleListener.poll` implementation that only polls for a
     single message per call.
     """
+
     def wrapper(in_self, timeout=None, batch_size=1, batch_timeout=None):
         incomings = []
         driver_prefetch = in_self.prefetch_size
@@ -57,6 +57,7 @@ def batch_poll_helper(func):
                     break
 
         return incomings
+
     return wrapper
 
 
@@ -244,9 +245,9 @@ class Listener(object):
         all backend implementations.
     :type prefetch_size: int
     """
+
     def __init__(self, batch_size, batch_timeout,
                  prefetch_size=-1):
-
         self.on_incoming_callback = None
         self.batch_timeout = batch_timeout
         self.prefetch_size = prefetch_size
@@ -283,6 +284,7 @@ class PollStyleListenerAdapter(Listener):
     """A Listener that uses a PollStyleListener for message transfer. A
     dedicated thread is created to do message polling.
     """
+
     def __init__(self, poll_style_listener, batch_size, batch_timeout):
         super(PollStyleListenerAdapter, self).__init__(
             batch_size, batch_timeout, poll_style_listener.prefetch_size
@@ -364,7 +366,7 @@ class BaseDriver(object):
     @abc.abstractmethod
     def send(self, target, ctxt, message,
              wait_for_reply=None, timeout=None, call_monitor_timeout=None,
-             retry=None):
+             retry=None, transport_options=None):
         """Send a message to the given target and optionally wait for a reply.
         This method is used by the RPC client when sending RPC requests to a
         server.
@@ -434,6 +436,10 @@ class BaseDriver(object):
         :type call_monitor_timeout: float
         :param retry: maximum message send attempts permitted
         :type retry: int
+        :param transport_options: additional parameters to configure the driver
+                                  for example to send parameters as "mandatory"
+                                  flag in RabbitMQ
+        :type transport_options: dictionary
         :returns: A reply message or None if no reply expected
         :raises: :py:exc:`MessagingException`, any exception thrown by the
             remote server when executing the RPC call.

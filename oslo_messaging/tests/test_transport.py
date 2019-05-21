@@ -231,7 +231,8 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
                                                wait_for_reply=None,
                                                timeout=None,
                                                call_monitor_timeout=None,
-                                               retry=None)
+                                               retry=None,
+                                               transport_options=None)
 
     def test_send_all_args(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
@@ -250,7 +251,8 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
                                     wait_for_reply='wait_for_reply',
                                     timeout='timeout',
                                     call_monitor_timeout='cm_timeout',
-                                    retry='retry')
+                                    retry='retry',
+                                    transport_options=None)
 
     def test_send_notification(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))

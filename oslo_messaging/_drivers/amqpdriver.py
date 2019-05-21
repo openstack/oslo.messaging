@@ -580,7 +580,7 @@ class AMQPDriverBase(base.BaseDriver):
 
     def _send(self, target, ctxt, message,
               wait_for_reply=None, timeout=None, call_monitor_timeout=None,
-              envelope=True, notify=False, retry=None):
+              envelope=True, notify=False, retry=None, transport_options=None):
 
         msg = message
 
@@ -626,7 +626,8 @@ class AMQPDriverBase(base.BaseDriver):
                               " topic '%(topic)s'", {'exchange': exchange,
                                                      'topic': topic})
                     conn.topic_send(exchange_name=exchange, topic=topic,
-                                    msg=msg, timeout=timeout, retry=retry)
+                                    msg=msg, timeout=timeout, retry=retry,
+                                    transport_options=transport_options)
 
             if wait_for_reply:
                 result = self._waiter.wait(msg_id, timeout,
@@ -639,9 +640,10 @@ class AMQPDriverBase(base.BaseDriver):
                 self._waiter.unlisten(msg_id)
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             call_monitor_timeout=None, retry=None):
+             call_monitor_timeout=None, retry=None, transport_options=None):
         return self._send(target, ctxt, message, wait_for_reply, timeout,
-                          call_monitor_timeout, retry=retry)
+                          call_monitor_timeout, retry=retry,
+                          transport_options=transport_options)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
         return self._send(target, ctxt, message,

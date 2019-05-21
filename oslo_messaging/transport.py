@@ -116,7 +116,7 @@ class Transport(object):
         self._driver.require_features(requeue=requeue)
 
     def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-              call_monitor_timeout=None, retry=None):
+              call_monitor_timeout=None, retry=None, transport_options=None):
         if not target.topic:
             raise exceptions.InvalidTarget('A topic is required to send',
                                            target)
@@ -124,7 +124,8 @@ class Transport(object):
                                  wait_for_reply=wait_for_reply,
                                  timeout=timeout,
                                  call_monitor_timeout=call_monitor_timeout,
-                                 retry=retry)
+                                 retry=retry,
+                                 transport_options=transport_options)
 
     def _send_notification(self, target, ctxt, message, version, retry=None):
         if not target.topic:
