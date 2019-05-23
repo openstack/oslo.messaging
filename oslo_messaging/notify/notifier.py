@@ -94,7 +94,8 @@ def _send_notification():
                             'oslo.messaging.notify.drivers'
                         ).names(),
                         help='Notification driver')
-    parser.add_argument('payload')
+    parser.add_argument('payload',
+                        help="the notification payload (dict)")
     args = parser.parse_args()
     conf = cfg.ConfigOpts()
     conf([],
