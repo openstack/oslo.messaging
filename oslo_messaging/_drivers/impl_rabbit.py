@@ -898,7 +898,7 @@ class Connection(object):
         if self._heartbeat_supported_and_enabled():
             self._heartbeat_exit_event = eventletutils.Event()
             self._heartbeat_thread = threading.Thread(
-                target=self._heartbeat_thread_job)
+                target=self._heartbeat_thread_job, name="Rabbit-heartbeat")
             self._heartbeat_thread.daemon = True
             self._heartbeat_thread.start()
         else:
