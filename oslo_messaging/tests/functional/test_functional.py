@@ -505,3 +505,27 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual(100, len(events[0][1]))
         self.assertEqual(100, len(events[1][1]))
         self.assertEqual(5, len(events[2][1]))
+
+    def test_compression(self):
+        get_timeout = 1
+        if self.url.startswith("amqp:"):
+            self.conf.set_override('kombu_compression', 'gzip',
+                                   group='oslo_messaging_rabbit')
+        if self.url.startswith("kafka://"):
+            get_timeout = 5
+            self.conf.set_override('compression_codec', 'gzip',
+                                   group='oslo_messaging_kafka')
+            self.conf.set_override('consumer_group', 'test_compression',
+                                   group='oslo_messaging_kafka')
+
+        listener = self.useFixture(
+            utils.NotificationFixture(self.conf, self.url,
+                                      ['test_compression']))
+        notifier = listener.notifier('abc')
+
+        notifier.info({}, 'test', 'Hello World!')
+        event = listener.events.get(timeout=get_timeout)
+        self.assertEqual('info', event[0])
+        self.assertEqual('test', event[1])
+        self.assertEqual('Hello World!', event[2])
+        self.assertEqual('abc', event[3])

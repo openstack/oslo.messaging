@@ -255,6 +255,7 @@ class ProducerConnection(Connection):
         super(ProducerConnection, self).__init__(conf, url)
         self.batch_size = self.driver_conf.producer_batch_size
         self.linger_ms = self.driver_conf.producer_batch_timeout * 1000
+        self.compression_codec = self.driver_conf.compression_codec
         self.producer = None
         self.producer_lock = threading.Lock()
 
@@ -317,6 +318,7 @@ class ProducerConnection(Connection):
                 'bootstrap.servers': ",".join(self.hostaddrs),
                 'linger.ms': self.linger_ms,
                 'batch.num.messages': self.batch_size,
+                'compression.codec': self.compression_codec,
                 'security.protocol': self.security_protocol,
                 'sasl.mechanism': self.sasl_mechanism,
                 'sasl.username': self.username,
