@@ -12,7 +12,7 @@ if [[ -z "$(which kafka-server-start)" ]] && [[ -z $(which kafka-server-start.sh
 
     tarball=kafka_${SCALA_VERSION}-${KAFKA_VERSION}.tgz
 
-    wget http://www.apache.org/dist/kafka/${KAFKA_VERSION}/$tarball -O $DATADIR/$tarball
+    wget http://archive.apache.org/dist/kafka/${KAFKA_VERSION}/$tarball -O $DATADIR/$tarball
     tar -xzf $DATADIR/$tarball -C $DATADIR
     export PATH=$DATADIR/kafka_${SCALA_VERSION}-${KAFKA_VERSION}/bin:$PATH
 fi
