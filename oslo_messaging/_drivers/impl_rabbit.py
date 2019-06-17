@@ -1104,7 +1104,7 @@ class Connection(object):
         self.declare_consumer(consumer)
 
     def _ensure_publishing(self, method, exchange, msg, routing_key=None,
-                           timeout=None, retry=None):
+                           timeout=None, retry=None, transport_options=None):
         """Send to a publisher based on the publisher class."""
 
         def _error_callback(exc):
@@ -1113,7 +1113,8 @@ class Connection(object):
                       "'%(topic)s': %(err_str)s", log_info)
             LOG.debug('Exception', exc_info=exc)
 
-        method = functools.partial(method, exchange, msg, routing_key, timeout)
+        method = functools.partial(method, exchange, msg, routing_key,
+                                   timeout, transport_options)
 
         with self._connection_lock:
             self.ensure(method, retry=retry, error_callback=_error_callback)
@@ -1135,7 +1136,8 @@ class Connection(object):
                      'connection_id': self.connection_id})
         return info
 
-    def _publish(self, exchange, msg, routing_key=None, timeout=None):
+    def _publish(self, exchange, msg, routing_key=None, timeout=None,
+                 transport_options=None):
         """Publish a message."""
 
         if not (exchange.passive or exchange.name in self._declared_exchanges):
@@ -1144,7 +1146,8 @@ class Connection(object):
 
         log_info = {'msg': msg,
                     'who': exchange or 'default',
-                    'key': routing_key}
+                    'key': routing_key,
+                    'transport_options': str(transport_options)}
         LOG.trace('Connection._publish: sending message %(msg)s to'
                   ' %(who)s with routing key %(key)s', log_info)
 
@@ -1158,7 +1161,8 @@ class Connection(object):
                                    compression=self.kombu_compression)
 
     def _publish_and_creates_default_queue(self, exchange, msg,
-                                           routing_key=None, timeout=None):
+                                           routing_key=None, timeout=None,
+                                           transport_options=None):
         """Publisher that declares a default queue
 
         When the exchange is missing instead of silently creates an exchange
@@ -1195,7 +1199,8 @@ class Connection(object):
 
     def _publish_and_raises_on_missing_exchange(self, exchange, msg,
                                                 routing_key=None,
-                                                timeout=None):
+                                                timeout=None,
+                                                transport_options=None):
         """Publisher that raises exception if exchange is missing."""
         if not exchange.passive:
             raise RuntimeError("_publish_and_retry_on_missing_exchange() must "
@@ -1203,7 +1208,7 @@ class Connection(object):
 
         try:
             self._publish(exchange, msg, routing_key=routing_key,
-                          timeout=timeout)
+                          timeout=timeout, transport_options=transport_options)
             return
         except self.connection.channel_errors as exc:
             if exc.code == 404:
@@ -1230,7 +1235,8 @@ class Connection(object):
         self._ensure_publishing(self._publish_and_raises_on_missing_exchange,
                                 exchange, msg, routing_key=msg_id)
 
-    def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None):
+    def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None,
+                   transport_options=None):
         """Send a 'topic' message."""
         exchange = kombu.entity.Exchange(
             name=exchange_name,
@@ -1240,7 +1246,8 @@ class Connection(object):
 
         self._ensure_publishing(self._publish, exchange, msg,
                                 routing_key=topic, timeout=timeout,
-                                retry=retry)
+                                retry=retry,
+                                transport_options=transport_options)
 
     def fanout_send(self, topic, msg, retry=None):
         """Send a 'fanout' message."""

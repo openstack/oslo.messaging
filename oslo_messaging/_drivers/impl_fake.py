@@ -188,7 +188,8 @@ class FakeDriver(base.BaseDriver):
         """
         json.dumps(message)
 
-    def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None):
+    def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
+              transport_options=None):
         self._check_serialize(message)
 
         exchange = self._exchange_manager.get_exchange(target.exchange)
@@ -216,10 +217,11 @@ class FakeDriver(base.BaseDriver):
         return None
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             call_monitor_timeout=None, retry=None):
+             call_monitor_timeout=None, retry=None, transport_options=None):
         # NOTE(sileht): retry doesn't need to be implemented, the fake
         # transport always works
-        return self._send(target, ctxt, message, wait_for_reply, timeout)
+        return self._send(target, ctxt, message, wait_for_reply, timeout,
+                          transport_options)
 
     def send_notification(self, target, ctxt, message, version, retry=None):
         # NOTE(sileht): retry doesn't need to be implemented, the fake

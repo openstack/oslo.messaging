@@ -1,4 +1,3 @@
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -45,7 +44,6 @@ _client_opts = [
 
 
 class RemoteError(exceptions.MessagingException):
-
     """Signifies that a remote endpoint method has raised an exception.
 
     Contains a string representation of the type of the original exception,
@@ -94,7 +92,7 @@ class _BaseCallContext(object):
 
     def __init__(self, transport, target, serializer,
                  timeout=None, version_cap=None, retry=None,
-                 call_monitor_timeout=None):
+                 call_monitor_timeout=None, transport_options=None):
         self.conf = transport.conf
 
         self.transport = transport
@@ -104,6 +102,7 @@ class _BaseCallContext(object):
         self.call_monitor_timeout = call_monitor_timeout
         self.retry = retry
         self.version_cap = version_cap
+        self.transport_options = transport_options
 
         super(_BaseCallContext, self).__init__()
 
@@ -150,7 +149,9 @@ class _BaseCallContext(object):
         self._check_version_cap(msg.get('version'))
 
         try:
-            self.transport._send(self.target, msg_ctxt, msg, retry=self.retry)
+            self.transport._send(self.target, msg_ctxt, msg,
+                                 retry=self.retry,
+                                 transport_options=self.transport_options)
         except driver_base.TransportDriverError as ex:
             raise ClientSendError(self.target, ex)
 
@@ -172,10 +173,12 @@ class _BaseCallContext(object):
         self._check_version_cap(msg.get('version'))
 
         try:
-            result = self.transport._send(self.target, msg_ctxt, msg,
-                                          wait_for_reply=True, timeout=timeout,
-                                          call_monitor_timeout=cm_timeout,
-                                          retry=self.retry)
+            result = \
+                self.transport._send(self.target, msg_ctxt, msg,
+                                     wait_for_reply=True, timeout=timeout,
+                                     call_monitor_timeout=cm_timeout,
+                                     retry=self.retry,
+                                     transport_options=self.transport_options)
         except driver_base.TransportDriverError as ex:
             raise ClientSendError(self.target, ex)
 
@@ -190,7 +193,6 @@ class _BaseCallContext(object):
 
 
 class _CallContext(_BaseCallContext):
-
     _marker = _BaseCallContext._marker
 
     @classmethod
@@ -198,7 +200,7 @@ class _CallContext(_BaseCallContext):
                  exchange=_marker, topic=_marker, namespace=_marker,
                  version=_marker, server=_marker, fanout=_marker,
                  timeout=_marker, version_cap=_marker, retry=_marker,
-                 call_monitor_timeout=_marker):
+                 call_monitor_timeout=_marker, transport_options=_marker):
         cls._check_version(version)
         kwargs = dict(
             exchange=exchange,
@@ -219,11 +221,13 @@ class _CallContext(_BaseCallContext):
             retry = call_context.retry
         if call_monitor_timeout is cls._marker:
             call_monitor_timeout = call_context.call_monitor_timeout
+        if transport_options is cls._marker:
+            transport_options = call_context.transport_options
 
         return _CallContext(call_context.transport, target,
                             call_context.serializer,
                             timeout, version_cap, retry,
-                            call_monitor_timeout)
+                            call_monitor_timeout, transport_options)
 
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
@@ -237,7 +241,6 @@ class _CallContext(_BaseCallContext):
 
 
 class RPCClient(_BaseCallContext):
-
     """A class for invoking methods on remote RPC servers.
 
     The RPCClient class is responsible for sending method invocations to and
@@ -326,7 +329,7 @@ class RPCClient(_BaseCallContext):
 
     def __init__(self, transport, target,
                  timeout=None, version_cap=None, serializer=None, retry=None,
-                 call_monitor_timeout=None):
+                 call_monitor_timeout=None, transport_options=None):
         """Construct an RPC client.
 
         :param transport: a messaging transport handle
@@ -362,7 +365,7 @@ class RPCClient(_BaseCallContext):
 
         super(RPCClient, self).__init__(
             transport, target, serializer, timeout, version_cap, retry,
-            call_monitor_timeout
+            call_monitor_timeout, transport_options
         )
 
         self.conf.register_opts(_client_opts)
@@ -370,7 +373,7 @@ class RPCClient(_BaseCallContext):
     def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
                 version=_marker, server=_marker, fanout=_marker,
                 timeout=_marker, version_cap=_marker, retry=_marker,
-                call_monitor_timeout=_marker):
+                call_monitor_timeout=_marker, transport_options=_marker):
         """Prepare a method invocation context.
 
         Use this method to override client properties for an individual method
@@ -401,6 +404,10 @@ class RPCClient(_BaseCallContext):
                       0 means no retry is attempted.
                       N means attempt at most N retries.
         :type retry: int
+        :param transport_options: additional parameters to configure the driver
+                                  for example to send parameters as "mandatory"
+                                  flag in RabbitMQ
+        :type transport_options: dictionary
         :param call_monitor_timeout: an optional timeout (in seconds) for
                                      active call heartbeating. If specified,
                                      requires the server to heartbeat
@@ -413,7 +420,7 @@ class RPCClient(_BaseCallContext):
                                      exchange, topic, namespace,
                                      version, server, fanout,
                                      timeout, version_cap, retry,
-                                     call_monitor_timeout)
+                                     call_monitor_timeout, transport_options)
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method without blocking for a return value.

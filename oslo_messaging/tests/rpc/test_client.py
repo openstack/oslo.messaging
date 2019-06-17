@@ -49,7 +49,31 @@ class TestCastCall(test_utils.BaseTestCase):
         transport._send = mock.Mock()
 
         msg = dict(method='foo', args=self.args)
-        kwargs = {'retry': None}
+        kwargs = {'retry': None, 'transport_options': None}
+        if self.call:
+            kwargs['wait_for_reply'] = True
+            kwargs['timeout'] = None
+            kwargs['call_monitor_timeout'] = None
+
+        method = client.call if self.call else client.cast
+        method(self.ctxt, 'foo', **self.args)
+
+        transport._send.assert_called_once_with(oslo_messaging.Target(),
+                                                self.ctxt,
+                                                msg,
+                                                **kwargs)
+
+    def test_cast_call_with_transport_options(self):
+        self.config(rpc_response_timeout=None)
+
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
+        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
+                                          transport_options={'my_k': 'my_val'})
+
+        transport._send = mock.Mock()
+
+        msg = dict(method='foo', args=self.args)
+        kwargs = {'retry': None, 'transport_options': {'my_k': 'my_val'}}
         if self.call:
             kwargs['wait_for_reply'] = True
             kwargs['timeout'] = None
@@ -203,7 +227,8 @@ class TestCastToTarget(test_utils.BaseTestCase):
         transport._send.assert_called_once_with(expect_target,
                                                 {},
                                                 msg,
-                                                retry=None)
+                                                retry=None,
+                                                transport_options=None)
 
 
 TestCastToTarget.generate_scenarios()
@@ -245,7 +270,7 @@ class TestCallTimeout(test_utils.BaseTestCase):
 
         msg = dict(method='foo', args={})
         kwargs = dict(wait_for_reply=True, timeout=self.expect, retry=None,
-                      call_monitor_timeout=self.cm)
+                      call_monitor_timeout=self.cm, transport_options=None)
 
         if self.prepare is not _notset:
             client = client.prepare(timeout=self.prepare)
@@ -277,7 +302,8 @@ class TestCallRetry(test_utils.BaseTestCase):
 
         msg = dict(method='foo', args={})
         kwargs = dict(wait_for_reply=True, timeout=60,
-                      retry=self.expect, call_monitor_timeout=None)
+                      retry=self.expect, call_monitor_timeout=None,
+                      transport_options=None)
 
         if self.prepare is not _notset:
             client = client.prepare(retry=self.prepare)
@@ -334,8 +360,8 @@ class TestSerializer(test_utils.BaseTestCase):
                                           serializer=serializer)
 
         transport._send = mock.Mock()
-
-        kwargs = dict(wait_for_reply=True, timeout=None) if self.call else {}
+        kwargs = dict(wait_for_reply=True,
+                      timeout=None) if self.call else {}
         kwargs['retry'] = None
         if self.call:
             kwargs['call_monitor_timeout'] = None
@@ -367,6 +393,7 @@ class TestSerializer(test_utils.BaseTestCase):
         transport._send.assert_called_once_with(oslo_messaging.Target(),
                                                 dict(user='alice'),
                                                 msg,
+                                                transport_options=None,
                                                 **kwargs)
         expected_calls = [mock.call(self.ctxt, arg) for arg in self.args]
         self.assertEqual(expected_calls,
@@ -466,7 +493,9 @@ class TestVersionCap(test_utils.BaseTestCase):
             self.assertFalse(self.success)
         else:
             self.assertTrue(self.success)
-            transport._send.assert_called_once_with(target, {}, msg, **kwargs)
+            transport._send.assert_called_once_with(target, {}, msg,
+                                                    transport_options=None,
+                                                    **kwargs)
 
 TestVersionCap.generate_scenarios()
 
