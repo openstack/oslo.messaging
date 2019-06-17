@@ -540,7 +540,7 @@ class Connection(object):
         # expected waiting the events drain, we start heartbeat_check and
         # retrieve the server heartbeat packet only two times more than
         # the minimum required for the heartbeat works
-        # (heatbeat_timeout/heartbeat_rate/2.0, default kombu
+        # (heartbeat_timeout/heartbeat_rate/2.0, default kombu
         # heartbeat_rate is 2)
         self._heartbeat_wait_timeout = (
             float(self.heartbeat_timeout_threshold) /
@@ -565,7 +565,7 @@ class Connection(object):
 
         # NOTE(sileht): value chosen according the best practice from kombu
         # http://kombu.readthedocs.org/en/latest/reference/kombu.common.html#kombu.common.eventloop
-        # For heatbeat, we can set a bigger timeout, and check we receive the
+        # For heartbeat, we can set a bigger timeout, and check we receive the
         # heartbeat packets regulary
         if self._heartbeat_supported_and_enabled():
             self._poll_timeout = self._heartbeat_wait_timeout
@@ -958,8 +958,8 @@ class Connection(object):
                                      "occurred, trying to reconnect: %s"), exc)
                         self.ensure_connection()
                 except Exception:
-                    LOG.warning(_LW("Unexpected error during heartbeart "
-                                    "thread processing, retrying..."))
+                    LOG.warning(_LW("Unexpected error during heartbeat "
+                                "thread processing, retrying..."))
                     LOG.debug('Exception', exc_info=True)
 
             self._heartbeat_exit_event.wait(
