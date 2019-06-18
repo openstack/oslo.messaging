@@ -377,7 +377,7 @@ class DecayingTimer(object):
 # greenthread.
 # So, a connection cannot be shared between thread/greenthread and
 # this two variables permit to define the purpose of the connection
-# to allow drivers to add special handling if needed (like heatbeat).
+# to allow drivers to add special handling if needed (like heartbeat).
 # amqp drivers create 3 kind of connections:
 # * driver.listen*(): each call create a new 'PURPOSE_LISTEN' connection
 # * driver.send*(): a pool of 'PURPOSE_SEND' connections is used
