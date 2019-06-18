@@ -220,7 +220,7 @@ the configuration
 ::
 
    KAFKA_VERSION=2.0.0
-   KAFKA_BASEURL=http://www.apache.org/dist/kafka
+   KAFKA_BASEURL=http://archive.apache.org/dist/kafka
    SCALA_VERSION=2.12
    SCALA_BASEURL=http://www.scala-lang.org/riles/archive
 
