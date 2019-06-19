@@ -33,6 +33,7 @@ __all__ = [
     'Transport',
     'TransportHost',
     'TransportURL',
+    'TransportOptions',
     'get_transport',
     'set_transport_defaults',
 ]
@@ -275,6 +276,16 @@ class TransportHost(object):
                 attrs.append((a, repr(v)))
         values = ', '.join(['%s=%s' % i for i in attrs])
         return '<TransportHost ' + values + '>'
+
+
+class TransportOptions(object):
+
+    def __init__(self, at_least_once=False):
+        self._at_least_once = at_least_once
+
+    @property
+    def at_least_once(self):
+        return self._at_least_once
 
 
 class TransportURL(object):
