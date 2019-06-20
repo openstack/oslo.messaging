@@ -399,7 +399,7 @@ class KafkaDriver(base.BaseDriver):
         LOG.info("Kafka messaging driver shutdown")
 
     def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             call_monitor_timeout=None, retry=None):
+             call_monitor_timeout=None, retry=None, transport_options=None):
         raise NotImplementedError(
             'The RPC implementation for Kafka is not implemented')
 

@@ -299,7 +299,7 @@ class ProtonDriver(base.BaseDriver):
     def send(self, target, ctxt, message,
              wait_for_reply=False,
              timeout=None, call_monitor_timeout=None,
-             retry=None):
+             retry=None, transport_options=None):
         """Send a message to the given target.
 
         :param target: destination for message
@@ -322,6 +322,9 @@ class ProtonDriver(base.BaseDriver):
                       0 means no retry
                       N means N retries
         :type retry: int
+        :param transport_options: transport-specific options to apply to the
+                                  sending of the message (TBD)
+        :type transport_options: dictionary
         """
         request = marshal_request(message, ctxt, None,
                                   call_monitor_timeout)
