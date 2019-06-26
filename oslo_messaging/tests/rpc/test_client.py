@@ -42,14 +42,15 @@ class TestCastCall(test_utils.BaseTestCase):
 
     def test_cast_call(self):
         self.config(rpc_response_timeout=None)
-
+        transport_options = oslo_messaging.TransportOptions()
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target())
+        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
+                                          transport_options=transport_options)
 
         transport._send = mock.Mock()
 
         msg = dict(method='foo', args=self.args)
-        kwargs = {'retry': None, 'transport_options': None}
+        kwargs = {'retry': None, 'transport_options': transport_options}
         if self.call:
             kwargs['wait_for_reply'] = True
             kwargs['timeout'] = None
@@ -57,7 +58,7 @@ class TestCastCall(test_utils.BaseTestCase):
 
         method = client.call if self.call else client.cast
         method(self.ctxt, 'foo', **self.args)
-
+        self.assertFalse(transport_options.at_least_once)
         transport._send.assert_called_once_with(oslo_messaging.Target(),
                                                 self.ctxt,
                                                 msg,
@@ -67,13 +68,18 @@ class TestCastCall(test_utils.BaseTestCase):
         self.config(rpc_response_timeout=None)
 
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
-                                          transport_options={'my_k': 'my_val'})
+
+        transport_options = oslo_messaging.TransportOptions(at_least_once=True)
+        client = oslo_messaging.RPCClient(
+            transport,
+            oslo_messaging.Target(),
+            transport_options=transport_options)
 
         transport._send = mock.Mock()
 
         msg = dict(method='foo', args=self.args)
-        kwargs = {'retry': None, 'transport_options': {'my_k': 'my_val'}}
+        kwargs = {'retry': None,
+                  'transport_options': transport_options}
         if self.call:
             kwargs['wait_for_reply'] = True
             kwargs['timeout'] = None
@@ -82,6 +88,7 @@ class TestCastCall(test_utils.BaseTestCase):
         method = client.call if self.call else client.cast
         method(self.ctxt, 'foo', **self.args)
 
+        self.assertTrue(transport_options.at_least_once)
         transport._send.assert_called_once_with(oslo_messaging.Target(),
                                                 self.ctxt,
                                                 msg,

@@ -49,7 +49,6 @@ from oslo_messaging import exceptions
 # NOTE(sileht): don't exists in py2 socket module
 TCP_USER_TIMEOUT = 18
 
-
 rabbit_opts = [
     cfg.BoolOpt('ssl',
                 default=False,
@@ -1150,15 +1149,17 @@ class Connection(object):
                     'transport_options': str(transport_options)}
         LOG.trace('Connection._publish: sending message %(msg)s to'
                   ' %(who)s with routing key %(key)s', log_info)
-
         # NOTE(sileht): no need to wait more, caller expects
         # a answer before timeout is reached
         with self._transport_socket_timeout(timeout):
-            self._producer.publish(msg,
-                                   exchange=exchange,
-                                   routing_key=routing_key,
-                                   expiration=timeout,
-                                   compression=self.kombu_compression)
+            self._producer.publish(
+                msg,
+                mandatory=transport_options.at_least_once if
+                transport_options else False,
+                exchange=exchange,
+                routing_key=routing_key,
+                expiration=timeout,
+                compression=self.kombu_compression)
 
     def _publish_and_creates_default_queue(self, exchange, msg,
                                            routing_key=None, timeout=None,

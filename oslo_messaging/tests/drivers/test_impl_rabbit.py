@@ -199,6 +199,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             'msg', expiration=1,
             exchange=exchange_mock,
             compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+            mandatory=False,
             routing_key='routing_key')
 
     @mock.patch('kombu.messaging.Producer.publish')
@@ -212,6 +213,7 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             conn._publish(exchange_mock, 'msg', routing_key='routing_key')
         fake_publish.assert_called_with(
             'msg', expiration=None,
+            mandatory=False,
             compression=self.conf.oslo_messaging_rabbit.kombu_compression,
             exchange=exchange_mock,
             routing_key='routing_key')
