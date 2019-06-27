@@ -152,6 +152,40 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
         self.assertEqual(10, server.endpoint.ival)
 
+    def test_mandatory_call(self):
+        if not self.url.startswith("rabbit://"):
+            self.skipTest("backend does not support call monitoring")
+
+        transport = self.useFixture(utils.RPCTransportFixture(self.conf,
+                                                              self.url))
+        target = oslo_messaging.Target(topic='topic_' + str(uuid.uuid4()),
+                                       server='server_' + str(uuid.uuid4()))
+
+        # test for mandatory flag using transport-options, see:
+        # https://blueprints.launchpad.net/oslo.messaging/+spec/transport-options
+        # first test with `at_least_once=False` raises a "MessagingTimeout"
+        # error since there is no control if the queue actually exists.
+        # (Default behavior)
+        options = oslo_messaging.TransportOptions(at_least_once=False)
+        client1 = utils.ClientStub(transport.transport, target,
+                                   cast=False, timeout=1,
+                                   transport_options=options)
+
+        self.assertRaises(oslo_messaging.MessagingTimeout,
+                          client1.delay)
+
+        # second test with `at_least_once=True` raises a "MessageUndeliverable"
+        # caused by mandatory flag.
+        # the MessageUndeliverable error is raised immediately without waiting
+        # any timeout
+        options2 = oslo_messaging.TransportOptions(at_least_once=True)
+        client2 = utils.ClientStub(transport.transport, target,
+                                   cast=False, timeout=60,
+                                   transport_options=options2)
+
+        self.assertRaises(oslo_messaging.MessageUndeliverable,
+                          client2.delay)
+
     def test_monitor_long_call(self):
         if not (self.url.startswith("rabbit://") or
                 self.url.startswith("amqp://")):

@@ -756,6 +756,10 @@ class Connection(object):
             # NOTE(sileht): we must reraise this without
             # trigger error_callback
             raise
+        except exceptions.MessageUndeliverable:
+            # NOTE(gsantomaggio): we must reraise this without
+            # trigger error_callback
+            raise
         except Exception as exc:
             error_callback and error_callback(exc)
             self._set_current_channel(None)
@@ -768,6 +772,11 @@ class Connection(object):
                    'tries: %(err_str)s' % info)
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
+
+    @staticmethod
+    def on_return(exception, exchange, routing_key, message):
+        raise exceptions.MessageUndeliverable(exception, exchange, routing_key,
+                                              message)
 
     def _set_current_channel(self, new_channel):
         """Change the channel to use.
@@ -787,7 +796,8 @@ class Connection(object):
         if new_channel is not None:
             if self.purpose == rpc_common.PURPOSE_LISTEN:
                 self._set_qos(new_channel)
-            self._producer = kombu.messaging.Producer(new_channel)
+            self._producer = kombu.messaging.Producer(new_channel,
+                                                      on_return=self.on_return)
             for consumer in self._consumers:
                 consumer.declare(self)
 

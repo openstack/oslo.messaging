@@ -16,7 +16,7 @@
 import six
 
 __all__ = ['MessagingException', 'MessagingTimeout', 'MessageDeliveryFailure',
-           'InvalidTarget']
+           'InvalidTarget', 'MessageUndeliverable']
 
 
 class MessagingException(Exception):
@@ -38,3 +38,14 @@ class InvalidTarget(MessagingException, ValueError):
         msg = msg + ":" + six.text_type(target)
         super(InvalidTarget, self).__init__(msg)
         self.target = target
+
+
+class MessageUndeliverable(Exception):
+    """Raised if message is not routed with mandatory flag"""
+
+    def __init__(self, exception, exchange, routing_key, message):
+        super(MessageUndeliverable, self).__init__()
+        self.exception = exception
+        self.exchange = exchange
+        self.routing_key = routing_key
+        self.message = message
