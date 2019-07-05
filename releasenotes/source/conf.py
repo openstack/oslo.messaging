@@ -27,7 +27,6 @@
 
 # -- Project information --------------------------------------------------
 # General information about the project.
-project = u'oslo.messaging Release Notes'
 copyright = u'2016, oslo.messaging Developers'
 
 # Release notes do not need a version in the title, they span
@@ -50,9 +49,6 @@ extensions = [
 repository_name = 'openstack/oslo.messaging'
 bug_project = 'oslo.messaging'
 bug_tag = ''
-
-# Must set this variable to include year, month, day, hours, and minutes.
-html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 # The master toctree document.
 master_doc = 'index'

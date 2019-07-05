@@ -6,15 +6,10 @@
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
 
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath('../..'))
 
 # -- Project information ------------------------------------------------------
 
 # General information about the project.
-project = 'oslo.messaging'
 copyright = '2018, Oslo Contributors'
 
 # -- General configuration ----------------------------------------------------
@@ -32,9 +27,6 @@ extensions = [
 repository_name = 'openstack/oslo.messaging'
 bug_project = 'oslo.messaging'
 bug_tag = ''
-
-# Must set this variable to include year, month, day, hours, and minutes.
-html_last_updated_fmt = '%Y-%m-%d %H:%M'
 
 # The master toctree document.
 master_doc = 'index'
