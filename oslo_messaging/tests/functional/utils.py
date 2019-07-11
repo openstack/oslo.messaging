@@ -226,10 +226,15 @@ class RpcCast(RpcCall):
 
 
 class ClientStub(object):
-    def __init__(self, transport, target, cast=False, name=None, **kwargs):
+    def __init__(self, transport, target, cast=False, name=None,
+                 transport_options=None, **kwargs):
         self.name = name or "functional-tests"
         self.cast = cast
-        self.client = oslo_messaging.RPCClient(transport, target, **kwargs)
+        self.client = oslo_messaging.RPCClient(
+            transport=transport,
+            target=target,
+            transport_options=transport_options,
+            **kwargs)
 
     def __getattr__(self, name):
         context = {"application": self.name}
