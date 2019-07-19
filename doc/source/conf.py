@@ -23,6 +23,7 @@ copyright = '2018, Oslo Contributors'
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'sphinx.ext.todo',
     'openstackdocstheme',
     'stevedore.sphinxext',
     'oslo_config.sphinxext',
