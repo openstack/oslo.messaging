@@ -168,6 +168,12 @@ rabbit_opts = [
                default=2,
                help='How often times during the heartbeat_timeout_threshold '
                'we check the heartbeat.'),
+    cfg.IntOpt('direct_mandatory_flag',
+               default=True,
+               help='Enable/Disable the RabbitMQ mandatory flag '
+               'for direct send. The direct send is used as reply,'
+               'so the MessageUndeliverable exception is raised'
+               ' in case the client queue does not exist.'),
 ]
 
 LOG = logging.getLogger(__name__)
@@ -492,6 +498,7 @@ class Connection(object):
             # if it was already monkey patched by eventlet/greenlet.
             global threading
             threading = stdlib_threading
+        self.direct_mandatory_flag = driver_conf.direct_mandatory_flag
 
         if self.ssl:
             self.ssl_version = driver_conf.ssl_version
@@ -1291,9 +1298,11 @@ class Connection(object):
                                          durable=False,
                                          auto_delete=True,
                                          passive=True)
-
+        options = oslo_messaging.TransportOptions(
+            at_least_once=self.direct_mandatory_flag)
         self._ensure_publishing(self._publish_and_raises_on_missing_exchange,
-                                exchange, msg, routing_key=msg_id)
+                                exchange, msg, routing_key=msg_id,
+                                transport_options=options)
 
     def topic_send(self, exchange_name, topic, msg, timeout=None, retry=None,
                    transport_options=None):

@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -124,6 +123,7 @@ A simple example of an RPC server with multiple endpoints might be::
 import logging
 import sys
 
+from oslo_messaging import exceptions
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
 from oslo_messaging import transport as msg_transport
@@ -178,13 +178,19 @@ class RPCServer(msg_server.MessageHandlingServer):
                 message.reply(res)
             else:
                 message.reply(failure=failure)
+        except exceptions.MessageUndeliverable as e:
+            LOG.exception(
+                "MessageUndeliverable error, "
+                "source exception: %s, routing_key: %s, exchange: %s: ",
+                e.exception, e.routing_key, e.exchange
+            )
         except Exception:
             LOG.exception("Can not send reply for message")
         finally:
-                # NOTE(dhellmann): Remove circular object reference
-                # between the current stack frame and the traceback in
-                # exc_info.
-                del failure
+            # NOTE(dhellmann): Remove circular object reference
+            # between the current stack frame and the traceback in
+            # exc_info.
+            del failure
 
 
 def get_rpc_server(transport, target, endpoints,
@@ -222,6 +228,7 @@ def expected_exceptions(*exceptions):
     ExpectedException, which is used internally by the RPC sever. The RPC
     client will see the original exception type.
     """
+
     def outer(func):
         def inner(*args, **kwargs):
             try:
@@ -234,7 +241,9 @@ def expected_exceptions(*exceptions):
             # ignored and thrown as normal.
             except exceptions:
                 raise rpc_dispatcher.ExpectedException()
+
         return inner
+
     return outer
 
 
