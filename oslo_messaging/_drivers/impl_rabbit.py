@@ -1063,13 +1063,12 @@ class Connection(object):
         responses for call/multicall
         """
 
-        # TODO(obondarev): use default exchange since T release
-        consumer = Consumer(exchange_name=topic,
+        consumer = Consumer(exchange_name='',  # using default exchange
                             queue_name=topic,
-                            routing_key=topic,
+                            routing_key='',
                             type='direct',
                             durable=False,
-                            exchange_auto_delete=True,
+                            exchange_auto_delete=False,
                             queue_auto_delete=False,
                             callback=callback,
                             rabbit_ha_queues=self.rabbit_ha_queues,
