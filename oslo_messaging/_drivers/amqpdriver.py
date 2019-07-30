@@ -370,7 +370,7 @@ class RpcAMQPListener(AMQPListener):
         try:
             message.acknowledge()
         except Exception as exc:
-            LOG.warning("Discarding RPC request due to failed acknowlege: %s",
+            LOG.warning("Discarding RPC request due to failed acknowledge: %s",
                         exc)
         else:
             # NOTE(kgiusti): be aware that even if the acknowledge call
