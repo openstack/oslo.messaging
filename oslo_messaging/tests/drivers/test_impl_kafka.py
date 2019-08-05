@@ -108,6 +108,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
                 'bootstrap.servers': '',
                 'linger.ms': mock.ANY,
                 'batch.num.messages': mock.ANY,
+                'compression.codec': 'none',
                 'security.protocol': 'PLAINTEXT',
                 'sasl.mechanism': 'PLAIN',
                 'sasl.username': mock.ANY,
