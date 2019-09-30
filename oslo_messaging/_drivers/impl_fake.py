@@ -14,10 +14,10 @@
 #    under the License.
 
 import copy
-import json
 import threading
 import time
 
+from oslo_serialization import jsonutils
 from six import moves
 
 import oslo_messaging
@@ -180,13 +180,11 @@ class FakeDriver(base.BaseDriver):
     def _check_serialize(message):
         """Make sure a message intended for rpc can be serialized.
 
-        We specifically want to use json, not our own jsonutils because
-        jsonutils has some extra logic to automatically convert objects to
-        primitive types so that they can be serialized.  We want to catch all
-        cases where non-primitive types make it into this code and treat it as
-        an error.
+        All the in tree drivers implementing RPC send uses jsonutils.dumps on
+        the message. So in the test we ensure here that all the messages are
+        serializable with this call.
         """
-        json.dumps(message)
+        jsonutils.dumps(message)
 
     def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
               transport_options=None):
