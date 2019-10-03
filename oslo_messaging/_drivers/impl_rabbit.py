@@ -171,9 +171,9 @@ rabbit_opts = [
     cfg.IntOpt('direct_mandatory_flag',
                default=True,
                help='Enable/Disable the RabbitMQ mandatory flag '
-               'for direct send. The direct send is used as reply,'
-               'so the MessageUndeliverable exception is raised'
-               ' in case the client queue does not exist.'),
+               'for direct send. The direct send is used as reply, '
+               'so the MessageUndeliverable exception is raised '
+               'in case the client queue does not exist.'),
 ]
 
 LOG = logging.getLogger(__name__)
