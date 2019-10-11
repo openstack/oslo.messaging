@@ -148,11 +148,11 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q,
                  client_timeout, obsolete_reply_queues,
                  message_operations_handler):
-        super(AMQPIncomingMessage, self).__init__(ctxt, message)
+        super(AMQPIncomingMessage, self).__init__(ctxt, message, msg_id)
+        self.orig_msg_id = msg_id
         self.listener = listener
 
         self.unique_id = unique_id
-        self.msg_id = msg_id
         self.reply_q = reply_q
         self.client_timeout = client_timeout
         self._obsolete_reply_queues = obsolete_reply_queues
@@ -184,7 +184,7 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None):
-        if not self.msg_id:
+        if not self.orig_msg_id:
             # NOTE(Alexei_987) not sending reply, if msg_id is empty
             #    because reply should not be expected by caller side
             return

@@ -122,6 +122,7 @@ A simple example of an RPC server with multiple endpoints might be::
 
 import logging
 import sys
+import time
 
 from oslo_messaging import exceptions
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
@@ -151,6 +152,12 @@ class RPCServer(msg_server.MessageHandlingServer):
 
     def _process_incoming(self, incoming):
         message = incoming[0]
+        rpc_method = message.message.get('method')
+        start = time.time()
+        LOG.debug("Receive incoming message with id %(msg_id)s and "
+                  "method: %(method)s.",
+                  {"msg_id": message.msg_id,
+                   "method": rpc_method})
 
         # TODO(sileht): We should remove that at some point and do
         # this directly in the driver
@@ -182,8 +189,19 @@ class RPCServer(msg_server.MessageHandlingServer):
         try:
             if failure is None:
                 message.reply(res)
+                LOG.debug("Replied success message with id %(msg_id)s and "
+                          "method: %(method)s. Time elapsed: %(elapsed).3f",
+                          {"msg_id": message.msg_id,
+                           "method": rpc_method,
+                           "elapsed": (time.time() - start)})
             else:
                 message.reply(failure=failure)
+                LOG.debug("Replied failure for incoming message with "
+                          "id %(msg_id)s and method: %(method)s. "
+                          "Time elapsed: %(elapsed).3f",
+                          {"msg_id": message.msg_id,
+                           "method": rpc_method,
+                           "elapsed": (time.time() - start)})
         except exceptions.MessageUndeliverable as e:
             LOG.exception(
                 "MessageUndeliverable error, "

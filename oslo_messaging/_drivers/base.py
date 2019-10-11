@@ -14,6 +14,7 @@
 
 import abc
 import threading
+import uuid
 
 from oslo_config import cfg
 from oslo_utils import excutils
@@ -78,10 +79,14 @@ class IncomingMessage(object, metaclass=abc.ABCMeta):
     :type message: dict
     """
 
-    def __init__(self, ctxt, message):
+    def __init__(self, ctxt, message, msg_id=None):
         self.ctxt = ctxt
         self.message = message
         self.client_timeout = None
+        if msg_id is None:
+            self.msg_id = str(uuid.uuid4())
+        else:
+            self.msg_id = msg_id
 
     def acknowledge(self):
         """Called by the server to acknowledge receipt of the message. When
