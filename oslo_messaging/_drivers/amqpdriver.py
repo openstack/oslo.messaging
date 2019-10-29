@@ -44,6 +44,7 @@ class MessageOperationsHandler(object):
     serialized and run in the same thread, since underlying drivers like kombu
     are not thread safe.
     """
+
     def __init__(self, name):
         self.name = "%s (%s)" % (name, hex(id(self)))
         self._tasks = moves.queue.Queue()
@@ -385,8 +386,6 @@ class NotificationAMQPListener(AMQPListener):
 
 
 class ReplyWaiters(object):
-
-    WAKE_UP = object()
 
     def __init__(self):
         self._queues = {}
