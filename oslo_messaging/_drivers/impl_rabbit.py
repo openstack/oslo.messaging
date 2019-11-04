@@ -325,9 +325,9 @@ class Consumer(object):
         except conn.connection.channel_errors as exc:
             # We retries once because of some races that we can
             # recover before informing the deployer
-            # bugs.launchpad.net/oslo.messaging/+bug/1581148
-            # bugs.launchpad.net/oslo.messaging/+bug/1609766
-            # bugs.launchpad.net/neutron/+bug/1318721
+            # https://bugs.launchpad.net/oslo.messaging/+bug/1581148
+            # https://bugs.launchpad.net/oslo.messaging/+bug/1609766
+            # https://bugs.launchpad.net/neutron/+bug/1318721
 
             # 406 error code relates to messages that are doubled ack'd
 
