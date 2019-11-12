@@ -16,6 +16,7 @@
 import copy
 import threading
 import time
+import uuid
 
 from oslo_serialization import jsonutils
 from six import moves
@@ -29,6 +30,7 @@ class FakeIncomingMessage(base.RpcIncomingMessage):
         super(FakeIncomingMessage, self).__init__(ctxt, message)
         self.requeue_callback = requeue
         self._reply_q = reply_q
+        self.msg_id = str(uuid.uuid4())
 
     def reply(self, reply=None, failure=None):
         if self._reply_q:
