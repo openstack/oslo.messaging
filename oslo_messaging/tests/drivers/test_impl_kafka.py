@@ -113,7 +113,10 @@ class TestKafkaDriver(test_utils.BaseTestCase):
                 'sasl.mechanism': 'PLAIN',
                 'sasl.username': mock.ANY,
                 'sasl.password': mock.ANY,
-                'ssl.ca.location': ''
+                'ssl.ca.location': '',
+                'ssl.certificate.location': '',
+                'ssl.key.location': '',
+                'ssl.key.password': '',
             })
 
     def test_listen(self):
@@ -139,6 +142,9 @@ class TestKafkaDriver(test_utils.BaseTestCase):
                 'sasl.username': mock.ANY,
                 'sasl.password': mock.ANY,
                 'ssl.ca.location': '',
+                'ssl.certificate.location': '',
+                'ssl.key.location': '',
+                'ssl.key.password': '',
                 'default.topic.config': {'auto.offset.reset': 'latest'}
             })
 

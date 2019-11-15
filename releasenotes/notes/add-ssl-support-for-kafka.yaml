@@ -1,0 +1,9 @@
+---
+features:
+  - |
+    | SSL support for oslo_messaging's kafka driver
+    | Next configuration params was added
+
+    * *ssl_client_cert_file* (default='')
+    * *ssl_client_key_file* (default='')
+    * *ssl_client_key_password* (default='')

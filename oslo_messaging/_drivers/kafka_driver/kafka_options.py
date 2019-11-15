@@ -73,7 +73,19 @@ KAFKA_OPTS = [
     cfg.StrOpt('ssl_cafile',
                default='',
                help='CA certificate PEM file used to verify the server'
-               ' certificate')
+               ' certificate'),
+
+    cfg.StrOpt('ssl_client_cert_file',
+               default='',
+               help='Client certificate PEM file used for authentication.'),
+
+    cfg.StrOpt('ssl_client_key_file',
+               default='',
+               help='Client key PEM file used for authentication.'),
+
+    cfg.StrOpt('ssl_client_key_password',
+               default='',
+               help='Client key password file used for authentication.')
 ]
 
 
