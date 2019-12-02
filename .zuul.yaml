@@ -147,71 +147,6 @@
     nodeset: legacy-ubuntu-xenial-2-node
 
 
-- job:
-    name: oslo.messaging-telemetry-dsvm-integration-amqp1
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-amqp1/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/devstack-plugin-amqp1
-      - openstack/oslo.messaging
-      - openstack/panko
-      - openstack/telemetry-tempest-plugin
-      - openstack/heat-tempest-plugin
-      - openstack/heat
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-
-- job:
-    name: oslo.messaging-telemetry-dsvm-integration-kafka
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-kafka/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/devstack-plugin-kafka
-      - openstack/oslo.messaging
-      - openstack/panko
-      - openstack/telemetry-tempest-plugin
-      - openstack/heat-tempest-plugin
-      - openstack/heat
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-
-- job:
-    name: oslo.messaging-telemetry-dsvm-integration-rabbit
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/oslo.messaging
-      - openstack/panko
-      - openstack/telemetry-tempest-plugin
-      - openstack/heat-tempest-plugin
-      - openstack/heat
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-
 - project:
     templates:
       - check-requirements
@@ -251,13 +186,6 @@
         - oslo.messaging-src-grenade-dsvm:
             voting: false
         - oslo.messaging-src-grenade-dsvm-multinode:
-            voting: false
-
-        - oslo.messaging-telemetry-dsvm-integration-rabbit:
-            voting: false
-        - oslo.messaging-telemetry-dsvm-integration-amqp1:
-            voting: false
-        - oslo.messaging-telemetry-dsvm-integration-kafka:
             voting: false
 
     gate:
