@@ -400,7 +400,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         except Exception as ex:
             self.assertIsInstance(ex, ValueError)
             self.assertEqual('dsfoo', str(ex))
-            self.assertTrue(len(debugs) == 2)
+            self.assertTrue(len(debugs) == 0)
             self.assertGreater(len(errors), 0)
         else:
             self.assertTrue(False)
