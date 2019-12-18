@@ -35,6 +35,7 @@ import threading
 import time
 import uuid
 
+from oslo_utils import eventletutils
 import proton
 import pyngus
 from six import iteritems
@@ -85,7 +86,7 @@ class SubscribeTask(Task):
         self._subscriber_id = listener.id
         self._in_queue = listener.incoming
         self._service = SERVICE_NOTIFY if notifications else SERVICE_RPC
-        self._wakeup = threading.Event()
+        self._wakeup = eventletutils.Event()
 
     def wait(self):
         self._wakeup.wait()
@@ -112,7 +113,7 @@ class SendTask(Task):
         self.service = SERVICE_NOTIFY if notification else SERVICE_RPC
         self.timer = None
         self._retry = None if retry is None or retry < 0 else retry
-        self._wakeup = threading.Event()
+        self._wakeup = eventletutils.Event()
         self._error = None
         self._sender = None
 

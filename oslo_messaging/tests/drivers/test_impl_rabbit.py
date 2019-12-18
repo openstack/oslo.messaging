@@ -23,6 +23,7 @@ import fixtures
 import kombu
 import kombu.transport.memory
 from oslo_serialization import jsonutils
+from oslo_utils import eventletutils
 import testscenarios
 
 import oslo_messaging
@@ -49,7 +50,7 @@ class TestHeartbeat(test_utils.BaseTestCase):
                                 fake_logger, heartbeat_side_effect=None,
                                 info=None):
 
-        event = threading.Event()
+        event = eventletutils.Event()
 
         def heartbeat_check(rate=2):
             event.set()

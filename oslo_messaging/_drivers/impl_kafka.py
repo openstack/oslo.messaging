@@ -347,7 +347,7 @@ class KafkaListener(base.PollStyleListener):
 
     def __init__(self, conn):
         super(KafkaListener, self).__init__()
-        self._stopped = threading.Event()
+        self._stopped = eventletutils.Event()
         self.conn = conn
         self.incoming_queue = []
 

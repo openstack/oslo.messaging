@@ -22,6 +22,7 @@
 import threading
 
 from oslo_config import cfg
+from oslo_utils import eventletutils
 from oslotest import base
 
 
@@ -63,8 +64,8 @@ class ServerThreadHelper(threading.Thread):
         super(ServerThreadHelper, self).__init__()
         self.daemon = True
         self._server = server
-        self._stop_event = threading.Event()
-        self._start_event = threading.Event()
+        self._stop_event = eventletutils.Event()
+        self._start_event = eventletutils.Event()
 
     def start(self):
         super(ServerThreadHelper, self).start()

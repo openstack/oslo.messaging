@@ -27,6 +27,7 @@ import threading
 import time
 import uuid
 
+from oslo_utils import eventletutils
 from oslo_utils import importutils
 from six import moves
 from string import Template
@@ -75,8 +76,8 @@ class _ListenerThread(threading.Thread):
         self._msg_ack = msg_ack
         self.messages = moves.queue.Queue()
         self.daemon = True
-        self.started = threading.Event()
-        self._done = threading.Event()
+        self.started = eventletutils.Event()
+        self._done = eventletutils.Event()
         self.start()
         self.started.wait()
 
@@ -1146,7 +1147,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         self._addrs = {'unicast.test-topic': 2,
                        'broadcast.test-topic.all': 2,
                        'exclusive.test-topic.server': 2}
-        self._recovered = threading.Event()
+        self._recovered = eventletutils.Event()
         self._count = 0
 
         def _on_active(link):
@@ -2100,7 +2101,7 @@ class FakeBroker(threading.Thread):
 
         self._connections = {}
         self._sources = {}
-        self._pause = threading.Event()
+        self._pause = eventletutils.Event()
         # count of messages forwarded, by messaging pattern
         self.direct_count = 0
         self.topic_count = 0

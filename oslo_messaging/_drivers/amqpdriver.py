@@ -19,6 +19,7 @@ import time
 import uuid
 
 import cachetools
+from oslo_utils import eventletutils
 from oslo_utils import timeutils
 from six import moves
 
@@ -49,7 +50,7 @@ class MessageOperationsHandler(object):
         self.name = "%s (%s)" % (name, hex(id(self)))
         self._tasks = moves.queue.Queue()
 
-        self._shutdown = threading.Event()
+        self._shutdown = eventletutils.Event()
         self._shutdown_thread = threading.Thread(
             target=self._process_in_background)
         self._shutdown_thread.daemon = True
@@ -270,8 +271,8 @@ class AMQPListener(base.PollStyleListener):
         self.conn = conn
         self.msg_id_cache = rpc_amqp._MsgIdCache()
         self.incoming = []
-        self._shutdown = threading.Event()
-        self._shutoff = threading.Event()
+        self._shutdown = eventletutils.Event()
+        self._shutoff = eventletutils.Event()
         self._obsolete_reply_queues = ObsoleteReplyQueuesCache()
         self._message_operations_handler = MessageOperationsHandler(
             "AMQPListener")
@@ -434,7 +435,7 @@ class ReplyWaiter(object):
 
         self.conn.declare_direct_consumer(reply_q, self)
 
-        self._thread_exit_event = threading.Event()
+        self._thread_exit_event = eventletutils.Event()
         self._thread = threading.Thread(target=self.poll)
         self._thread.daemon = True
         self._thread.start()

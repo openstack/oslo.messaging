@@ -19,6 +19,7 @@ import warnings
 import eventlet
 import fixtures
 from oslo_config import cfg
+from oslo_utils import eventletutils
 from six.moves import mock
 import testscenarios
 
@@ -61,7 +62,7 @@ class ServerSetupMixin(object):
 
     class ServerController(object):
         def __init__(self):
-            self.stopped = threading.Event()
+            self.stopped = eventletutils.Event()
 
         def stop(self, ctxt):
             self.stopped.set()
@@ -704,11 +705,11 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Test that if 2 threads call a method simultaneously, both will wait,
         # but only 1 will call the underlying executor method.
 
-        start_event = threading.Event()
-        finish_event = threading.Event()
+        start_event = eventletutils.Event()
+        finish_event = eventletutils.Event()
 
-        running_event = threading.Event()
-        done_event = threading.Event()
+        running_event = eventletutils.Event()
+        done_event = eventletutils.Event()
 
         _runner = [None]
 
@@ -734,7 +735,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         runner = _runner[0]
         waiter = start2 if runner == start1 else start2
 
-        waiter_finished = threading.Event()
+        waiter_finished = eventletutils.Event()
         waiter.link(lambda _: waiter_finished.set())
 
         # At this point, runner is running start(), and waiter() is waiting for
@@ -783,8 +784,8 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Ensure that if 2 threads wait for the completion of 'start', the
         # first will wait until complete_event is signalled, but the second
         # will continue
-        complete_event = threading.Event()
-        complete_waiting_callback = threading.Event()
+        complete_event = eventletutils.Event()
+        complete_waiting_callback = eventletutils.Event()
 
         start_state = self.server._states['start']
         old_wait_for_completion = start_state.wait_for_completion
@@ -801,7 +802,7 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         # thread1 will wait for start to complete until we signal it
         thread1 = eventlet.spawn(self.server.stop)
-        thread1_finished = threading.Event()
+        thread1_finished = eventletutils.Event()
         thread1.link(lambda _: thread1_finished.set())
 
         self.server.start()
@@ -847,7 +848,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Test that we generate a log message if we wait longer than
         # DEFAULT_LOG_AFTER
 
-        log_event = threading.Event()
+        log_event = eventletutils.Event()
         mock_log.warning.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
@@ -863,7 +864,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Test that we generate a log message if we wait longer than
         # the number of seconds passed to log_after
 
-        log_event = threading.Event()
+        log_event = eventletutils.Event()
         mock_log.warning.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
@@ -879,7 +880,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Test that we log a message after log_after seconds if we've also
         # specified an absolute timeout
 
-        log_event = threading.Event()
+        log_event = eventletutils.Event()
         mock_log.warning.side_effect = lambda _, __: log_event.set()
 
         # Call stop without calling start. We should log a wait after 1 second
@@ -904,7 +905,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Start the server, which will also instantiate an executor
         self.server.start()
         self.server.stop()
-        shutdown_called = threading.Event()
+        shutdown_called = eventletutils.Event()
 
         # Patch the executor's stop method to be very slow
         def slow_shutdown(wait):

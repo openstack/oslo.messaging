@@ -18,6 +18,7 @@ import threading
 import time
 
 from oslo_serialization import jsonutils
+from oslo_utils import eventletutils
 from six import moves
 
 import oslo_messaging
@@ -49,7 +50,7 @@ class FakeListener(base.PollStyleListener):
         self._exchange_manager = exchange_manager
         self._targets = targets
         self._pool = pool
-        self._stopped = threading.Event()
+        self._stopped = eventletutils.Event()
 
         # NOTE(sileht): Ensure that all needed queues exists even the listener
         # have not been polled yet
