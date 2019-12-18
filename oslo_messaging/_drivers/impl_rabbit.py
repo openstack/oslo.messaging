@@ -444,8 +444,6 @@ class ConnectionLock(DummyConnectionLock):
 class Connection(object):
     """Connection object."""
 
-    pools = {}
-
     def __init__(self, conf, url, purpose):
         # NOTE(viktors): Parse config options
         driver_conf = conf.oslo_messaging_rabbit
