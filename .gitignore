@@ -23,5 +23,7 @@ doc/build/
 doc/source/api/
 dist/
 .stestr/
+RELEASENOTES.rst
+releasenotes/notes/reno.cache
 releasenotes/build
 cover/
