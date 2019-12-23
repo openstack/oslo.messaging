@@ -164,12 +164,18 @@ class RPCServer(msg_server.MessageHandlingServer):
         try:
             res = self.dispatcher.dispatch(message)
         except rpc_dispatcher.ExpectedException as e:
-            failure = e.exc_info
-            LOG.debug(u'Expected exception during message handling (%s)', e)
-        except Exception:
             # current sys.exc_info() content can be overridden
             # by another exception raised by a log handler during
-            # LOG.exception(). So keep a copy and delete it later.
+            # LOG.debug(). So keep a copy and delete it later.
+            failure = e.exc_info
+            LOG.debug(u'Expected exception during message handling (%s)', e)
+        except rpc_dispatcher.NoSuchMethod as e:
+            failure = sys.exc_info()
+            if e.method.endswith('_ignore_errors'):
+                LOG.debug('Method %s not found', e.method)
+            else:
+                LOG.exception('Exception during message handling')
+        except Exception:
             failure = sys.exc_info()
             LOG.exception('Exception during message handling')
 

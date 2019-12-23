@@ -1,0 +1,5 @@
+other:
+  - |
+    NoSuchMethod exception will not be logged for special non-existing methods
+    which names end with '_ignore_errors'. Such methods might be used
+    as health probes for openstack services.
