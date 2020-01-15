@@ -305,8 +305,11 @@ class AMQPListener(base.PollStyleListener):
 
         while not self._shutdown.is_set():
             self._message_operations_handler.process()
+            LOG.debug("Listener is running")
 
             if self.incoming:
+                LOG.debug("Poll the incoming message with unique_id: %s",
+                          self.incoming[0].unique_id)
                 return self.incoming.pop(0)
 
             left = stopwatch.leftover(return_none=True)
@@ -316,8 +319,10 @@ class AMQPListener(base.PollStyleListener):
                 return None
 
             try:
+                LOG.debug("AMQPListener connection consume")
                 self.conn.consume(timeout=min(self._current_timeout, left))
             except rpc_common.Timeout:
+                LOG.debug("AMQPListener connection timeout")
                 self._current_timeout = max(self._current_timeout * 2,
                                             ACK_REQUEUE_EVERY_SECONDS_MAX)
             else:
@@ -325,8 +330,11 @@ class AMQPListener(base.PollStyleListener):
 
         # NOTE(sileht): listener is stopped, just processes remaining messages
         # and operations
+        LOG.debug("Listener is stopped")
         self._message_operations_handler.process()
         if self.incoming:
+            LOG.debug("Poll the incoming message with unique_id: %s",
+                      self.incoming[0].unique_id)
             return self.incoming.pop(0)
 
         self._shutoff.set()
