@@ -14,7 +14,6 @@
 #    under the License.
 
 import threading
-import warnings
 
 import eventlet
 import fixtures
@@ -120,51 +119,62 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
             new_value={}))
 
-    @mock.patch('warnings.warn')
-    def test_constructor(self, warn):
+    def test_constructor(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
         serializer = object()
         access_policy = dispatcher.DefaultRPCAccessPolicy
 
-        warnings.simplefilter("always", FutureWarning)
         server = oslo_messaging.get_rpc_server(transport,
                                                target,
                                                endpoints,
                                                serializer=serializer,
-                                               access_policy=access_policy)
+                                               access_policy=access_policy,
+                                               executor='threading')
         self.assertIs(server.conf, self.conf)
         self.assertIs(server.transport, transport)
         self.assertIsInstance(server.dispatcher, oslo_messaging.RPCDispatcher)
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
-        self.assertEqual('blocking', server.executor_type)
-        self.assertEqual([
-            mock.call("blocking executor is deprecated. Executor default will "
-                      "be removed. Use explicitly threading or eventlet "
-                      "instead in version 'pike' and will be removed in "
-                      "version 'rocky'",
-                      category=FutureWarning, stacklevel=3)
-        ], warn.mock_calls)
+        self.assertEqual('threading', server.executor_type)
 
-    @mock.patch('warnings.warn')
-    def test_constructor_without_explicit_RPCAccessPolicy(self, warn):
+    def test_constructor_with_eventlet_executor(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
         serializer = object()
+        access_policy = dispatcher.DefaultRPCAccessPolicy
 
-        warnings.simplefilter("always", FutureWarning)
-        oslo_messaging.get_rpc_server(transport, target,
-                                      endpoints, serializer=serializer)
-        self.assertEqual([
-            mock.call("blocking executor is deprecated. Executor default will "
-                      "be removed. Use explicitly threading or eventlet "
-                      "instead in version 'pike' and will be removed in "
-                      "version 'rocky'",
-                      category=FutureWarning, stacklevel=3)
-        ], warn.mock_calls)
+        server = oslo_messaging.get_rpc_server(transport,
+                                               target,
+                                               endpoints,
+                                               serializer=serializer,
+                                               access_policy=access_policy,
+                                               executor='eventlet')
+        self.assertIs(server.conf, self.conf)
+        self.assertIs(server.transport, transport)
+        self.assertIsInstance(server.dispatcher, oslo_messaging.RPCDispatcher)
+        self.assertIs(server.dispatcher.endpoints, endpoints)
+        self.assertIs(server.dispatcher.serializer, serializer)
+        self.assertEqual('eventlet', server.executor_type)
+
+    def test_constructor_with_unrecognized_executor(self):
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
+        target = oslo_messaging.Target(topic='foo', server='bar')
+        endpoints = [object()]
+        serializer = object()
+        access_policy = dispatcher.DefaultRPCAccessPolicy
+
+        self.assertRaises(
+            server_module.ExecutorLoadFailure,
+            oslo_messaging.get_rpc_server,
+            transport=transport,
+            target=target,
+            endpoints=endpoints,
+            serializer=serializer,
+            access_policy=access_policy,
+            executor='boom')
 
     def test_server_wait_method(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')

@@ -23,7 +23,6 @@ import logging
 import threading
 import traceback
 
-import debtcollector
 from oslo_config import cfg
 from oslo_service import service
 from oslo_utils import eventletutils
@@ -32,6 +31,7 @@ import six
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
+from oslo_messaging import _utils as utils
 from oslo_messaging import exceptions
 
 __all__ = [
@@ -306,16 +306,17 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
     new tasks.
     """
 
-    def __init__(self, transport, dispatcher, executor='blocking'):
+    def __init__(self, transport, dispatcher, executor=None):
         """Construct a message handling server.
 
         The dispatcher parameter is a DispatcherBase instance which is used
         for routing request to endpoint for processing.
 
         The executor parameter controls how incoming messages will be received
-        and dispatched. By default, the most simple executor is used - the
-        blocking executor. It handles only one message at once. It's
-        recommended to use threading or eventlet.
+        and dispatched. Executor is automatically detected from
+        execution environment.
+        It handles many message in parallel. If your application need
+        asynchronism then you need to consider to use the eventlet executor.
 
         :param transport: the messaging transport
         :type transport: Transport
@@ -326,19 +327,20 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
                          'eventlet' and 'threading'
         :type executor: str
         """
+        if executor and executor not in ("threading", "eventlet"):
+            raise ExecutorLoadFailure(
+                executor,
+                "Executor should be None or 'eventlet' and 'threading'")
+        if not executor:
+            executor = utils.get_executor_with_context()
+
         self.conf = transport.conf
         self.conf.register_opts(_pool_opts)
 
         self.transport = transport
         self.dispatcher = dispatcher
         self.executor_type = executor
-        if self.executor_type == 'blocking':
-            debtcollector.deprecate(
-                'blocking executor is deprecated. Executor default will be '
-                'removed. Use explicitly threading or eventlet instead',
-                version="pike", removal_version="rocky",
-                category=FutureWarning)
-        elif self.executor_type == "eventlet":
+        if self.executor_type == "eventlet":
             eventletutils.warn_eventlet_not_patched(
                 expected_patched_modules=['thread'],
                 what="the 'oslo.messaging eventlet executor'")
@@ -403,10 +405,9 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
 
         executor_opts = {}
 
-        if self.executor_type in ("threading", "eventlet"):
-            executor_opts["max_workers"] = (
-                override_pool_size or self.conf.executor_thread_pool_size
-            )
+        executor_opts["max_workers"] = (
+            override_pool_size or self.conf.executor_thread_pool_size
+        )
         self._work_executor = self._executor_cls(**executor_opts)
 
         try:

@@ -138,7 +138,7 @@ LOG = logging.getLogger(__name__)
 
 
 class RPCServer(msg_server.MessageHandlingServer):
-    def __init__(self, transport, target, dispatcher, executor='blocking'):
+    def __init__(self, transport, target, dispatcher, executor=None):
         super(RPCServer, self).__init__(transport, dispatcher, executor)
         if not isinstance(transport, msg_transport.RPCTransport):
             LOG.warning("Using notification transport for RPC. Please use "
@@ -200,7 +200,7 @@ class RPCServer(msg_server.MessageHandlingServer):
 
 
 def get_rpc_server(transport, target, endpoints,
-                   executor='blocking', serializer=None, access_policy=None):
+                   executor=None, serializer=None, access_policy=None):
     """Construct an RPC server.
 
     :param transport: the messaging transport

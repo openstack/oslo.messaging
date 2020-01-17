@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The blocking executor has been deprecated for removal in Rocky and support
+    is now dropped in Ussuri. Its usage was never recommended for applications,
+    and it has no test coverage.
+    Applications should choose the appropriate threading model that maps to
+    their usage instead.

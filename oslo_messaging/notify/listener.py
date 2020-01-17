@@ -143,7 +143,7 @@ LOG = logging.getLogger(__name__)
 
 
 class NotificationServerBase(msg_server.MessageHandlingServer):
-    def __init__(self, transport, targets, dispatcher, executor='blocking',
+    def __init__(self, transport, targets, dispatcher, executor=None,
                  allow_requeue=True, pool=None, batch_size=1,
                  batch_timeout=None):
         super(NotificationServerBase, self).__init__(transport, dispatcher,
@@ -167,7 +167,7 @@ class NotificationServerBase(msg_server.MessageHandlingServer):
 
 
 class NotificationServer(NotificationServerBase):
-    def __init__(self, transport, targets, dispatcher, executor='blocking',
+    def __init__(self, transport, targets, dispatcher, executor=None,
                  allow_requeue=True, pool=None):
         if not isinstance(transport, msg_transport.NotificationTransport):
             LOG.warning("Using RPC transport for notifications. Please use "
@@ -216,7 +216,7 @@ class BatchNotificationServer(NotificationServerBase):
 
 
 def get_notification_listener(transport, targets, endpoints,
-                              executor='blocking', serializer=None,
+                              executor=None, serializer=None,
                               allow_requeue=False, pool=None):
     """Construct a notification listener
 
@@ -250,7 +250,7 @@ def get_notification_listener(transport, targets, endpoints,
 
 
 def get_batch_notification_listener(transport, targets, endpoints,
-                                    executor='blocking', serializer=None,
+                                    executor=None, serializer=None,
                                     allow_requeue=False, pool=None,
                                     batch_size=None, batch_timeout=None):
     """Construct a batch notification listener

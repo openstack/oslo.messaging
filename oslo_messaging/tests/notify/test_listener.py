@@ -135,27 +135,21 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
             new_value={}))
 
-    @mock.patch('debtcollector.deprecate')
-    def test_constructor(self, deprecate):
+    def test_constructor(self):
         transport = msg_notifier.get_notification_transport(
             self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo')
         endpoints = [object()]
 
         listener = oslo_messaging.get_notification_listener(
-            transport, [target], endpoints)
+            transport, [target], endpoints, executor='threading')
 
         self.assertIs(listener.conf, self.conf)
         self.assertIs(listener.transport, transport)
         self.assertIsInstance(listener.dispatcher,
                               dispatcher.NotificationDispatcher)
         self.assertIs(listener.dispatcher.endpoints, endpoints)
-        self.assertEqual('blocking', listener.executor_type)
-        deprecate.assert_called_once_with(
-            'blocking executor is deprecated. Executor default will be '
-            'removed. Use explicitly threading or eventlet instead',
-            removal_version='rocky', version='pike',
-            category=FutureWarning)
+        self.assertEqual('threading', listener.executor_type)
 
     def test_no_target_topic(self):
         transport = msg_notifier.get_notification_transport(

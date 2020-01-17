@@ -13,6 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import logging
+
+from oslo_utils import eventletutils
+
+LOG = logging.getLogger(__name__)
+
 
 def version_is_compatible(imp_version, version):
     """Determine whether versions are compatible.
@@ -59,3 +65,11 @@ class DummyLock(object):
 
     def __exit__(self, type, value, traceback):
         self.release()
+
+
+def get_executor_with_context():
+    if eventletutils.is_monkey_patched('thread'):
+        LOG.debug("Threading is patched, using an eventlet executor")
+        return 'eventlet'
+    LOG.debug("Using a threading executor")
+    return 'threading'
