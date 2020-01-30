@@ -101,6 +101,9 @@ class Connection(object):
         self.security_protocol = self.driver_conf.security_protocol
         self.sasl_mechanism = self.driver_conf.sasl_mechanism
         self.ssl_cafile = self.driver_conf.ssl_cafile
+        self.ssl_client_cert_file = self.driver_conf.ssl_client_cert_file
+        self.ssl_client_key_file = self.driver_conf.ssl_client_key_file
+        self.ssl_client_key_password = self.driver_conf.ssl_client_key_password
         self.url = url
         self.virtual_host = url.virtual_host
         self._parse_url()
@@ -238,6 +241,9 @@ class ConsumerConnection(Connection):
             'sasl.username': self.username,
             'sasl.password': self.password,
             'ssl.ca.location': self.ssl_cafile,
+            'ssl.certificate.location': self.ssl_client_cert_file,
+            'ssl.key.location': self.ssl_client_key_file,
+            'ssl.key.password': self.ssl_client_key_password,
             'enable.partition.eof': False,
             'default.topic.config': {'auto.offset.reset': 'latest'}
         }
@@ -323,7 +329,10 @@ class ProducerConnection(Connection):
                 'sasl.mechanism': self.sasl_mechanism,
                 'sasl.username': self.username,
                 'sasl.password': self.password,
-                'ssl.ca.location': self.ssl_cafile
+                'ssl.ca.location': self.ssl_cafile,
+                'ssl.certificate.location': self.ssl_client_cert_file,
+                'ssl.key.location': self.ssl_client_key_file,
+                'ssl.key.password': self.ssl_client_key_password
             }
             self.producer = confluent_kafka.Producer(conf)
 
