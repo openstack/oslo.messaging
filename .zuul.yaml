@@ -1,24 +1,4 @@
 - job:
-    name: oslo.messaging-tox-py27-func-amqp1
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-amqp1
-
-- job:
-    name: oslo.messaging-tox-py27-func-kafka
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-kafka
-      bindep_profile: kafka
-
-- job:
-    name: oslo.messaging-tox-py27-func-rabbit
-    parent: openstack-tox-py27
-    vars:
-      tox_envlist: py27-func-rabbit
-      bindep_profile: rabbit
-
-- job:
     name: oslo.messaging-tox-py36-func-amqp1
     parent: openstack-tox-py36
     vars:
@@ -150,22 +130,15 @@
 - project:
     templates:
       - check-requirements
-      - lib-forward-testing
       - lib-forward-testing-python3
       - openstack-cover-jobs
       - openstack-lower-constraints-jobs
-      - openstack-python-jobs
       - openstack-python3-ussuri-jobs
       - periodic-stable-jobs
       - publish-openstack-docs-pti
       - release-notes-jobs-python3
     check:
       jobs:
-        - oslo.messaging-tox-py27-func-rabbit
-        - oslo.messaging-tox-py27-func-amqp1:
-            voting: false
-        - oslo.messaging-tox-py27-func-kafka:
-            voting: false
         - oslo.messaging-tox-py36-func-rabbit:
             voting: false
         - oslo.messaging-tox-py36-func-amqp1:
@@ -190,5 +163,5 @@
 
     gate:
       jobs:
-        - oslo.messaging-tox-py27-func-rabbit
+        - oslo.messaging-tox-py36-func-rabbit
         - oslo.messaging-src-dsvm-full-rabbit
