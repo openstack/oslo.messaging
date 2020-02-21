@@ -52,7 +52,7 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         # NOTE(gtt): Using different topic to make tests run in parallel
         topic = 'test_logging_%s_driver_%s' % (self.priority, self.driver)
 
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             self.conf.set_override('consumer_group', str(uuid.uuid4()),
                                    group='oslo_messaging_kafka')
 
@@ -61,9 +61,9 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
                     group='oslo_messaging_notifications')
 
         listener = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, [topic]))
+            utils.NotificationFixture(self.conf, self.notify_url, [topic]))
 
-        log_notify = oslo_messaging.LoggingNotificationHandler(self.url)
+        log_notify = oslo_messaging.LoggingNotificationHandler(self.notify_url)
 
         log = logging.getLogger(topic)
         log.setLevel(logging.DEBUG)
@@ -72,7 +72,7 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         log_method = getattr(log, self.priority)
         log_method('Test logging at priority: %s' % self.priority)
 
-        events = listener.get_events(timeout=5)
+        events = listener.get_events(timeout=15)
         self.assertEqual(1, len(events))
 
         info_event = events[0]

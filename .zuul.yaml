@@ -1,22 +1,30 @@
 - job:
-    name: oslo.messaging-tox-py36-func-amqp1
+    name: oslo.messaging-tox-py36-func-scenario01
     parent: openstack-tox-py36
     vars:
-      tox_envlist: py36-func-amqp1
-
-- job:
-    name: oslo.messaging-tox-py36-func-kafka
-    parent: openstack-tox-py36
-    vars:
-      tox_envlist: py36-func-kafka
-      bindep_profile: kafka
-
-- job:
-    name: oslo.messaging-tox-py36-func-rabbit
-    parent: openstack-tox-py36
-    vars:
-      tox_envlist: py36-func-rabbit
+      tox_envlist: py36-func-scenario01
       bindep_profile: rabbit
+
+- job:
+    name: oslo.messaging-tox-py36-func-scenario02
+    parent: openstack-tox-py36
+    vars:
+      tox_envlist: py36-func-scenario02
+      bindep_profile: rabbit kafka
+
+- job:
+    name: oslo.messaging-tox-py36-func-scenario03
+    parent: openstack-tox-py36
+    vars:
+      tox_envlist: py36-func-scenario03
+      bindep_profile: rabbit
+
+- job:
+    name: oslo.messaging-tox-py36-func-scenario04
+    parent: openstack-tox-py36
+    vars:
+      tox_envlist: py36-func-scenario04
+      bindep_profile: kafka
 
 # Begin v3 native jobs
 # See https://docs.openstack.org/devstack/latest/
@@ -61,16 +69,6 @@
 
 
 - job:
-    name: oslo.messaging-src-dsvm-full-amqp1-centos-7
-    description: |
-      Run the oslo.messaging-src-dsvm-full-amqp1-hybrid test on a
-      centos 7 node.
-    parent: oslo.messaging-src-dsvm-full-amqp1-hybrid
-    # nodeset: centos-7
-    nodeset: devstack-single-node-centos-7
-
-
-- job:
     name: oslo.messaging-src-dsvm-full-kafka-hybrid
     description: |
       Run the full tempest tests using the AMQP 1.0 driver for RPC and
@@ -83,15 +81,6 @@
         devstack-plugin-kafka: https://opendev.org/openstack/devstack-plugin-kafka
       zuul_copy_output:
         '{{ devstack_log_dir }}/server.log': logs
-
-- job:
-    name: oslo.messaging-src-dsvm-full-kafka-centos-7
-    description: |
-      Run the oslo.messaging-src-dsvm-full-kafka-hybrid test on a
-      centos 7 node.
-    parent: oslo.messaging-src-dsvm-full-kafka-hybrid
-    # nodeset: centos-7
-    nodeset: devstack-single-node-centos-7
 
 
 # End v3 native jobs
@@ -139,23 +128,18 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - oslo.messaging-tox-py36-func-rabbit:
+        - oslo.messaging-tox-py36-func-scenario01
+        - oslo.messaging-tox-py36-func-scenario02:
             voting: false
-        - oslo.messaging-tox-py36-func-amqp1:
+        - oslo.messaging-tox-py36-func-scenario03:
             voting: false
-        - oslo.messaging-tox-py36-func-kafka:
+        - oslo.messaging-tox-py36-func-scenario04:
             voting: false
-
         - oslo.messaging-src-dsvm-full-rabbit
         - oslo.messaging-src-dsvm-full-amqp1-hybrid:
             voting: false
-        - oslo.messaging-src-dsvm-full-amqp1-centos-7:
-            voting: false
         - oslo.messaging-src-dsvm-full-kafka-hybrid:
             voting: false
-        - oslo.messaging-src-dsvm-full-kafka-centos-7:
-            voting: false
-
         - oslo.messaging-src-grenade-dsvm:
             voting: false
         - oslo.messaging-src-grenade-dsvm-multinode:
@@ -163,5 +147,5 @@
 
     gate:
       jobs:
-        - oslo.messaging-tox-py36-func-rabbit
+        - oslo.messaging-tox-py36-func-scenario01
         - oslo.messaging-src-dsvm-full-rabbit

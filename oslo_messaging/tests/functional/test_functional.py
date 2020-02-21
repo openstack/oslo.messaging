@@ -28,7 +28,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def setUp(self):
         super(CallTestCase, self).setUp(conf=cfg.ConfigOpts())
-        if self.url.startswith("kafka://"):
+        if self.rpc_url.startswith("kafka://"):
             self.skipTest("kafka does not support RPC API")
 
         self.conf.prog = "test_prog"
@@ -39,7 +39,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_specific_server(self):
         group = self.useFixture(utils.RpcServerGroupFixture(
-            self.conf, self.url)
+            self.conf, self.rpc_url)
         )
         client = group.client(1)
         client.append(text='open')
@@ -55,7 +55,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_server_in_group(self):
         group = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url)
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url)
         )
 
         client = group.client()
@@ -73,13 +73,13 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         # teardown may hang unless we broadcast all control messages
         # to each server
         group1 = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url,
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url,
                                         use_fanout_ctrl=True))
         group2 = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url, exchange="a",
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url, exchange="a",
                                         use_fanout_ctrl=True))
         group3 = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url, exchange="b",
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url, exchange="b",
                                         use_fanout_ctrl=True))
 
         client1 = group1.client(1)
@@ -113,7 +113,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_timeout(self):
         transport = self.useFixture(
-            utils.RPCTransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.rpc_url)
         )
         target = oslo_messaging.Target(topic="no_such_topic")
         c = utils.ClientStub(transport.transport, target, timeout=1)
@@ -122,7 +122,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_exception(self):
         group = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url)
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url)
         )
         client = group.client(1)
         client.add(increment=2)
@@ -130,12 +130,12 @@ class CallTestCase(utils.SkipIfNoTransportURL):
 
     def test_timeout_with_concurrently_queues(self):
         transport = self.useFixture(
-            utils.RPCTransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.rpc_url)
         )
         target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
                                        server="server_" + str(uuid.uuid4()))
         server = self.useFixture(
-            utils.RpcServerFixture(self.conf, self.url, target,
+            utils.RpcServerFixture(self.conf, self.rpc_url, target,
                                    executor="threading"))
         client = utils.ClientStub(transport.transport, target,
                                   cast=False, timeout=5)
@@ -153,11 +153,11 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual(10, server.endpoint.ival)
 
     def test_mandatory_call(self):
-        if not self.url.startswith("rabbit://"):
+        if not self.rpc_url.startswith("rabbit://"):
             self.skipTest("backend does not support call monitoring")
 
         transport = self.useFixture(utils.RPCTransportFixture(self.conf,
-                                                              self.url))
+                                                              self.rpc_url))
         target = oslo_messaging.Target(topic='topic_' + str(uuid.uuid4()),
                                        server='server_' + str(uuid.uuid4()))
 
@@ -187,12 +187,12 @@ class CallTestCase(utils.SkipIfNoTransportURL):
                           client2.delay)
 
     def test_monitor_long_call(self):
-        if not (self.url.startswith("rabbit://") or
-                self.url.startswith("amqp://")):
+        if not (self.rpc_url.startswith("rabbit://") or
+                self.rpc_url.startswith("amqp://")):
             self.skipTest("backend does not support call monitoring")
 
         transport = self.useFixture(utils.RPCTransportFixture(self.conf,
-                                                              self.url))
+                                                              self.rpc_url))
         target = oslo_messaging.Target(topic='topic_' + str(uuid.uuid4()),
                                        server='server_' + str(uuid.uuid4()))
 
@@ -202,7 +202,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
                 return seconds
 
         self.useFixture(
-            utils.RpcServerFixture(self.conf, self.url, target,
+            utils.RpcServerFixture(self.conf, self.rpc_url, target,
                                    executor='threading',
                                    endpoint=_endpoint()))
 
@@ -238,10 +238,10 @@ class CallTestCase(utils.SkipIfNoTransportURL):
                 return echo
 
         transport = self.useFixture(
-            utils.RPCTransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.rpc_url)
         )
         self.useFixture(
-            utils.RpcServerFixture(self.conf, self.url, target,
+            utils.RpcServerFixture(self.conf, self.rpc_url, target,
                                    executor="threading",
                                    endpoint=_endpoint(target)))
         client1 = utils.ClientStub(transport.transport, target,
@@ -280,7 +280,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         target = oslo_messaging.Target(topic="topic_" + str(uuid.uuid4()),
                                        server="server_" + str(uuid.uuid4()))
         transport = self.useFixture(
-            utils.RPCTransportFixture(self.conf, self.url)
+            utils.RPCTransportFixture(self.conf, self.rpc_url)
         )
         self.assertRaises(TypeError,
                           oslo_messaging.get_rpc_server,
@@ -297,12 +297,12 @@ class CastTestCase(utils.SkipIfNoTransportURL):
 
     def setUp(self):
         super(CastTestCase, self).setUp()
-        if self.url.startswith("kafka://"):
+        if self.rpc_url.startswith("kafka://"):
             self.skipTest("kafka does not support RPC API")
 
     def test_specific_server(self):
         group = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url)
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url)
         )
         client = group.client(1, cast=True)
         client.append(text='open')
@@ -321,10 +321,10 @@ class CastTestCase(utils.SkipIfNoTransportURL):
             self.assertEqual(0, group.servers[i].endpoint.ival)
 
     def test_server_in_group(self):
-        if self.url.startswith("amqp:"):
+        if self.rpc_url.startswith("amqp:"):
             self.skipTest("QPID-6307")
         group = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url)
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url)
         )
         client = group.client(cast=True)
         for i in range(20):
@@ -343,7 +343,7 @@ class CastTestCase(utils.SkipIfNoTransportURL):
 
     def test_fanout(self):
         group = self.useFixture(
-            utils.RpcServerGroupFixture(self.conf, self.url)
+            utils.RpcServerGroupFixture(self.conf, self.rpc_url)
         )
         client = group.client('all', cast=True)
         client.append(text='open')
@@ -367,13 +367,14 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_simple(self):
         get_timeout = 1
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             get_timeout = 5
             self.conf.set_override('consumer_group', 'test_simple',
                                    group='oslo_messaging_kafka')
 
         listener = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, ['test_simple']))
+            utils.NotificationFixture(self.conf, self.notify_url,
+                                      ['test_simple']))
         notifier = listener.notifier('abc')
 
         notifier.info({}, 'test', 'Hello World!')
@@ -385,13 +386,13 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_multiple_topics(self):
         get_timeout = 1
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             get_timeout = 5
             self.conf.set_override('consumer_group', 'test_multiple_topics',
                                    group='oslo_messaging_kafka')
 
         listener = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, ['a', 'b']))
+            utils.NotificationFixture(self.conf, self.notify_url, ['a', 'b']))
         a = listener.notifier('pub-a', topics=['a'])
         b = listener.notifier('pub-b', topics=['b'])
 
@@ -416,9 +417,9 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_multiple_servers(self):
         timeout = 0.5
-        if self.url.startswith("amqp:"):
+        if self.notify_url.startswith("amqp:"):
             self.skipTest("QPID-6307")
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             self.skipTest("Kafka: needs to be fixed")
             timeout = 5
             self.conf.set_override('consumer_group',
@@ -426,10 +427,12 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
                                    group='oslo_messaging_kafka')
 
         listener_a = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, ['test-topic']))
+            utils.NotificationFixture(self.conf, self.notify_url,
+                                      ['test-topic']))
 
         listener_b = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, ['test-topic']))
+            utils.NotificationFixture(self.conf, self.notify_url,
+                                      ['test-topic']))
 
         n = listener_a.notifier('pub')
 
@@ -446,20 +449,20 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_independent_topics(self):
         get_timeout = 0.5
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             get_timeout = 5
             self.conf.set_override('consumer_group',
                                    'test_independent_topics_a',
                                    group='oslo_messaging_kafka')
         listener_a = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, ['1']))
+            utils.NotificationFixture(self.conf, self.notify_url, ['1']))
 
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             self.conf.set_override('consumer_group',
                                    'test_independent_topics_b',
                                    group='oslo_messaging_kafka')
         listener_b = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url, ['2']))
+            utils.NotificationFixture(self.conf, self.notify_url, ['2']))
 
         a = listener_a.notifier('pub-1', topics=['1'])
         b = listener_b.notifier('pub-2', topics=['2'])
@@ -484,13 +487,13 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_all_categories(self):
         get_timeout = 1
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             get_timeout = 5
             self.conf.set_override('consumer_group', 'test_all_categories',
                                    group='oslo_messaging_kafka')
 
         listener = self.useFixture(utils.NotificationFixture(
-            self.conf, self.url, ['test_all_categories']))
+            self.conf, self.notify_url, ['test_all_categories']))
         n = listener.notifier('abc')
 
         cats = ['debug', 'audit', 'info', 'warn', 'error', 'critical']
@@ -513,20 +516,20 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     def test_simple_batch(self):
         get_timeout = 3
         batch_timeout = 2
-        if self.url.startswith("amqp:"):
+        if self.notify_url.startswith("amqp:"):
             backend = os.environ.get("AMQP1_BACKEND")
             if backend == "qdrouterd":
                 # end-to-end acknowledgement with router intermediary
                 # sender pends until batch_size or timeout reached
                 self.skipTest("qdrouterd backend")
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             get_timeout = 10
             batch_timeout = 5
             self.conf.set_override('consumer_group', 'test_simple_batch',
                                    group='oslo_messaging_kafka')
 
         listener = self.useFixture(
-            utils.BatchNotificationFixture(self.conf, self.url,
+            utils.BatchNotificationFixture(self.conf, self.notify_url,
                                            ['test_simple_batch'],
                                            batch_size=100,
                                            batch_timeout=batch_timeout))
@@ -542,10 +545,10 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
     def test_compression(self):
         get_timeout = 1
-        if self.url.startswith("amqp:"):
+        if self.notify_url.startswith("amqp:"):
             self.conf.set_override('kombu_compression', 'gzip',
                                    group='oslo_messaging_rabbit')
-        if self.url.startswith("kafka://"):
+        if self.notify_url.startswith("kafka://"):
             get_timeout = 5
             self.conf.set_override('compression_codec', 'gzip',
                                    group='oslo_messaging_kafka')
@@ -553,7 +556,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
                                    group='oslo_messaging_kafka')
 
         listener = self.useFixture(
-            utils.NotificationFixture(self.conf, self.url,
+            utils.NotificationFixture(self.conf, self.notify_url,
                                       ['test_compression']))
         notifier = listener.notifier('abc')
 

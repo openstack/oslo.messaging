@@ -305,16 +305,14 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
     def setUp(self, conf=cfg.CONF):
         super(SkipIfNoTransportURL, self).setUp(conf=conf)
 
-        driver = os.environ.get("TRANSPORT_DRIVER")
-        if driver:
-            self.url = os.environ.get('PIFPAF_URL')
-        else:
-            self.url = os.environ.get('TRANSPORT_URL')
+        self.rpc_url = os.environ.get('RPC_TRANSPORT_URL')
+        self.notify_url = os.environ.get('NOTIFY_TRANSPORT_URL')
 
-        if not self.url:
+        if not (self.rpc_url or self.notify_url):
             self.skipTest("No transport url configured")
 
-        transport_url = oslo_messaging.TransportURL.parse(conf, self.url)
+        transport_url = oslo_messaging.TransportURL.parse(conf,
+                                                          self.notify_url)
 
         kafka_options.register_opts(conf, transport_url)
 
