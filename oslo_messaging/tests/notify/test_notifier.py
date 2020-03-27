@@ -225,6 +225,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
         self.assertTrue(notifier.is_enabled())
 
+
 TestMessagingNotifier.generate_scenarios()
 
 

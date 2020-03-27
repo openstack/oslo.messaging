@@ -20,7 +20,7 @@ import six
 
 class NotificationFilter(object):
 
-    """Filter notification messages
+    r"""Filter notification messages
 
     The NotificationFilter class is used to filter notifications that an
     endpoint will received.

@@ -146,7 +146,7 @@ rabbit_opts = [
                 'queue. If you just want to make sure that all queues (except '
                 'those with auto-generated names) are mirrored across all '
                 'nodes, run: '
-                """\"rabbitmqctl set_policy HA '^(?!amq\.).*' """
+                """\"rabbitmqctl set_policy HA '^(?!amq\\.).*' """
                 """'{"ha-mode": "all"}' \""""),
     cfg.IntOpt('rabbit_transient_queues_ttl',
                min=1,
@@ -192,7 +192,7 @@ def _get_queue_arguments(rabbit_ha_queues, rabbit_queue_ttl):
     no longer controlled by the x-ha-policy argument when declaring a
     queue. If you just want to make sure that all queues (except those
     with auto-generated names) are mirrored across all nodes, run:
-      rabbitmqctl set_policy HA '^(?!amq\.).*' '{"ha-mode": "all"}'
+      rabbitmqctl set_policy HA '^(?!amq\\.).*' '{"ha-mode": "all"}'
 
     If the rabbit_queue_ttl option is > 0, then the queue is
     declared with the "Queue TTL" value as described here:
@@ -1204,8 +1204,8 @@ class Connection(object):
         """Publish a message."""
 
         if not (exchange.passive or exchange.name in self._declared_exchanges):
-                exchange(self.channel).declare()
-                self._declared_exchanges.add(exchange.name)
+            exchange(self.channel).declare()
+            self._declared_exchanges.add(exchange.name)
 
         log_info = {'msg': msg,
                     'who': exchange or 'default',

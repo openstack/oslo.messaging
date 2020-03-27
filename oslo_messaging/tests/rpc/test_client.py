@@ -504,6 +504,7 @@ class TestVersionCap(test_utils.BaseTestCase):
                                                     transport_options=None,
                                                     **kwargs)
 
+
 TestVersionCap.generate_scenarios()
 
 

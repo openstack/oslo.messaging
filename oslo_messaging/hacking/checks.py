@@ -15,7 +15,9 @@
 import re
 
 import ast
+from hacking import core
 import six
+
 
 oslo_namespace_imports_dot = re.compile(r"import[\s]+oslo[.][^\s]+")
 oslo_namespace_imports_from_dot = re.compile(r"from[\s]+oslo[.]")
@@ -24,32 +26,34 @@ mock_imports_directly = re.compile(r"import[\s]+mock")
 mock_imports_direclty_from = re.compile(r"from[\s]+mock[\s]+import[\s]+")
 
 
+@core.flake8ext
 def check_oslo_namespace_imports(logical_line):
     if re.match(oslo_namespace_imports_from_dot, logical_line):
-        msg = ("O323: '%s' must be used instead of '%s'.") % (
+        msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('oslo.', 'oslo_'),
             logical_line)
         yield(0, msg)
     elif re.match(oslo_namespace_imports_from_root, logical_line):
-        msg = ("O323: '%s' must be used instead of '%s'.") % (
+        msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('from oslo import ', 'import oslo_'),
             logical_line)
         yield(0, msg)
     elif re.match(oslo_namespace_imports_dot, logical_line):
-        msg = ("O323: '%s' must be used instead of '%s'.") % (
+        msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('import', 'from').replace('.', ' import '),
             logical_line)
         yield(0, msg)
 
 
+@core.flake8ext
 def check_mock_imports(logical_line):
     if re.match(mock_imports_directly, logical_line):
-        msg = ("O324: '%s' must be used instead of '%s'.") % (
+        msg = ("O322: '%s' must be used instead of '%s'.") % (
             logical_line.replace('import mock', 'from six.moves import mock'),
             logical_line)
         yield(0, msg)
     elif re.match(mock_imports_direclty_from, logical_line):
-        msg = "O324: Use mock from six.moves."
+        msg = "O322: Use mock from six.moves."
         yield(0, msg)
 
 
@@ -95,6 +99,9 @@ class CheckForLoggingIssues(BaseASTChecker):
     NONDEBUG_CHECK_DESC = 'O325 Not using translating helper for logging'
     EXCESS_HELPER_CHECK_DESC = 'O326 Using hints when _ is necessary'
     LOG_MODULES = ('logging')
+
+    name = 'check_for_logging_issues'
+    version = '1.0'
 
     def __init__(self, tree, filename):
         super(CheckForLoggingIssues, self).__init__(tree, filename)
@@ -291,9 +298,3 @@ class CheckForLoggingIssues(BaseASTChecker):
             elif isinstance(peer, ast.Assign):
                 if name in (t.id for t in peer.targets if hasattr(t, 'id')):
                     return False
-
-
-def factory(register):
-    register(CheckForLoggingIssues)
-    register(check_oslo_namespace_imports)
-    register(check_mock_imports)

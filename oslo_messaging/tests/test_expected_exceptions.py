@@ -27,7 +27,7 @@ class TestExpectedExceptions(test_utils.BaseTestCase):
                 raise ValueError()
             except Exception:
                 raise oslo_messaging.ExpectedException()
-        except oslo_messaging.ExpectedException as e:
+        except oslo_messaging.ExpectedException as e:  # noqa: F841
             self.assertIsInstance(e, oslo_messaging.ExpectedException)
             self.assertTrue(hasattr(e, 'exc_info'))
             self.assertIsInstance(e.exc_info[1], ValueError)

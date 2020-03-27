@@ -13,7 +13,8 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""A notification listener is used to process notification messages sent by a
+
+r"""A notification listener is used to process notification messages sent by a
 notifier that uses the ``messaging`` driver.
 
 A notification listener subscribes to the topic - and optionally exchange - in
