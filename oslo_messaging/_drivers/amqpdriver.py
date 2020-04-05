@@ -149,7 +149,7 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
             except rpc_amqp.AMQPDestinationNotFound:
                 if timer.check_return() > 0:
                     LOG.debug(("The reply %(msg_id)s cannot be sent  "
-                               "%(reply_q)s reply queue don't exist, "
+                               "%(reply_q)s reply queue doesn't exist, "
                                "retrying..."), {
                                    'msg_id': self.msg_id,
                                    'reply_q': self.reply_q})
@@ -218,7 +218,7 @@ class NotificationAMQPIncomingMessage(AMQPIncomingMessage):
 
 
 class ObsoleteReplyQueuesCache(object):
-    """Cache of reply queue id that doesn't exists anymore.
+    """Cache of reply queue id that doesn't exist anymore.
 
     NOTE(sileht): In case of a broker restart/failover
     a reply queue can be unreachable for short period
@@ -257,7 +257,7 @@ class ObsoleteReplyQueuesCache(object):
         self._no_reply_log(reply_q, msg_id)
 
     def _no_reply_log(self, reply_q, msg_id):
-        LOG.warning("%(reply_queue)s doesn't exists, drop reply to "
+        LOG.warning("%(reply_queue)s doesn't exist, drop reply to "
                     "%(msg_id)s", {'reply_queue': reply_q, "msg_id": msg_id})
 
 

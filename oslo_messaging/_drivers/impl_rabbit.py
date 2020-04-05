@@ -59,7 +59,7 @@ else:
     # we will facing an issue by trying to override the threading module.
     stdlib_threading = threading
 
-# NOTE(sileht): don't exists in py2 socket module
+# NOTE(sileht): don't exist in py2 socket module
 TCP_USER_TIMEOUT = 18
 
 rabbit_opts = [
@@ -1309,7 +1309,7 @@ class Connection(object):
                 # the 404 kombu ChannelError and retry until the exchange
                 # appears
                 raise rpc_amqp.AMQPDestinationNotFound(
-                    "exchange %s doesn't exists" % exchange.name)
+                    "exchange %s doesn't exist" % exchange.name)
             raise
 
     def direct_send(self, msg_id, msg):
