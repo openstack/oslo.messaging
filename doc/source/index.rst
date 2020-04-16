@@ -15,6 +15,14 @@ different messaging transports.
    user/index
    reference/index
 
+
+Release Notes
+=============
+
+Read also the `oslo.messaging Release Notes
+<https://docs.openstack.org/releasenotes/oslo.messaging/>`_.
+
+
 Indices and tables
 ==================
 
