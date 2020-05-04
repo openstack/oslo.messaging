@@ -51,11 +51,6 @@ from oslo_messaging import exceptions
 from oslo_messaging.target import Target
 from oslo_messaging import transport
 
-if hasattr(time, 'monotonic'):
-    now = time.monotonic
-else:
-    from monotonic import monotonic as now  # noqa
-
 LOG = logging.getLogger(__name__)
 
 
@@ -980,7 +975,7 @@ class Controller(pyngus.ConnectionEventHandler):
     # methods executed by Tasks created by the driver:
 
     def send(self, send_task):
-        if send_task.deadline and send_task.deadline <= now():
+        if send_task.deadline and send_task.deadline <= time.monotonic():
             send_task._on_timeout()
             return
         key = keyify(send_task.target, send_task.service)

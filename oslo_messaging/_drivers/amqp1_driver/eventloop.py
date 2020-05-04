@@ -35,18 +35,13 @@ import threading
 import time
 import uuid
 
-if hasattr(time, 'monotonic'):
-    now = time.monotonic
-else:
-    from monotonic import monotonic as now  # noqa
-
 LOG = logging.getLogger(__name__)
 
 
 def compute_timeout(offset):
     # minimize the timer granularity to one second so we don't have to track
     # too many timers
-    return math.ceil(now() + offset)
+    return math.ceil(time.monotonic() + offset)
 
 
 class _SocketConnection(object):
@@ -75,7 +70,7 @@ class _SocketConnection(object):
         if self.socket:
             try:
                 pyngus.read_socket_input(self.pyngus_conn, self.socket)
-                self.pyngus_conn.process(now())
+                self.pyngus_conn.process(time.monotonic())
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.pyngus_conn.close_input()
@@ -87,7 +82,7 @@ class _SocketConnection(object):
         if self.socket:
             try:
                 pyngus.write_socket_output(self.pyngus_conn, self.socket)
-                self.pyngus_conn.process(now())
+                self.pyngus_conn.process(time.monotonic())
             except (socket.timeout, socket.error) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.pyngus_conn.close_output()
@@ -213,7 +208,7 @@ class Scheduler(object):
         due = self._deadlines[0] if self._deadlines else None
         if due is None:
             return max_delay
-        _now = now()
+        _now = time.monotonic()
         if due <= _now:
             return 0
         else:
@@ -222,7 +217,7 @@ class Scheduler(object):
     def _process(self):
         """Invoke all expired callables."""
         if self._deadlines:
-            _now = now()
+            _now = time.monotonic()
             try:
                 while self._deadlines[0] <= _now:
                     deadline = heapq.heappop(self._deadlines)
@@ -376,7 +371,7 @@ class Thread(threading.Thread):
 
             # force select to return in time to service the next expiring timer
             if deadline:
-                _now = now()
+                _now = time.monotonic()
                 timeout = 0 if deadline <= _now else (deadline - _now)
             else:
                 timeout = None
@@ -397,7 +392,7 @@ class Thread(threading.Thread):
             self._requests.process_requests()
             self._connection.read_socket()
             if pyngus_conn and pyngus_conn.deadline:
-                _now = now()
+                _now = time.monotonic()
                 if pyngus_conn.deadline <= _now:
                     pyngus_conn.process(_now)
             self._connection.write_socket()
