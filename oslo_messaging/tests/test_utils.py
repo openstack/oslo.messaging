@@ -16,7 +16,7 @@
 from oslo_messaging._drivers import common
 from oslo_messaging import _utils as utils
 from oslo_messaging.tests import utils as test_utils
-from six.moves import mock
+from unittest import mock
 
 
 class VersionIsCompatibleTestCase(test_utils.BaseTestCase):

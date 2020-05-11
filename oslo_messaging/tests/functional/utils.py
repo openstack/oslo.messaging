@@ -12,12 +12,12 @@
 #    under the License.
 
 import os
+import queue
 import time
 import uuid
 
 import fixtures
 from oslo_config import cfg
-from six import moves
 
 import oslo_messaging
 from oslo_messaging._drivers.kafka_driver import kafka_options
@@ -102,7 +102,7 @@ class RpcServerFixture(fixtures.Fixture):
         self.target = target
         self.endpoint = endpoint or TestServerEndpoint()
         self.executor = executor
-        self.syncq = moves.queue.Queue()
+        self.syncq = queue.Queue()
         self.ctrl_target = ctrl_target or self.target
 
     def setUp(self):
@@ -323,7 +323,7 @@ class NotificationFixture(fixtures.Fixture):
         self.conf = conf
         self.url = url
         self.topics = topics
-        self.events = moves.queue.Queue()
+        self.events = queue.Queue()
         self.name = str(id(self))
         self.batch = batch
 
@@ -395,7 +395,7 @@ class NotificationFixture(fixtures.Fixture):
         try:
             while True:
                 results.append(self.events.get(timeout=timeout))
-        except moves.queue.Empty:
+        except queue.Empty:
             pass
         return results
 

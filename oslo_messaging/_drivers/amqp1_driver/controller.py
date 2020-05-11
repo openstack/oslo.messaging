@@ -29,6 +29,7 @@ import collections
 import logging
 import os
 import platform
+import queue
 import random
 import sys
 import threading
@@ -38,9 +39,6 @@ import uuid
 from oslo_utils import eventletutils
 import proton
 import pyngus
-from six import iteritems
-from six import itervalues
-from six import moves
 
 from oslo_messaging._drivers.amqp1_driver.addressing import AddresserFactory
 from oslo_messaging._drivers.amqp1_driver.addressing import keyify
@@ -868,7 +866,7 @@ class Controller(pyngus.ConnectionEventHandler):
         self._command = os.path.basename(sys.argv[0])
         self._pid = os.getpid()
         # queue of drivertask objects to execute on the eventloop thread
-        self._tasks = moves.queue.Queue(maxsize=500)
+        self._tasks = queue.Queue(maxsize=500)
         # limit the number of Task()'s to execute per call to _process_tasks().
         # This allows the eventloop main thread to return to servicing socket
         # I/O in a timely manner
@@ -961,7 +959,7 @@ class Controller(pyngus.ConnectionEventHandler):
             LOG.debug("Waiting for eventloop to exit")
             self.processor.join(timeout)
             self._hard_reset("Shutting down")
-            for sender in itervalues(self._all_senders):
+            for sender in self._all_senders.values():
                 sender.destroy()
             self._all_senders.clear()
             self._servers.clear()
@@ -1134,7 +1132,7 @@ class Controller(pyngus.ConnectionEventHandler):
                   'vhost': ("/" + self.hosts.virtual_host
                             if self.hosts.virtual_host else "")})
 
-        for sender in itervalues(self._all_senders):
+        for sender in self._all_senders.values():
             sender.attach(self._socket_connection.pyngus_conn,
                           self.reply_link, self.addresser)
 
@@ -1181,8 +1179,8 @@ class Controller(pyngus.ConnectionEventHandler):
         self.addresser = self.addresser_factory(props,
                                                 self.hosts.virtual_host
                                                 if self.pseudo_vhost else None)
-        for servers in itervalues(self._servers):
-            for server in itervalues(servers):
+        for servers in self._servers.values():
+            for server in servers.values():
                 server.attach(self._socket_connection.pyngus_conn,
                               self.addresser)
         self.reply_link = Replies(self._socket_connection.pyngus_conn,
@@ -1279,7 +1277,7 @@ class Controller(pyngus.ConnectionEventHandler):
         del self._purged_senders[:]
         self._active_senders.clear()
         unused = []
-        for key, sender in iteritems(self._all_senders):
+        for key, sender in self._all_senders.items():
             # clean up any sender links that no longer have messages to send
             if sender.pending_messages == 0:
                 unused.append(key)
@@ -1289,8 +1287,8 @@ class Controller(pyngus.ConnectionEventHandler):
         for key in unused:
             self._all_senders[key].destroy(reason)
             del self._all_senders[key]
-        for servers in itervalues(self._servers):
-            for server in itervalues(servers):
+        for servers in self._servers.values():
+            for server in servers.values():
                 server.reset()
         if self.reply_link:
             self.reply_link.destroy()
@@ -1300,13 +1298,13 @@ class Controller(pyngus.ConnectionEventHandler):
 
     def _detach_senders(self):
         """Close all sender links"""
-        for sender in itervalues(self._all_senders):
+        for sender in self._all_senders.values():
             sender.detach()
 
     def _detach_servers(self):
         """Close all listener links"""
-        for servers in itervalues(self._servers):
-            for server in itervalues(servers):
+        for servers in self._servers.values():
+            for server in servers.values():
                 server.detach()
 
     def _purge_sender_links(self):

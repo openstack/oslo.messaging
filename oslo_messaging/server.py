@@ -27,7 +27,6 @@ from oslo_config import cfg
 from oslo_service import service
 from oslo_utils import eventletutils
 from oslo_utils import timeutils
-import six
 from stevedore import driver
 
 from oslo_messaging._drivers import base as driver_base
@@ -297,8 +296,8 @@ def ordered(after=None, reset_after=None):
     return _ordered
 
 
-@six.add_metaclass(abc.ABCMeta)
-class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner):
+class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
+                            metaclass=abc.ABCMeta):
     """Server for handling messages.
 
     Connect a transport to a dispatcher that knows how to process the

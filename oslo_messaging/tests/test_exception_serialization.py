@@ -16,7 +16,6 @@
 import sys
 
 from oslo_serialization import jsonutils
-import six
 import testscenarios
 
 import oslo_messaging
@@ -25,8 +24,8 @@ from oslo_messaging.tests import utils as test_utils
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
-EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
-OTHER_EXCEPTIONS_MODULE = 'builtins' if six.PY2 else 'exceptions'
+EXCEPTIONS_MODULE = 'builtins'
+OTHER_EXCEPTIONS_MODULE = 'exceptions'
 
 
 class NovaStyleException(Exception):
@@ -289,9 +288,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
 
         self.assertIsInstance(ex, self.cls)
         self.assertEqual(self.remote_name, ex.__class__.__name__)
-        self.assertEqual(self.str, six.text_type(ex))
+        self.assertEqual(self.str, str(ex))
         if hasattr(self, 'msg'):
-            self.assertEqual(self.msg, six.text_type(ex))
+            self.assertEqual(self.msg, str(ex))
             self.assertEqual((self.msg,) + self.remote_args, ex.args)
         else:
             self.assertEqual(self.remote_args, ex.args)

@@ -24,6 +24,7 @@ import ssl
 import sys
 import threading
 import time
+from urllib import parse
 import uuid
 
 import kombu
@@ -34,9 +35,6 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
 from oslo_utils import importutils
-import six
-import six.moves
-from six.moves.urllib import parse
 
 import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
@@ -320,7 +318,7 @@ class Consumer(object):
             self.declare(conn)
         try:
             self.queue.consume(callback=self._callback,
-                               consumer_tag=six.text_type(tag),
+                               consumer_tag=str(tag),
                                nowait=self.nowait)
         except conn.connection.channel_errors as exc:
             # We retries once because of some races that we can
@@ -340,14 +338,14 @@ class Consumer(object):
                                    exc.method_name == 'Basic.ack'):
                 self.declare(conn)
                 self.queue.consume(callback=self._callback,
-                                   consumer_tag=six.text_type(tag),
+                                   consumer_tag=str(tag),
                                    nowait=self.nowait)
             else:
                 raise
 
     def cancel(self, tag):
         LOG.trace('ConsumerBase.cancel: canceling %s', tag)
-        self.queue.cancel(six.text_type(tag))
+        self.queue.cancel(str(tag))
 
     def _callback(self, message):
         """Call callback with deserialized message.
@@ -753,7 +751,7 @@ class Connection(object):
             info = {'err_str': exc, 'sleep_time': interval}
             info.update(self._get_connection_info(conn_error=True))
 
-            if 'Socket closed' in six.text_type(exc):
+            if 'Socket closed' in str(exc):
                 LOG.error('[%(connection_id)s] AMQP server'
                           ' %(hostname)s:%(port)s closed'
                           ' the connection. Check login credentials:'
@@ -867,8 +865,8 @@ class Connection(object):
         """Close/release this connection."""
         self._heartbeat_stop()
         if self.connection:
-            for consumer in six.moves.filter(lambda c: c.type == 'fanout',
-                                             self._consumers):
+            for consumer in filter(lambda c: c.type == 'fanout',
+                                   self._consumers):
                 LOG.debug('[connection close] Deleting fanout '
                           'queue: %s ' % consumer.queue.name)
                 consumer.queue.delete()

@@ -16,7 +16,6 @@ import re
 
 import ast
 from hacking import core
-import six
 
 
 oslo_namespace_imports_dot = re.compile(r"import[\s]+oslo[.][^\s]+")
@@ -42,18 +41,6 @@ def check_oslo_namespace_imports(logical_line):
         msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('import', 'from').replace('.', ' import '),
             logical_line)
-        yield(0, msg)
-
-
-@core.flake8ext
-def check_mock_imports(logical_line):
-    if re.match(mock_imports_directly, logical_line):
-        msg = ("O322: '%s' must be used instead of '%s'.") % (
-            logical_line.replace('import mock', 'from six.moves import mock'),
-            logical_line)
-        yield(0, msg)
-    elif re.match(mock_imports_direclty_from, logical_line):
-        msg = "O322: Use mock from six.moves."
         yield(0, msg)
 
 
@@ -152,7 +139,7 @@ class CheckForLoggingIssues(BaseASTChecker):
             if obj_name is None:
                 return None
             return obj_name + '.' + method_name
-        elif isinstance(node, six.string_types):
+        elif isinstance(node, str):
             return node
         else:  # could be Subscript, Call or many more
             return None
@@ -284,10 +271,7 @@ class CheckForLoggingIssues(BaseASTChecker):
         peers = find_peers(node)
         for peer in peers:
             if isinstance(peer, ast.Raise):
-                if six.PY3:
-                    exc = peer.exc
-                else:
-                    exc = peer.type
+                exc = peer.exc
                 if (isinstance(exc, ast.Call) and
                         len(exc.args) > 0 and
                         isinstance(exc.args[0], ast.Name) and

@@ -19,7 +19,7 @@ import oslo_messaging
 from oslo_messaging import rpc
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
-from six.moves import mock
+from unittest import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

@@ -18,8 +18,6 @@ import itertools
 import logging
 import operator
 
-import six
-
 from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
 
@@ -124,7 +122,7 @@ class BatchNotificationDispatcher(NotificationDispatcher):
 
         requeues = set()
         for priority, messages in messages_grouped:
-            __, raw_messages, messages = six.moves.zip(*messages)
+            __, raw_messages, messages = zip(*messages)
             if priority not in PRIORITIES:
                 LOG.warning('Unknown priority "%s"', priority)
                 continue

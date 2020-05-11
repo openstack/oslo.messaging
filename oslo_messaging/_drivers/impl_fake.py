@@ -14,12 +14,12 @@
 #    under the License.
 
 import copy
+import queue
 import threading
 import time
 
 from oslo_serialization import jsonutils
 from oslo_utils import eventletutils
-from six import moves
 
 import oslo_messaging
 from oslo_messaging._drivers import base
@@ -133,8 +133,8 @@ class FakeExchange(object):
                 self.deliver_message(topic, ctxt, message, server=server,
                                      fanout=fanout, reply_q=reply_q)
 
-            for queue in queues:
-                queue.append((ctxt, message, reply_q, requeue))
+            for q in queues:
+                q.append((ctxt, message, reply_q, requeue))
 
     def poll(self, target, pool):
         with self._queues_lock:
@@ -195,7 +195,7 @@ class FakeDriver(base.BaseDriver):
 
         reply_q = None
         if wait_for_reply:
-            reply_q = moves.queue.Queue()
+            reply_q = queue.Queue()
 
         exchange.deliver_message(target.topic, ctxt, message,
                                  server=target.server,
@@ -209,7 +209,7 @@ class FakeDriver(base.BaseDriver):
                     raise failure
                 else:
                     return reply
-            except moves.queue.Empty:
+            except queue.Empty:
                 raise oslo_messaging.MessagingTimeout(
                     'No reply on topic %s' % target.topic)
 

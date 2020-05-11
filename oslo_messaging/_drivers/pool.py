@@ -19,7 +19,6 @@ import threading
 
 from oslo_log import log as logging
 from oslo_utils import timeutils
-import six
 
 from oslo_messaging._drivers import common
 
@@ -36,8 +35,7 @@ else:
         cond.wait()
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Pool(object):
+class Pool(object, metaclass=abc.ABCMeta):
     """A thread-safe object pool.
 
     Modelled after the eventlet.pools.Pool interface, but designed to be safe

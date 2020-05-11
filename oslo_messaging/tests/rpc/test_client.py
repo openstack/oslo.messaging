@@ -14,8 +14,8 @@
 #    under the License.
 
 from oslo_config import cfg
-from six.moves import mock
 import testscenarios
+from unittest import mock
 
 import oslo_messaging
 from oslo_messaging import exceptions

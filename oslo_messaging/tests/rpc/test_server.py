@@ -14,12 +14,13 @@
 #    under the License.
 
 import threading
+from unittest import mock
+
 
 import eventlet
 import fixtures
 from oslo_config import cfg
 from oslo_utils import eventletutils
-from six.moves import mock
 import testscenarios
 
 import oslo_messaging

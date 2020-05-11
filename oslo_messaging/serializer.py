@@ -17,13 +17,11 @@
 import abc
 
 from oslo_serialization import jsonutils
-import six
 
 __all__ = ['Serializer', 'NoOpSerializer', 'JsonPayloadSerializer']
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Serializer(object):
+class Serializer(object, metaclass=abc.ABCMeta):
     """Generic (de-)serialization definition base class."""
 
     @abc.abstractmethod

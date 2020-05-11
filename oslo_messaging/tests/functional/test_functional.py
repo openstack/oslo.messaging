@@ -17,7 +17,6 @@ import uuid
 
 import concurrent.futures
 from oslo_config import cfg
-import six.moves
 from testtools import matchers
 
 import oslo_messaging
@@ -535,7 +534,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
                                            batch_timeout=batch_timeout))
         notifier = listener.notifier('abc')
 
-        for i in six.moves.range(0, 205):
+        for i in range(0, 205):
             notifier.info({}, 'test%s' % i, 'Hello World!')
         events = listener.get_events(timeout=get_timeout)
         self.assertEqual(3, len(events))

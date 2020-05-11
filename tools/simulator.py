@@ -23,7 +23,6 @@ import logging
 import os
 import random
 import signal
-import six
 import socket
 import string
 import sys
@@ -139,7 +138,7 @@ class MessageStatsCollector(object):
         max_latency = 0
         sum_latencies = 0
 
-        for i in six.moves.range(count):
+        for i in range(count):
             p = self.buffer[i]
             size += len(p.cargo)
 
@@ -471,10 +470,10 @@ def generate_messages(messages_count):
         messages_count = MESSAGES_LIMIT
     LOG.info("Generating %d random messages", messages_count)
     generator = init_random_generator()
-    for i in six.moves.range(messages_count):
+    for i in range(messages_count):
         length = generator()
         msg = ''.join(random.choice(
-                      string.ascii_lowercase) for x in six.moves.range(length))
+                      string.ascii_lowercase) for x in range(length))
         MESSAGES.append(msg)
 
     LOG.info("Messages has been prepared")
@@ -533,7 +532,7 @@ def spawn_rpc_clients(threads, transport, targets, wait_after_msg, timeout,
     p = eventlet.GreenPool(size=threads)
     targets = itertools.cycle(targets)
 
-    for i in six.moves.range(threads):
+    for i in range(threads):
         target = next(targets)
         LOG.debug("starting RPC client for target %s", target)
         client_builder = functools.partial(RPCClient, i, transport, target,
@@ -548,7 +547,7 @@ def spawn_rpc_clients(threads, transport, targets, wait_after_msg, timeout,
 def spawn_notify_clients(threads, topic, transport, message_count,
                          wait_after_msg, timeout, duration):
     p = eventlet.GreenPool(size=threads)
-    for i in six.moves.range(threads):
+    for i in range(threads):
         client_builder = functools.partial(NotifyClient, i, transport, [topic],
                                            wait_after_msg)
         p.spawn_n(send_messages, i, client_builder, message_count, duration)
@@ -574,7 +573,7 @@ def send_messages(client_id, client_builder, messages_count, duration):
     else:
         LOG.debug("Sending %d messages using client %d",
                   messages_count, client_id)
-        for _ in six.moves.range(messages_count):
+        for _ in range(messages_count):
             client.send_msg()
             eventlet.sleep()
             if not IS_RUNNING:

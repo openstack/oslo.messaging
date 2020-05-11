@@ -13,16 +13,13 @@
 
 import abc
 
-import six
-
 
 __all__ = [
     "DispatcherBase"
 ]
 
 
-@six.add_metaclass(abc.ABCMeta)
-class DispatcherBase(object):
+class DispatcherBase(object, metaclass=abc.ABCMeta):
     "Base class for dispatcher"
 
     @abc.abstractmethod

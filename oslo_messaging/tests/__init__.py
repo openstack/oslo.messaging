@@ -19,5 +19,5 @@ eventlet.monkey_patch()
 # oslotest prepares mock for six in oslotest/__init__.py as follow:
 # six.add_move(six.MovedModule('mock', 'mock', 'unittest.mock')) and
 # oslo.messaging imports oslotest before importing test submodules to
-# setup six.moves for mock, then "from six.moves import mock" works well.
+# setup six.moves for mock, then "from unittest import mock" works well.
 import oslotest

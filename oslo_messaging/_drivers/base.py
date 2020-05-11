@@ -18,7 +18,6 @@ import threading
 from oslo_config import cfg
 from oslo_utils import excutils
 from oslo_utils import timeutils
-import six
 
 from oslo_messaging import exceptions
 
@@ -65,8 +64,7 @@ class TransportDriverError(exceptions.MessagingException):
     """Base class for transport driver specific exceptions."""
 
 
-@six.add_metaclass(abc.ABCMeta)
-class IncomingMessage(object):
+class IncomingMessage(object, metaclass=abc.ABCMeta):
     """The IncomingMessage class represents a single message received from the
     messaging backend. Instances of this class are passed to up a server's
     messaging processing logic. The backend driver must provide a concrete
@@ -116,8 +114,7 @@ class IncomingMessage(object):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class RpcIncomingMessage(IncomingMessage):
+class RpcIncomingMessage(IncomingMessage, metaclass=abc.ABCMeta):
     """The RpcIncomingMessage represents an RPC request message received from
     the backend. This class must be used for RPC calls that return a value to
     the caller.
@@ -170,8 +167,7 @@ class RpcIncomingMessage(IncomingMessage):
         """
 
 
-@six.add_metaclass(abc.ABCMeta)
-class PollStyleListener(object):
+class PollStyleListener(object, metaclass=abc.ABCMeta):
     """A PollStyleListener is used to transfer received messages to a server
     for processing. A polling pattern is used to retrieve messages.  A
     PollStyleListener uses a separate thread to run the polling loop.  A
@@ -227,8 +223,7 @@ class PollStyleListener(object):
         pass
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Listener(object):
+class Listener(object, metaclass=abc.ABCMeta):
     """A Listener is used to transfer incoming messages from the driver to a
     server for processing.  A callback is used by the driver to transfer the
     messages.
@@ -328,8 +323,7 @@ class PollStyleListenerAdapter(Listener):
         self._poll_style_listener.cleanup()
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseDriver(object):
+class BaseDriver(object, metaclass=abc.ABCMeta):
     """Defines the backend driver interface. Each backend driver implementation
     must provide a concrete derivation of this class implementing the backend
     specific logic for its public methods.

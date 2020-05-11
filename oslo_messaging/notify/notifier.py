@@ -22,7 +22,6 @@ import uuid
 
 from oslo_config import cfg
 from oslo_utils import timeutils
-import six
 from stevedore import extension
 from stevedore import named
 
@@ -106,8 +105,7 @@ def _send_notification():
     notifier._notify({}, args.event_type, args.payload, args.priority)
 
 
-@six.add_metaclass(abc.ABCMeta)
-class Driver(object):
+class Driver(object, metaclass=abc.ABCMeta):
     """Base driver for Notifications"""
 
     def __init__(self, conf, topics, transport):
@@ -182,7 +180,7 @@ class Notifier(object):
 
     Notification messages follow the following format::
 
-        {'message_id': six.text_type(uuid.uuid4()),
+        {'message_id': str(uuid.uuid4()),
          'publisher_id': 'compute.host1',
          'timestamp': timeutils.utcnow(),
          'priority': 'WARN',
@@ -300,12 +298,12 @@ class Notifier(object):
         payload = self._serializer.serialize_entity(ctxt, payload)
         ctxt = self._serializer.serialize_context(ctxt)
 
-        msg = dict(message_id=six.text_type(uuid.uuid4()),
+        msg = dict(message_id=str(uuid.uuid4()),
                    publisher_id=publisher_id or self.publisher_id,
                    event_type=event_type,
                    priority=priority,
                    payload=payload,
-                   timestamp=six.text_type(timeutils.utcnow()))
+                   timestamp=str(timeutils.utcnow()))
 
         def do_notify(ext):
             try:

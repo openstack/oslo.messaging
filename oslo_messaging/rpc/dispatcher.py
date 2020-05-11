@@ -22,8 +22,6 @@ import logging
 import sys
 import threading
 
-import six
-
 from oslo_utils import eventletutils
 
 from oslo_messaging import _utils as utils
@@ -83,8 +81,7 @@ class UnsupportedVersion(RPCDispatcherError):
         self.method = method
 
 
-@six.add_metaclass(ABCMeta)
-class RPCAccessPolicyBase(object):
+class RPCAccessPolicyBase(object, metaclass=ABCMeta):
     """Determines which endpoint methods may be invoked via RPC"""
 
     @abstractmethod

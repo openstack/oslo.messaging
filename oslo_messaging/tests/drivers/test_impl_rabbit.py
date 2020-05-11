@@ -32,7 +32,7 @@ from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
 from oslo_messaging.exceptions import MessageDeliveryFailure
 from oslo_messaging.tests import utils as test_utils
-from six.moves import mock
+from unittest import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
 

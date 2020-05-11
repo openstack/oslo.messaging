@@ -19,7 +19,6 @@ import abc
 import logging
 
 from oslo_config import cfg
-import six
 
 from oslo_messaging._drivers import base as driver_base
 from oslo_messaging import _utils as utils
@@ -85,8 +84,7 @@ class ClientSendError(exceptions.MessagingException):
         self.ex = ex
 
 
-@six.add_metaclass(abc.ABCMeta)
-class _BaseCallContext(object):
+class _BaseCallContext(object, metaclass=abc.ABCMeta):
 
     _marker = object()
 

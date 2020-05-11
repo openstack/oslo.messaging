@@ -14,9 +14,9 @@
 #    under the License.
 
 import fixtures
+from unittest import mock
+
 from oslo_config import cfg
-import six
-from six.moves import mock
 from stevedore import driver
 import testscenarios
 
@@ -150,7 +150,7 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
         ex_msg_contains = self.ex.pop('msg_contains')
         ex = self.assertRaises(
             ex_cls, oslo_messaging.get_transport, self.conf, url=self.url)
-        self.assertIn(ex_msg_contains, six.text_type(ex))
+        self.assertIn(ex_msg_contains, str(ex))
         for k, v in self.ex.items():
             self.assertTrue(hasattr(ex, k))
             self.assertEqual(v, str(getattr(ex, k)))
@@ -172,7 +172,7 @@ class _SetDefaultsFixture(fixtures.Fixture):
         def first(seq, default=None, key=None):
             if key is None:
                 key = bool
-            return next(six.moves.filter(key, seq), default)
+            return next(filter(key, seq), default)
 
         def default(opts, name):
             return first(opts, key=lambda o: o.name == name).default

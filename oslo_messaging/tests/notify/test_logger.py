@@ -23,7 +23,7 @@ import testscenarios
 
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
-from six.moves import mock
+from unittest import mock
 
 
 load_tests = testscenarios.load_tests_apply_scenarios

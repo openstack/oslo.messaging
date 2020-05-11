@@ -15,21 +15,21 @@
 import copy
 import logging
 import os
+import queue
 import select
 import shlex
 import shutil
-from six.moves import mock
 import socket
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+from unittest import mock
 import uuid
 
 from oslo_utils import eventletutils
 from oslo_utils import importutils
-from six import moves
 from string import Template
 import testtools
 
@@ -74,7 +74,7 @@ class _ListenerThread(threading.Thread):
         self.listener = listener
         self.msg_count = msg_count
         self._msg_ack = msg_ack
-        self.messages = moves.queue.Queue()
+        self.messages = queue.Queue()
         self.daemon = True
         self.started = eventletutils.Event()
         self._done = eventletutils.Event()
@@ -106,7 +106,7 @@ class _ListenerThread(threading.Thread):
             while True:
                 m = self.messages.get(False)
                 msgs.append(m)
-        except moves.queue.Empty:
+        except queue.Empty:
             pass
         return msgs
 

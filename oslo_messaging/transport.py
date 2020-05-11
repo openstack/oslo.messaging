@@ -21,9 +21,8 @@ import logging
 
 from debtcollector import removals
 from oslo_config import cfg
-import six
-from six.moves.urllib import parse
 from stevedore import driver
+from urllib import parse
 
 from oslo_messaging import exceptions
 
@@ -456,7 +455,7 @@ class TransportURL(object):
             conf.register_opts(_transport_opts)
         url = url or conf.transport_url
 
-        if not isinstance(url, six.string_types):
+        if not isinstance(url, str):
             raise InvalidTransportURL(url, 'Wrong URL type')
 
         url = parse.urlparse(url)

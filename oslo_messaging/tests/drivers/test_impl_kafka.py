@@ -11,8 +11,9 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-from six.moves import mock
+
 import testscenarios
+from unittest import mock
 
 import oslo_messaging
 from oslo_messaging._drivers import impl_kafka as kafka_driver

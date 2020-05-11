@@ -14,6 +14,7 @@
 #    under the License.
 
 import logging
+import queue
 import threading
 import time
 import uuid
@@ -21,7 +22,6 @@ import uuid
 import cachetools
 from oslo_utils import eventletutils
 from oslo_utils import timeutils
-from six import moves
 
 import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
@@ -48,7 +48,7 @@ class MessageOperationsHandler(object):
 
     def __init__(self, name):
         self.name = "%s (%s)" % (name, hex(id(self)))
-        self._tasks = moves.queue.Queue()
+        self._tasks = queue.Queue()
 
         self._shutdown = eventletutils.Event()
         self._shutdown_thread = threading.Thread(
@@ -75,7 +75,7 @@ class MessageOperationsHandler(object):
         while True:
             try:
                 task = self._tasks.get(block=False)
-            except moves.queue.Empty:
+            except queue.Empty:
                 break
             task()
 
@@ -403,7 +403,7 @@ class ReplyWaiters(object):
     def get(self, msg_id, timeout):
         try:
             return self._queues[msg_id].get(block=True, timeout=timeout)
-        except moves.queue.Empty:
+        except queue.Empty:
             raise oslo_messaging.MessagingTimeout(
                 'Timed out waiting for a reply '
                 'to message ID %s' % msg_id)
@@ -418,7 +418,7 @@ class ReplyWaiters(object):
             queue.put(message_data)
 
     def add(self, msg_id):
-        self._queues[msg_id] = moves.queue.Queue()
+        self._queues[msg_id] = queue.Queue()
         queues_length = len(self._queues)
         if queues_length > self._wrn_threshold:
             LOG.warning('Number of call queues is %(queues_length)s, '
@@ -529,7 +529,7 @@ class ReplyWaiter(object):
                     timeout = cm_timeout
             try:
                 message = self.waiters.get(msg_id, timeout=timeout)
-            except moves.queue.Empty:
+            except queue.Empty:
                 self._raise_timeout_exception(msg_id)
 
             reply, ending = self._process_reply(message)

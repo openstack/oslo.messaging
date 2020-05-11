@@ -15,13 +15,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-# TODO(smcginnis) update this once six has support for collections.abc
-# (https://github.com/benjaminp/six/pull/241) or clean up once we drop py2.7.
-try:
-    from collections.abc import Mapping
-except ImportError:
-    from collections import Mapping
-
+from collections.abc import Mapping
 import copy
 import logging
 import sys
@@ -29,14 +23,13 @@ import traceback
 
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
-import six
 
 import oslo_messaging
 from oslo_messaging import _utils as utils
 
 LOG = logging.getLogger(__name__)
 
-_EXCEPTIONS_MODULE = 'exceptions' if six.PY2 else 'builtins'
+_EXCEPTIONS_MODULE = 'builtins'
 _EXCEPTIONS_MODULES = ['exceptions', 'builtins']
 
 
@@ -184,8 +177,8 @@ def serialize_remote_exception(failure_info):
 
     # NOTE(matiu): With cells, it's possible to re-raise remote, remote
     # exceptions. Lets turn it back into the original exception type.
-    cls_name = six.text_type(failure.__class__.__name__)
-    mod_name = six.text_type(failure.__class__.__module__)
+    cls_name = str(failure.__class__.__name__)
+    mod_name = str(failure.__class__.__module__)
     if (cls_name.endswith(_REMOTE_POSTFIX) and
             mod_name.endswith(_REMOTE_POSTFIX)):
         cls_name = cls_name[:-len(_REMOTE_POSTFIX)]
@@ -194,7 +187,7 @@ def serialize_remote_exception(failure_info):
     data = {
         'class': cls_name,
         'module': mod_name,
-        'message': six.text_type(failure),
+        'message': str(failure),
         'tb': tb,
         'args': failure.args,
         'kwargs': kwargs
@@ -206,7 +199,7 @@ def serialize_remote_exception(failure_info):
 
 
 def deserialize_remote_exception(data, allowed_remote_exmods):
-    failure = jsonutils.loads(six.text_type(data))
+    failure = jsonutils.loads(str(data))
 
     trace = failure.get('tb', [])
     message = failure.get('message', "") + "\n" + "\n".join(trace)
@@ -235,7 +228,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
         failure = klass(*failure.get('args', []), **failure.get('kwargs', {}))
     except (AttributeError, TypeError, ImportError) as error:
         LOG.warning("Failed to rebuild remote exception due to error: %s",
-                    six.text_type(error))
+                    str(error))
         return oslo_messaging.RemoteError(name, failure.get('message'), trace)
 
     ex_type = type(failure)
