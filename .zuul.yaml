@@ -1,29 +1,29 @@
 - job:
-    name: oslo.messaging-tox-py36-func-scenario01
-    parent: openstack-tox-py36
+    name: oslo.messaging-tox-py38-func-scenario01
+    parent: openstack-tox-py38
     vars:
-      tox_envlist: py36-func-scenario01
+      tox_envlist: py38-func-scenario01
       bindep_profile: rabbit
 
 - job:
-    name: oslo.messaging-tox-py36-func-scenario02
-    parent: openstack-tox-py36
+    name: oslo.messaging-tox-py38-func-scenario02
+    parent: openstack-tox-py38
     vars:
-      tox_envlist: py36-func-scenario02
+      tox_envlist: py38-func-scenario02
       bindep_profile: rabbit kafka amqp1
 
 - job:
-    name: oslo.messaging-tox-py36-func-scenario03
-    parent: openstack-tox-py36
+    name: oslo.messaging-tox-py38-func-scenario03
+    parent: openstack-tox-py38
     vars:
-      tox_envlist: py36-func-scenario03
+      tox_envlist: py38-func-scenario03
       bindep_profile: rabbit amqp1
 
 - job:
-    name: oslo.messaging-tox-py36-func-scenario04
-    parent: openstack-tox-py36
+    name: oslo.messaging-tox-py38-func-scenario04
+    parent: openstack-tox-py38
     vars:
-      tox_envlist: py36-func-scenario04
+      tox_envlist: py38-func-scenario04
       bindep_profile: kafka amqp1
 
 # Begin v3 native jobs
@@ -115,12 +115,12 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - oslo.messaging-tox-py36-func-scenario01
-        - oslo.messaging-tox-py36-func-scenario02:
+        - oslo.messaging-tox-py38-func-scenario01
+        - oslo.messaging-tox-py38-func-scenario02:
             voting: false
-        - oslo.messaging-tox-py36-func-scenario03:
+        - oslo.messaging-tox-py38-func-scenario03:
             voting: false
-        - oslo.messaging-tox-py36-func-scenario04:
+        - oslo.messaging-tox-py38-func-scenario04:
             voting: false
         - oslo.messaging-src-dsvm-full-rabbit
         - oslo.messaging-src-dsvm-full-amqp1-hybrid:
@@ -134,5 +134,5 @@
 
     gate:
       jobs:
-        - oslo.messaging-tox-py36-func-scenario01
+        - oslo.messaging-tox-py38-func-scenario01
         - oslo.messaging-src-dsvm-full-rabbit
