@@ -25,9 +25,9 @@ extensions = [
 ]
 
 # openstackdocstheme options
-repository_name = 'openstack/oslo.messaging'
-bug_project = 'oslo.messaging'
-bug_tag = ''
+openstackdocs_repo_name = 'openstack/oslo.messaging'
+openstackdocs_bug_project = 'oslo.messaging'
+openstackdocs_bug_tag = ''
 
 # The master toctree document.
 master_doc = 'index'
