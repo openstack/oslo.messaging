@@ -98,6 +98,10 @@ class Pool(object, metaclass=abc.ABCMeta):
                     self._current_size += 1
                     break
 
+                LOG.warning("Connection pool limit exceeded: "
+                            "current size %s surpasses max "
+                            "configured rpc_conn_pool_size %s",
+                            self._current_size, self._max_size)
                 wait_condition(self._cond)
 
         # We've grabbed a slot and dropped the lock, now do the creation
