@@ -61,6 +61,8 @@ class ConfFixture(fixtures.Fixture):
                      'amqp1_opts', 'oslo_messaging_amqp')
         _import_opts(self.conf, 'oslo_messaging.rpc.client', '_client_opts')
         _import_opts(self.conf, 'oslo_messaging.transport', '_transport_opts')
+        _import_opts(self.conf, 'oslo_messaging.rpc.dispatcher',
+                     '_dispatcher_opts')
         _import_opts(self.conf,
                      'oslo_messaging.notify.notifier',
                      '_notifier_opts',

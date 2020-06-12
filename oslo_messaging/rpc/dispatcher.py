@@ -22,6 +22,7 @@ import logging
 import sys
 import threading
 
+from oslo_config import cfg
 from oslo_utils import eventletutils
 
 from oslo_messaging import _utils as utils
@@ -29,6 +30,13 @@ from oslo_messaging import dispatcher
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import server as msg_server
 from oslo_messaging import target as msg_target
+
+_dispatcher_opts = [
+    cfg.BoolOpt('rpc_ping_enabled',
+                default=False,
+                help='Add an endpoint to answer to ping calls. '
+                     'Endpoint is named oslo_rpc_server_ping'),
+]
 
 __all__ = [
     'NoSuchMethod',
@@ -43,6 +51,11 @@ __all__ = [
 ]
 
 LOG = logging.getLogger(__name__)
+
+
+class PingEndpoint(object):
+    def oslo_rpc_server_ping(self, ctxt, **kwargs):
+        return 'pong'
 
 
 class ExpectedException(Exception):
@@ -153,8 +166,11 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         :param endpoints: list of endpoint objects for dispatching to
         :param serializer: optional message serializer
         """
+        cfg.CONF.register_opts(_dispatcher_opts)
+        oslo_rpc_server_ping = None
 
         for ep in endpoints:
+            # Check if we have an attribute named 'target'
             target = getattr(ep, 'target', None)
             if target and not isinstance(target, msg_target.Target):
                 errmsg = "'target' is a reserved Endpoint attribute used" + \
@@ -163,7 +179,27 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                          " define an Endpoint method named 'target'"
                 raise TypeError("%s: endpoint=%s" % (errmsg, ep))
 
+            # Check if we have an attribute named 'oslo_rpc_server_ping'
+            oslo_rpc_server_ping = getattr(ep, 'oslo_rpc_server_ping', None)
+            if oslo_rpc_server_ping:
+                errmsg = "'oslo_rpc_server_ping' is a reserved Endpoint" + \
+                         " attribute which can be use to ping the" + \
+                         " endpoint. Please avoid using any oslo_* " + \
+                         " naming."
+                LOG.warning("%s (endpoint=%s)" % (errmsg, ep))
+
         self.endpoints = endpoints
+
+        # Add ping endpoint if enabled in config
+        if cfg.CONF.rpc_ping_enabled:
+            if oslo_rpc_server_ping:
+                LOG.warning("rpc_ping_enabled=True in config but "
+                            "oslo_rpc_server_ping is already declared "
+                            "in an other Endpoint. Not enabling rpc_ping "
+                            "Endpoint.")
+            else:
+                self.endpoints.append(PingEndpoint())
+
         self.serializer = serializer or msg_serializer.NoOpSerializer()
         self._default_target = msg_target.Target()
         if access_policy is not None:

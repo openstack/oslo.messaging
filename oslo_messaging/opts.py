@@ -23,6 +23,7 @@ from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers.kafka_driver import kafka_options
 from oslo_messaging.notify import notifier
 from oslo_messaging.rpc import client
+from oslo_messaging.rpc import dispatcher
 from oslo_messaging import server
 from oslo_messaging import transport
 
@@ -35,6 +36,7 @@ _global_opt_lists = [
     server._pool_opts,
     client._client_opts,
     transport._transport_opts,
+    dispatcher._dispatcher_opts,
 ]
 
 _opts = [
