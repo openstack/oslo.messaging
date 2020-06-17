@@ -17,6 +17,7 @@ import ssl
 import sys
 import threading
 import time
+import unittest
 import uuid
 
 import fixtures
@@ -981,6 +982,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             'kombu.connection.Connection.connect'))
         self.addCleanup(self.connection.close)
 
+    @unittest.skip("bug #1885923")
     def test_ensure_four_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
@@ -988,6 +990,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
                           retry=4)
         self.assertEqual(6, mock_callback.call_count)
 
+    @unittest.skip("bug #1885923")
     def test_ensure_one_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
@@ -995,6 +998,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
                           retry=1)
         self.assertEqual(3, mock_callback.call_count)
 
+    @unittest.skip("bug #1885923")
     def test_ensure_no_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,

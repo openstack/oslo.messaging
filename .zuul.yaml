@@ -10,21 +10,21 @@
     parent: openstack-tox-py36
     vars:
       tox_envlist: py36-func-scenario02
-      bindep_profile: rabbit kafka
+      bindep_profile: rabbit kafka amqp1
 
 - job:
     name: oslo.messaging-tox-py36-func-scenario03
     parent: openstack-tox-py36
     vars:
       tox_envlist: py36-func-scenario03
-      bindep_profile: rabbit
+      bindep_profile: rabbit amqp1
 
 - job:
     name: oslo.messaging-tox-py36-func-scenario04
     parent: openstack-tox-py36
     vars:
       tox_envlist: py36-func-scenario04
-      bindep_profile: kafka
+      bindep_profile: kafka amqp1
 
 # Begin v3 native jobs
 # See https://docs.openstack.org/devstack/latest/
