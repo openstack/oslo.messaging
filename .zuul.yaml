@@ -3,6 +3,7 @@
     parent: openstack-tox-py27
     vars:
       tox_envlist: py27-func-amqp1
+      bindep_profile: amqp1
 
 - job:
     name: oslo.messaging-tox-py27-func-kafka
@@ -51,6 +52,7 @@
     parent: openstack-tox-py35
     vars:
       tox_envlist: py35-func-amqp1
+      bindep_profile: amqp1
 
 - job:
     name: oslo.messaging-tox-py35-func-rabbit
