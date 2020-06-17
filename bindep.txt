@@ -15,21 +15,22 @@ rabbitmq-server [platform:dpkg rabbit]
 rabbitmq-server [platform:rpm rabbit]
 
 # AMQP1 dpkg
-qdrouterd [platform:dpkg amqp1]
-sasl2-bin [platform:dpkg amqp1]
-uuid-dev [platform:dpkg amqp1]
-swig [platform:dpkg amqp1]
-libsasl2-modules [platform:dpkg amqp1]
-openjdk-8-jdk [platform:dpkg amqp1]
+# This needs qpid/testing, will be installed by tools/test-setup.sh
+# qdrouterd [platform:dpkg amqp1 test]
+sasl2-bin [platform:dpkg amqp1 test]
+uuid-dev [platform:dpkg amqp1 test]
+swig [platform:dpkg amqp1 test]
+libsasl2-modules [platform:dpkg amqp1 test]
+openjdk-8-jdk [platform:dpkg amqp1 test]
 
-# AMQP1 rpm
-qpid-dispatch-router [platform:rpm amqp1]
-python-qpid-proton [platform:rpm amqp1]
-cyrus-sasl-lib [platform:rpm amqp1]
-cyrus-sasl-plain [platform:rpm amqp1]
-libuuid-devel [platform:rpm amqp1]
-swig [platform:rpm amqp1]
-java-1.8.0-openjdk [platform:rpm amqp1]
+# AMQP1 TEST rpm
+qpid-dispatch-router [platform:rpm amqp1 test]
+python-qpid-proton [platform:rpm amqp1 test]
+cyrus-sasl-lib [platform:rpm amqp1 test]
+cyrus-sasl-plain [platform:rpm amqp1 test]
+libuuid-devel [platform:rpm amqp1 test]
+swig [platform:rpm amqp1 test]
+java-1.8.0-openjdk [platform:rpm amqp1 test]
 
 # kafka dpkg
 openjdk-8-jdk [platform:dpkg kafka]
