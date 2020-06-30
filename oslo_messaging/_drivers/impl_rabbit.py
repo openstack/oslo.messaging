@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from __future__ import absolute_import
+
 import contextlib
 import errno
 import functools
@@ -26,6 +28,7 @@ import threading
 import time
 import uuid
 
+from amqp import exceptions as amqp_exec
 import kombu
 import kombu.connection
 import kombu.entity
@@ -953,7 +956,8 @@ class Connection(object):
                     except (socket.timeout,
                             ConnectRefuseError,
                             OSError,
-                            kombu.exceptions.OperationalError) as exc:
+                            kombu.exceptions.OperationalError,
+                            amqp_exec.ConnectionForced) as exc:
                         LOG.info(_LI("A recoverable connection/channel error "
                                      "occurred, trying to reconnect: %s"), exc)
                         self.ensure_connection()
