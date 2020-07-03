@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Add a new option `enable_cancel_on_failover` for rabbitmq driver
+    which when enabled, will cancel consumers when queue appears
+    to be down.
