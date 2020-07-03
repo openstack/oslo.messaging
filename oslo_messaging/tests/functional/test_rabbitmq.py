@@ -39,6 +39,13 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
     ]
 
     def test_failover_scenario(self):
+        self._test_failover_scenario()
+
+    def test_failover_scenario_enable_cancel_on_failover(self):
+        self.skipTest("Skipping failover tests on stable/train")
+        self._test_failover_scenario(enable_cancel_on_failover=True)
+
+    def _test_failover_scenario(self, enable_cancel_on_failover=False):
         # NOTE(sileht): run this test only if functional suite run of a driver
         # that use rabbitmq as backend
         self.driver = os.environ.get('TRANSPORT_DRIVER')
@@ -54,6 +61,7 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
                     kombu_reconnect_delay=0,
                     rabbit_retry_interval=0,
                     rabbit_retry_backoff=0,
+                    enable_cancel_on_failover=enable_cancel_on_failover,
                     group='oslo_messaging_rabbit')
 
         self.pifpaf = self.useFixture(rabbitmq.RabbitMQDriver(cluster=True,
