@@ -975,13 +975,6 @@ class Connection(object):
     def _heartbeat_thread_job(self):
         """Thread that maintains inactive connections
         """
-        # NOTE(hberaud): Python2 doesn't have ConnectionRefusedError
-        # defined so to switch connections destination on failure
-        # with python2 and python3 we need to wrapp adapt connection refused
-        try:
-            ConnectRefuseError = ConnectionRefusedError
-        except NameError:
-            ConnectRefuseError = socket.error
 
         while not self._heartbeat_exit_event.is_set():
             with self._connection_lock.for_heartbeat():
@@ -1008,7 +1001,7 @@ class Connection(object):
                     # ensure_connection for switching the
                     # connection destination.
                     except (socket.timeout,
-                            ConnectRefuseError,
+                            ConnectionRefusedError,
                             OSError,
                             kombu.exceptions.OperationalError) as exc:
                         LOG.info("A recoverable connection/channel error "
