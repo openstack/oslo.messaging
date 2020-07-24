@@ -524,7 +524,10 @@ class Connection(object):
                 self._url += url.virtual_host
         elif not url.hosts:
             host = oslo_messaging.transport.TransportHost('')
-            self._url = self._transform_transport_url(
+            # NOTE(moguimar): default_password in this function's context is
+            #                 a fallback option, not a hardcoded password.
+            #                 username and password are read from host.
+            self._url = self._transform_transport_url(  # nosec
                 url, host, default_username='guest', default_password='guest',
                 default_hostname='localhost')
 
@@ -654,7 +657,9 @@ class Connection(object):
         except KeyError:
             raise RuntimeError("Invalid SSL version : %s" % version)
 
-    def _transform_transport_url(self, url, host, default_username='',
+    # NOTE(moguimar): default_password in this function's context is just
+    #                 a fallback option, not a hardcoded password.
+    def _transform_transport_url(self, url, host, default_username='',  # nosec
                                  default_password='', default_hostname=''):
         transport = url.transport.replace('kombu+', '')
         transport = transport.replace('rabbit', 'amqp')
