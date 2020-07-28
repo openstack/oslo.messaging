@@ -27,6 +27,7 @@ import time
 from urllib import parse
 import uuid
 
+from amqp import exceptions as amqp_exec
 import kombu
 import kombu.connection
 import kombu.entity
@@ -1003,7 +1004,8 @@ class Connection(object):
                     except (socket.timeout,
                             ConnectionRefusedError,
                             OSError,
-                            kombu.exceptions.OperationalError) as exc:
+                            kombu.exceptions.OperationalError,
+                            amqp_exec.ConnectionForced) as exc:
                         LOG.info("A recoverable connection/channel error "
                                  "occurred, trying to reconnect: %s", exc)
                         self.ensure_connection()
