@@ -1208,8 +1208,8 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
             else:
                 # unblock all link when RPC call is made
                 link.add_capacity(10)
-                for l in self._blocked_links:
-                    l.add_capacity(10)
+                for li in self._blocked_links:
+                    li.add_capacity(10)
 
         self._broker.on_receiver_active = _on_active
         self._broker.on_credit_exhausted = lambda link: None
@@ -1293,15 +1293,15 @@ class TestAddressing(test_utils.BaseTestCase):
                                      {"msg": topic}, 2.0)
             expected.append(topic)
 
-        for l in rl:
-            l.join(timeout=30)
+        for li in rl:
+            li.join(timeout=30)
 
         # anycast will not evenly distribute an odd number of msgs
         predicate = lambda: len(expected) == (nl[0].messages.qsize() +
                                               nl[1].messages.qsize())
         _wait_until(predicate, 30)
-        for l in nl:
-            l.kill(timeout=30)
+        for li in nl:
+            li.kill(timeout=30)
 
         s1_payload = [m.message.get('msg') for m in rl[0].get_messages()]
         s2_payload = [m.message.get('msg') for m in rl[1].get_messages()]

@@ -280,13 +280,13 @@ class IsValidDistributionOf(object):
 
     def match(self, actual):
         errors = InvalidDistribution(self.original, actual)
-        received = [[i for i in l] for l in actual]
+        received = [[idx for idx in act] for act in actual]
 
         def _remove(obj, lists):
-            for l in lists:
-                if obj in l:
-                    front = l[0]
-                    l.remove(obj)
+            for li in lists:
+                if obj in li:
+                    front = li[0]
+                    li.remove(obj)
                     return front
             return None
 
@@ -296,8 +296,8 @@ class IsValidDistributionOf(object):
                 errors.missing += item
             elif item != o:
                 errors.wrong_order.append([item, o])
-        for l in received:
-            errors.extra += l
+        for li in received:
+            errors.extra += li
         return errors or None
 
 
