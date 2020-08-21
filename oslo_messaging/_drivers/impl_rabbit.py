@@ -88,14 +88,16 @@ rabbit_opts = [
                help='SSL certification authority file '
                     '(valid only if SSL enabled).'),
     cfg.BoolOpt('heartbeat_in_pthread',
-                default=False,
-                help="EXPERIMENTAL: Run the health check heartbeat thread "
-                     "through a native python thread. By default if this "
-                     "option isn't provided the  health check heartbeat will "
-                     "inherit the execution model from the parent process. By "
-                     "example if the parent process have monkey patched the "
+                default=True,
+                help="Run the health check heartbeat thread "
+                     "through a native python thread by default. If this "
+                     "option is equal to False then the health check "
+                     "heartbeat will inherit the execution model "
+                     "from the parent process. For "
+                     "example if the parent process has monkey patched the "
                      "stdlib by using eventlet/greenlet then the heartbeat "
-                     "will be run through a green thread."),
+                     "will be run through a green thread.",
+                deprecated_for_removal=True),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
                  deprecated_group='DEFAULT',
