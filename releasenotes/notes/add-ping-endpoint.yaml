@@ -1,0 +1,13 @@
+---
+features:
+  - |
+    RPC dispatcher can have an extra endpoint named ping.
+    This endpoint can be enabled thanks to a specific configuration parameter:
+    [DEFAULT]
+    rpc_ping_enabled=true  # default is false
+
+    The purpose of this new endpoint is to help operators do a RPC call (a
+    ping) toward a specific RPC callback (e.g. a nova-compute, or a
+    neutron-agent).
+    This is helping a lot for monitoring agents (for example, if agents are
+    deployed in a kubernetes pod).
