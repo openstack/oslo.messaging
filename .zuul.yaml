@@ -79,17 +79,6 @@
       - openstack/oslo.messaging
 
 - job:
-    name: oslo.messaging-src-dsvm-full-pika-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-pika-default/run.yaml
-    post-run: playbooks/oslo.messaging-src-dsvm-full-pika-default/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-pika
-      - openstack/oslo.messaging
-
-- job:
     name: oslo.messaging-src-dsvm-full-amqp1-dual-centos-7
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-src-dsvm-full-amqp1-dual-centos-7/run.yaml
@@ -133,17 +122,6 @@
     required-projects:
       - openstack/devstack-gate
       - openstack/devstack-plugin-kafka
-      - openstack/oslo.messaging
-
-- job:
-    name: oslo.messaging-src-dsvm-full-zmq-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/run.yaml
-    post-run: playbooks/oslo.messaging-src-dsvm-full-zmq-default/post.yaml
-    timeout: 10800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-zmq
       - openstack/oslo.messaging
 
 - job:
@@ -217,42 +195,6 @@
       - openstack/diskimage-builder
 
 - job:
-    name: oslo.messaging-telemetry-dsvm-integration-pika
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-pika/post.yaml
-    timeout: 4200
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/devstack-plugin-pika
-      - openstack/oslo.messaging
-      - openstack/panko
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-- job:
-    name: oslo.messaging-telemetry-dsvm-integration-zmq
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/run.yaml
-    post-run: playbooks/oslo.messaging-telemetry-dsvm-integration-zmq/post.yaml
-    timeout: 4200
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/aodh
-      - openstack/ceilometer
-      - openstack/devstack-plugin-zmq
-      - openstack/oslo.messaging
-      - openstack/panko
-      # following are required when DEVSTACK_GATE_HEAT, which this
-      # job turns on
-      - openstack/dib-utils
-      - openstack/diskimage-builder
-
-- job:
     name: oslo.messaging-telemetry-dsvm-integration-rabbit
     parent: legacy-dsvm-base
     run: playbooks/oslo.messaging-telemetry-dsvm-integration-rabbit/run.yaml
@@ -309,33 +251,6 @@
       - openstack/oslo.messaging
       - openstack/tempest
 
-- job:
-    name: oslo.messaging-tempest-neutron-dsvm-src-pika-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/run.yaml
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-pika-default/post.yaml
-    timeout: 7800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-pika
-      - openstack/neutron
-      - openstack/oslo.messaging
-      - openstack/tempest
-
-- job:
-    name: oslo.messaging-tempest-neutron-dsvm-src-zmq-default
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/run.yaml
-    post-run: playbooks/oslo.messaging-tempest-neutron-dsvm-src-zmq-default/post.yaml
-    timeout: 7800
-    required-projects:
-      - openstack/devstack-gate
-      - openstack/devstack-plugin-zmq
-      - openstack/neutron
-      - openstack/oslo.messaging
-      - openstack/tempest
-
-
 - project:
     name: openstack/oslo.messaging
     check:
@@ -370,10 +285,6 @@
             voting: false
         - oslo.messaging-src-dsvm-full-kafka-default:
             voting: false
-        - oslo.messaging-src-dsvm-full-pika-default:
-            voting: false
-        - oslo.messaging-src-dsvm-full-zmq-default:
-            voting: false
 
         - oslo.messaging-src-grenade-dsvm:
             voting: false
@@ -386,20 +297,11 @@
             voting: false
         - oslo.messaging-telemetry-dsvm-integration-kafka:
             voting: false
-        - oslo.messaging-telemetry-dsvm-integration-pika:
-            voting: false
-        - oslo.messaging-telemetry-dsvm-integration-zmq:
-            voting: false
-
         - oslo.messaging-tempest-neutron-dsvm-src-rabbit-default
         - oslo.messaging-tempest-neutron-dsvm-src-amqp1-hybrid:
             voting: false
             branches: ^(?!stable/ocata).*$
         - oslo.messaging-tempest-neutron-dsvm-src-kafka-default:
-            voting: false
-        - oslo.messaging-tempest-neutron-dsvm-src-pika-default:
-            voting: false
-        - oslo.messaging-tempest-neutron-dsvm-src-zmq-default:
             voting: false
 
     gate:
