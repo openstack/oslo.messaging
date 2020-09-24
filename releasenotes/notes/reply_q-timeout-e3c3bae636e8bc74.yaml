@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    The name of the ``reply_q`` is now logged when a timeout occurs while waiting for a reply.

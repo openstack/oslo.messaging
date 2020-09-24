@@ -668,7 +668,7 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
         wait_conditions = []
         orig_reply_waiter = amqpdriver.ReplyWaiter.wait
 
-        def reply_waiter(self, msg_id, timeout, call_monitor_timeout):
+        def reply_waiter(self, msg_id, timeout, call_monitor_timeout, reply_q):
             if wait_conditions:
                 cond = wait_conditions.pop()
                 with cond:
@@ -676,7 +676,7 @@ class TestRacyWaitForReply(test_utils.BaseTestCase):
                 with cond:
                     cond.wait()
             return orig_reply_waiter(self, msg_id, timeout,
-                                     call_monitor_timeout)
+                                     call_monitor_timeout, reply_q)
 
         self.useFixture(fixtures.MockPatchObject(
             amqpdriver.ReplyWaiter, 'wait', reply_waiter))
