@@ -1370,6 +1370,11 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         # the pool configuration properties
         max_size = conf.oslo_messaging_rabbit.rpc_conn_pool_size
         min_size = conf.oslo_messaging_rabbit.conn_pool_min_size
+        if max_size < min_size:
+            text = 'rpc_conn_pool_size: {max_size} must be greater than' \
+                   ' or equal to conn_pool_min_size:' \
+                   ' {min_size}'.format(max_size=max_size, min_size=min_size)
+            raise RuntimeError(text)
         ttl = conf.oslo_messaging_rabbit.conn_pool_ttl
 
         connection_pool = pool.ConnectionPool(

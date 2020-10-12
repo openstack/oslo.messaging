@@ -50,6 +50,7 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         # correctly
         self.config(heartbeat_timeout_threshold=1,
                     rpc_conn_pool_size=1,
+                    conn_pool_min_size=1,
                     kombu_reconnect_delay=0,
                     rabbit_retry_interval=0,
                     rabbit_retry_backoff=0,
