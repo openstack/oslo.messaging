@@ -33,6 +33,7 @@ from oslo_messaging._drivers import common as driver_common
 from oslo_messaging._drivers import impl_rabbit as rabbit_driver
 from oslo_messaging.exceptions import MessageDeliveryFailure
 from oslo_messaging.tests import utils as test_utils
+from oslo_messaging.transport import DriverLoadFailure
 from unittest import mock
 
 load_tests = testscenarios.load_tests_apply_scenarios
@@ -142,6 +143,20 @@ class TestRabbitDriverLoad(test_utils.BaseTestCase):
         driver = transport._driver
 
         self.assertIsInstance(driver, rabbit_driver.RabbitDriver)
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection.reset')
+    def test_driver_load_max_less_than_min(self, fake_ensure, fake_reset):
+        self.config(
+            rpc_conn_pool_size=1, conn_pool_min_size=2,
+            group='oslo_messaging_rabbit')
+        self.messaging_conf.transport_url = self.transport_url
+        error = self.assertRaises(
+            DriverLoadFailure, oslo_messaging.get_transport, self.conf)
+        self.assertIn(
+            "rpc_conn_pool_size: 1 must be greater than or equal "
+            "to conn_pool_min_size: 2", str(error))
 
 
 class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
