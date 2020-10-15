@@ -1,0 +1,10 @@
+---
+upgrade:
+  - |
+    The ``[oslo_messaging_rabbit] heartbeat_in_pthread`` config option now
+    defaults to ``True``.
+    Applications will run RabbitMQ heartbeat in a Python thread by default.
+deprecations:
+  - |
+    ``heartbeat_in_pthread`` has been deprecated and will be removed in a
+    future release. If configured, this option should be unset.
