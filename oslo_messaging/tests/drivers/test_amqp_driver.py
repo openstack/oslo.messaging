@@ -227,7 +227,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                          {"msg": "value"}, wait_for_reply=False)
         self.assertIsNone(rc)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         self.assertEqual({"msg": "value"}, listener.messages.get().message)
 
         predicate = lambda: (self._broker.sender_link_ack_count == 1)
@@ -260,9 +260,9 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         self.assertEqual('e2', rc.get('correlation-id'))
 
         listener1.join(timeout=30)
-        self.assertFalse(listener1.isAlive())
+        self.assertFalse(listener1.is_alive())
         listener2.join(timeout=30)
-        self.assertFalse(listener2.isAlive())
+        self.assertFalse(listener2.is_alive())
         driver.cleanup()
 
     def test_messaging_patterns(self):
@@ -313,9 +313,9 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                     {"method": "echo", "id": "fanout"})
 
         listener1.join(timeout=30)
-        self.assertFalse(listener1.isAlive())
+        self.assertFalse(listener1.is_alive())
         listener2.join(timeout=30)
-        self.assertFalse(listener2.isAlive())
+        self.assertFalse(listener2.is_alive())
         self.assertEqual(1, self._broker.fanout_count)
 
         listener1_ids = [x.message.get('id') for x in listener1.get_messages()]
@@ -359,7 +359,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           wait_for_reply=True,
                           timeout=1.0)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_released_send(self):
@@ -428,7 +428,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           wait_for_reply=True,
                           timeout=1.0)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
 
         predicate = lambda: (self._broker.sender_link_ack_count == 1)
         _wait_until(predicate, 30)
@@ -465,7 +465,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           wait_for_reply=True,
                           timeout=5.0)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_call_reply_timeout(self):
@@ -497,7 +497,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           wait_for_reply=True,
                           timeout=3)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_listener_requeue(self):
@@ -515,7 +515,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         self.assertIsNone(rc)
 
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
 
         predicate = lambda: (self._broker.sender_link_requeue_count == 1)
         _wait_until(predicate, 30)
@@ -564,7 +564,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         _wait_until(predicate, 30)
         self.assertTrue(predicate())
 
-        self.assertTrue(listener.isAlive())
+        self.assertTrue(listener.is_alive())
         self.assertEqual({"msg": "value"}, listener.messages.get().message)
 
         predicate = lambda: (self._broker.receiver_link_count == 0)
@@ -580,7 +580,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         _wait_until(predicate, 30)
         self.assertTrue(predicate())
 
-        self.assertTrue(listener.isAlive())
+        self.assertTrue(listener.is_alive())
         self.assertEqual({"msg": "value"}, listener.messages.get().message)
 
         predicate = lambda: (self._broker.receiver_link_count == 0)
@@ -606,7 +606,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         self.assertIsNotNone(rc)
         self.assertEqual("1", rc.get('correlation-id'))
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_call_monitor_bad_no_heartbeat(self):
@@ -626,7 +626,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           timeout=60,
                           call_monitor_timeout=5)
         listener.kill()
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_call_monitor_bad_call_timeout(self):
@@ -646,7 +646,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
                           timeout=11,
                           call_monitor_timeout=5)
         listener.kill()
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
 
@@ -681,7 +681,7 @@ class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
                     excepted_targets.append(t)
 
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         topics = [x.message.get('target') for x in listener.get_messages()]
         self.assertEqual(msg_count, len(topics))
         self.assertEqual(2, topics.count('topic-1.info'))
@@ -763,7 +763,7 @@ class TestAuthentication(test_utils.BaseTestCase):
                          {"method": "echo"}, wait_for_reply=True)
         self.assertIsNotNone(rc)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_authentication_failure(self):
@@ -865,7 +865,7 @@ mech_list: ${mechs}
                              retry=retry)
             self.assertIsNotNone(rc)
             listener.join(timeout=30)
-            self.assertFalse(listener.isAlive())
+            self.assertFalse(listener.is_alive())
         finally:
             driver.cleanup()
 
@@ -949,7 +949,7 @@ class TestFailover(test_utils.BaseTestCase):
     def tearDown(self):
         super(TestFailover, self).tearDown()
         for broker in self._brokers:
-            if broker.isAlive():
+            if broker.is_alive():
                 broker.stop()
 
     def _failover(self, fail_broker):
@@ -1007,7 +1007,7 @@ class TestFailover(test_utils.BaseTestCase):
         self.assertEqual(1, self._brokers[self._backup].direct_count)
 
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
 
         # note: stopping the broker first tests cleaning up driver without a
         # connection active
@@ -1087,7 +1087,7 @@ class TestFailover(test_utils.BaseTestCase):
 
         listener1.join(timeout=30)
         listener2.join(timeout=30)
-        self.assertFalse(listener1.isAlive() or listener2.isAlive())
+        self.assertFalse(listener1.is_alive() or listener2.is_alive())
 
         driver.cleanup()
         self._brokers[1].stop()
@@ -1127,7 +1127,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
             driver.cleanup()
             raise
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         self.assertEqual(listener.messages.get().message.get('method'), "echo")
         driver.cleanup()
 
@@ -1193,7 +1193,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
                     wait_for_reply=False)
         listener.join(timeout=30)
         self.assertTrue(self._broker.fanout_count == 1)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         self.assertEqual(listener.messages.get().message.get('method'), "echo")
         driver.cleanup()
 
@@ -1243,7 +1243,7 @@ class TestLinkRecovery(_AmqpBrokerTestCase):
         self.assertEqual(rc.get('correlation-id'), 'e1')
         listener.join(timeout=30)
         self.assertTrue(self._broker.fanout_count == 3)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
 
@@ -1520,7 +1520,7 @@ class TestMessageRetransmit(_AmqpBrokerTestCase):
             self.assertEqual(rc.get('correlation-id'), 'blah')
             listener.join(timeout=30)
         finally:
-            self.assertFalse(listener.isAlive())
+            self.assertFalse(listener.is_alive())
             driver.cleanup()
 
     def test_released(self):
@@ -1615,7 +1615,7 @@ class TestSSL(test_utils.BaseTestCase):
                     wait_for_reply=True,
                     timeout=30)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_server_ok(self):
@@ -1669,7 +1669,7 @@ class TestSSL(test_utils.BaseTestCase):
                     wait_for_reply=True,
                     timeout=30)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def test_bad_server_fail(self):
@@ -1723,7 +1723,7 @@ class TestSSL(test_utils.BaseTestCase):
                     wait_for_reply=True,
                     timeout=30)
         listener.join(timeout=30)
-        self.assertFalse(listener.isAlive())
+        self.assertFalse(listener.is_alive())
         driver.cleanup()
 
     def tearDown(self):

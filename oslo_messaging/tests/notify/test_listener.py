@@ -42,7 +42,7 @@ class RestartableServerThread(object):
         if self.thread is not None:
             self.thread.stop()
             self.thread.join(timeout=15)
-            ret = self.thread.isAlive()
+            ret = self.thread.is_alive()
             self.thread = None
             return ret
         return True

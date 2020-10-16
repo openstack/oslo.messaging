@@ -130,7 +130,7 @@ class RpcServerFixture(fixtures.Fixture):
     def _stop(self):
         self.thread.stop()
         self.thread.join(timeout=30)
-        if self.thread.isAlive():
+        if self.thread.is_alive():
             raise Exception("Server did not shutdown correctly")
 
     def ping(self, ctxt):
@@ -356,7 +356,7 @@ class NotificationFixture(fixtures.Fixture):
     def _stop(self):
         self.thread.stop()
         self.thread.join(timeout=30)
-        if self.thread.isAlive():
+        if self.thread.is_alive():
             raise Exception("Server did not shutdown properly")
 
     def notifier(self, publisher, topics=None):
