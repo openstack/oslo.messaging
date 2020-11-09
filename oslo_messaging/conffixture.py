@@ -67,6 +67,10 @@ class ConfFixture(fixtures.Fixture):
                      'oslo_messaging.notify.notifier',
                      '_notifier_opts',
                      'oslo_messaging_notifications')
+        _import_opts(self.conf,
+                     'oslo_messaging._metrics.client',
+                     'oslo_messaging_metrics',
+                     'oslo_messaging_metrics')
 
         if transport_url is not None:
             self.transport_url = transport_url

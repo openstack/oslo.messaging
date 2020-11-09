@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    | Introduce support for sending rpc client metrics to oslo.metrics.
+    | This feature can be enabled by setting a configuration parameter:
+
+    [oslo_messaging_metrics]
+    metrics_enabled = True  # default is false

@@ -28,3 +28,6 @@ kombu>=4.6.6 # BSD
 
 # middleware
 oslo.middleware>=3.31.0 # Apache-2.0
+
+# metrics
+oslo.metrics>=0.2.1 # Apache-2.0
