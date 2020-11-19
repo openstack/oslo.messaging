@@ -228,7 +228,8 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - oslo.messaging-tox-py27-func-rabbit
+        - oslo.messaging-tox-py27-func-rabbit:
+            voting: false
         - oslo.messaging-tox-py27-func-amqp1:
             voting: false
         - oslo.messaging-tox-py27-func-kafka:
