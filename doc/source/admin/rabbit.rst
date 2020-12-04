@@ -101,8 +101,8 @@ routed to the corresponding queue who binding key is matched.
 Exchange types
 ~~~~~~~~~~~~~~
 
-`direct`
-^^^^^^^^
+``direct``
+^^^^^^^^^^
 
 A direct exchange is an exchange which route messages to queues based on
 message routing key. Message will be directly delivered to the queue that
