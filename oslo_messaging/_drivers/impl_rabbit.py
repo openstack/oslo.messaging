@@ -168,12 +168,12 @@ rabbit_opts = [
                default=2,
                help='How often times during the heartbeat_timeout_threshold '
                'we check the heartbeat.'),
-    cfg.IntOpt('direct_mandatory_flag',
-               default=True,
-               help='Enable/Disable the RabbitMQ mandatory flag '
-               'for direct send. The direct send is used as reply,'
-               'so the MessageUndeliverable exception is raised'
-               ' in case the client queue does not exist.'),
+    cfg.BoolOpt('direct_mandatory_flag',
+                default=True,
+                help='Enable/Disable the RabbitMQ mandatory flag '
+                'for direct send. The direct send is used as reply, '
+                'so the MessageUndeliverable exception is raised '
+                'in case the client queue does not exist.'),
 ]
 
 LOG = logging.getLogger(__name__)
