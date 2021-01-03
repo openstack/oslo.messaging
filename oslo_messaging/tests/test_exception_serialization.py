@@ -198,9 +198,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={},
               str=("Remote error: NovaStyleException test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               msg=("Remote error: NovaStyleException test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               remote_name='RemoteError',
               remote_args=(),
               remote_kwargs={'exc_type': 'NovaStyleException',
@@ -214,9 +214,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={},
               str=("Remote error: Exception test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               msg=("Remote error: Exception test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               remote_name='RemoteError',
               remote_args=(),
               remote_kwargs={'exc_type': 'Exception',
@@ -230,9 +230,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={},
               str=("Remote error: FarcicalError test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               msg=("Remote error: FarcicalError test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               remote_name='RemoteError',
               remote_args=(),
               remote_kwargs={'exc_type': 'FarcicalError',
@@ -246,9 +246,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={'foobar': 'blaa'},
               str=("Remote error: Exception test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               msg=("Remote error: Exception test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               remote_name='RemoteError',
               remote_args=(),
               remote_kwargs={'exc_type': 'Exception',
@@ -262,9 +262,9 @@ class DeserializeRemoteExceptionTestCase(test_utils.BaseTestCase):
               args=[],
               kwargs={},
               str=("Remote error: SystemExit test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               msg=("Remote error: SystemExit test\n"
-                   "[%r]." % u'traceback\ntraceback\n'),
+                   "[%r]." % 'traceback\ntraceback\n'),
               remote_name='RemoteError',
               remote_args=(),
               remote_kwargs={'exc_type': 'SystemExit',
