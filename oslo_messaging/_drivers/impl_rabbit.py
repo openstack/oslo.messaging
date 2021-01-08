@@ -1261,11 +1261,11 @@ class Connection(object):
 
         _set_current_channel is responsible to cleanup the cache.
         """
-        queue_indentifier = (exchange.name, routing_key)
+        queue_identifier = (exchange.name, routing_key)
         # NOTE(sileht): We only do it once per reconnection
         # the Connection._set_current_channel() is responsible to clear
         # this cache
-        if queue_indentifier not in self._declared_queues:
+        if queue_identifier not in self._declared_queues:
             queue = kombu.entity.Queue(
                 channel=self.channel,
                 exchange=exchange,
@@ -1279,7 +1279,7 @@ class Connection(object):
                 'Connection._publish_and_creates_default_queue: '
                 'declare queue %(key)s on %(exchange)s exchange', log_info)
             queue.declare()
-            self._declared_queues.add(queue_indentifier)
+            self._declared_queues.add(queue_identifier)
 
         self._publish(exchange, msg, routing_key=routing_key, timeout=timeout)
 
