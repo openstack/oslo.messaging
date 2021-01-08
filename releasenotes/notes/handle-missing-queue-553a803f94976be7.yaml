@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    Adding retry strategy based on the mandatory flag. Missing exchanges and
+    queues are now identified separately for logging purposes.

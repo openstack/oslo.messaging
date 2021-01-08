@@ -177,6 +177,8 @@ rabbit_opts = [
                 'flag for direct send. The direct send is used as reply, '
                 'so the MessageUndeliverable exception is raised '
                 'in case the client queue does not exist.'
+                'MessageUndeliverable exception will be used to loop for a '
+                'timeout to lets a chance to sender to recover.'
                 'This flag is deprecated and it will not be possible to '
                 'deactivate this functionality anymore'),
     cfg.BoolOpt('enable_cancel_on_failover',
@@ -516,6 +518,7 @@ class Connection(object):
             # if it was already monkey patched by eventlet/greenlet.
             global threading
             threading = stdlib_threading
+
         self.direct_mandatory_flag = driver_conf.direct_mandatory_flag
 
         if self.ssl:
