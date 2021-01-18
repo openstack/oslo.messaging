@@ -1,0 +1,5 @@
+---
+upgrade:
+  - |
+    Deprecating the ``direct_mandatory_flag``. It will not be possible to
+    deactivate this functionality anymore.
