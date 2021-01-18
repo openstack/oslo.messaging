@@ -169,10 +169,14 @@ rabbit_opts = [
                'we check the heartbeat.'),
     cfg.BoolOpt('direct_mandatory_flag',
                 default=True,
-                help='Enable/Disable the RabbitMQ mandatory flag '
-                'for direct send. The direct send is used as reply, '
+                deprecated_for_removal=True,
+                deprecated_reason='Mandatory flag no longer deactivable.',
+                help='(DEPRECATED) Enable/Disable the RabbitMQ mandatory '
+                'flag for direct send. The direct send is used as reply, '
                 'so the MessageUndeliverable exception is raised '
-                'in case the client queue does not exist.'),
+                'in case the client queue does not exist.'
+                'This flag is deprecated and it will not be possible to '
+                'deactivate this functionality anymore'),
     cfg.BoolOpt('enable_cancel_on_failover',
                 default=False,
                 help="Enable x-cancel-on-ha-failover flag so that "
