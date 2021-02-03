@@ -66,7 +66,6 @@ requests==2.14.2
 requestsexceptions==1.2.0
 rfc3986==0.3.1
 Routes==2.3.1
-six==1.10.0
 smmap==0.9.0
 snowballstemmer==1.2.1
 statsd==3.2.1
