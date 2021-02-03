@@ -1022,9 +1022,9 @@ class Controller(pyngus.ConnectionEventHandler):
     def _do_connect(self):
         """Establish connection and reply subscription on processor thread."""
         host = self.hosts.current
-        conn_props = {'properties': {u'process': self._command,
-                                     u'pid': self._pid,
-                                     u'node': self._node}}
+        conn_props = {'properties': {'process': self._command,
+                                     'pid': self._pid,
+                                     'node': self._node}}
         # only set hostname in the AMQP 1.0 Open performative if the message
         # bus can interpret it as the virtual host.  We leave it unspecified
         # since apparently noone can agree on how it should be used otherwise!

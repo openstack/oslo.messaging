@@ -27,7 +27,7 @@
 
 # -- Project information --------------------------------------------------
 # General information about the project.
-copyright = u'2016, oslo.messaging Developers'
+copyright = '2016, oslo.messaging Developers'
 
 # Release notes do not need a version in the title, they span
 # multiple versions.

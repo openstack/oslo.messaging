@@ -168,7 +168,7 @@ class RPCServer(msg_server.MessageHandlingServer):
             # by another exception raised by a log handler during
             # LOG.debug(). So keep a copy and delete it later.
             failure = e.exc_info
-            LOG.debug(u'Expected exception during message handling (%s)', e)
+            LOG.debug('Expected exception during message handling (%s)', e)
         except rpc_dispatcher.NoSuchMethod as e:
             failure = sys.exc_info()
             if e.method.endswith('_ignore_errors'):
