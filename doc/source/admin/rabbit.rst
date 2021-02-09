@@ -66,7 +66,8 @@ flag is used`_.
 through the *Connection* class.
 
 With mandatory flag RabbitMQ raises a callback if the message is not routed to
-any queue.
+any queue. This callback will be used to loop for a timeout and let's a chance
+to sender to recover.
 
 .. _Exchange is a AMQP mechanism: https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges
 .. _queues: https://www.rabbitmq.com/queues.html
