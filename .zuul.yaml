@@ -82,38 +82,25 @@
       zuul_copy_output:
         '{{ devstack_log_dir }}/server.log': logs
 
-
-# End v3 native jobs
-
-
 - job:
-    name: oslo.messaging-src-grenade-dsvm
-    parent: legacy-dsvm-base
-    run: playbooks/oslo.messaging-src-grenade-dsvm/run.yaml
-    post-run: playbooks/oslo.messaging-src-grenade-dsvm/post.yaml
+    name: oslo.messaging-grenade
+    parent: grenade
     timeout: 10800
     required-projects:
-      - openstack/grenade
-      - openstack/devstack-gate
       - openstack/oslo.messaging
     irrelevant-files:
       - ^(test-|)requirements.txt$
       - ^setup.cfg$
 
 - job:
-    name: oslo.messaging-src-grenade-dsvm-multinode
-    parent: legacy-dsvm-base-multinode
-    run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/run.yaml
-    post-run: playbooks/oslo.messaging-src-grenade-dsvm-multinode/post.yaml
+    name: oslo.messaging-grenade-multinode
+    parent: grenade-multinode
     timeout: 10800
     required-projects:
-      - openstack/grenade
-      - openstack/devstack-gate
       - openstack/oslo.messaging
     irrelevant-files:
       - ^(test-|)requirements.txt$
       - ^setup.cfg$
-    nodeset: legacy-ubuntu-xenial-2-node
 
 
 - project:
@@ -139,9 +126,9 @@
             voting: false
         - oslo.messaging-src-dsvm-full-kafka-hybrid:
             voting: false
-        - oslo.messaging-src-grenade-dsvm:
+        - oslo.messaging-grenade:
             voting: false
-        - oslo.messaging-src-grenade-dsvm-multinode:
+        - oslo.messaging-grenade-multinode:
             voting: false
 
     gate:
