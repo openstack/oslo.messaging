@@ -35,6 +35,7 @@ function _setup_global_site_package_path {
     SITEDIR=${WORKDIR}/${ENVNAME}/lib/python${MAJOR}.${MINOR}/site-packages
     cat > ${SITEDIR}/dispatch.pth <<EOF
 /usr/lib/python${MAJOR}.${MINOR}/${PRE}-packages
+/usr/lib/python${MAJOR}/${PRE}-packages
 EOF
 }
 
