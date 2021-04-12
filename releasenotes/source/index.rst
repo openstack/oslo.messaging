@@ -2,17 +2,17 @@
  oslo.messaging Release Notes
 =============================
 
- .. toctree::
-    :maxdepth: 1
+.. toctree::
+   :maxdepth: 1
 
-    unreleased
-    wallaby
-    victoria
-    ussuri
-    train
-    stein
-    rocky
-    queens
-    pike
-    ocata
-    newton
+   unreleased
+   wallaby
+   victoria
+   ussuri
+   train
+   stein
+   rocky
+   queens
+   pike
+   ocata
+   newton
