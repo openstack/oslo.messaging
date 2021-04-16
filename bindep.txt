@@ -35,6 +35,7 @@ java-1.8.0-openjdk [platform:rpm amqp1 test]
 # kafka dpkg
 openjdk-8-jdk [platform:dpkg kafka]
 librdkafka1 [platform:dpkg kafka]
+librdkafka-dev [platform:dpkg kafka]
 
 # kafka rpm
 java-1.8.0-openjdk [platform:rpm kafka]
