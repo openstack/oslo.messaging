@@ -14,7 +14,6 @@
 
 import abc
 import collections
-import sys
 import threading
 
 from oslo_log import log as logging
@@ -23,16 +22,6 @@ from oslo_utils import timeutils
 from oslo_messaging._drivers import common
 
 LOG = logging.getLogger(__name__)
-
-# TODO(harlowja): remove this when we no longer have to support 2.7
-if sys.version_info[0:2] < (3, 2):
-    def wait_condition(cond):
-        # FIXME(markmc): timeout needed to allow keyboard interrupt
-        # http://bugs.python.org/issue8844
-        cond.wait(timeout=1)
-else:
-    def wait_condition(cond):
-        cond.wait()
 
 
 class Pool(object, metaclass=abc.ABCMeta):
@@ -102,7 +91,7 @@ class Pool(object, metaclass=abc.ABCMeta):
                             "current size %s surpasses max "
                             "configured rpc_conn_pool_size %s",
                             self._current_size, self._max_size)
-                wait_condition(self._cond)
+                self._cond.wait()
 
         # We've grabbed a slot and dropped the lock, now do the creation
         try:
