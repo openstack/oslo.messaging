@@ -13,10 +13,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import fnmatch
 import logging
 
 from oslo_config import cfg
-from oslo_utils import fnmatch
 from stevedore import dispatch
 import yaml
 
