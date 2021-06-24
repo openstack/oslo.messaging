@@ -47,3 +47,7 @@ class MessageUndeliverable(Exception):
         self.exchange = exchange
         self.routing_key = routing_key
         self.message = message
+
+
+class ConfigurationError(Exception):
+    """Raised when messaging isn't configured correctly."""

@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Adding a new option, ``[oslo_messaging_rabbit] ssl_enforce_fips_mode``, to
+    the rabbitmq driver to enforce the OpenSSL FIPS mode if supported by the
+    version of Python.
+security:
+  - |
+    We are now able to enforce the OpenSSL FIPS mode by using
+    ``[oslo_messaging_rabbit] ssl_enforce_fips_mode``.

@@ -87,6 +87,15 @@ rabbit_opts = [
                deprecated_name='kombu_ssl_ca_certs',
                help='SSL certification authority file '
                     '(valid only if SSL enabled).'),
+    cfg.BoolOpt('ssl_enforce_fips_mode',
+                default=False,
+                help='Global toggle for enforcing the OpenSSL FIPS mode. '
+                'This feature requires Python support. '
+                'This is available in Python 3.9 in all '
+                'environments and may have been backported to older '
+                'Python versions on select environments. If the Python '
+                'executable used does not support OpenSSL FIPS mode, '
+                'an exception will be raised.'),
     cfg.BoolOpt('heartbeat_in_pthread',
                 default=True,
                 help="Run the health check heartbeat thread "
@@ -490,6 +499,7 @@ class Connection(object):
         self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
         self.kombu_compression = driver_conf.kombu_compression
         self.heartbeat_in_pthread = driver_conf.heartbeat_in_pthread
+        self.ssl_enforce_fips_mode = driver_conf.ssl_enforce_fips_mode
         self.enable_cancel_on_failover = driver_conf.enable_cancel_on_failover
 
         if self.heartbeat_in_pthread:
@@ -526,6 +536,19 @@ class Connection(object):
             self.ssl_key_file = driver_conf.ssl_key_file
             self.ssl_cert_file = driver_conf.ssl_cert_file
             self.ssl_ca_file = driver_conf.ssl_ca_file
+
+            if self.ssl_enforce_fips_mode:
+                if hasattr(ssl, 'FIPS_mode'):
+                    LOG.info("Enforcing the use of the OpenSSL FIPS mode")
+                    ssl.FIPS_mode_set(1)
+                else:
+                    raise exceptions.ConfigurationError(
+                        "OpenSSL FIPS mode is not supported by your Python "
+                        "version. You must either change the Python "
+                        "executable used to a version with FIPS mode "
+                        "support or disable FIPS mode by setting the "
+                        "'[oslo_messaging_rabbit] ssl_enforce_fips_mode' "
+                        "configuration option to 'False'.")
 
         self._url = ''
         if url.hosts:

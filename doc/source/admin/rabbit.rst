@@ -266,3 +266,4 @@ Security Options
 - :oslo.config:option:`oslo_messaging_rabbit.ssl_key_file`
 - :oslo.config:option:`oslo_messaging_rabbit.ssl_cert_file`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_login_method`
+- :oslo.config:option:`oslo_messaging_rabbit.ssl_enforce_fips_mode`
