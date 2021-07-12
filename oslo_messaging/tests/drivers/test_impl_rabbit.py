@@ -1080,3 +1080,30 @@ class ConnectionLockTestCase(test_utils.BaseTestCase):
         t2 = self._thread(lock, 1)
         self.assertAlmostEqual(1, t1(), places=0)
         self.assertAlmostEqual(2, t2(), places=0)
+
+
+class TestPollTimeoutLimit(test_utils.BaseTestCase):
+    def test_poll_timeout_limit(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        driver = transport._driver
+        target = oslo_messaging.Target(topic='testtopic')
+        listener = driver.listen(target, None, None)._poll_style_listener
+
+        thread = threading.Thread(target=listener.poll)
+        thread.daemon = True
+        thread.start()
+        time.sleep(amqpdriver.ACK_REQUEUE_EVERY_SECONDS_MAX * 2)
+
+        try:
+            # timeout should not grow past the maximum
+            self.assertEqual(amqpdriver.ACK_REQUEUE_EVERY_SECONDS_MAX,
+                             listener._current_timeout)
+
+        finally:
+            # gracefully stop waiting
+            driver.send(target,
+                        {},
+                        {'tx_id': 'test'})
+            thread.join()
