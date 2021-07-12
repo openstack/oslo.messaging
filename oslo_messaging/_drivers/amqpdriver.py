@@ -351,7 +351,7 @@ class AMQPListener(base.PollStyleListener):
                 self.conn.consume(timeout=min(self._current_timeout, left))
             except rpc_common.Timeout:
                 LOG.debug("AMQPListener connection timeout")
-                self._current_timeout = max(self._current_timeout * 2,
+                self._current_timeout = min(self._current_timeout * 2,
                                             ACK_REQUEUE_EVERY_SECONDS_MAX)
             else:
                 self._current_timeout = ACK_REQUEUE_EVERY_SECONDS_MIN
@@ -490,7 +490,7 @@ class ReplyWaiter(object):
                 # ack every ACK_REQUEUE_EVERY_SECONDS_MAX seconds
                 self.conn.consume(timeout=current_timeout)
             except rpc_common.Timeout:
-                current_timeout = max(current_timeout * 2,
+                current_timeout = min(current_timeout * 2,
                                       ACK_REQUEUE_EVERY_SECONDS_MAX)
             except Exception:
                 LOG.exception("Failed to process incoming message, retrying..")
