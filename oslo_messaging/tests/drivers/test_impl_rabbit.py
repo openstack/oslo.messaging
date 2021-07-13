@@ -1107,3 +1107,55 @@ class TestPollTimeoutLimit(test_utils.BaseTestCase):
                         {},
                         {'tx_id': 'test'})
             thread.join()
+
+
+class TestMsgIdCache(test_utils.BaseTestCase):
+    @mock.patch('kombu.message.Message.reject')
+    def test_reply_wire_format(self, reject_mock):
+        self.conf.oslo_messaging_rabbit.kombu_compression = None
+
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+
+        driver = transport._driver
+
+        target = oslo_messaging.Target(topic='testtopic',
+                                       server=None,
+                                       fanout=False)
+
+        listener = driver.listen(target, None, None)._poll_style_listener
+
+        connection, producer = _create_producer(target)
+        self.addCleanup(connection.release)
+
+        msg = {
+            'oslo.version': '2.0',
+            'oslo.message': {}
+        }
+
+        msg['oslo.message'].update({
+            '_msg_id': uuid.uuid4().hex,
+            '_unique_id': uuid.uuid4().hex,
+            '_reply_q': 'reply_' + uuid.uuid4().hex,
+            '_timeout': None,
+        })
+
+        msg['oslo.message'] = jsonutils.dumps(msg['oslo.message'])
+
+        producer.publish(msg)
+
+        received = listener.poll()[0]
+        self.assertIsNotNone(received)
+        self.assertEqual({}, received.message)
+
+        # publish the same message a second time
+        producer.publish(msg)
+
+        received = listener.poll(timeout=1)
+
+        # duplicate message is ignored
+        self.assertEqual(len(received), 0)
+
+        # we should not reject duplicate message
+        reject_mock.assert_not_called()
