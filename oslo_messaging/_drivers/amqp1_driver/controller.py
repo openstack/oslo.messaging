@@ -1265,7 +1265,7 @@ class Controller(pyngus.ConnectionEventHandler):
             host = self.hosts.next()
             LOG.info("Reconnecting to: %(hostname)s:%(port)s",
                      {'hostname': host.hostname, 'port': host.port})
-            self._socket_connection.connect(host)
+            self.processor.wakeup(lambda: self._do_connect())
 
     def _hard_reset(self, reason):
         """Reset the controller to its pre-connection state"""
