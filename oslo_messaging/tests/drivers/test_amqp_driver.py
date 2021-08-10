@@ -931,25 +931,31 @@ class TestFailover(test_utils.BaseTestCase):
         # configure different addressing modes on the brokers to test failing
         # over from one type of backend to another
         self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
-        self._brokers = [FakeBroker(self.conf.oslo_messaging_amqp,
-                                    product="qpid-cpp"),
-                         FakeBroker(self.conf.oslo_messaging_amqp,
-                                    product="routable")]
+        self._brokers = self._gen_brokers()
         self._primary = 0
         self._backup = 1
         hosts = []
         for broker in self._brokers:
             hosts.append(oslo_messaging.TransportHost(hostname=broker.host,
                                                       port=broker.port))
-        self._broker_url = oslo_messaging.TransportURL(self.conf,
-                                                       transport="amqp",
-                                                       hosts=hosts)
+        self._broker_url = self._gen_transport_url(hosts)
 
     def tearDown(self):
         super(TestFailover, self).tearDown()
         for broker in self._brokers:
             if broker.is_alive():
                 broker.stop()
+
+    def _gen_brokers(self):
+        return [FakeBroker(self.conf.oslo_messaging_amqp,
+                           product="qpid-cpp"),
+                FakeBroker(self.conf.oslo_messaging_amqp,
+                           product="routable")]
+
+    def _gen_transport_url(self, hosts):
+        return oslo_messaging.TransportURL(self.conf,
+                                           transport="amqp",
+                                           hosts=hosts)
 
     def _failover(self, fail_broker):
         self._brokers[0].start()
