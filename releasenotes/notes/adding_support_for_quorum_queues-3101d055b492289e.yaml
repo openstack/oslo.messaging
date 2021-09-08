@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Adding support for quorum queues. Quorum queues are enabled if the
+    ``rabbit_quorum_queue`` parameter is sets (``x-queue-type: quorum``).
+    Setting x-queue-type to quorum means that replicated FIFO queue based on
+    the Raft consensus algorithm will be used. It is available as of
+    RabbitMQ 3.8.0. The quorum queues are durable by default
+    (``amqp_durable_queues``) will be ignored.
+    when enabled the HA queues (``rabbit_ha_queues``) aka mirrored queues
+    should be disabled since the queue can't be both types at the same time

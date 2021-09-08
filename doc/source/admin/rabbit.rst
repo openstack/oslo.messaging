@@ -240,6 +240,7 @@ Consuming Options
 ^^^^^^^^^^^^^^^^^
 
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_ha_queues`
+- :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_queue`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_transient_queues_ttl`
 
 Connection Options

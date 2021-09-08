@@ -32,7 +32,9 @@ from oslo_messaging._drivers import common as rpc_common
 amqp_opts = [
     cfg.BoolOpt('amqp_durable_queues',
                 default=False,
-                help='Use durable queues in AMQP.'),
+                help='Use durable queues in AMQP. If rabbit_quorum_queue '
+                'is enabled, queues will be durable and this value will '
+                'be ignored.'),
     cfg.BoolOpt('amqp_auto_delete',
                 default=False,
                 deprecated_group='DEFAULT',
