@@ -35,7 +35,6 @@ import kombu.messaging
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
-from oslo_utils import importutils
 
 import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
@@ -45,18 +44,6 @@ from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers import pool
 from oslo_messaging import _utils
 from oslo_messaging import exceptions
-
-eventlet = importutils.try_import('eventlet')
-if eventlet and eventletutils.is_monkey_patched("thread"):
-    # Here we initialize module with the native python threading module
-    # if it was already monkey patched by eventlet/greenlet.
-    stdlib_threading = eventlet.patcher.original('threading')
-else:
-    # Manage the case where we run this driver in a non patched environment
-    # and where user even so configure the driver to run heartbeat through
-    # a python thread, if we don't do that when the heartbeat will start
-    # we will facing an issue by trying to override the threading module.
-    stdlib_threading = threading
 
 # NOTE(sileht): don't exist in py2 socket module
 TCP_USER_TIMEOUT = 18
@@ -517,7 +504,7 @@ class Connection(object):
             # threading module with the native python threading module
             # if it was already monkey patched by eventlet/greenlet.
             global threading
-            threading = stdlib_threading
+            threading = _utils.stdlib_threading
 
         self.direct_mandatory_flag = driver_conf.direct_mandatory_flag
 
