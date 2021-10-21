@@ -84,7 +84,7 @@ rabbit_opts = [
                      "example if the parent process has monkey patched the "
                      "stdlib by using eventlet/greenlet then the heartbeat "
                      "will be run through a green thread.",
-                deprecated_for_removal=True),
+                ),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
                  deprecated_group='DEFAULT',

@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    We undeprecated the ``heartbeat_in_pthread`` option. This option will
+    remain available to allow customers to run the rabbitmq heartbeat in
+    python thread or not.
