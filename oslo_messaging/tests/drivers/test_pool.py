@@ -44,7 +44,7 @@ class PoolTestCase(test_utils.BaseTestCase):
 
     class TestPool(pool.Pool):
 
-        def create(self):
+        def create(self, retry=None):
             return uuid.uuid4()
 
     class ThreadWaitWaiter(object):
@@ -82,7 +82,7 @@ class PoolTestCase(test_utils.BaseTestCase):
         p = self.TestPool(**kwargs)
 
         if self.create_error:
-            def create_error():
+            def create_error(retry=None):
                 raise RuntimeError
             orig_create = p.create
             self.useFixture(fixtures.MockPatchObject(

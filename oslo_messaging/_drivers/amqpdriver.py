@@ -601,9 +601,10 @@ class AMQPDriverBase(base.BaseDriver):
     def _get_exchange(self, target):
         return target.exchange or self._default_exchange
 
-    def _get_connection(self, purpose=rpc_common.PURPOSE_SEND):
+    def _get_connection(self, purpose=rpc_common.PURPOSE_SEND, retry=None):
         return rpc_common.ConnectionContext(self._connection_pool,
-                                            purpose=purpose)
+                                            purpose=purpose,
+                                            retry=retry)
 
     def _get_reply_q(self):
         with self._reply_q_lock:
@@ -649,7 +650,7 @@ class AMQPDriverBase(base.BaseDriver):
             log_msg = "CAST unique_id: %s " % unique_id
 
         try:
-            with self._get_connection(rpc_common.PURPOSE_SEND) as conn:
+            with self._get_connection(rpc_common.PURPOSE_SEND, retry) as conn:
                 if notify:
                     exchange = self._get_exchange(target)
                     LOG.debug(log_msg + "NOTIFY exchange '%(exchange)s'"
