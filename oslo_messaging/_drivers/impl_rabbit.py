@@ -465,13 +465,14 @@ class ConnectionLock(DummyConnectionLock):
 class Connection(object):
     """Connection object."""
 
-    def __init__(self, conf, url, purpose):
+    def __init__(self, conf, url, purpose, retry=None):
         # NOTE(viktors): Parse config options
         driver_conf = conf.oslo_messaging_rabbit
 
         self.interval_start = driver_conf.rabbit_retry_interval
         self.interval_stepping = driver_conf.rabbit_retry_backoff
         self.interval_max = driver_conf.rabbit_interval_max
+        self.max_retries = retry
 
         self.login_method = driver_conf.rabbit_login_method
         self.rabbit_ha_queues = driver_conf.rabbit_ha_queues
@@ -741,7 +742,13 @@ class Connection(object):
                       str(exc), interval)
 
         self._set_current_channel(None)
-        self.connection.ensure_connection(errback=on_error)
+        self.connection.ensure_connection(
+            errback=on_error,
+            max_retries=self.max_retries,
+            interval_start=self.interval_start or 1,
+            interval_step=self.interval_stepping,
+            interval_max=self.interval_max,
+        )
         self._set_current_channel(self.connection.channel())
         self.set_transport_socket_timeout()
 

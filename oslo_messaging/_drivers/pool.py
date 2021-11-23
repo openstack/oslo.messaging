@@ -80,7 +80,7 @@ class Pool(object, metaclass=abc.ABCMeta):
             self._items.append((ttl_watch, item))
             self._cond.notify()
 
-    def get(self):
+    def get(self, retry=None):
         """Return an item from the pool, when one is available.
 
         This may cause the calling thread to block.
@@ -106,7 +106,7 @@ class Pool(object, metaclass=abc.ABCMeta):
 
         # We've grabbed a slot and dropped the lock, now do the creation
         try:
-            return self.create()
+            return self.create(retry=retry)
         except Exception:
             with self._cond:
                 self._current_size -= 1
@@ -122,7 +122,7 @@ class Pool(object, metaclass=abc.ABCMeta):
                 return
 
     @abc.abstractmethod
-    def create(self):
+    def create(self, retry=None):
         """Construct a new item."""
 
 
@@ -141,9 +141,9 @@ class ConnectionPool(Pool):
         LOG.debug("Idle connection has expired and been closed."
                   " Pool size: %d" % len(self._items))
 
-    def create(self, purpose=common.PURPOSE_SEND):
+    def create(self, purpose=common.PURPOSE_SEND, retry=None):
         LOG.debug('Pool creating new connection')
-        return self.connection_cls(self.conf, self.url, purpose)
+        return self.connection_cls(self.conf, self.url, purpose, retry=retry)
 
     def empty(self):
         for item in self.iter_free():

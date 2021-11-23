@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    As a fix for `bug 1917645 <https://launchpad.net/bugs/1917645>`_ the rabbit
+    backend is changed to use the ``[oslo_messaging_notifications]retry``
+    parameter when driver tries to connect to the message bus during
+    notification sending. Before this fix the rabbit backend retried the
+    connection forever blocking the caller thread.

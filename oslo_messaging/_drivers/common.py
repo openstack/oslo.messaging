@@ -392,7 +392,7 @@ class ConnectionContext(Connection):
     If possible the function makes sure to return a connection to the pool.
     """
 
-    def __init__(self, connection_pool, purpose):
+    def __init__(self, connection_pool, purpose, retry):
         """Create a new connection, or get one from the pool."""
         self.connection = None
         self.connection_pool = connection_pool
@@ -420,7 +420,7 @@ class ConnectionContext(Connection):
 
         pooled = purpose == PURPOSE_SEND
         if pooled:
-            self.connection = connection_pool.get()
+            self.connection = connection_pool.get(retry=retry)
         else:
             self.connection = connection_pool.create(purpose)
         self.pooled = pooled
