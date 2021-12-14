@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Force creating non durable control exchange when a precondition failed
+    related to config that differ occuring.
