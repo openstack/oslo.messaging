@@ -244,6 +244,10 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
             topics=["test-retry"],
             retry=2,
             group="oslo_messaging_notifications")
+        self.config(
+            # just to speed up the test execution
+            rabbit_retry_backoff=0,
+            group="oslo_messaging_rabbit")
         transport = oslo_messaging.get_notification_transport(
             self.conf, url='rabbit://')
         notifier = oslo_messaging.Notifier(transport)
@@ -264,12 +268,15 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
             'kombu.connection.Connection._establish_connection',
             new=wrapped_establish_connection
         ):
-            # FIXME(gibi) This is bug 1917645 as the driver does not stop
-            # retrying the connection after two retries only our test fixture
-            # stops the retry by raising TestingException
-            self.assertRaises(
-                self.TestingException,
-                notifier.info, {}, "test", {})
+            with mock.patch(
+                'oslo_messaging.notify.messaging.LOG.exception'
+            ) as mock_log:
+                notifier.info({}, "test", {})
+
+        # one normal call plus two retries
+        self.assertEqual(3, len(calls))
+        # the error was caught and logged
+        mock_log.assert_called_once()
 
     def test_notifier_retry_connection_fails_kafka(self):
         """This test sets a small retry number for notification sending and

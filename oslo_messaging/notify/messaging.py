@@ -21,19 +21,30 @@ Notification drivers for sending notifications via messaging.
 The messaging drivers publish notification messages to notification
 listeners.
 
-The driver will block the notifier's thread until the notification message has
-been passed to the messaging transport.  There is no guarantee that the
-notification message will be consumed by a notification listener.
+In case of the rabbit backend the driver will block the notifier's thread
+until the notification message has been passed to the messaging transport.
+There is no guarantee that the notification message will be consumed by a
+notification listener.
+
+In case of the kafka backend the driver will not block the notifier's thread
+but return immediately. The driver will try to deliver the message in the
+background.
 
 Notification messages are sent 'at-most-once' - ensuring that they are not
 duplicated.
 
 If the connection to the messaging service is not active when a notification is
-sent this driver will block waiting for the connection to complete.  If the
-connection fails to complete, the driver will try to re-establish that
+sent the rabbit backend will block waiting for the connection to complete.
+If the connection fails to complete, the driver will try to re-establish that
 connection. By default this will continue indefinitely until the connection
 completes. However, the retry parameter can be used to have the notification
-send fail with a MessageDeliveryFailure after the given number of retries.
+send fail. In this case an error is logged and the notifier's thread is resumed
+without any error.
+
+If the connection to the messaging service is not active when a notification is
+sent the kafka backend will return immediately and the backend tries to
+establish the connection and deliver the messages in the background.
+
 """
 
 import logging
