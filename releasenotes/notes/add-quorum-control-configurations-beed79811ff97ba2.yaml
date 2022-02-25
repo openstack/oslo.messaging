@@ -1,0 +1,6 @@
+---
+features:
+  - |
+    Add quorum configuration x-max-in-memory-length,
+    x-max-in-memory-bytes, x-delivery-limit which control the quorum
+    queue memory usage and handle the message poisoning problem
