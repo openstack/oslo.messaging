@@ -1245,6 +1245,7 @@ class Controller(pyngus.ConnectionEventHandler):
             # service.  Try to re-establish the connection:
             if not self._reconnecting:
                 self._reconnecting = True
+                self.processor.wakeup(lambda: self._hard_reset(reason))
                 LOG.info("Delaying reconnect attempt for %d seconds",
                          self._delay)
                 self.processor.defer(lambda: self._do_reconnect(reason),
@@ -1261,7 +1262,6 @@ class Controller(pyngus.ConnectionEventHandler):
         """
         self._reconnecting = False
         if not self._closing:
-            self._hard_reset(reason)
             host = self.hosts.next()
             LOG.info("Reconnecting to: %(hostname)s:%(port)s",
                      {'hostname': host.hostname, 'port': host.port})
@@ -1331,4 +1331,5 @@ class Controller(pyngus.ConnectionEventHandler):
     def _active(self):
         # Is the connection up
         return (self._socket_connection and
+                self._socket_connection.pyngus_conn and
                 self._socket_connection.pyngus_conn.active)
