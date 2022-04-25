@@ -108,7 +108,7 @@ rabbit_opts = [
                     'unavailable. Takes effect only if more than one '
                     'RabbitMQ node is provided in config.'),
     cfg.StrOpt('rabbit_login_method',
-               choices=('PLAIN', 'AMQPLAIN', 'RABBIT-CR-DEMO'),
+               choices=('PLAIN', 'AMQPLAIN', 'EXTERNAL', 'RABBIT-CR-DEMO'),
                default='AMQPLAIN',
                deprecated_group='DEFAULT',
                help='The RabbitMQ login method.'),
