@@ -115,7 +115,7 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         self.assertIsNotNone(transport_)
         self.assertIs(transport_.conf, self.conf)
         self.assertIs(transport_._driver, drvr)
-        self.assertTrue(isinstance(transport_, transport.RPCTransport))
+        self.assertIsInstance(transport_, transport.RPCTransport)
 
         driver.DriverManager.assert_called_once_with('oslo.messaging.drivers',
                                                      self.expect['backend'],
