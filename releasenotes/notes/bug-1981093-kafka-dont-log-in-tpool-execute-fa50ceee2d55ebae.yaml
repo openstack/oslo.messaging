@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    [`bug 1981093 <https://bugs.launchpad.net/oslo.messaging/+bug/1981093>`_]
+    Pulls calls to logging functions out of ``impl_kafka._produce_message``.
+    Since ``_produce_message`` is called through tpool.execute, calling logging
+    functions inside ``_produce_message`` could cause subsequent calls to
+    logging functions to deadlock.
