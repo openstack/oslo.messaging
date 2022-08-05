@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The ``[oslo_messaging_rabbit] heartbeat_in_pthread`` config option
+    defaults to ``False`` again.
+    For wsgi applications it is recommended to set this value to ``True``
+    but enabling it for non-wsgi services may break such service.
+    Please check https://bugs.launchpad.net/oslo.messaging/+bug/1934937
+    for more details.
