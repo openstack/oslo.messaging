@@ -92,7 +92,7 @@ rabbit_opts = [
                 'executable used does not support OpenSSL FIPS mode, '
                 'an exception will be raised.'),
     cfg.BoolOpt('heartbeat_in_pthread',
-                default=True,
+                default=False,
                 help="Run the health check heartbeat thread "
                      "through a native python thread by default. If this "
                      "option is equal to False then the health check "
@@ -100,7 +100,9 @@ rabbit_opts = [
                      "from the parent process. For "
                      "example if the parent process has monkey patched the "
                      "stdlib by using eventlet/greenlet then the heartbeat "
-                     "will be run through a green thread.",
+                     "will be run through a green thread. "
+                     "This option should be set to True only for the "
+                     "wsgi services.",
                 ),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
