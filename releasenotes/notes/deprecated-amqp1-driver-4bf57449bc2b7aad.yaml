@@ -1,0 +1,7 @@
+---
+deprecations:
+  - |
+    The AMQP1 driver is now deprecated. Its related functional tests are also
+    disabled. Neither debian nor ubuntu in the latest releases have any binary
+    built for qpid server, not even 3rd party. Only qpid proton, the client
+    lib, is available.

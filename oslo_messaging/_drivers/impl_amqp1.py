@@ -25,7 +25,9 @@ import logging
 import os
 import threading
 import uuid
+import warnings
 
+from debtcollector import removals
 from oslo_config import cfg
 from oslo_messaging.target import Target
 from oslo_serialization import jsonutils
@@ -38,6 +40,7 @@ from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common
 
 
+warnings.simplefilter('always')
 proton = importutils.try_import('proton')
 controller = importutils.try_import(
     'oslo_messaging._drivers.amqp1_driver.controller'
@@ -103,6 +106,7 @@ def unmarshal_request(message):
     return (msg, data.get("context"), data.get("call_monitor_timeout"))
 
 
+@removals.removed_class("ProtonIncomingMessage")
 class ProtonIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, listener, message, disposition):
         request, ctxt, client_timeout = unmarshal_request(message)
@@ -165,6 +169,7 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
         self.listener.driver._ctrl.add_task(task)
 
 
+@removals.removed_class("Queue")
 class Queue(object):
     def __init__(self):
         self._queue = collections.deque()
@@ -194,6 +199,7 @@ class Queue(object):
             self._pop_wake_condition.notify_all()
 
 
+@removals.removed_class("ProtonListener")
 class ProtonListener(base.PollStyleListener):
     def __init__(self, driver):
         super(ProtonListener, self).__init__(driver.prefetch_size)
@@ -214,6 +220,7 @@ class ProtonListener(base.PollStyleListener):
                                      qentry['disposition'])
 
 
+@removals.removed_class("ProtonDriver")
 class ProtonDriver(base.BaseDriver):
     """AMQP 1.0 Driver
 
