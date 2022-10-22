@@ -44,8 +44,9 @@ class TestCastCall(test_utils.BaseTestCase):
         self.config(rpc_response_timeout=None)
         transport_options = oslo_messaging.TransportOptions()
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
-                                          transport_options=transport_options)
+        client = oslo_messaging.get_rpc_client(
+            transport, oslo_messaging.Target(),
+            transport_options=transport_options)
 
         transport._send = mock.Mock()
 
@@ -70,7 +71,7 @@ class TestCastCall(test_utils.BaseTestCase):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         transport_options = oslo_messaging.TransportOptions(at_least_once=True)
-        client = oslo_messaging.RPCClient(
+        client = oslo_messaging.get_rpc_client(
             transport,
             oslo_messaging.Target(),
             transport_options=transport_options)
@@ -215,7 +216,7 @@ class TestCastToTarget(test_utils.BaseTestCase):
         expect_target = oslo_messaging.Target(**self.expect)
 
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, target)
+        client = oslo_messaging.get_rpc_client(transport, target)
 
         transport._send = mock.Mock()
 
@@ -269,9 +270,9 @@ class TestCallTimeout(test_utils.BaseTestCase):
         self.config(rpc_response_timeout=self.confval)
 
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
-                                          timeout=self.ctor,
-                                          call_monitor_timeout=self.cm)
+        client = oslo_messaging.get_rpc_client(
+            transport, oslo_messaging.Target(), timeout=self.ctor,
+            call_monitor_timeout=self.cm)
 
         transport._send = mock.Mock()
 
@@ -302,8 +303,9 @@ class TestCallRetry(test_utils.BaseTestCase):
 
     def test_call_retry(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
-                                          retry=self.ctor)
+        client = oslo_messaging.get_rpc_client(
+            transport, oslo_messaging.Target(),
+            retry=self.ctor)
 
         transport._send = mock.Mock()
 
@@ -332,8 +334,8 @@ class TestCallFanout(test_utils.BaseTestCase):
 
     def test_call_fanout(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport,
-                                          oslo_messaging.Target(**self.target))
+        client = oslo_messaging.get_rpc_client(
+            transport, oslo_messaging.Target(**self.target))
 
         if self.prepare is not _notset:
             client = client.prepare(**self.prepare)
@@ -363,8 +365,8 @@ class TestSerializer(test_utils.BaseTestCase):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         serializer = msg_serializer.NoOpSerializer()
 
-        client = oslo_messaging.RPCClient(transport, oslo_messaging.Target(),
-                                          serializer=serializer)
+        client = oslo_messaging.get_rpc_client(
+            transport, oslo_messaging.Target(), serializer=serializer)
 
         transport._send = mock.Mock()
         kwargs = dict(wait_for_reply=True,
@@ -465,8 +467,8 @@ class TestVersionCap(test_utils.BaseTestCase):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         target = oslo_messaging.Target(version=self.version)
-        client = oslo_messaging.RPCClient(transport, target,
-                                          version_cap=self.cap)
+        client = oslo_messaging.get_rpc_client(transport, target,
+                                               version_cap=self.cap)
 
         if self.success:
             transport._send = mock.Mock()
@@ -574,8 +576,8 @@ class TestCanSendVersion(test_utils.BaseTestCase):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         target = oslo_messaging.Target(version=self.version)
-        client = oslo_messaging.RPCClient(transport, target,
-                                          version_cap=self.cap)
+        client = oslo_messaging.get_rpc_client(transport, target,
+                                               version_cap=self.cap)
 
         prep_kwargs = {}
         if self.prepare_cap is not _notset:
@@ -598,7 +600,7 @@ class TestCanSendVersion(test_utils.BaseTestCase):
     def test_invalid_version_type(self):
         target = oslo_messaging.Target(topic='sometopic')
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
-        client = oslo_messaging.RPCClient(transport, target)
+        client = oslo_messaging.get_rpc_client(transport, target)
         self.assertRaises(exceptions.MessagingException,
                           client.prepare, version='5')
         self.assertRaises(exceptions.MessagingException,
@@ -612,7 +614,7 @@ class TestTransportWarning(test_utils.BaseTestCase):
     @mock.patch('oslo_messaging.rpc.client.LOG')
     def test_warning_when_notifier_transport(self, log):
         transport = oslo_messaging.get_notification_transport(self.conf)
-        oslo_messaging.RPCClient(transport, oslo_messaging.Target())
+        oslo_messaging.get_rpc_client(transport, oslo_messaging.Target())
         log.warning.assert_called_once_with(
             "Using notification transport for RPC. Please use "
             "get_rpc_transport to obtain an RPC transport "

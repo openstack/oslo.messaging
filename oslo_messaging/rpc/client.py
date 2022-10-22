@@ -32,6 +32,7 @@ __all__ = [
     'RPCClient',
     'RPCVersionCapError',
     'RemoteError',
+    'get_rpc_client',
 ]
 
 LOG = logging.getLogger(__name__)
@@ -263,6 +264,9 @@ class RPCClient(_BaseCallContext):
     The RPCClient class is responsible for sending method invocations to and
     receiving return values from remote RPC servers via a messaging transport.
 
+    The class should always be instantiated by using the get_rpc_client
+    function and not constructing the class directly.
+
     Two RPC patterns are supported: RPC calls and RPC casts.
 
     An RPC cast is used when an RPC method does *not* return a value to
@@ -295,7 +299,7 @@ class RPCClient(_BaseCallContext):
 
             def __init__(self, transport):
                 target = messaging.Target(topic='test', version='2.0')
-                self._client = messaging.RPCClient(transport, target)
+                self._client = messaging.get_rpc_client(transport, target)
 
             def test(self, ctxt, arg):
                 return self._client.call(ctxt, 'test', arg=arg)
@@ -320,7 +324,7 @@ class RPCClient(_BaseCallContext):
 
         transport = messaging.get_rpc_transport(cfg.CONF)
         target = messaging.Target(topic='test', version='2.0')
-        client = messaging.RPCClient(transport, target)
+        client = messaging.get_rpc_client(transport, target)
         client.call(ctxt, 'test', arg=arg)
 
     but this is probably only useful in limited circumstances as a wrapper
@@ -334,7 +338,7 @@ class RPCClient(_BaseCallContext):
     have the RPC request fail with a MessageDeliveryFailure after the given
     number of retries. For example::
 
-        client = messaging.RPCClient(transport, target, retry=None)
+        client = messaging.get_rpc_client(transport, target, retry=None)
         client.call(ctxt, 'sync')
         try:
             client.prepare(retry=0).cast(ctxt, 'ping')
@@ -346,8 +350,12 @@ class RPCClient(_BaseCallContext):
 
     def __init__(self, transport, target,
                  timeout=None, version_cap=None, serializer=None, retry=None,
-                 call_monitor_timeout=None, transport_options=None):
+                 call_monitor_timeout=None, transport_options=None,
+                 _manual_load=True):
         """Construct an RPC client.
+
+        This should not be called directly, use the get_rpc_client function
+        to instantiate this class.
 
         :param transport: a messaging transport handle
         :type transport: Transport
@@ -371,7 +379,17 @@ class RPCClient(_BaseCallContext):
                                      (less than the overall timeout
                                      parameter).
         :type call_monitor_timeout: int
+        :param transport_options: Transport options passed to client.
+        :type transport_options: TransportOptions
+        :param _manual_load: Internal use only to check if class was
+                             manually instantiated or not.
+        :type _manual_load: bool
         """
+        if _manual_load:
+            LOG.warning("Using RPCClient manually to instantiate client. "
+                        "Please use get_rpc_client to obtain an RPC client "
+                        "instance.")
+
         if serializer is None:
             serializer = msg_serializer.NoOpSerializer()
 
@@ -530,3 +548,16 @@ class RPCClient(_BaseCallContext):
     def can_send_version(self, version=_marker):
         """Check to see if a version is compatible with the version cap."""
         return self.prepare(version=version).can_send_version()
+
+
+def get_rpc_client(transport, target, **kwargs):
+    """Construct an RPC client.
+
+    :param transport: the messaging transport
+    :type transport: Transport
+    :param target: the exchange, topic and server to listen on
+    :type target: Target
+    :param **kwargs: The kwargs will be passed down to the
+                     RPCClient constructor
+    """
+    return RPCClient(transport, target, _manual_load=False, **kwargs)

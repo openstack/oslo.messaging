@@ -114,8 +114,8 @@ class RpcServerFixture(fixtures.Fixture):
             target=self.target,
             endpoints=endpoints,
             executor=self.executor)
-        self._ctrl = oslo_messaging.RPCClient(transport.transport,
-                                              self.ctrl_target)
+        self._ctrl = oslo_messaging.get_rpc_client(transport.transport,
+                                                   self.ctrl_target)
         self._start()
         transport.wait()
 
@@ -230,7 +230,7 @@ class ClientStub(object):
                  transport_options=None, **kwargs):
         self.name = name or "functional-tests"
         self.cast = cast
-        self.client = oslo_messaging.RPCClient(
+        self.client = oslo_messaging.get_rpc_client(
             transport=transport,
             target=target,
             transport_options=transport_options,
