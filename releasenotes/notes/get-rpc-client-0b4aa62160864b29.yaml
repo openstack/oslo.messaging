@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Added new ``get_rpc_client`` function to instantiate the RPCClient
+    class
+deprecations:
+  - |
+    Instantiating the RPCClient class directly is deprecated in favor
+    of using the new ``get_rpc_client`` function to expose a more
+    common API similar to existing functions such as ``get_rpc_server``
+    and ``get_rpc_transport``

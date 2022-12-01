@@ -102,8 +102,8 @@ class ServerSetupMixin(object):
 
     def _setup_client(self, transport, topic='testtopic', exchange=None):
         target = oslo_messaging.Target(topic=topic, exchange=exchange)
-        return oslo_messaging.RPCClient(transport, target=target,
-                                        serializer=self.serializer)
+        return oslo_messaging.get_rpc_client(transport, target=target,
+                                             serializer=self.serializer)
 
 
 class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):

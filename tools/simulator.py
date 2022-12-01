@@ -410,7 +410,7 @@ class RPCClient(Client):
     def __init__(self, client_id, transport, target, timeout, is_cast,
                  wait_after_msg, sync_mode=False):
 
-        client = rpc.RPCClient(transport, target)
+        client = rpc.get_rpc_client(transport, target)
         method = _rpc_cast if is_cast else _rpc_call
 
         super(RPCClient, self).__init__(client_id,
