@@ -37,7 +37,7 @@ LOG = logging.getLogger(__name__)
 # Maximum should be small enough to not get rejected ack,
 # minimum should be big enough to not burn the CPU.
 ACK_REQUEUE_EVERY_SECONDS_MIN = 0.001
-ACK_REQUEUE_EVERY_SECONDS_MAX = 1.0
+ACK_REQUEUE_EVERY_SECONDS_MAX = 5.0
 
 
 class MessageOperationsHandler(object):
