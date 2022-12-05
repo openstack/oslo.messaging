@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    If kombu_reconnect_delay is specified in the [oslo_messaging_rabbit] section,
+    ensure that it is less than 5.0, the value of ACK_REQUEUE_EVERY_SECONDS_MAX
+fixes:
+  - |
+    Increased ACK_REQUEUE_EVERY_SECONDS_MAX to resolve issues with rabbitmq HA
+    failover.

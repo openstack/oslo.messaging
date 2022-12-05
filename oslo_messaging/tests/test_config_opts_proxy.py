@@ -70,7 +70,7 @@ class TestConfigOptsProxy(test_utils.BaseTestCase):
 
     def test_invalid_value(self):
         group = 'oslo_messaging_rabbit'
-        self.config(kombu_reconnect_delay=5.0,
+        self.config(kombu_reconnect_delay=1.0,
                     group=group)
         url = transport.TransportURL.parse(
             self.conf, "rabbit:///?kombu_reconnect_delay=invalid_value"
