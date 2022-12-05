@@ -106,9 +106,11 @@ rabbit_opts = [
                 ),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
+                 min=0.0,
+                 max=amqpdriver.ACK_REQUEUE_EVERY_SECONDS_MAX * 0.9,
                  deprecated_group='DEFAULT',
-                 help='How long to wait before reconnecting in response to an '
-                      'AMQP consumer cancel notification.'),
+                 help='How long to wait (in seconds) before reconnecting in '
+                      'response to an AMQP consumer cancel notification.'),
     cfg.StrOpt('kombu_compression',
                help="EXPERIMENTAL: Possible values are: gzip, bz2. If not "
                     "set compression will not be used. This option may not "
