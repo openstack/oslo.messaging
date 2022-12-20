@@ -1409,6 +1409,7 @@ class Connection(object):
                 # from the one used first.
                 if "PRECONDITION_FAILED - inequivalent arg 'durable'" \
                    in str(err):
+                    LOG.warning("Force creating a non durable exchange.")
                     exchange.durable = False
                     exchange(self.channel).declare()
             self._declared_exchanges.add(exchange.name)
