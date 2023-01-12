@@ -200,7 +200,8 @@ class RPCServer(msg_server.MessageHandlingServer):
 
 
 def get_rpc_server(transport, target, endpoints,
-                   executor=None, serializer=None, access_policy=None):
+                   executor=None, serializer=None, access_policy=None,
+                   server_cls=RPCServer):
     """Construct an RPC server.
 
     :param transport: the messaging transport
@@ -217,10 +218,12 @@ def get_rpc_server(transport, target, endpoints,
     :param access_policy: an optional access policy.
            Defaults to DefaultRPCAccessPolicy
     :type access_policy: RPCAccessPolicyBase
+    :param server_cls: The server class to instantiate
+    :type server_cls: class
     """
     dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer,
                                               access_policy)
-    return RPCServer(transport, target, dispatcher, executor)
+    return server_cls(transport, target, dispatcher, executor)
 
 
 def expected_exceptions(*exceptions):

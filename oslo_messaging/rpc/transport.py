@@ -22,7 +22,8 @@ __all__ = [
 
 
 def get_rpc_transport(conf, url=None,
-                      allowed_remote_exmods=None):
+                      allowed_remote_exmods=None,
+                      transport_cls=msg_transport.RPCTransport):
     """A factory method for Transport objects for RPCs.
 
     This method should be used to ensure the correct messaging functionality
@@ -43,7 +44,9 @@ def get_rpc_transport(conf, url=None,
                                   transport will deserialize remote exceptions
                                   from
     :type allowed_remote_exmods: list
+    :param transport_cls: the transport class to instantiate
+    :type transport_cls: class
     """
     return msg_transport._get_transport(
         conf, url, allowed_remote_exmods,
-        transport_cls=msg_transport.RPCTransport)
+        transport_cls=transport_cls)

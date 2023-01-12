@@ -550,14 +550,16 @@ class RPCClient(_BaseCallContext):
         return self.prepare(version=version).can_send_version()
 
 
-def get_rpc_client(transport, target, **kwargs):
+def get_rpc_client(transport, target, client_cls=RPCClient, **kwargs):
     """Construct an RPC client.
 
     :param transport: the messaging transport
     :type transport: Transport
     :param target: the exchange, topic and server to listen on
     :type target: Target
+    :param client_cls: The client class to instantiate
+    :type client_cls: class
     :param **kwargs: The kwargs will be passed down to the
-                     RPCClient constructor
+                     client_cls constructor
     """
-    return RPCClient(transport, target, _manual_load=False, **kwargs)
+    return client_cls(transport, target, _manual_load=False, **kwargs)

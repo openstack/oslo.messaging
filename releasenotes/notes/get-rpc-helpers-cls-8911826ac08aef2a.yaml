@@ -1,0 +1,5 @@
+---
+features:
+  - |
+    The ``get_rpc_transport``, ``get_rpc_server`` and ``get_rpc_client`` helper
+    functions now have support for overriding the class that is instantiated.
