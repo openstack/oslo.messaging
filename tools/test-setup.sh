@@ -11,10 +11,10 @@
 # this package here.
 
 # inspired from project-config install-distro-packages.sh
-if apt-get -v >/dev/null 2>&1 ; then
-    sudo add-apt-repository -y ppa:qpid/testing
-    sudo apt-get -qq update
-    sudo PATH=/usr/sbin:/sbin:$PATH DEBIAN_FRONTEND=noninteractive \
-        apt-get -q --option "Dpkg::Options::=--force-confold" \
-        --assume-yes install qdrouterd
-fi
+#if apt-get -v >/dev/null 2>&1 ; then
+#    sudo add-apt-repository -y ppa:qpid/testing
+#    sudo apt-get -qq update
+#    sudo PATH=/usr/sbin:/sbin:$PATH DEBIAN_FRONTEND=noninteractive \
+#        apt-get -q --option "Dpkg::Options::=--force-confold" \
+#        --assume-yes install qdrouterd
+#fi
