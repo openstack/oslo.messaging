@@ -242,8 +242,8 @@ Consuming Options
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_ha_queues`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_queue`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_delivery_limit`
-- :oslo.config:option:`oslo_messaging_rabbit.rabbit_quroum_max_memory_length`
-- :oslo.config:option:`oslo_messaging_rabbit.rabbit_quroum_max_memory_bytes`
+- :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_max_memory_length`
+- :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_max_memory_bytes`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_transient_queues_ttl`
 
 Connection Options
