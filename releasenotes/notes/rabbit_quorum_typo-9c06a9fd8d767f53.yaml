@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixed typo in variable names ``rabbit_quorum_max_memory_length``
+    and ``rabbit_quorum_max_memory_bytes``. Please make changes in your
+    config files to correspond correct variables.

@@ -174,7 +174,8 @@ rabbit_opts = [
                'or dead-lettered (if a DLX exchange has been configured) '
                'Used only when rabbit_quorum_queue is enabled, '
                'Default 0 which means dont set a limit.'),
-    cfg.IntOpt('rabbit_quroum_max_memory_length',
+    cfg.IntOpt('rabbit_quorum_max_memory_length',
+               deprecated_name='rabbit_quroum_max_memory_length',
                default=0,
                help='By default all messages are maintained in memory '
                'if a quorum queue grows in length it can put memory '
@@ -182,7 +183,8 @@ rabbit_opts = [
                'of messages in the quorum queue. '
                'Used only when rabbit_quorum_queue is enabled, '
                'Default 0 which means dont set a limit.'),
-    cfg.IntOpt('rabbit_quroum_max_memory_bytes',
+    cfg.IntOpt('rabbit_quorum_max_memory_bytes',
+               deprecated_name='rabbit_quroum_max_memory_bytes',
                default=0,
                help='By default all messages are maintained in memory '
                'if a quorum queue grows in length it can put memory '
@@ -835,8 +837,8 @@ class Connection(object):
     def _get_quorum_configurations(self, driver_conf):
         """Get the quorum queue configurations"""
         delivery_limit = driver_conf.rabbit_quorum_delivery_limit
-        max_memory_length = driver_conf.rabbit_quroum_max_memory_length
-        max_memory_bytes = driver_conf.rabbit_quroum_max_memory_bytes
+        max_memory_length = driver_conf.rabbit_quorum_max_memory_length
+        max_memory_bytes = driver_conf.rabbit_quorum_max_memory_bytes
         return QuorumMemConfig(delivery_limit, max_memory_length,
                                max_memory_bytes)
 
