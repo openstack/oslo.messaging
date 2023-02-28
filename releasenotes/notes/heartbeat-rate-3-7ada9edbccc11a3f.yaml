@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Change heartbeat_rate default from 2 to 3 in order to send AMQP heartbeat
+    frames at correct interval
