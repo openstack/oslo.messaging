@@ -649,6 +649,8 @@ class Connection(object):
             # if it was already monkey patched by eventlet/greenlet.
             global threading
             threading = _utils.stdlib_threading
+            amqpdriver.threading = _utils.stdlib_threading
+            amqpdriver.queue = _utils.stdlib_queue
 
         self.direct_mandatory_flag = driver_conf.direct_mandatory_flag
 
