@@ -14,6 +14,7 @@
 #    under the License.
 
 import logging
+import queue
 import threading
 
 from oslo_utils import eventletutils
@@ -26,12 +27,14 @@ if eventlet and eventletutils.is_monkey_patched("thread"):
     # Here we initialize module with the native python threading module
     # if it was already monkey patched by eventlet/greenlet.
     stdlib_threading = eventlet.patcher.original('threading')
+    stdlib_queue = eventlet.patcher.original('queue')
 else:
     # Manage the case where we run this driver in a non patched environment
     # and where user even so configure the driver to run heartbeat through
     # a python thread, if we don't do that when the heartbeat will start
     # we will facing an issue by trying to override the threading module.
     stdlib_threading = threading
+    stdlib_queue = queue
 
 
 def version_is_compatible(imp_version, version):
