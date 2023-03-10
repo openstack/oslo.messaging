@@ -590,7 +590,7 @@ class MetricsTestCase(utils.SkipIfNoTransportURL):
         client = group.client(1)
         client.add(increment=1)
         time.sleep(1)
-        r = requests.get('http://localhost:3000')
+        r = requests.get('http://localhost:3000', timeout=10)
         for line in r.text.split('\n'):
             if 'client_invocation_start_total{' in line:
                 self.assertEqual('1.0', line[-3:])
