@@ -1,0 +1,31 @@
+---
+features:
+  - |
+    Add an option to enable transient queues to use quorum.
+
+    Transient queues in OpenStack are not so transient, they live the whole
+    process lifetime (e.g. until you restart a service, like nova-compute).
+    Transient here means they belong to a specific process, compared to
+    regular queues which may be used by more processes.
+    Usually, transients queues are the "fanout" and "reply" queues.
+
+    By default, without any rabbitmq policy tuning, they are not durable
+    neither highly available.
+
+    By enabling quorum for transients, oslo.messaging will declare quorum
+    queues instead of classic on rabbitmq. As a result, those queues will
+    automatically become HA and durable.
+    Note that this may have an impact on your cluster, as rabbit will need
+    more cpu, ram and network bandwith to manage the queues. This was tested
+    at pretty large scale (2k hypervisors) with a cluster of 5 nodes.
+
+    Also note that the current rabbitmq implementation rely on a fixed number
+    of "erlang atom" (5M by default), and one atom is consumed each time a
+    quorum queue is created with a different name. If your deployment is doing
+    a lot of queue deletion/creation, you may consume all your atoms quicker.
+
+    When enabling quorum for transients, you may also want to update your
+    rabbitmq policies accordingly (e.g. make sure they apply on quorum).
+
+    This option will stay disabled by default for now but may become the
+    default in the future.
