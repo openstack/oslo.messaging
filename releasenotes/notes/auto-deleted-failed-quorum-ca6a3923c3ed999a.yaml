@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    Auto-delete the failed quorum rabbit queues.
+    When rabbit is failing for a specific quorum queue, delete the queue
+    before trying to recreate it.
+    This may happen if the queue is not recoverable on rabbit side.
+    See https://www.rabbitmq.com/quorum-queues.html#availability for more
+    info on this specific case.
