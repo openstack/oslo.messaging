@@ -1,0 +1,21 @@
+---
+features:
+  - |
+    Add three new options (``use_queue_manager``, ``hostname``,
+    ``processname``) to switch oslo.messaging from random queue names
+    (for reply_q and fanouts) to consistent naming.
+    The default value is False, so oslo.messaging will still use random queue
+    names if nothing is set in configuration file of services.
+    When switching use_queue_manager to True, the uuid4 random string from the
+    queue name is replaced with a combination of hostname, processname and
+    counter.
+    The counter will be kept in shared memory (/dev/shm/x_y_qmanager).
+    This way, when a service using oslo.messaging restarts (e.g. neutron),
+    it will re-create the queues using the same name as the previous run, so
+    no new queues are created and no need for rabbitmq to delete the previous
+    queues.
+    This is extremely useful for operator to debug which queue belong to which
+    server/process.
+    It's also higlhy recommended to enable this feature when using quorum
+    queues for transient (option named ``rabbit_transient_quorum_queue``) to
+    avoid consuming all erlang atoms after some time.
