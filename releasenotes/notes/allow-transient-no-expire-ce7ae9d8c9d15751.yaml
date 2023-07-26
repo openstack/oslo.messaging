@@ -1,0 +1,11 @@
+---
+features:
+  - |
+    Allow creation of transient queues with no expire.
+    When an operator rely on rabbitmq policies, there is no point to set the
+    queue TTL in config.
+    When the rabbit_transient_queues_ttl is set to 0, no x-expire parameter
+    will be set on queue declaration.
+    In that specific situation, it is recommended to set an expire value using
+    rabbitmq policies.
+    See https://www.rabbitmq.com/parameters.html#policies

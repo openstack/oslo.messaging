@@ -195,12 +195,16 @@ rabbit_opts = [
                'Used only when rabbit_quorum_queue is enabled, '
                'Default 0 which means dont set a limit.'),
     cfg.IntOpt('rabbit_transient_queues_ttl',
-               min=1,
+               min=0,
                default=1800,
                help='Positive integer representing duration in seconds for '
                     'queue TTL (x-expires). Queues which are unused for the '
                     'duration of the TTL are automatically deleted. The '
-                    'parameter affects only reply and fanout queues.'),
+                    'parameter affects only reply and fanout queues. Setting '
+                    '0 as value will disable the x-expires. If doing so, '
+                    'make sure you have a rabbitmq policy to delete the '
+                    'queues or you deployment will create an infinite number '
+                    'of queue over time.'),
     cfg.IntOpt('rabbit_qos_prefetch_count',
                default=0,
                help='Specifies the number of messages to prefetch. Setting to '
