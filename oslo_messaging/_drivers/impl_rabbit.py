@@ -1515,6 +1515,8 @@ class Connection(object):
                                          passive=True)
         options = oslo_messaging.TransportOptions(
             at_least_once=self.direct_mandatory_flag)
+
+        LOG.debug('Sending direct to %s', msg_id)
         self._ensure_publishing(self._publish_and_raises_on_missing_exchange,
                                 exchange, msg, routing_key=msg_id,
                                 transport_options=options)
@@ -1528,6 +1530,8 @@ class Connection(object):
             durable=self.durable,
             auto_delete=self.amqp_auto_delete)
 
+        LOG.debug('Sending topic to %s with routing_key %s', exchange_name,
+                  topic)
         self._ensure_publishing(self._publish, exchange, msg,
                                 routing_key=topic, timeout=timeout,
                                 retry=retry,
@@ -1540,6 +1544,7 @@ class Connection(object):
                                          durable=False,
                                          auto_delete=True)
 
+        LOG.debug('Sending fanout to %s_fanout', topic)
         self._ensure_publishing(self._publish, exchange, msg, retry=retry)
 
     def notify_send(self, exchange_name, topic, msg, retry=None, **kwargs):
