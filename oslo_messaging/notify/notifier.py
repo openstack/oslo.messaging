@@ -171,6 +171,47 @@ def get_notification_transport(conf, url=None, allowed_remote_exmods=None):
         transport_cls=msg_transport.NotificationTransport)
 
 
+def _sanitize_context(ctxt):
+    # NOTE(JayF): The below values are in the same order they are in
+    #             oslo_context.context.RequestContext.__init__()
+    safe_keys = (
+        'user_id',
+        'project_id',
+        'domain_id',
+        'user_domain_id',
+        'project_domain_id',
+        'request_id',
+        'roles',
+        'user_name',
+        'project_name',
+        'domain_name',
+        'user_domain_name',
+        'project_domain_name',
+        'service_user_id',
+        'service_user_domain_id',
+        'service_user_domain_name',
+        'service_project_id',
+        'service_project_name',
+        'service_project_domain_id',
+        'service_project_domain_name',
+        'service_roles',
+        'global_request_id',
+        'system_scope',
+        # NOTE(JayF) These have been renamed but may show up in notifications
+        'user',
+        'domain',
+        'user_domain',
+        'project_domain',
+    )
+    ctxt_dict = ctxt if isinstance(ctxt, dict) else ctxt.to_dict()
+    safe_dict = {k: v for k, v in ctxt_dict.items()
+                 if k in safe_keys}
+    if ctxt_dict is ctxt:
+        return safe_dict
+    else:
+        return ctxt.__class__.from_dict(safe_dict)
+
+
 class Notifier(object):
 
     """Send notification messages.
@@ -296,7 +337,12 @@ class Notifier(object):
     def _notify(self, ctxt, event_type, payload, priority, publisher_id=None,
                 retry=None):
         payload = self._serializer.serialize_entity(ctxt, payload)
-        ctxt = self._serializer.serialize_context(ctxt)
+
+        # NOTE(JayF): We must remove secure information from notification
+        #             payloads, otherwise we risk sending sensitive creds
+        #             to a notification bus.
+        safe_ctxt = _sanitize_context(ctxt)
+        ctxt = self._serializer.serialize_context(safe_ctxt)
 
         msg = dict(message_id=str(uuid.uuid4()),
                    publisher_id=publisher_id or self.publisher_id,
