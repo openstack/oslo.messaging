@@ -122,7 +122,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
     ]
 
     _context = [
-        ('ctxt', dict(ctxt={'user': 'bob'})),
+        ('ctxt', dict(ctxt={'user_name': 'bob'})),
     ]
 
     _retry = [
@@ -229,6 +229,157 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 TestMessagingNotifier.generate_scenarios()
 
 
+class TestMessagingNotifierContextFiltering(test_utils.BaseTestCase):
+
+    _v1 = [
+        ('v1', dict(v1=True)),
+        ('not_v1', dict(v1=False)),
+    ]
+
+    _v2 = [
+        ('v2', dict(v2=True)),
+        ('not_v2', dict(v2=False)),
+    ]
+
+    _publisher_id = [
+        ('ctor_pub_id', dict(ctor_pub_id='test',
+                             expected_pub_id='test')),
+        ('prep_pub_id', dict(prep_pub_id='test.localhost',
+                             expected_pub_id='test.localhost')),
+        ('override', dict(ctor_pub_id='test',
+                          prep_pub_id='test.localhost',
+                          expected_pub_id='test.localhost')),
+    ]
+
+    _topics = [
+        ('no_topics', dict(topics=[])),
+        ('single_topic', dict(topics=['notifications'])),
+        ('multiple_topic2', dict(topics=['foo', 'bar'])),
+    ]
+
+    _priority = [
+        ('audit', dict(priority='audit')),
+        ('debug', dict(priority='debug')),
+        ('info', dict(priority='info')),
+        ('warn', dict(priority='warn')),
+        ('error', dict(priority='error')),
+        ('sample', dict(priority='sample')),
+        ('critical', dict(priority='critical')),
+    ]
+
+    _payload = [
+        ('payload', dict(payload={'foo': 'bar'})),
+    ]
+
+    _context = [
+        ('ctxt', dict(ctxt={'user_name': 'bob'})),
+    ]
+
+    _retry = [
+        ('unconfigured', dict()),
+        ('None', dict(retry=None)),
+        ('0', dict(retry=0)),
+        ('5', dict(retry=5)),
+    ]
+
+    @classmethod
+    def generate_scenarios(cls):
+        cls.scenarios = testscenarios.multiply_scenarios(cls._v1,
+                                                         cls._v2,
+                                                         cls._publisher_id,
+                                                         cls._topics,
+                                                         cls._priority,
+                                                         cls._payload,
+                                                         cls._retry)
+
+    def setUp(self):
+        super(TestMessagingNotifierContextFiltering, self).setUp()
+
+        self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
+        self.useFixture(fixtures.MockPatchObject(
+            messaging, 'LOG', self.logger))
+        self.useFixture(fixtures.MockPatchObject(
+            msg_notifier, '_LOG', self.logger))
+
+    @mock.patch('oslo_utils.timeutils.utcnow')
+    def test_notifier(self, mock_utcnow):
+        ctxt = {'user_name': 'bob', 'secret_data': 'redact_me'}
+        safe_ctxt = {'user_name': 'bob'}
+        drivers = []
+        if self.v1:
+            drivers.append('messaging')
+        if self.v2:
+            drivers.append('messagingv2')
+
+        self.config(driver=drivers,
+                    topics=self.topics,
+                    group='oslo_messaging_notifications')
+
+        transport = oslo_messaging.get_notification_transport(self.conf,
+                                                              url='fake:')
+
+        if hasattr(self, 'ctor_pub_id'):
+            notifier = oslo_messaging.Notifier(transport,
+                                               publisher_id=self.ctor_pub_id)
+        else:
+            notifier = oslo_messaging.Notifier(transport)
+
+        prepare_kwds = {}
+        if hasattr(self, 'retry'):
+            prepare_kwds['retry'] = self.retry
+        if hasattr(self, 'prep_pub_id'):
+            prepare_kwds['publisher_id'] = self.prep_pub_id
+        if prepare_kwds:
+            notifier = notifier.prepare(**prepare_kwds)
+
+        transport._send_notification = mock.Mock()
+
+        message_id = uuid.uuid4()
+        uuid.uuid4 = mock.Mock(return_value=message_id)
+
+        mock_utcnow.return_value = datetime.datetime.utcnow()
+
+        message = {
+            'message_id': str(message_id),
+            'publisher_id': self.expected_pub_id,
+            'event_type': 'test.notify',
+            'priority': self.priority.upper(),
+            'payload': self.payload,
+            'timestamp': str(timeutils.utcnow()),
+        }
+
+        sends = []
+        if self.v1:
+            sends.append(dict(version=1.0))
+        if self.v2:
+            sends.append(dict(version=2.0))
+
+        calls = []
+        for send_kwargs in sends:
+            for topic in self.topics:
+                if hasattr(self, 'retry'):
+                    send_kwargs['retry'] = self.retry
+                else:
+                    send_kwargs['retry'] = -1
+                target = oslo_messaging.Target(topic='%s.%s' % (topic,
+                                                                self.priority))
+                calls.append(mock.call(target,
+                                       safe_ctxt,
+                                       message,
+                                       **send_kwargs))
+
+        method = getattr(notifier, self.priority)
+        method(ctxt, 'test.notify', self.payload)
+
+        uuid.uuid4.assert_called_once_with()
+        transport._send_notification.assert_has_calls(calls, any_order=True)
+
+        self.assertTrue(notifier.is_enabled())
+
+
+TestMessagingNotifierContextFiltering.generate_scenarios()
+
+
 class TestMessagingNotifierRetry(test_utils.BaseTestCase):
 
     class TestingException(BaseException):
@@ -328,12 +479,12 @@ class TestSerializer(test_utils.BaseTestCase):
         mock_utcnow.return_value = datetime.datetime.utcnow()
 
         serializer.serialize_context = mock.Mock()
-        serializer.serialize_context.return_value = dict(user='alice')
+        serializer.serialize_context.return_value = dict(user_name='alice')
 
         serializer.serialize_entity = mock.Mock()
         serializer.serialize_entity.return_value = 'sbar'
 
-        notifier.info(dict(user='bob'), 'test.notify', 'bar')
+        notifier.info(dict(user_name='bob'), 'test.notify', 'bar')
 
         message = {
             'message_id': str(message_id),
@@ -344,13 +495,14 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        self.assertEqual([(dict(user='alice'), message, 'INFO', -1)],
+        self.assertEqual([(dict(user_name='alice'), message, 'INFO', -1)],
                          _impl_test.NOTIFICATIONS)
 
         uuid.uuid4.assert_called_once_with()
-        serializer.serialize_context.assert_called_once_with(dict(user='bob'))
-        serializer.serialize_entity.assert_called_once_with(dict(user='bob'),
-                                                            'bar')
+        serializer.serialize_context.assert_called_once_with(
+            dict(user_name='bob'))
+        serializer.serialize_entity.assert_called_once_with(
+            dict(user_name='bob'), 'bar')
 
 
 class TestNotifierTopics(test_utils.BaseTestCase):
