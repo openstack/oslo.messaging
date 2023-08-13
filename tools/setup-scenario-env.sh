@@ -50,19 +50,6 @@ case $SCENARIO in
         export NOTIFY_TRANSPORT_URL=kafka://127.0.0.1:9092/
         RUN="--env-prefix RABBITMQ run rabbitmq -- pifpaf --env-prefix KAFKA run kafka"
         ;;
-    scenario03)
-        _setup_global_site_package_path
-        export RPC_TRANSPORT_URL=amqp://stackqpid:secretqpid@127.0.0.1:5692/
-        export NOTIFY_TRANSPORT_URL=rabbit://pifpaf:secret@127.0.0.1:5682/
-        RUN="--env-prefix RABBITMQ run rabbitmq -- pifpaf --debug --env-prefix QDR run qdrouterd --username stackqpid --password secretqpid --port 5692"
-        ;;
-    scenario04)
-        _setup_global_site_package_path
-        _setup_kafka
-        export RPC_TRANSPORT_URL=amqp://stackqpid:secretqpid@127.0.0.1:5692/
-        export NOTIFY_TRANSPORT_URL=kafka://127.0.0.1:9092/
-        RUN="--env-prefix KAFKA run kafka -- pifpaf --debug --env-prefix QDR run qdrouterd --username stackqpid --password secretqpid --port 5692"
-        ;;
     *) ;;
 esac
 
