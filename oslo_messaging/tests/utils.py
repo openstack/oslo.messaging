@@ -22,6 +22,7 @@
 import threading
 
 from oslo_config import cfg
+from oslo_context.context import RequestContext
 from oslo_utils import eventletutils
 from oslotest import base
 
@@ -82,3 +83,10 @@ class ServerThreadHelper(threading.Thread):
 
     def stop(self):
         self._stop_event.set()
+
+
+class TestContext(RequestContext):
+    def redacted_copy(self):
+        # NOTE(JayF): By returning our self here instead of redacting, we can
+        #             continue using equality comparisons in unit tests.
+        return self

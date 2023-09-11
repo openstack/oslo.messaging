@@ -12,7 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-
 from oslo_messaging._drivers import common
 from oslo_messaging import _utils as utils
 from oslo_messaging.tests import utils as test_utils

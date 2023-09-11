@@ -172,48 +172,21 @@ def get_notification_transport(conf, url=None, allowed_remote_exmods=None):
 
 
 def _sanitize_context(ctxt):
-    # NOTE(JayF): The below values are in the same order they are in
-    #             oslo_context.context.RequestContext.__init__()
-    safe_keys = (
-        'user_id',
-        'project_id',
-        'domain_id',
-        'user_domain_id',
-        'project_domain_id',
-        # NOTE(JayF): Without is_admin; heat will make a roundtrip to policy
-        #             to try to set it to a sane value when instantiating the
-        #             replacement context. Instead, just pass it on.
-        'is_admin',
-        'request_id',
-        'roles',
-        'user_name',
-        'project_name',
-        'domain_name',
-        'user_domain_name',
-        'project_domain_name',
-        'service_user_id',
-        'service_user_domain_id',
-        'service_user_domain_name',
-        'service_project_id',
-        'service_project_name',
-        'service_project_domain_id',
-        'service_project_domain_name',
-        'service_roles',
-        'global_request_id',
-        'system_scope',
-        # NOTE(JayF) These have been renamed but may show up in notifications
-        'user',
-        'domain',
-        'user_domain',
-        'project_domain',
-    )
-    ctxt_dict = ctxt if isinstance(ctxt, dict) else ctxt.to_dict()
-    safe_dict = {k: v for k, v in ctxt_dict.items()
-                 if k in safe_keys}
-    if ctxt_dict is ctxt:
-        return safe_dict
-    else:
-        return ctxt.__class__.from_dict(safe_dict)
+    if ctxt is None or type(ctxt) is dict:
+        # NOTE(JayF): Logging drivers, unit tests, and some code calls
+        #             notifier with an emptydict or None instead of an
+        #             actual context. In these cases, discard the passed
+        #             value.
+        return {}
+
+    try:
+        return ctxt.redacted_copy()
+    except AttributeError:
+        # NOTE(JayF): We'd rather send a notification without any context
+        #             than missing sending the notification altogether.
+        _LOG.warning("Unable to properly redact context for "
+                     "notification, omitting context from notification.")
+        return {}
 
 
 class Notifier(object):

@@ -64,7 +64,7 @@ class LoggingNotificationHandler(logging.Handler):
             return
 
         method(
-            {},
+            None,
             'logrecord',
             {
                 'name': record.name,

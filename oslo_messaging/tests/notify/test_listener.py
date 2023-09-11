@@ -189,13 +189,14 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                batch=(5, 1))
 
         notifier = self._setup_notifier(transport)
+        cxt = test_utils.TestContext()
         for _ in range(12):
-            notifier.info({}, 'an_event.start', 'test message')
+            notifier.info(cxt, 'an_event.start', 'test message')
 
         self.wait_for_messages(3)
         self.assertFalse(listener_thread.stop())
 
-        messages = [dict(ctxt={},
+        messages = [dict(ctxt=cxt,
                          publisher_id='testpublisher',
                          event_type='an_event.start',
                          payload='test message',
@@ -216,13 +217,14 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                batch=(5, None))
 
         notifier = self._setup_notifier(transport)
+        ctxt = test_utils.TestContext()
         for _ in range(10):
-            notifier.info({}, 'an_event.start', 'test message')
+            notifier.info(ctxt, 'an_event.start', 'test message')
 
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        messages = [dict(ctxt={},
+        messages = [dict(ctxt=ctxt,
                          publisher_id='testpublisher',
                          event_type='an_event.start',
                          payload='test message',
@@ -242,13 +244,14 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                batch=(5, None))
 
         notifier = self._setup_notifier(transport)
+        ctxt = test_utils.TestContext()
         for _ in range(10):
-            notifier.info({}, 'an_event.start', 'test message')
+            notifier.info(ctxt, 'an_event.start', 'test message')
 
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        messages = [dict(ctxt={},
+        messages = [dict(ctxt=ctxt,
                          publisher_id='testpublisher',
                          event_type='an_event.start',
                          payload='test message',
@@ -266,13 +269,14 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         listener_thread = self._setup_listener(transport, [endpoint])
 
         notifier = self._setup_notifier(transport)
-        notifier.info({}, 'an_event.start', 'test message')
+        cxt = test_utils.TestContext()
+        notifier.info(cxt, 'an_event.start', 'test message')
 
         self.wait_for_messages(1)
         self.assertFalse(listener_thread.stop())
 
         endpoint.info.assert_called_once_with(
-            {}, 'testpublisher', 'an_event.start', 'test message',
+            cxt, 'testpublisher', 'an_event.start', 'test message',
             {'message_id': mock.ANY, 'timestamp': mock.ANY})
 
     def test_two_topics(self):
@@ -286,18 +290,20 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         listener_thread = self._setup_listener(transport, [endpoint],
                                                targets=targets)
         notifier = self._setup_notifier(transport, topics=['topic1'])
-        notifier.info({'user_name': 'bob'}, 'an_event.start1', 'test')
+        cxt1 = test_utils.TestContext(user_name='bob')
+        notifier.info(cxt1, 'an_event.start1', 'test')
         notifier = self._setup_notifier(transport, topics=['topic2'])
-        notifier.info({'user_name': 'bob2'}, 'an_event.start2', 'test')
+        cxt2 = test_utils.TestContext(user_name='bob2')
+        notifier.info(cxt2, 'an_event.start2', 'test')
 
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
         endpoint.info.assert_has_calls([
-            mock.call({'user_name': 'bob'}, 'testpublisher',
+            mock.call(cxt1, 'testpublisher',
                       'an_event.start1', 'test',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-            mock.call({'user_name': 'bob2'}, 'testpublisher',
+            mock.call(cxt2, 'testpublisher',
                       'an_event.start2', 'test',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY})],
             any_order=True)
@@ -326,23 +332,23 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             transport._send_notification = mock.MagicMock(
                 side_effect=side_effect)
 
-        notifier.info({'user_name': 'bob0'},
+        notifier.info(test_utils.TestContext(user_name='bob0'),
                       'an_event.start', 'test message default exchange')
         mock_notifier_exchange('exchange1')
-        notifier.info({'user_name': 'bob1'},
-                      'an_event.start', 'test message exchange1')
+        ctxt1 = test_utils.TestContext(user_name='bob1')
+        notifier.info(ctxt1, 'an_event.start', 'test message exchange1')
         mock_notifier_exchange('exchange2')
-        notifier.info({'user_name': 'bob2'},
-                      'an_event.start', 'test message exchange2')
+        ctxt2 = test_utils.TestContext(user_name='bob2')
+        notifier.info(ctxt2, 'an_event.start', 'test message exchange2')
 
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
         endpoint.info.assert_has_calls([
-            mock.call({'user_name': 'bob1'}, 'testpublisher', 'an_event.start',
+            mock.call(ctxt1, 'testpublisher', 'an_event.start',
                       'test message exchange1',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-            mock.call({'user_name': 'bob2'}, 'testpublisher', 'an_event.start',
+            mock.call(ctxt2, 'testpublisher', 'an_event.start',
                       'test message exchange2',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY})],
             any_order=True)
@@ -358,18 +364,19 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         listener_thread = self._setup_listener(transport,
                                                [endpoint1, endpoint2])
         notifier = self._setup_notifier(transport)
-        notifier.info({}, 'an_event.start', 'test')
+        cxt = test_utils.TestContext()
+        notifier.info(cxt, 'an_event.start', 'test')
 
         self.wait_for_messages(1)
         self.assertFalse(listener_thread.stop())
 
         endpoint1.info.assert_called_once_with(
-            {}, 'testpublisher', 'an_event.start', 'test', {
+            cxt, 'testpublisher', 'an_event.start', 'test', {
                 'timestamp': mock.ANY,
                 'message_id': mock.ANY})
 
         endpoint2.info.assert_called_once_with(
-            {}, 'testpublisher', 'an_event.start', 'test', {
+            cxt, 'testpublisher', 'an_event.start', 'test', {
                 'timestamp': mock.ANY,
                 'message_id': mock.ANY})
 
@@ -387,15 +394,16 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         endpoint.info.side_effect = side_effect_requeue
         listener_thread = self._setup_listener(transport, [endpoint])
         notifier = self._setup_notifier(transport)
-        notifier.info({}, 'an_event.start', 'test')
+        cxt = test_utils.TestContext()
+        notifier.info(cxt, 'an_event.start', 'test')
 
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
         endpoint.info.assert_has_calls([
-            mock.call({}, 'testpublisher', 'an_event.start', 'test',
+            mock.call(cxt, 'testpublisher', 'an_event.start', 'test',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-            mock.call({}, 'testpublisher', 'an_event.start', 'test',
+            mock.call(cxt, 'testpublisher', 'an_event.start', 'test',
                       {'timestamp': mock.ANY, 'message_id': mock.ANY})])
 
     def test_two_pools(self):
@@ -414,23 +422,27 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
                                                 targets=targets, pool="pool2")
 
         notifier = self._setup_notifier(transport, topics=["topic"])
-        notifier.info({'user_name': 'bob0'}, 'an_event.start', 'test message0')
-        notifier.info({'user_name': 'bob1'}, 'an_event.start', 'test message1')
+        ctxts = [
+            test_utils.TestContext(user_name='bob0'),
+            test_utils.TestContext(user_name='bob1')
+        ]
+        notifier.info(ctxts[0], 'an_event.start', 'test message0')
+        notifier.info(ctxts[1], 'an_event.start', 'test message1')
 
         self.wait_for_messages(2, "pool1")
         self.wait_for_messages(2, "pool2")
         self.assertFalse(listener2_thread.stop())
         self.assertFalse(listener1_thread.stop())
 
-        def mocked_endpoint_call(i):
-            return mock.call({'user_name': 'bob%d' % i}, 'testpublisher',
+        def mocked_endpoint_call(i, ctxts):
+            return mock.call(ctxts[i], 'testpublisher',
                              'an_event.start', 'test message%d' % i,
                              {'timestamp': mock.ANY, 'message_id': mock.ANY})
 
-        endpoint1.info.assert_has_calls([mocked_endpoint_call(0),
-                                         mocked_endpoint_call(1)])
-        endpoint2.info.assert_has_calls([mocked_endpoint_call(0),
-                                         mocked_endpoint_call(1)])
+        endpoint1.info.assert_has_calls([mocked_endpoint_call(0, ctxts),
+                                         mocked_endpoint_call(1, ctxts)])
+        endpoint2.info.assert_has_calls([mocked_endpoint_call(0, ctxts),
+                                         mocked_endpoint_call(1, ctxts)])
 
     def test_two_pools_three_listener(self):
         transport = msg_notifier.get_notification_transport(
@@ -451,42 +463,42 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         listener3_thread = self._setup_listener(transport, [endpoint3],
                                                 targets=targets, pool="pool2")
 
-        def mocked_endpoint_call(i):
-            return mock.call({'user_name': 'bob%d' % i}, 'testpublisher',
+        def mocked_endpoint_call(i, ctxt):
+            return mock.call(ctxt, 'testpublisher',
                              'an_event.start', 'test message%d' % i,
                              {'timestamp': mock.ANY, 'message_id': mock.ANY})
 
         notifier = self._setup_notifier(transport, topics=["topic"])
         mocked_endpoint1_calls = []
         for i in range(0, 25):
-            notifier.info({'user_name': 'bob%d' % i}, 'an_event.start',
-                          'test message%d' % i)
-            mocked_endpoint1_calls.append(mocked_endpoint_call(i))
+            ctxt = test_utils.TestContext(user_name='bob%d' % i)
+            notifier.info(ctxt, 'an_event.start', 'test message%d' % i)
+            mocked_endpoint1_calls.append(mocked_endpoint_call(i, ctxt))
 
         self.wait_for_messages(25, 'pool2')
         listener2_thread.stop()
 
         for i in range(0, 25):
-            notifier.info({'user_name': 'bob%d' % i}, 'an_event.start',
-                          'test message%d' % i)
-            mocked_endpoint1_calls.append(mocked_endpoint_call(i))
+            cxt = test_utils.TestContext(user_name='bob%d' % i)
+            notifier.info(cxt, 'an_event.start', 'test message%d' % i)
+            mocked_endpoint1_calls.append(mocked_endpoint_call(i, cxt))
 
         self.wait_for_messages(50, 'pool2')
         listener2_thread.start()
         listener3_thread.stop()
 
         for i in range(0, 25):
-            notifier.info({'user_name': 'bob%d' % i}, 'an_event.start',
-                          'test message%d' % i)
-            mocked_endpoint1_calls.append(mocked_endpoint_call(i))
+            ctxt = test_utils.TestContext(user_name='bob%d' % i)
+            notifier.info(ctxt, 'an_event.start', 'test message%d' % i)
+            mocked_endpoint1_calls.append(mocked_endpoint_call(i, ctxt))
 
         self.wait_for_messages(75, 'pool2')
         listener3_thread.start()
 
         for i in range(0, 25):
-            notifier.info({'user_name': 'bob%d' % i}, 'an_event.start',
-                          'test message%d' % i)
-            mocked_endpoint1_calls.append(mocked_endpoint_call(i))
+            ctxt = test_utils.TestContext(user_name='bob%d' % i)
+            notifier.info(ctxt, 'an_event.start', 'test message%d' % i)
+            mocked_endpoint1_calls.append(mocked_endpoint_call(i, ctxt))
 
         self.wait_for_messages(100, 'pool1')
         self.wait_for_messages(100, 'pool2')

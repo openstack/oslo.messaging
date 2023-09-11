@@ -36,6 +36,7 @@ from oslo_messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
 from unittest import mock
 
+
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
@@ -122,7 +123,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
     ]
 
     _context = [
-        ('ctxt', dict(ctxt={'user_name': 'bob'})),
+        ('ctxt', dict(ctxt=test_utils.TestContext(user_name='bob'))),
     ]
 
     _retry = [
@@ -229,157 +230,6 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 TestMessagingNotifier.generate_scenarios()
 
 
-class TestMessagingNotifierContextFiltering(test_utils.BaseTestCase):
-
-    _v1 = [
-        ('v1', dict(v1=True)),
-        ('not_v1', dict(v1=False)),
-    ]
-
-    _v2 = [
-        ('v2', dict(v2=True)),
-        ('not_v2', dict(v2=False)),
-    ]
-
-    _publisher_id = [
-        ('ctor_pub_id', dict(ctor_pub_id='test',
-                             expected_pub_id='test')),
-        ('prep_pub_id', dict(prep_pub_id='test.localhost',
-                             expected_pub_id='test.localhost')),
-        ('override', dict(ctor_pub_id='test',
-                          prep_pub_id='test.localhost',
-                          expected_pub_id='test.localhost')),
-    ]
-
-    _topics = [
-        ('no_topics', dict(topics=[])),
-        ('single_topic', dict(topics=['notifications'])),
-        ('multiple_topic2', dict(topics=['foo', 'bar'])),
-    ]
-
-    _priority = [
-        ('audit', dict(priority='audit')),
-        ('debug', dict(priority='debug')),
-        ('info', dict(priority='info')),
-        ('warn', dict(priority='warn')),
-        ('error', dict(priority='error')),
-        ('sample', dict(priority='sample')),
-        ('critical', dict(priority='critical')),
-    ]
-
-    _payload = [
-        ('payload', dict(payload={'foo': 'bar'})),
-    ]
-
-    _context = [
-        ('ctxt', dict(ctxt={'user_name': 'bob'})),
-    ]
-
-    _retry = [
-        ('unconfigured', dict()),
-        ('None', dict(retry=None)),
-        ('0', dict(retry=0)),
-        ('5', dict(retry=5)),
-    ]
-
-    @classmethod
-    def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._v1,
-                                                         cls._v2,
-                                                         cls._publisher_id,
-                                                         cls._topics,
-                                                         cls._priority,
-                                                         cls._payload,
-                                                         cls._retry)
-
-    def setUp(self):
-        super(TestMessagingNotifierContextFiltering, self).setUp()
-
-        self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
-        self.useFixture(fixtures.MockPatchObject(
-            messaging, 'LOG', self.logger))
-        self.useFixture(fixtures.MockPatchObject(
-            msg_notifier, '_LOG', self.logger))
-
-    @mock.patch('oslo_utils.timeutils.utcnow')
-    def test_notifier(self, mock_utcnow):
-        ctxt = {'user_name': 'bob', 'secret_data': 'redact_me'}
-        safe_ctxt = {'user_name': 'bob'}
-        drivers = []
-        if self.v1:
-            drivers.append('messaging')
-        if self.v2:
-            drivers.append('messagingv2')
-
-        self.config(driver=drivers,
-                    topics=self.topics,
-                    group='oslo_messaging_notifications')
-
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
-
-        if hasattr(self, 'ctor_pub_id'):
-            notifier = oslo_messaging.Notifier(transport,
-                                               publisher_id=self.ctor_pub_id)
-        else:
-            notifier = oslo_messaging.Notifier(transport)
-
-        prepare_kwds = {}
-        if hasattr(self, 'retry'):
-            prepare_kwds['retry'] = self.retry
-        if hasattr(self, 'prep_pub_id'):
-            prepare_kwds['publisher_id'] = self.prep_pub_id
-        if prepare_kwds:
-            notifier = notifier.prepare(**prepare_kwds)
-
-        transport._send_notification = mock.Mock()
-
-        message_id = uuid.uuid4()
-        uuid.uuid4 = mock.Mock(return_value=message_id)
-
-        mock_utcnow.return_value = datetime.datetime.utcnow()
-
-        message = {
-            'message_id': str(message_id),
-            'publisher_id': self.expected_pub_id,
-            'event_type': 'test.notify',
-            'priority': self.priority.upper(),
-            'payload': self.payload,
-            'timestamp': str(timeutils.utcnow()),
-        }
-
-        sends = []
-        if self.v1:
-            sends.append(dict(version=1.0))
-        if self.v2:
-            sends.append(dict(version=2.0))
-
-        calls = []
-        for send_kwargs in sends:
-            for topic in self.topics:
-                if hasattr(self, 'retry'):
-                    send_kwargs['retry'] = self.retry
-                else:
-                    send_kwargs['retry'] = -1
-                target = oslo_messaging.Target(topic='%s.%s' % (topic,
-                                                                self.priority))
-                calls.append(mock.call(target,
-                                       safe_ctxt,
-                                       message,
-                                       **send_kwargs))
-
-        method = getattr(notifier, self.priority)
-        method(ctxt, 'test.notify', self.payload)
-
-        uuid.uuid4.assert_called_once_with()
-        transport._send_notification.assert_has_calls(calls, any_order=True)
-
-        self.assertTrue(notifier.is_enabled())
-
-
-TestMessagingNotifierContextFiltering.generate_scenarios()
-
-
 class TestMessagingNotifierRetry(test_utils.BaseTestCase):
 
     class TestingException(BaseException):
@@ -422,7 +272,7 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
             with mock.patch(
                 'oslo_messaging.notify.messaging.LOG.exception'
             ) as mock_log:
-                notifier.info({}, "test", {})
+                notifier.info(test_utils.TestContext(), "test", {})
 
         # one normal call plus two retries
         self.assertEqual(3, len(calls))
@@ -451,7 +301,7 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
         # call simply returns without i) failing to deliver the message to
         # the non existent kafka bus ii) retrying the message delivery twice
         # as the configuration requested it.
-        notifier.info({}, "test", {})
+        notifier.info(test_utils.TestContext(), "test", {})
 
 
 class TestSerializer(test_utils.BaseTestCase):
@@ -484,7 +334,8 @@ class TestSerializer(test_utils.BaseTestCase):
         serializer.serialize_entity = mock.Mock()
         serializer.serialize_entity.return_value = 'sbar'
 
-        notifier.info(dict(user_name='bob'), 'test.notify', 'bar')
+        ctxt = test_utils.TestContext(user_name='bob')
+        notifier.info(ctxt, 'test.notify', 'bar')
 
         message = {
             'message_id': str(message_id),
@@ -498,11 +349,10 @@ class TestSerializer(test_utils.BaseTestCase):
         self.assertEqual([(dict(user_name='alice'), message, 'INFO', -1)],
                          _impl_test.NOTIFICATIONS)
 
-        uuid.uuid4.assert_called_once_with()
-        serializer.serialize_context.assert_called_once_with(
-            dict(user_name='bob'))
-        serializer.serialize_entity.assert_called_once_with(
-            dict(user_name='bob'), 'bar')
+        # NOTE(JayF): This is also called when we create a TestContext
+        uuid.uuid4.assert_has_calls([mock.call(), mock.call()])
+        serializer.serialize_context.assert_called_once_with(ctxt)
+        serializer.serialize_entity.assert_called_once_with(ctxt, 'bar')
 
 
 class TestNotifierTopics(test_utils.BaseTestCase):
@@ -561,9 +411,10 @@ class TestLogNotifier(test_utils.BaseTestCase):
         with mock.patch.object(logging, 'getLogger') as gl:
             gl.return_value = logger
 
-            notifier.info({}, 'test.notify', 'bar')
+            notifier.info(test_utils.TestContext(), 'test.notify', 'bar')
 
-            uuid.uuid4.assert_called_once_with()
+            # NOTE(JayF): TestContext calls this, too
+            uuid.uuid4.assert_has_calls([mock.call(), mock.call()])
             logging.getLogger.assert_called_once_with(
                 'oslo.messaging.notification.test.notify')
 
@@ -818,7 +669,7 @@ group_1:
         with mock.patch.object(self.router, 'plugin_manager') as pm:
             with mock.patch.object(self.router, '_get_drivers_for_message',
                                    drivers_mock):
-                self.notifier.info({}, 'my_event', {})
+                self.notifier.info(test_utils.TestContext(), 'my_event', {})
                 self.assertEqual(sorted(['rpc', 'foo']),
                                  sorted(pm.map.call_args[0][6]))
 
@@ -856,13 +707,13 @@ group_1:
                             return_value=pm):
                 with mock.patch('oslo_messaging.notify.'
                                 '_impl_routing.LOG'):
-
-                    self.notifier.info({}, 'my_event', {})
+                    cxt = test_utils.TestContext()
+                    self.notifier.info(cxt, 'my_event', {})
                     self.assertFalse(bar_driver.info.called)
                     rpc_driver.notify.assert_called_once_with(
-                        {}, mock.ANY, 'INFO', -1)
+                        cxt, mock.ANY, 'INFO', -1)
                     rpc2_driver.notify.assert_called_once_with(
-                        {}, mock.ANY, 'INFO', -1)
+                        cxt, mock.ANY, 'INFO', -1)
 
 
 class TestNoOpNotifier(test_utils.BaseTestCase):
