@@ -180,6 +180,10 @@ def _sanitize_context(ctxt):
         'domain_id',
         'user_domain_id',
         'project_domain_id',
+        # NOTE(JayF): Without is_admin; heat will make a roundtrip to policy
+        #             to try to set it to a sane value when instantiating the
+        #             replacement context. Instead, just pass it on.
+        'is_admin',
         'request_id',
         'roles',
         'user_name',
