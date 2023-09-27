@@ -21,7 +21,7 @@ sasl2-bin [platform:dpkg amqp1 test]
 uuid-dev [platform:dpkg amqp1 test]
 swig [platform:dpkg amqp1 test]
 libsasl2-modules [platform:dpkg amqp1 test]
-openjdk-8-jdk [platform:dpkg amqp1 test]
+openjdk-8-jdk [platform:dpkg amqp1 test !platform:debian]
 
 # AMQP1 TEST rpm
 qpid-dispatch-router [platform:rpm amqp1 test]
