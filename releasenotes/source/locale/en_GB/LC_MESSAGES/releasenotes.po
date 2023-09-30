@@ -7,11 +7,11 @@ msgid ""
 msgstr ""
 "Project-Id-Version: oslo.messaging\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-05-18 14:34+0000\n"
+"POT-Creation-Date: 2023-09-29 10:37+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2023-06-21 08:39+0000\n"
+"PO-Revision-Date: 2023-09-21 01:02+0000\n"
 "Last-Translator: Andi Chandler <andi@gowling.com>\n"
 "Language-Team: English (United Kingdom)\n"
 "Language: en_GB\n"
@@ -67,6 +67,9 @@ msgstr "12.12.0"
 msgid "12.13.0"
 msgstr "12.13.0"
 
+msgid "12.13.1"
+msgstr "12.13.1"
+
 msgid "12.14.0"
 msgstr "12.14.0"
 
@@ -97,11 +100,17 @@ msgstr "12.9.0"
 msgid "12.9.3"
 msgstr "12.9.3"
 
+msgid "12.9.4-2"
+msgstr "12.9.4-2"
+
 msgid "13.0.0"
 msgstr "13.0.0"
 
 msgid "14.0.0"
 msgstr "14.0.0"
+
+msgid "14.0.1"
+msgstr "14.0.1"
 
 msgid "14.1.0"
 msgstr "14.1.0"
@@ -109,14 +118,23 @@ msgstr "14.1.0"
 msgid "14.2.0"
 msgstr "14.2.0"
 
+msgid "14.2.1"
+msgstr "14.2.1"
+
 msgid "14.3.0"
 msgstr "14.3.0"
 
-msgid "14.3.0-1"
-msgstr "14.3.0-1"
+msgid "14.3.1"
+msgstr "14.3.1"
+
+msgid "14.4.0"
+msgstr "14.4.0"
 
 msgid "2023.1 Series Release Notes"
 msgstr "2023.1 Series Release Notes"
+
+msgid "2023.2 Series Release Notes"
+msgstr "2023.2 Series Release Notes"
 
 msgid "5.17.3"
 msgstr "5.17.3"
@@ -524,6 +542,17 @@ msgstr ""
 "The AMQP driver has removed the configuration options of "
 "allow_insecure_clients, username and password from the [oslo_messaging_amqp] "
 "section."
+
+msgid ""
+"The AMQP1 driver is now deprecated. Its related functional tests are also "
+"disabled. Neither debian nor ubuntu in the latest releases have any binary "
+"built for qpid server, not even 3rd party. Only qpid proton, the client lib, "
+"is available."
+msgstr ""
+"The AMQP1 driver is now deprecated. Its related functional tests are also "
+"disabled. Neither Debian nor Ubuntu in the latest releases have any binary "
+"built for qpid server, not even 3rd party. Only qpid proton, the client lib, "
+"is available."
 
 msgid ""
 "The Kafa driver has removed the configuration options of kafka_default_host "
