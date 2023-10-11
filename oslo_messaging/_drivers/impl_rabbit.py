@@ -211,7 +211,7 @@ rabbit_opts = [
                "considered down if heartbeat's keep-alive fails "
                "(0 disables heartbeat)."),
     cfg.IntOpt('heartbeat_rate',
-               default=2,
+               default=3,
                help='How often times during the heartbeat_timeout_threshold '
                'we check the heartbeat.'),
     cfg.BoolOpt('direct_mandatory_flag',
