@@ -21,22 +21,9 @@ sasl2-bin [platform:dpkg amqp1 test]
 uuid-dev [platform:dpkg amqp1 test]
 swig [platform:dpkg amqp1 test]
 libsasl2-modules [platform:dpkg amqp1 test]
-openjdk-8-jdk [platform:dpkg amqp1 test !platform:debian]
-
-# AMQP1 TEST rpm
-qpid-dispatch-router [platform:rpm amqp1 test]
-python-qpid-proton [platform:rpm amqp1 test]
-cyrus-sasl-lib [platform:rpm amqp1 test]
-cyrus-sasl-plain [platform:rpm amqp1 test]
-libuuid-devel [platform:rpm amqp1 test]
-swig [platform:rpm amqp1 test]
-java-1.8.0-openjdk [platform:rpm amqp1 test]
+default-jdk [platform:dpkg amqp1 test !platform:debian]
 
 # kafka dpkg
-openjdk-8-jdk [platform:dpkg kafka]
+default-jdk [platform:dpkg kafka]
 librdkafka1 [platform:dpkg kafka]
 librdkafka-dev [platform:dpkg kafka]
-
-# kafka rpm
-java-1.8.0-openjdk [platform:rpm kafka]
-librdkafka [platform:rpm kafka]
