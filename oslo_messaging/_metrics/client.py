@@ -39,13 +39,14 @@ else:
     # we will facing an issue by trying to override the threading module.
     stdlib_threading = threading
 
+
 oslo_messaging_metrics = [
     cfg.BoolOpt('metrics_enabled', default=False,
                 help='Boolean to send rpc metrics to oslo.metrics.'),
     cfg.IntOpt('metrics_buffer_size', default=1000,
                help='Buffer size to store in oslo.messaging.'),
     cfg.StrOpt('metrics_socket_file',
-               default='/var/tmp/metrics_collector.sock',
+               default='/var/tmp/metrics_collector.sock',  # nosec
                help='Unix domain socket file to be used'
                     ' to send rpc related metrics'),
     cfg.StrOpt('metrics_process_name',
