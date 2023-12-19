@@ -158,6 +158,10 @@ class FakeExchangeManager(object):
         with self._exchanges_lock:
             return self._exchanges.setdefault(name, FakeExchange(name))
 
+    @classmethod
+    def cleanup(cls):
+        cls._exchanges.clear()
+
 
 class FakeDriver(base.BaseDriver):
     """Fake driver used for testing.
@@ -253,4 +257,4 @@ class FakeDriver(base.BaseDriver):
                                              batch_timeout)
 
     def cleanup(self):
-        pass
+        self._exchange_manager.cleanup()
