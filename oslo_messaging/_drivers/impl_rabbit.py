@@ -241,7 +241,16 @@ rabbit_opts = [
                 default=False,
                 help="Enable x-cancel-on-ha-failover flag so that "
                      "rabbitmq server will cancel and notify consumers"
-                     "when queue is down")
+                     "when queue is down"),
+    cfg.BoolOpt('use_queue_manager',
+                default=False,
+                help='Should we use consistant queue names or random ones'),
+    cfg.StrOpt('hostname',
+               default=socket.gethostname(),
+               help='Hostname used by queue manager'),
+    cfg.StrOpt('processname',
+               default=os.path.basename(sys.argv[0]),
+               help='Process name used by queue manager'),
 ]
 
 LOG = logging.getLogger(__name__)
@@ -665,6 +674,7 @@ class Connection(object):
         self.heartbeat_in_pthread = driver_conf.heartbeat_in_pthread
         self.ssl_enforce_fips_mode = driver_conf.ssl_enforce_fips_mode
         self.enable_cancel_on_failover = driver_conf.enable_cancel_on_failover
+        self.use_queue_manager = driver_conf.use_queue_manager
 
         if self.heartbeat_in_pthread:
             # NOTE(hberaud): Experimental: threading module is in use to run
@@ -843,6 +853,13 @@ class Connection(object):
             self.connection.hostname = "memory_driver"
             self.connection.port = 1234
             self._poll_timeout = 0.05
+
+        if self.use_queue_manager:
+            self._q_manager = amqpdriver.QManager(
+                hostname=driver_conf.hostname,
+                processname=driver_conf.processname)
+        else:
+            self._q_manager = None
 
     # FIXME(markmc): use oslo sslutils when it is available as a library
     _SSL_PROTOCOLS = {
@@ -1388,9 +1405,13 @@ class Connection(object):
     def declare_fanout_consumer(self, topic, callback):
         """Create a 'fanout' consumer."""
 
-        unique = uuid.uuid4().hex
+        if self._q_manager:
+            unique = self._q_manager.get()
+        else:
+            unique = uuid.uuid4().hex
         exchange_name = '%s_fanout' % topic
         queue_name = '%s_fanout_%s' % (topic, unique)
+        LOG.info('Creating fanout queue: %s', queue_name)
 
         consumer = Consumer(
             exchange_name=exchange_name,
