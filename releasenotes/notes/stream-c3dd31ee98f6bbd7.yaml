@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Add an option to use stream queues for rabbitmq driver instead of fanouts.
