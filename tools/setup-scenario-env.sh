@@ -22,23 +22,6 @@ function _setup_kafka {
     fi
 }
 
-function _setup_global_site_package_path {
-    MAJOR=$(python -c 'import sys; print(sys.version_info.major)')
-    MINOR=$(python -c 'import sys; print(sys.version_info.minor)')
-    if [ -f "/etc/debian_version" ]; then
-        PRE="dist"
-    else
-        PRE="site"
-    fi
-    # qdrouterd needs access to global site packages
-    # create path file and place in virtual env working directory
-    SITEDIR=${WORKDIR}/${ENVNAME}/lib/python${MAJOR}.${MINOR}/site-packages
-    cat > ${SITEDIR}/dispatch.pth <<EOF
-/usr/lib/python${MAJOR}.${MINOR}/${PRE}-packages
-/usr/lib/python${MAJOR}/${PRE}-packages
-EOF
-}
-
 case $SCENARIO in
     scenario01)
         export RPC_TRANSPORT_URL=rabbit://pifpaf:secret@127.0.0.1:5682/
