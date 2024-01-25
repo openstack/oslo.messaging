@@ -1530,26 +1530,27 @@ class TestMessageRetransmit(_AmqpBrokerTestCase):
 
     def test_released(self):
         # should retry and succeed
-        self._test_retransmit(lambda l, h: l.message_released(h))
+        self._test_retransmit(lambda link, handle:
+                              link.message_released(handle))
 
     def test_modified(self):
         # should retry and succeed
-        self._test_retransmit(lambda l, h: l.message_modified(h,
-                                                              False,
-                                                              False,
-                                                              {}))
+        self._test_retransmit(lambda link, handle:
+                              link.message_modified(handle, False, False, {}))
 
     def test_modified_failed(self):
         # since delivery_failed is set to True, should fail
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           self._test_retransmit,
-                          lambda l, h: l.message_modified(h, True, False, {}))
+                          lambda link, handle:
+                          link.message_modified(handle, True, False, {}))
 
     def test_rejected(self):
         # rejected - should fail
         self.assertRaises(oslo_messaging.MessageDeliveryFailure,
                           self._test_retransmit,
-                          lambda l, h: l.message_rejected(h, {}))
+                          lambda link, handle:
+                          link.message_rejected(handle, {}))
 
 
 @testtools.skipUnless(SSL_ENABLED, "OpenSSL not supported")
@@ -2154,7 +2155,8 @@ class FakeBroker(threading.Thread):
         self.on_sender_active = lambda link: None
         self.on_receiver_active = lambda link: link.add_capacity(10)
         self.on_credit_exhausted = lambda link: link.add_capacity(10)
-        self.on_message = lambda m, h, l: self.forward_message(m, h, l)
+        self.on_message = lambda message, handle, link: self.forward_message(
+            message, handle, link)
 
     def start(self):
         """Start the server."""
