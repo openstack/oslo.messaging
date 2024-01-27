@@ -31,17 +31,17 @@ def check_oslo_namespace_imports(logical_line):
         msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('oslo.', 'oslo_'),
             logical_line)
-        yield(0, msg)
+        yield (0, msg)
     elif re.match(oslo_namespace_imports_from_root, logical_line):
         msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('from oslo import ', 'import oslo_'),
             logical_line)
-        yield(0, msg)
+        yield (0, msg)
     elif re.match(oslo_namespace_imports_dot, logical_line):
         msg = ("O321: '%s' must be used instead of '%s'.") % (
             logical_line.replace('import', 'from').replace('.', ' import '),
             logical_line)
-        yield(0, msg)
+        yield (0, msg)
 
 
 class BaseASTChecker(ast.NodeVisitor):
