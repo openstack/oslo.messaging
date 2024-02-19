@@ -118,6 +118,11 @@ rabbit_opts = [
                  deprecated_group='DEFAULT',
                  help='How long to wait (in seconds) before reconnecting in '
                       'response to an AMQP consumer cancel notification.'),
+    cfg.FloatOpt('kombu_reconnect_splay',
+                 default=0.0,
+                 min=0.0,
+                 help='Random time to wait for when reconnecting in response '
+                      'to an AMQP consumer cancel notification.'),
     cfg.StrOpt('kombu_compression',
                help="EXPERIMENTAL: Possible values are: gzip, bz2. If not "
                     "set compression will not be used. This option may not "
@@ -751,6 +756,7 @@ class Connection:
             driver_conf.heartbeat_timeout_threshold
         self.heartbeat_rate = driver_conf.heartbeat_rate
         self.kombu_reconnect_delay = driver_conf.kombu_reconnect_delay
+        self.kombu_reconnect_splay = driver_conf.kombu_reconnect_splay
         self.amqp_durable_queues = driver_conf.amqp_durable_queues
         self.amqp_auto_delete = driver_conf.amqp_auto_delete
         self.ssl = driver_conf.ssl
@@ -1095,6 +1101,10 @@ class Connection:
             interval = (self.kombu_reconnect_delay + interval
                         if self.kombu_reconnect_delay > 0
                         else interval)
+            if self.kombu_reconnect_splay > 0:
+                interval += random.uniform(
+                    0,
+                    self.kombu_reconnect_splay)  # nosec
 
             info = {'err_str': exc, 'sleep_time': interval}
             info.update(self._get_connection_info(conn_error=True))
