@@ -66,6 +66,16 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
                                      username='stack',
                                      password='stacksecret',
                                      vhost='my_host'))),
+        ('ipv4', dict(url='kafka://127.0.0.1:1234',
+                      expected=dict(hostaddrs=['127.0.0.1:1234'],
+                                    username=None,
+                                    password=None,
+                                    vhost=None))),
+        ('ipv6', dict(url='kafka://[::1]:1234',
+                      expected=dict(hostaddrs=['[::1]:1234'],
+                                    username=None,
+                                    password=None,
+                                    vhost=None))),
     ]
 
     def setUp(self):
