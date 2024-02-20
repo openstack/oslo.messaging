@@ -125,7 +125,12 @@ class Connection(object):
                     LOG.warning("Different transport usernames detected")
 
             if host.hostname:
-                self.hostaddrs.append("%s:%s" % (host.hostname, host.port))
+                if ':' in host.hostname:
+                    hostaddr = "[%s]:%s" % (host.hostname, host.port)
+                else:
+                    hostaddr = "%s:%s" % (host.hostname, host.port)
+
+                self.hostaddrs.append(hostaddr)
 
     def reset(self):
         """Reset a connection so it can be used again."""
