@@ -254,11 +254,11 @@ rabbit_opts = [
     cfg.BoolOpt('rabbit_stream_fanout',
                 default=False,
                 help='Use stream queues in RabbitMQ (x-queue-type: stream). '
-                'The stream queue is a modern queue type for RabbitMQ '
-                'implementing a durable, replicated FIFO queue based on the '
-                'Raft consensus algorithm. It is available as of '
-                'RabbitMQ 3.8.0. If set this option will replace all fanout '
-                'queues with only one stream queue.'),
+                'Streams are a new persistent and replicated data structure '
+                '("queue type") in RabbitMQ which models an append-only log '
+                'with non-destructive consumer semantics. It is available '
+                'as of RabbitMQ 3.9.0. If set this option will replace all '
+                'fanout queues with only one stream queue.'),
 ]
 
 LOG = logging.getLogger(__name__)
