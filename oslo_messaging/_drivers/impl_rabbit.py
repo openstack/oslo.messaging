@@ -246,8 +246,10 @@ rabbit_opts = [
                 default=False,
                 help='Should we use consistant queue names or random ones'),
     cfg.StrOpt('hostname',
+               sample_default='node1.example.com',
                default=socket.gethostname(),
-               help='Hostname used by queue manager'),
+               help='Hostname used by queue manager. Defaults to the value '
+               'returned by socket.gethostname().'),
     cfg.StrOpt('processname',
                default=os.path.basename(sys.argv[0]),
                help='Process name used by queue manager'),
