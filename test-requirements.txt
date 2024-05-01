@@ -12,10 +12,7 @@ pifpaf>=2.2.0 # Apache-2.0
 # for test_impl_kafka
 confluent-kafka>=1.3.0 # Apache-2.0
 
-# when we can require tox>= 1.4, this can go into tox.ini:
-#  [testenv:cover]
-#  deps = {[testenv]deps} coverage
-coverage!=4.4,>=4.0 # Apache-2.0
+coverage>=4.0 # Apache-2.0
 
 # AMQP 1.0 support depends on the Qpid Proton AMQP 1.0
 # development libraries.
