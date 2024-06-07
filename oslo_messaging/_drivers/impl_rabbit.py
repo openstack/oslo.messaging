@@ -486,6 +486,29 @@ class Consumer(object):
                             'because of conflicting configurations: %s',
                             conn.connection_id, self.queue_name, err)
                 self._declare_fallback(err, conn, consumer_arguments)
+            except amqp_ex.NotFound as ex:
+                # NOTE(viktor.krivak): This exception is raised when
+                # non-durable and non-ha queue is hosted on node that
+                # is currently unresponsive or down. Thus, it is
+                # not possible to redeclare the queue since its status
+                # is unknown, and it could disappear in
+                # a few moments. However, the queue could be explicitly
+                # deleted and the redeclaration will then succeed.
+                # Queue will be then scheduled on any of the
+                # running/responsive nodes.
+                # This fixes bug:
+                # https://bugs.launchpad.net/oslo.messaging/+bug/2068630
+
+                LOG.warning("Queue %s is stuck on unresponsive node. "
+                            "Trying to delete the queue and redeclare it "
+                            "again, Error info: %s", self.queue_name, ex)
+                try:
+                    self.queue.delete()
+                except Exception as in_ex:
+                    LOG.warning("During cleanup of stuck queue deletion "
+                                "another exception occurred: %s. Ignoring...",
+                                in_ex)
+                self.queue.declare()
 
         except conn.connection.channel_errors as exc:
             # NOTE(jrosenboom): This exception may be triggered by a race

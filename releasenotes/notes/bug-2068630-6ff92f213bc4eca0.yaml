@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Force queue deletion when it is not possible de redeclare a queue.
+    See `bug 2068630 <https://launchpad.net/bugs/2068630>`__
+    for details.
