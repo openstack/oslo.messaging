@@ -482,7 +482,9 @@ class Consumer(object):
                 # from each others. RabbitMQ will reject the services
                 # that try to create it with a configuration that differ
                 # from the one used first.
-                LOG.warning(err)
+                LOG.warning('[%s] Queue %s could not be declared probably '
+                            'because of conflicting configurations: %s',
+                            conn.connection_id, self.queue_name, err)
                 self._declare_fallback(err, conn, consumer_arguments)
 
         except conn.connection.channel_errors as exc:
