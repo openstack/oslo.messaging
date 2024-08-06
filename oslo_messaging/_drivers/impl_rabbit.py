@@ -93,7 +93,13 @@ rabbit_opts = [
                 'an exception will be raised.'),
     cfg.BoolOpt('heartbeat_in_pthread',
                 default=False,
-                help="Run the health check heartbeat thread "
+                deprecated_for_removal=True,
+                deprecated_reason='The option is related to Eventlet which '
+                                  'will be removed. In addition this has '
+                                  'never worked as expected with services '
+                                  'using eventlet for core service framework.',
+                help="(DEPRECATED) It is recommend not to use this option "
+                     "anymore. Run the health check heartbeat thread "
                      "through a native python thread by default. If this "
                      "option is equal to False then the health check "
                      "heartbeat will inherit the execution model "

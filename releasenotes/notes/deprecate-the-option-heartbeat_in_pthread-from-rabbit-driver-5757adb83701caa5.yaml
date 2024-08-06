@@ -1,0 +1,8 @@
+---
+deprecations:
+  - |
+    The ``heartbeat_in_pthread`` option from the rabbitmq driver has been
+    deprecated and it is recommended not to use the feature anymore.
+    The option is strongly related to Eventlet but Eventlet will be removed
+    from OpenStack services in a future release. In addition, this feature has
+    never worked with services using eventlet for core service framework.
