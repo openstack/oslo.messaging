@@ -510,7 +510,7 @@ class ReplyWaiters(object):
             'to message ID %s' % msg_id)
 
     def put(self, msg_id, message_data):
-        LOG.info('Received RPC response for msg %s', msg_id)
+        LOG.debug('Received RPC response for msg %s', msg_id)
         queue = self._queues.get(msg_id)
         if not queue:
             LOG.info('No calling threads waiting for msg_id : %s', msg_id)
@@ -701,7 +701,7 @@ class AMQPDriverBase(base.BaseDriver):
                 reply_q = 'reply_' + self._q_manager.get()
             else:
                 reply_q = 'reply_' + uuid.uuid4().hex
-            LOG.info('Creating reply queue: %s', reply_q)
+            LOG.debug('Creating reply queue: %s', reply_q)
 
             conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
@@ -731,8 +731,8 @@ class AMQPDriverBase(base.BaseDriver):
             msg.update({'_msg_id': msg_id})
             msg.update({'_reply_q': reply_q})
             msg.update({'_timeout': call_monitor_timeout})
-            LOG.info('Expecting reply to msg %s in queue %s', msg_id,
-                     reply_q)
+            LOG.debug('Expecting reply to msg %s in queue %s', msg_id,
+                      reply_q)
 
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
