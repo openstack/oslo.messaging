@@ -1478,7 +1478,7 @@ class Connection(object):
             else:
                 unique = uuid.uuid4().hex
             queue_name = '%s_fanout_%s' % (topic, unique)
-        LOG.info('Creating fanout queue: %s', queue_name)
+        LOG.debug('Creating fanout queue: %s', queue_name)
 
         is_durable = (self.rabbit_transient_quorum_queue or
                       self.rabbit_stream_fanout)
