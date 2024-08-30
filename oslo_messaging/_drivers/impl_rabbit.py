@@ -1018,7 +1018,7 @@ class Connection(object):
         if self.ssl:
             ssl_params = dict()
 
-            # http://docs.python.org/library/ssl.html - ssl.wrap_socket
+            # http://docs.python.org/library/ssl.html
             if self.ssl_version:
                 ssl_params['ssl_version'] = self.validate_ssl_version(
                     self.ssl_version)
