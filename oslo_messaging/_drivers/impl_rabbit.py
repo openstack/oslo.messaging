@@ -257,6 +257,7 @@ rabbit_opts = [
                help='Hostname used by queue manager. Defaults to the value '
                'returned by socket.gethostname().'),
     cfg.StrOpt('processname',
+               sample_default='nova-api',
                default=os.path.basename(sys.argv[0]),
                help='Process name used by queue manager'),
     cfg.BoolOpt('rabbit_stream_fanout',
