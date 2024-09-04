@@ -66,6 +66,13 @@ class QManager(object):
         # We use the process group to restart the counter on service restart
         self.pg = os.getpgrp()
 
+        # We need to also handle containerized deployments, so let's
+        # parse start time (in jiffies) since system boot
+        #
+        # https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
+        with open(f'/proc/{self.pg}/stat', 'r') as f:
+            self.start_time = int(f.read().split()[21])
+
     def get(self):
         lock_name = 'oslo_read_shm_%s_%s' % (self.hostname, self.processname)
 
@@ -75,28 +82,32 @@ class QManager(object):
             # This function is thread and process safe thanks to lockutils
             try:
                 with open(self.file_name, 'r') as f:
-                    pg, c = f.readline().split(':')
+                    pg, counter, start_time = f.readline().split(':')
                     pg = int(pg)
-                    c = int(c)
+                    counter = int(counter)
+                    start_time = int(start_time)
             except (FileNotFoundError, ValueError):
                 pg = self.pg
-                c = 0
+                counter = 0
+                start_time = self.start_time
 
             # Increment the counter
-            if pg == self.pg:
-                c += 1
+            if pg == self.pg and start_time == self.start_time:
+                counter += 1
             else:
-                # The process group changed, maybe service restarted?
+                # The process group is changed, or start time since system boot
+                # differs. Maybe service restarted ?
                 # Start over the counter
-                c = 1
+                counter = 1
 
             # Write the new counter
             with open(self.file_name, 'w') as f:
-                f.write(str(self.pg) + ':' + str(c))
-            return c
+                f.write(str(self.pg) + ':' + str(counter) + ':' +
+                        str(start_time))
+            return counter
 
-        c = read_from_shm()
-        return self.hostname + ":" + self.processname + ":" + str(c)
+        counter = read_from_shm()
+        return self.hostname + ":" + self.processname + ":" + str(counter)
 
 
 class MessageOperationsHandler(object):
