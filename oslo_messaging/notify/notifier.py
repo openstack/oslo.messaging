@@ -206,7 +206,7 @@ class Notifier(object):
          'payload': {'instance_id': 12, ... }}
 
     A Notifier object can be instantiated with a transport object and a
-    publisher ID:
+    publisher ID::
 
         notifier = messaging.Notifier(get_notification_transport(CONF),
                                       'compute')
