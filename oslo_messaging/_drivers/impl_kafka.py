@@ -20,6 +20,7 @@ from confluent_kafka import KafkaException
 from oslo_serialization import jsonutils
 from oslo_utils import eventletutils
 from oslo_utils import importutils
+from oslo_utils import netutils
 
 from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as driver_common
@@ -125,10 +126,8 @@ class Connection(object):
                     LOG.warning("Different transport usernames detected")
 
             if host.hostname:
-                if ':' in host.hostname:
-                    hostaddr = "[%s]:%s" % (host.hostname, host.port)
-                else:
-                    hostaddr = "%s:%s" % (host.hostname, host.port)
+                hostaddr = "%s:%s" % (netutils.escape_ipv6(host.hostname),
+                                      host.port)
 
                 self.hostaddrs.append(hostaddr)
 

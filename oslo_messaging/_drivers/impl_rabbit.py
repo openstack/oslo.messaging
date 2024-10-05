@@ -36,6 +36,7 @@ import kombu.messaging
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
+from oslo_utils import netutils
 
 import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
@@ -1001,15 +1002,9 @@ class Connection(object):
             transport,
             parse.quote(host.username or default_username),
             parse.quote(host.password or default_password),
-            self._parse_url_hostname(host.hostname) or default_hostname,
+            netutils.escape_ipv6(host.hostname) or default_hostname,
             str(host.port or 5672),
             url.virtual_host or '')
-
-    def _parse_url_hostname(self, hostname):
-        """Handles hostname returned from urlparse and checks whether it's
-        ipaddress. If it's ipaddress it ensures that it has brackets for IPv6.
-        """
-        return '[%s]' % hostname if ':' in hostname else hostname
 
     def _fetch_ssl_params(self):
         """Handles fetching what ssl params should be used for the connection
