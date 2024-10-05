@@ -217,7 +217,14 @@ rabbit_opts = [
                     '0 as value will disable the x-expires. If doing so, '
                     'make sure you have a rabbitmq policy to delete the '
                     'queues or you deployment will create an infinite number '
-                    'of queue over time.'),
+                    'of queue over time.'
+                    'In case rabbit_stream_fanout is set to True, this option '
+                    'will control data retention policy (x-max-age) for '
+                    'messages in the fanout queue rather then the queue '
+                    'duration itself. So the oldest data in the stream queue '
+                    'will be discarded from it once reaching TTL '
+                    'Setting to 0 will disable x-max-age for stream which '
+                    'make stream grow indefinitely filling up the diskspace'),
     cfg.IntOpt('rabbit_qos_prefetch_count',
                default=0,
                help='Specifies the number of messages to prefetch. Setting to '
