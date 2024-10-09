@@ -622,12 +622,12 @@ class Consumer(object):
 
         Messages that are processed and ack'ed.
         """
-
-        offset = message.headers.get("x-stream-offset")
-        if offset is not None:
-            LOG.debug("Stream for %s current offset: %s", self.queue_name,
-                      offset)
-            self.next_stream_offset = offset + 1
+        if self.rabbit_stream_fanout:
+            offset = message.headers.get("x-stream-offset")
+            if offset is not None:
+                LOG.debug("Stream for %s current offset: %s",
+                          self.queue_name, offset)
+                self.next_stream_offset = offset + 1
 
         m2p = getattr(self.queue.channel, 'message_to_python', None)
         if m2p:
@@ -1096,7 +1096,7 @@ class Connection(object):
             info = {'err_str': exc, 'sleep_time': interval}
             info.update(self._get_connection_info(conn_error=True))
 
-            if 'Basic.cancel' in str(exc):
+            if self.rabbit_stream_fanout and 'Basic.cancel' in str(exc):
                 # This branch allows for consumer offset reset
                 # in the unlikely case consumers are cancelled. This may
                 # happen, for example, when we delete the stream queue.
