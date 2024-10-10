@@ -21,6 +21,7 @@ import logging
 
 from debtcollector import removals
 from oslo_config import cfg
+from oslo_utils import netutils
 from stevedore import driver
 from urllib import parse
 
@@ -397,10 +398,7 @@ class TransportURL(object):
 
             # Build the network location portion of the transport URL
             if hostname:
-                if ':' in hostname:
-                    netloc += '[%s]' % hostname
-                else:
-                    netloc += hostname
+                netloc += netutils.escape_ipv6(hostname)
             if port is not None:
                 netloc += ':%d' % port
 
@@ -492,31 +490,7 @@ class TransportURL(object):
                     password = parse.unquote(password)
                 username = parse.unquote(username)
 
-            if not hostname:
-                hostname = None
-            elif hostname.startswith('['):
-                # Find the closing ']' and extract the hostname
-                host_end = hostname.find(']')
-                if host_end < 0:
-                    # NOTE(Vek): Identical to what Python 2.7's
-                    # urlparse.urlparse() raises in this case
-                    raise ValueError('Invalid IPv6 URL')
-
-                port_text = hostname[host_end:]
-                hostname = hostname[1:host_end]
-
-                # Now we need the port; this is compliant with how urlparse
-                # parses the port data
-                port = None
-                if ':' in port_text:
-                    port = port_text.split(':', 1)[1]
-            elif ':' in hostname:
-                hostname, port = hostname.split(':', 1)
-
-            if port == "":
-                port = None
-            if port is not None:
-                port = int(port)
+            hostname, port = netutils.parse_host_port(hostname)
 
             if username is None or password is None:
                 hosts_without_credentials.append(hostname)
