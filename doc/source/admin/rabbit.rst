@@ -222,6 +222,23 @@ Note, that if a ``transport_url`` parameter is not specified in the
 ``[oslo_messaging_notifications]`` section, the ``[DEFAULT] transport_url``
 option will be used for both RPC and notifications backends.
 
+Note about Quorum and Stream queues
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Recent RabbitMQ releases (3.8 and above) introduced ``Quorum`` and ``Stream``
+queue types which are going to replace the ``classic`` HA queues.
+
+It's highly recommended that you switch whenever possible to ``quorum`` and
+``stream`` queues because classic HA queues are going to be deprecated.
+
+The recommended options are the following:
+
+    [oslo_messaging_rabbit]
+    rabbit_quorum_queue = True
+    rabbit_transient_quorum_queue = True
+    use_queue_manager = True
+    rabbit_stream_fanout = True
+
 Driver Options
 ~~~~~~~~~~~~~~
 
@@ -245,6 +262,11 @@ Consuming Options
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_max_memory_length`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_quorum_max_memory_bytes`
 - :oslo.config:option:`oslo_messaging_rabbit.rabbit_transient_queues_ttl`
+- :oslo.config:option:`oslo_messaging_rabbit.rabbit_transient_quorum_queue`
+- :oslo.config:option:`oslo_messaging_rabbit.use_queue_manager`
+- :oslo.config:option:`oslo_messaging_rabbit.hostname`
+- :oslo.config:option:`oslo_messaging_rabbit.processname`
+- :oslo.config:option:`oslo_messaging_rabbit.rabbit_stream_fanout`
 
 Connection Options
 ^^^^^^^^^^^^^^^^^^
