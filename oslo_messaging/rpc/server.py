@@ -140,7 +140,7 @@ LOG = logging.getLogger(__name__)
 
 class RPCServer(msg_server.MessageHandlingServer):
     def __init__(self, transport, target, dispatcher, executor=None):
-        super(RPCServer, self).__init__(transport, dispatcher, executor)
+        super().__init__(transport, dispatcher, executor)
         if not isinstance(transport, msg_transport.RPCTransport):
             LOG.warning("Using notification transport for RPC. Please use "
                         "get_rpc_transport to obtain an RPC transport "

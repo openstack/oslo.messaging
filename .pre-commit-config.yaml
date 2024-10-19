@@ -28,3 +28,8 @@ repos:
     hooks:
       - id: bandit
         args: ['-x', 'tests,tools']
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.18.0
+    hooks:
+      - id: pyupgrade
+        args: [--py3-only]

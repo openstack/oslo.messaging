@@ -91,7 +91,7 @@ class RPCException(Exception):
                 # at least get the core message out if something happened
                 message = self.msg_fmt
 
-        super(RPCException, self).__init__(message)
+        super().__init__(message)
 
 
 class Timeout(RPCException):
@@ -115,7 +115,7 @@ class Timeout(RPCException):
         self.info = info
         self.topic = topic
         self.method = method
-        super(Timeout, self).__init__(
+        super().__init__(
             None,
             info=info or '<unknown>',
             topic=topic or '<unknown>',
@@ -144,7 +144,7 @@ class RpcVersionCapError(RPCException):
     msg_fmt = "Specified RPC version cap, %(version_cap)s, is too low"
 
 
-class Connection(object):
+class Connection:
     """A connection, returned by rpc.create_connection().
 
     This class represents a connection to the message bus used for rpc.
@@ -235,7 +235,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
     str_override = lambda self: message
     new_ex_type = type(ex_type.__name__ + _REMOTE_POSTFIX, (ex_type,),
                        {'__str__': str_override, '__unicode__': str_override})
-    new_ex_type.__module__ = '%s%s' % (module, _REMOTE_POSTFIX)
+    new_ex_type.__module__ = '{}{}'.format(module, _REMOTE_POSTFIX)
     try:
         # NOTE(ameade): Dynamically create a new exception type and swap it in
         # as the new type for the exception. This only works on user defined
@@ -250,7 +250,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
     return failure
 
 
-class CommonRpcContext(object):
+class CommonRpcContext:
     def __init__(self, **kwargs):
         self.values = kwargs
 
@@ -339,7 +339,7 @@ def deserialize_msg(msg):
     return raw_msg
 
 
-class DecayingTimer(object):
+class DecayingTimer:
     def __init__(self, duration=None):
         self._watch = timeutils.StopWatch(duration=duration)
 

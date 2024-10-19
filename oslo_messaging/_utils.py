@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -70,7 +69,7 @@ def version_is_compatible(imp_version, version):
     return True
 
 
-class DummyLock(object):
+class DummyLock:
     def acquire(self):
         pass
 

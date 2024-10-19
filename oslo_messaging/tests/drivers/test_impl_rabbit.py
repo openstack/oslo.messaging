@@ -490,7 +490,7 @@ class TestRabbitTransportURL(test_utils.BaseTestCase):
     ]
 
     def setUp(self):
-        super(TestRabbitTransportURL, self).setUp()
+        super().setUp()
         self.messaging_conf.transport_url = 'rabbit:/'
         self.config(heartbeat_timeout_threshold=0,
                     group='oslo_messaging_rabbit')
@@ -778,7 +778,7 @@ def _declare_queue(target):
                                          type='topic',
                                          durable=False,
                                          auto_delete=False)
-        topic = '%s.%s' % (target.topic, target.server)
+        topic = '{}.{}'.format(target.topic, target.server)
         queue = kombu.entity.Queue(name=topic,
                                    channel=channel,
                                    exchange=exchange,
@@ -840,7 +840,7 @@ class TestRequestWireFormat(test_utils.BaseTestCase):
                                                          cls._compression)
 
     def setUp(self):
-        super(TestRequestWireFormat, self).setUp()
+        super().setUp()
         self.uuids = []
         self.orig_uuid4 = uuid.uuid4
         self.useFixture(fixtures.MonkeyPatch('uuid.uuid4', self.mock_uuid4))
@@ -928,7 +928,7 @@ def _create_producer(target):
                                          type='topic',
                                          durable=False,
                                          auto_delete=False)
-        topic = '%s.%s' % (target.topic, target.server)
+        topic = '{}.{}'.format(target.topic, target.server)
         producer = kombu.messaging.Producer(exchange=exchange,
                                             channel=channel,
                                             routing_key=topic)
@@ -1035,7 +1035,7 @@ TestReplyWireFormat.generate_scenarios()
 class RpcKombuHATestCase(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(RpcKombuHATestCase, self).setUp()
+        super().setUp()
         transport_url = 'rabbit:/host1,host2,host3,host4,host5/'
         self.messaging_conf.transport_url = transport_url
         self.config(rabbit_retry_interval=0.01,

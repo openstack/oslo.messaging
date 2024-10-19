@@ -27,7 +27,7 @@ LOG = logging.getLogger(__name__)
 PRIORITIES = ['audit', 'debug', 'info', 'warn', 'error', 'critical', 'sample']
 
 
-class NotificationResult(object):
+class NotificationResult:
     HANDLED = 'handled'
     REQUEUE = 'requeue'
 

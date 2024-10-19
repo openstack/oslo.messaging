@@ -91,7 +91,7 @@ class CheckForLoggingIssues(BaseASTChecker):
     version = '1.0'
 
     def __init__(self, tree, filename):
-        super(CheckForLoggingIssues, self).__init__(tree, filename)
+        super().__init__(tree, filename)
 
         self.logger_names = []
         self.logger_module_names = []
@@ -120,13 +120,13 @@ class CheckForLoggingIssues(BaseASTChecker):
     def visit_Import(self, node):
         for alias in node.names:
             self._filter_imports(alias.name, alias)
-        return super(CheckForLoggingIssues, self).generic_visit(node)
+        return super().generic_visit(node)
 
     def visit_ImportFrom(self, node):
         for alias in node.names:
-            full_name = '%s.%s' % (node.module, alias.name)
+            full_name = '{}.{}'.format(node.module, alias.name)
             self._filter_imports(full_name, alias)
-        return super(CheckForLoggingIssues, self).generic_visit(node)
+        return super().generic_visit(node)
 
     def _find_name(self, node):
         """Return the fully qualified name or a Name or Attribute."""
@@ -155,7 +155,7 @@ class CheckForLoggingIssues(BaseASTChecker):
         if (len(node.targets) != 1 or
                 not isinstance(node.targets[0], attr_node_types)):
             # say no to: "x, y = ..."
-            return super(CheckForLoggingIssues, self).generic_visit(node)
+            return super().generic_visit(node)
 
         target_name = self._find_name(node.targets[0])
 
@@ -170,17 +170,17 @@ class CheckForLoggingIssues(BaseASTChecker):
         if not isinstance(node.value, ast.Call):
             # node.value must be a call to getLogger
             self.assignments.pop(target_name, None)
-            return super(CheckForLoggingIssues, self).generic_visit(node)
+            return super().generic_visit(node)
 
         if isinstance(node.value.func, ast.Name):
             self.assignments[target_name] = node.value.func.id
-            return super(CheckForLoggingIssues, self).generic_visit(node)
+            return super().generic_visit(node)
 
         if (not isinstance(node.value.func, ast.Attribute) or
                 not isinstance(node.value.func.value, attr_node_types)):
             # function must be an attribute on an object like
             # logging.getLogger
-            return super(CheckForLoggingIssues, self).generic_visit(node)
+            return super().generic_visit(node)
 
         object_name = self._find_name(node.value.func.value)
         func_name = node.value.func.attr
@@ -189,7 +189,7 @@ class CheckForLoggingIssues(BaseASTChecker):
                 func_name == 'getLogger'):
             self.logger_names.append(target_name)
 
-        return super(CheckForLoggingIssues, self).generic_visit(node)
+        return super().generic_visit(node)
 
     def visit_Call(self, node):
         """Look for the 'LOG.*' calls."""
@@ -202,7 +202,7 @@ class CheckForLoggingIssues(BaseASTChecker):
                 obj_name = self._find_name(node.func.value)
                 method_name = node.func.attr
             else:  # could be Subscript, Call or many more
-                return super(CheckForLoggingIssues, self).generic_visit(node)
+                return super().generic_visit(node)
 
             # if dealing with a logger the method can't be "warn"
             if obj_name in self.logger_names and method_name == 'warn':
@@ -211,16 +211,16 @@ class CheckForLoggingIssues(BaseASTChecker):
 
             # must be a logger instance and one of the support logging methods
             if obj_name not in self.logger_names:
-                return super(CheckForLoggingIssues, self).generic_visit(node)
+                return super().generic_visit(node)
 
             # the call must have arguments
             if not node.args:
-                return super(CheckForLoggingIssues, self).generic_visit(node)
+                return super().generic_visit(node)
 
             if method_name == 'debug':
                 self._process_debug(node)
 
-        return super(CheckForLoggingIssues, self).generic_visit(node)
+        return super().generic_visit(node)
 
     def _process_debug(self, node):
         msg = node.args[0]  # first arg to a logging method is the msg

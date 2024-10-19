@@ -1,4 +1,3 @@
-
 # Copyright 2020 LINE Corp.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -65,7 +64,7 @@ oslo_messaging_metrics = [
 cfg.CONF.register_opts(oslo_messaging_metrics, group='oslo_messaging_metrics')
 
 
-class MetricsCollectorClient(object):
+class MetricsCollectorClient:
 
     def __init__(self, conf, metrics_type, **kwargs):
         self.conf = conf.oslo_messaging_metrics

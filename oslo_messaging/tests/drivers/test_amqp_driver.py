@@ -69,7 +69,7 @@ def _wait_until(predicate, timeout):
 class _ListenerThread(threading.Thread):
     """Run a blocking listener in a thread."""
     def __init__(self, listener, msg_count, msg_ack=True):
-        super(_ListenerThread, self).__init__()
+        super().__init__()
         self.listener = listener
         self.msg_count = msg_count
         self._msg_ack = msg_ack
@@ -118,7 +118,7 @@ class _SlowResponder(_ListenerThread):
     # an RPC listener that pauses delay seconds before replying
     def __init__(self, listener, delay, msg_count=1):
         self._delay = delay
-        super(_SlowResponder, self).__init__(listener, msg_count)
+        super().__init__(listener, msg_count)
 
     def run(self):
         LOG.debug("_SlowResponder started")
@@ -140,7 +140,7 @@ class _CallMonitor(_ListenerThread):
     def __init__(self, listener, delay, hb_count, msg_count=1):
         self._delay = delay
         self._hb_count = hb_count
-        super(_CallMonitor, self).__init__(listener, msg_count)
+        super().__init__(listener, msg_count)
 
     def run(self):
         LOG.debug("_CallMonitor started")
@@ -167,7 +167,7 @@ class _CallMonitor(_ListenerThread):
 class TestProtonDriverLoad(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(TestProtonDriverLoad, self).setUp()
+        super().setUp()
         self.messaging_conf.transport_url = 'amqp://'
 
     def test_driver_load(self):
@@ -180,7 +180,7 @@ class _AmqpBrokerTestCase(test_utils.BaseTestCase):
     """Creates a single FakeBroker for use by the tests"""
     @testtools.skipUnless(pyngus, "proton modules not present")
     def setUp(self):
-        super(_AmqpBrokerTestCase, self).setUp()
+        super().setUp()
         self._broker = FakeBroker(self.conf.oslo_messaging_amqp)
         self._broker_addr = "amqp://%s:%d" % (self._broker.host,
                                               self._broker.port)
@@ -188,7 +188,7 @@ class _AmqpBrokerTestCase(test_utils.BaseTestCase):
             self.conf, self._broker_addr)
 
     def tearDown(self):
-        super(_AmqpBrokerTestCase, self).tearDown()
+        super().tearDown()
         if self._broker:
             self._broker.stop()
 
@@ -197,7 +197,7 @@ class _AmqpBrokerTestCaseAuto(_AmqpBrokerTestCase):
     """Like _AmqpBrokerTestCase, but starts the broker"""
     @testtools.skipUnless(pyngus, "proton modules not present")
     def setUp(self):
-        super(_AmqpBrokerTestCaseAuto, self).setUp()
+        super().setUp()
         self._broker.start()
 
 
@@ -439,7 +439,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         """Send back an exception generated at the listener"""
         class _FailedResponder(_ListenerThread):
             def __init__(self, listener):
-                super(_FailedResponder, self).__init__(listener, 1)
+                super().__init__(listener, 1)
 
             def run(self):
                 self.started.set()
@@ -471,7 +471,7 @@ class TestAmqpSend(_AmqpBrokerTestCaseAuto):
         """What happens if the replier times out?"""
         class _TimeoutListener(_ListenerThread):
             def __init__(self, listener):
-                super(_TimeoutListener, self).__init__(listener, 1)
+                super().__init__(listener, 1)
 
             def run(self):
                 self.started.set()
@@ -733,7 +733,7 @@ class TestAmqpNotification(_AmqpBrokerTestCaseAuto):
 class TestAuthentication(test_utils.BaseTestCase):
     """Test user authentication using the old pyngus API"""
     def setUp(self):
-        super(TestAuthentication, self).setUp()
+        super().setUp()
         # for simplicity, encode the credentials as they would appear 'on the
         # wire' in a SASL frame - username and password prefixed by zero.
         user_credentials = ["\0joe\0secret"]
@@ -743,7 +743,7 @@ class TestAuthentication(test_utils.BaseTestCase):
         self._broker.start()
 
     def tearDown(self):
-        super(TestAuthentication, self).tearDown()
+        super().tearDown()
         self._broker.stop()
 
     def test_authentication_ok(self):
@@ -832,7 +832,7 @@ mech_list: ${mechs}
 
     def setUp(self):
         # fire up a test broker with the SASL config:
-        super(TestCyrusAuthentication, self).setUp()
+        super().setUp()
         if TestCyrusAuthentication._conf_dir is None:
             self.skipTest("Cyrus SASL tools not installed")
         _mechs = TestCyrusAuthentication._mechs
@@ -850,7 +850,7 @@ mech_list: ${mechs}
         if self._broker:
             self._broker.stop()
             self._broker = None
-        super(TestCyrusAuthentication, self).tearDown()
+        super().tearDown()
 
     def _authentication_test(self, addr, retry=None):
         url = oslo_messaging.TransportURL.parse(self.conf, addr)
@@ -927,7 +927,7 @@ mech_list: ${mechs}
 class TestFailover(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(TestFailover, self).setUp()
+        super().setUp()
         # configure different addressing modes on the brokers to test failing
         # over from one type of backend to another
         self.config(addressing_mode='dynamic', group="oslo_messaging_amqp")
@@ -941,7 +941,7 @@ class TestFailover(test_utils.BaseTestCase):
         self._broker_url = self._gen_transport_url(hosts)
 
     def tearDown(self):
-        super(TestFailover, self).tearDown()
+        super().tearDown()
         for broker in self._brokers:
             if broker.is_alive():
                 broker.stop()
@@ -1292,7 +1292,7 @@ class TestAddressing(test_utils.BaseTestCase):
         expected = []
         for n in targets_priorities:
             # this is how the notifier creates an address:
-            topic = "%s.%s" % (n[0].topic, n[1])
+            topic = "{}.{}".format(n[0].topic, n[1])
             target = oslo_messaging.Target(topic=topic)
             driver.send_notification(target, {"context": "whatever"},
                                      {"msg": topic}, 2.0)
@@ -1614,7 +1614,7 @@ class TestSSL(TestFailover):
                 self._tmpdir = None
                 self.skipTest("OpenSSL tools not installed - skipping")
 
-        super(TestSSL, self).setUp()
+        super().setUp()
 
         self.config(ssl_ca_file=self._ssl_config['ca_cert'],
                     group='oslo_messaging_amqp')
@@ -1767,7 +1767,7 @@ class TestSSL(TestFailover):
             self._broker = None
         if self._tmpdir:
             shutil.rmtree(self._tmpdir, ignore_errors=True)
-        super(TestSSL, self).tearDown()
+        super().tearDown()
 
 
 @testtools.skipUnless(pyngus, "proton modules not present")
@@ -1931,7 +1931,7 @@ class FakeBroker(threading.Thread):
                 try:
                     pyngus.read_socket_input(self.connection, self.socket)
                     self.connection.process(time.time())
-                except socket.error:
+                except OSError:
                     self._socket_error()
 
             def send_output(self):
@@ -1940,7 +1940,7 @@ class FakeBroker(threading.Thread):
                     pyngus.write_socket_output(self.connection,
                                                self.socket)
                     self.connection.process(time.time())
-                except socket.error:
+                except OSError:
                     self._socket_error()
 
             def _socket_error(self):
@@ -2166,7 +2166,7 @@ class FakeBroker(threading.Thread):
         self.daemon = True
         self._pause.set()
         self._my_socket.listen(10)
-        super(FakeBroker, self).start()
+        super().start()
 
     def pause(self):
         self._pause.clear()

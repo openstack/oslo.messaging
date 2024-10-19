@@ -1,4 +1,3 @@
-
 # Copyright 2011 OpenStack Foundation.
 # All Rights Reserved.
 # Copyright 2013 Red Hat, Inc.
@@ -105,7 +104,7 @@ def _send_notification():
     notifier._notify({}, args.event_type, args.payload, args.priority)
 
 
-class Driver(object, metaclass=abc.ABCMeta):
+class Driver(metaclass=abc.ABCMeta):
     """Base driver for Notifications"""
 
     def __init__(self, conf, topics, transport):
@@ -189,7 +188,7 @@ def _sanitize_context(ctxt):
         return {}
 
 
-class Notifier(object):
+class Notifier:
 
     """Send notification messages.
 
@@ -468,7 +467,7 @@ class _SubNotifier(Notifier):
         self._driver_mgr = self._base._driver_mgr
 
     def _notify(self, ctxt, event_type, payload, priority):
-        super(_SubNotifier, self)._notify(ctxt, event_type, payload, priority)
+        super()._notify(ctxt, event_type, payload, priority)
 
     @classmethod
     def _prepare(cls, base, publisher_id=_marker, retry=_marker):

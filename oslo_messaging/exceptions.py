@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -34,7 +33,7 @@ class InvalidTarget(MessagingException, ValueError):
 
     def __init__(self, msg, target):
         msg = msg + ":" + str(target)
-        super(InvalidTarget, self).__init__(msg)
+        super().__init__(msg)
         self.target = target
 
 
@@ -42,7 +41,7 @@ class MessageUndeliverable(Exception):
     """Raised if message is not routed with mandatory flag"""
 
     def __init__(self, exception, exchange, routing_key, message):
-        super(MessageUndeliverable, self).__init__()
+        super().__init__()
         self.exception = exception
         self.exchange = exchange
         self.routing_key = routing_key

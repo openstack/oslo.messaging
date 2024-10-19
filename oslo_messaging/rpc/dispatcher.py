@@ -53,7 +53,7 @@ __all__ = [
 LOG = logging.getLogger(__name__)
 
 
-class PingEndpoint(object):
+class PingEndpoint:
     def oslo_rpc_server_ping(self, ctxt, **kwargs):
         return 'pong'
 
@@ -78,7 +78,7 @@ class NoSuchMethod(RPCDispatcherError, AttributeError):
 
     def __init__(self, method):
         msg = "Endpoint does not support RPC method %s" % method
-        super(NoSuchMethod, self).__init__(msg)
+        super().__init__(msg)
         self.method = method
 
 
@@ -88,13 +88,13 @@ class UnsupportedVersion(RPCDispatcherError):
     def __init__(self, version, method=None):
         msg = "Endpoint does not support RPC version %s" % version
         if method:
-            msg = "%s. Attempted method: %s" % (msg, method)
-        super(UnsupportedVersion, self).__init__(msg)
+            msg = "{}. Attempted method: {}".format(msg, method)
+        super().__init__(msg)
         self.version = version
         self.method = method
 
 
-class RPCAccessPolicyBase(object, metaclass=ABCMeta):
+class RPCAccessPolicyBase(metaclass=ABCMeta):
     """Determines which endpoint methods may be invoked via RPC"""
 
     @abstractmethod
@@ -177,7 +177,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                          " for namespace and version filtering.  It must" + \
                          " be of type oslo_messaging.Target. Do not" + \
                          " define an Endpoint method named 'target'"
-                raise TypeError("%s: endpoint=%s" % (errmsg, ep))
+                raise TypeError("{}: endpoint={}".format(errmsg, ep))
 
             # Check if we have an attribute named 'oslo_rpc_server_ping'
             oslo_rpc_server_ping = getattr(ep, 'oslo_rpc_server_ping', None)
@@ -186,7 +186,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                          " attribute which can be use to ping the" + \
                          " endpoint. Please avoid using any oslo_* " + \
                          " naming."
-                LOG.warning("%s (endpoint=%s)" % (errmsg, ep))
+                LOG.warning("{} (endpoint={})".format(errmsg, ep))
 
         self.endpoints = endpoints
 

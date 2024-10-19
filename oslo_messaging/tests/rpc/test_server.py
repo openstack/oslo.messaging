@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -33,9 +32,9 @@ from oslo_messaging.tests import utils as test_utils
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
-class ServerSetupMixin(object):
+class ServerSetupMixin:
 
-    class Server(object):
+    class Server:
         def __init__(self, transport, topic, server, endpoint, serializer,
                      exchange):
             self.controller = ServerSetupMixin.ServerController()
@@ -60,14 +59,14 @@ class ServerSetupMixin(object):
         def start(self):
             self.server.start()
 
-    class ServerController(object):
+    class ServerController:
         def __init__(self):
             self.stopped = eventletutils.Event()
 
         def stop(self, ctxt):
             self.stopped.set()
 
-    class TestSerializer(object):
+    class TestSerializer:
 
         def serialize_entity(self, ctxt, entity):
             return ('s' + entity) if entity else entity
@@ -76,10 +75,10 @@ class ServerSetupMixin(object):
             return ('d' + entity) if entity else entity
 
         def serialize_context(self, ctxt):
-            return dict([(k, 's' + v) for k, v in ctxt.items()])
+            return {k: 's' + v for k, v in ctxt.items()}
 
         def deserialize_context(self, ctxt):
-            return dict([(k, 'd' + v) for k, v in ctxt.items()])
+            return {k: 'd' + v for k, v in ctxt.items()}
 
     def __init__(self):
         self.serializer = self.TestSerializer()
@@ -109,11 +108,11 @@ class ServerSetupMixin(object):
 class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
     def __init__(self, *args):
-        super(TestRPCServer, self).__init__(*args)
+        super().__init__(*args)
         ServerSetupMixin.__init__(self)
 
     def setUp(self):
-        super(TestRPCServer, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
         # FakeExchangeManager uses a class-level exchanges mapping; "reset" it
         # before tests assert amount of items stored
         self.useFixture(fixtures.MonkeyPatch(
@@ -191,7 +190,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             """
 
             def __init__(self, *args, **kwargs):
-                super(MagicMockIgnoreArgs, self).__init__()
+                super().__init__()
 
         server = oslo_messaging.get_rpc_server(transport, target, endpoints,
                                                serializer=serializer)
@@ -263,7 +262,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         finished = False
         wait = threading.Condition()
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def ping(self, ctxt, arg):
                 with wait:
                     if not finished:
@@ -299,7 +298,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
     def test_cast(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def __init__(self):
                 self.pings = []
 
@@ -326,7 +325,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         transport_cli = oslo_messaging.get_rpc_transport(self.conf,
                                                          url='fake:')
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def ping(self, ctxt, arg):
                 return arg
 
@@ -345,7 +344,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
     def test_direct_call(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def ping(self, ctxt, arg):
                 return arg
 
@@ -365,7 +364,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
     def test_context(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def ctxt_check(self, ctxt, key):
                 return ctxt[key]
 
@@ -382,7 +381,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
     def test_failure(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def ping(self, ctxt, arg):
                 raise ValueError(arg)
 
@@ -440,7 +439,7 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.useFixture(fixtures.MockPatchObject(
             rpc_server_module.LOG, 'error', stub_error))
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             @oslo_messaging.expected_exceptions(ValueError)
             def ping(self, ctxt, arg):
                 raise ValueError(arg)
@@ -569,11 +568,11 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
             cls.scenarios = [m(i) for i in cls.scenarios]
 
     def __init__(self, *args):
-        super(TestMultipleServers, self).__init__(*args)
+        super().__init__(*args)
         ServerSetupMixin.__init__(self)
 
     def setUp(self):
-        super(TestMultipleServers, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
         self.useFixture(fixtures.MonkeyPatch(
             'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
             new_value={}))
@@ -587,7 +586,7 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         else:
             transport2 = transport1
 
-        class TestEndpoint(object):
+        class TestEndpoint:
             def __init__(self):
                 self.pings = []
 
@@ -651,7 +650,7 @@ TestMultipleServers.generate_scenarios()
 
 class TestServerLocking(test_utils.BaseTestCase):
     def setUp(self):
-        super(TestServerLocking, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
 
         def _logmethod(name):
             def method(self, *args, **kwargs):
@@ -661,7 +660,7 @@ class TestServerLocking(test_utils.BaseTestCase):
 
         executors = []
 
-        class FakeExecutor(object):
+        class FakeExecutor:
             def __init__(self, *args, **kwargs):
                 self._lock = threading.Lock()
                 self._calls = []
@@ -731,7 +730,7 @@ class TestServerLocking(test_utils.BaseTestCase):
                 running_event.set()
 
                 start_event.wait()
-                super(SteppingFakeExecutor, self).__init__(*args, **kwargs)
+                super().__init__(*args, **kwargs)
                 done_event.set()
 
                 finish_event.wait()

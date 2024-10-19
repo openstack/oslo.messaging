@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -209,7 +208,7 @@ class TestCastToTarget(test_utils.BaseTestCase):
                                                          cls._prepare)
 
     def setUp(self):
-        super(TestCastToTarget, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
 
     def test_cast_to_target(self):
         target = oslo_messaging.Target(**self.ctor)

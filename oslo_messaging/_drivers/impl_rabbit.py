@@ -367,7 +367,7 @@ def _get_queue_arguments(rabbit_ha_queues, rabbit_queue_ttl,
 
 class RabbitMessage(dict):
     def __init__(self, raw_message):
-        super(RabbitMessage, self).__init__(
+        super().__init__(
             rpc_common.deserialize_msg(raw_message.payload))
         LOG.trace('RabbitMessage.Init: message %s', self)
         self._raw_message = raw_message
@@ -381,7 +381,7 @@ class RabbitMessage(dict):
         self._raw_message.requeue()
 
 
-class Consumer(object):
+class Consumer:
     """Consumer class."""
 
     def __init__(self, exchange_name, queue_name, routing_key, type, durable,
@@ -724,7 +724,7 @@ class ConnectionLock(DummyConnectionLock):
             self.release()
 
 
-class Connection(object):
+class Connection:
     """Connection object."""
 
     def __init__(self, conf, url, purpose, retry=None):
@@ -1006,7 +1006,7 @@ class Connection(object):
                                  default_password='', default_hostname=''):
         transport = url.transport.replace('kombu+', '')
         transport = transport.replace('rabbit', 'amqp')
-        return '%s://%s:%s@%s:%s/%s' % (
+        return '{}://{}:{}@{}:{}/{}'.format(
             transport,
             parse.quote(host.username or default_username),
             parse.quote(host.password or default_password),
@@ -1309,7 +1309,7 @@ class Connection(object):
                     sock.setsockopt(socket.IPPROTO_TCP,
                                     TCP_USER_TIMEOUT,
                                     int(math.ceil(timeout)))
-                except socket.error as error:
+                except OSError as error:
                     code = error[0]
                     # TCP_USER_TIMEOUT not defined on kernels <2.6.37
                     if code != errno.ENOPROTOOPT:
@@ -1527,7 +1527,7 @@ class Connection(object):
                 unique = self._q_manager.get()
             else:
                 unique = uuid.uuid4().hex
-            queue_name = '%s_fanout_%s' % (topic, unique)
+            queue_name = '{}_fanout_{}'.format(topic, unique)
         LOG.debug('Creating fanout queue: %s', queue_name)
 
         is_durable = (self.rabbit_transient_quorum_queue or
@@ -1573,8 +1573,8 @@ class Connection(object):
         # the connection's socket while it is in an error state will cause
         # py-amqp to attempt reconnecting.
         ci = self.connection.info()
-        info = dict([(k, ci.get(k)) for k in
-                     ['hostname', 'port', 'transport']])
+        info = {k: ci.get(k) for k in
+                ['hostname', 'port', 'transport']}
         client_port = None
         if (not conn_error and self.channel and
                 hasattr(self.channel.connection, 'sock') and
@@ -1788,7 +1788,7 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
             conf, max_size, min_size, ttl,
             url, Connection)
 
-        super(RabbitDriver, self).__init__(
+        super().__init__(
             conf, url,
             connection_pool,
             default_exchange,

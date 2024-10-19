@@ -1,4 +1,3 @@
-
 # Copyright 2013 eNovance
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -28,7 +27,7 @@ from unittest import mock
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
-class RestartableServerThread(object):
+class RestartableServerThread:
     def __init__(self, server):
         self.server = server
         self.thread = None
@@ -48,9 +47,9 @@ class RestartableServerThread(object):
         return True
 
 
-class ListenerSetupMixin(object):
+class ListenerSetupMixin:
 
-    class ThreadTracker(object):
+    class ThreadTracker:
         def __init__(self):
             self._received_msgs = 0
             self.threads = []
@@ -125,11 +124,11 @@ class ListenerSetupMixin(object):
 class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
     def __init__(self, *args):
-        super(TestNotifyListener, self).__init__(*args)
+        super().__init__(*args)
         ListenerSetupMixin.__init__(self)
 
     def setUp(self):
-        super(TestNotifyListener, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
         ListenerSetupMixin.setUp(self)
         self.useFixture(fixtures.MonkeyPatch(
             'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',

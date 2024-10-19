@@ -1,4 +1,3 @@
-
 # Copyright 2010 United States Government as represented by the
 # Administrator of the National Aeronautics and Space Administration.
 # All Rights Reserved.
@@ -73,7 +72,7 @@ def set_transport_defaults(control_exchange):
                      control_exchange=control_exchange)
 
 
-class Transport(object):
+class Transport:
 
     """A messaging transport.
 
@@ -163,21 +162,21 @@ class RPCTransport(Transport):
     """Transport object for RPC."""
 
     def __init__(self, driver):
-        super(RPCTransport, self).__init__(driver)
+        super().__init__(driver)
 
 
 class NotificationTransport(Transport):
     """Transport object for notifications."""
 
     def __init__(self, driver):
-        super(NotificationTransport, self).__init__(driver)
+        super().__init__(driver)
 
 
 class InvalidTransportURL(exceptions.MessagingException):
     """Raised if transport URL is invalid."""
 
     def __init__(self, url, msg):
-        super(InvalidTransportURL, self).__init__(msg)
+        super().__init__(msg)
         self.url = url
 
 
@@ -185,8 +184,8 @@ class DriverLoadFailure(exceptions.MessagingException):
     """Raised if a transport driver can't be loaded."""
 
     def __init__(self, driver, ex):
-        msg = 'Failed to load transport driver "%s": %s' % (driver, ex)
-        super(DriverLoadFailure, self).__init__(msg)
+        msg = 'Failed to load transport driver "{}": {}'.format(driver, ex)
+        super().__init__(msg)
         self.driver = driver
         self.ex = ex
 
@@ -249,7 +248,7 @@ def get_transport(conf, url=None, allowed_remote_exmods=None):
                           transport_cls=RPCTransport)
 
 
-class TransportHost(object):
+class TransportHost:
 
     """A host element of a parsed transport URL."""
 
@@ -278,7 +277,7 @@ class TransportHost(object):
         return '<TransportHost ' + values + '>'
 
 
-class TransportOptions(object):
+class TransportOptions:
 
     def __init__(self, at_least_once=False):
         self._at_least_once = at_least_once
@@ -288,7 +287,7 @@ class TransportOptions(object):
         return self._at_least_once
 
 
-class TransportURL(object):
+class TransportURL:
 
     """A parsed transport URL.
 
@@ -405,7 +404,7 @@ class TransportURL(object):
             netlocs.append(netloc)
 
         # Assemble the transport URL
-        url = '%s://%s/' % (self.transport, ','.join(netlocs))
+        url = '{}://{}/'.format(self.transport, ','.join(netlocs))
 
         if self.virtual_host:
             url += parse.quote(self.virtual_host)

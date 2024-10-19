@@ -24,7 +24,7 @@ from unittest import mock
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
-class _FakeEndpoint(object):
+class _FakeEndpoint:
     def __init__(self, target=None):
         self.target = target
 
@@ -229,7 +229,7 @@ class TestDispatcherWithPingEndpoint(test_utils.BaseTestCase):
         self.assertEqual('pong', res)
 
     def test_dispatcher_with_ping_already_used(self):
-        class MockEndpoint(object):
+        class MockEndpoint:
             def oslo_rpc_server_ping(self, ctxt, **kwargs):
                 return 'not_pong'
 
@@ -263,7 +263,7 @@ class TestSerializer(test_utils.BaseTestCase):
 
         endpoint.foo = mock.Mock()
 
-        args = dict([(k, 'd' + v) for k, v in self.args.items()])
+        args = {k: 'd' + v for k, v in self.args.items()}
         endpoint.foo.return_value = self.retval
 
         serializer.serialize_entity = mock.Mock()
@@ -303,7 +303,7 @@ class TestMonitorFailure(test_utils.BaseTestCase):
     sending the heartbeat.
     """
 
-    class _SleepyEndpoint(object):
+    class _SleepyEndpoint:
         def __init__(self, target=None):
             self.target = target
 

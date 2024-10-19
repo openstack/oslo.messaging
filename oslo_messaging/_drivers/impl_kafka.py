@@ -77,12 +77,12 @@ class ConsumerTimeout(KafkaException):
     pass
 
 
-class AssignedPartition(object):
+class AssignedPartition:
     """This class is used by the ConsumerConnection to track the
     assigned partitions.
     """
     def __init__(self, topic, partition):
-        super(AssignedPartition, self).__init__()
+        super().__init__()
         self.topic = topic
         self.partition = partition
         self.skey = '%s %d' % (self.topic, self.partition)
@@ -91,7 +91,7 @@ class AssignedPartition(object):
         return {'topic': self.topic, 'partition': self.partition}
 
 
-class Connection(object):
+class Connection:
     """This is the base class for consumer and producer connections for
     transport attributes.
     """
@@ -126,8 +126,8 @@ class Connection(object):
                     LOG.warning("Different transport usernames detected")
 
             if host.hostname:
-                hostaddr = "%s:%s" % (netutils.escape_ipv6(host.hostname),
-                                      host.port)
+                hostaddr = "{}:{}".format(netutils.escape_ipv6(host.hostname),
+                                          host.port)
 
                 self.hostaddrs.append(hostaddr)
 
@@ -141,7 +141,7 @@ class ConsumerConnection(Connection):
     """
     def __init__(self, conf, url):
 
-        super(ConsumerConnection, self).__init__(conf, url)
+        super().__init__(conf, url)
         self.consumer = None
         self.consumer_timeout = self.driver_conf.kafka_consumer_timeout
         self.max_fetch_bytes = self.driver_conf.kafka_max_fetch_bytes
@@ -262,7 +262,7 @@ class ProducerConnection(Connection):
 
     def __init__(self, conf, url):
 
-        super(ProducerConnection, self).__init__(conf, url)
+        super().__init__(conf, url)
         self.batch_size = self.driver_conf.producer_batch_size
         self.linger_ms = self.driver_conf.producer_batch_timeout * 1000
         self.compression_codec = self.driver_conf.compression_codec
@@ -356,7 +356,7 @@ class ProducerConnection(Connection):
 class OsloKafkaMessage(base.RpcIncomingMessage):
 
     def __init__(self, ctxt, message):
-        super(OsloKafkaMessage, self).__init__(ctxt, message)
+        super().__init__(ctxt, message)
 
     def requeue(self):
         LOG.warning("requeue is not supported")
@@ -371,7 +371,7 @@ class OsloKafkaMessage(base.RpcIncomingMessage):
 class KafkaListener(base.PollStyleListener):
 
     def __init__(self, conn):
-        super(KafkaListener, self).__init__()
+        super().__init__()
         self._stopped = eventletutils.Event()
         self.conn = conn
         self.incoming_queue = []
@@ -411,7 +411,7 @@ class KafkaDriver(base.BaseDriver):
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
         conf = kafka_options.register_opts(conf, url)
-        super(KafkaDriver, self).__init__(
+        super().__init__(
             conf, url, default_exchange, allowed_remote_exmods)
 
         self.listeners = []

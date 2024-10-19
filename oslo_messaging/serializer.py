@@ -21,7 +21,7 @@ from oslo_serialization import jsonutils
 __all__ = ['Serializer', 'NoOpSerializer', 'JsonPayloadSerializer']
 
 
-class Serializer(object, metaclass=abc.ABCMeta):
+class Serializer(metaclass=abc.ABCMeta):
     """Generic (de-)serialization definition base class."""
 
     @abc.abstractmethod

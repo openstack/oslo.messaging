@@ -60,7 +60,7 @@ class RemoteError(exceptions.MessagingException):
         msg = ("Remote error: %(exc_type)s %(value)s\n%(traceback)s." %
                dict(exc_type=self.exc_type, value=self.value,
                     traceback=self.traceback))
-        super(RemoteError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class RPCVersionCapError(exceptions.MessagingException):
@@ -73,20 +73,20 @@ class RPCVersionCapError(exceptions.MessagingException):
                "in minor version as the specified version cap "
                "%(version_cap)s." %
                dict(version=self.version, version_cap=self.version_cap))
-        super(RPCVersionCapError, self).__init__(msg)
+        super().__init__(msg)
 
 
 class ClientSendError(exceptions.MessagingException):
     """Raised if we failed to send a message to a target."""
 
     def __init__(self, target, ex):
-        msg = 'Failed to send to target "%s": %s' % (target, ex)
-        super(ClientSendError, self).__init__(msg)
+        msg = 'Failed to send to target "{}": {}'.format(target, ex)
+        super().__init__(msg)
         self.target = target
         self.ex = ex
 
 
-class _BaseCallContext(object, metaclass=abc.ABCMeta):
+class _BaseCallContext(metaclass=abc.ABCMeta):
 
     _marker = object()
 
@@ -104,7 +104,7 @@ class _BaseCallContext(object, metaclass=abc.ABCMeta):
         self.version_cap = version_cap
         self.transport_options = transport_options
 
-        super(_BaseCallContext, self).__init__()
+        super().__init__()
 
     def _make_message(self, ctxt, method, args):
         msg = dict(method=method)
@@ -227,8 +227,8 @@ class _CallContext(_BaseCallContext):
             version=version,
             server=server,
             fanout=fanout)
-        kwargs = dict([(k, v) for k, v in kwargs.items()
-                       if v is not cls._marker])
+        kwargs = {k: v for k, v in kwargs.items()
+                  if v is not cls._marker}
         target = call_context.target(**kwargs)
 
         if timeout is cls._marker:
@@ -398,7 +398,7 @@ class RPCClient(_BaseCallContext):
                         "get_rpc_transport to obtain an RPC transport "
                         "instance.")
 
-        super(RPCClient, self).__init__(
+        super().__init__(
             transport, target, serializer, timeout, version_cap, retry,
             call_monitor_timeout, transport_options
         )

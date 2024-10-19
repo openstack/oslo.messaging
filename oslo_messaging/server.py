@@ -64,8 +64,8 @@ class ExecutorLoadFailure(MessagingServerError):
     """Raised if an executor can't be loaded."""
 
     def __init__(self, executor, ex):
-        msg = 'Failed to load executor "%s": %s' % (executor, ex)
-        super(ExecutorLoadFailure, self).__init__(msg)
+        msg = 'Failed to load executor "{}": {}'.format(executor, ex)
+        super().__init__(msg)
         self.executor = executor
         self.ex = ex
 
@@ -74,8 +74,8 @@ class ServerListenError(MessagingServerError):
     """Raised if we failed to listen on a target."""
 
     def __init__(self, target, ex):
-        msg = 'Failed to listen on target "%s": %s' % (target, ex)
-        super(ServerListenError, self).__init__(msg)
+        msg = 'Failed to listen on target "{}": {}'.format(target, ex)
+        super().__init__(msg)
         self.target = target
         self.ex = ex
 
@@ -84,7 +84,7 @@ class TaskTimeout(MessagingServerError):
     """Raised if we timed out waiting for a task to complete."""
 
 
-class _OrderedTask(object):
+class _OrderedTask:
     """A task which must be executed in a particular order.
 
     A caller may wait for this task to complete by calling
@@ -105,7 +105,7 @@ class _OrderedTask(object):
 
         :param name: The name of this task. Used in log messages.
         """
-        super(_OrderedTask, self).__init__()
+        super().__init__()
 
         self._name = name
         self._cond = threading.Condition()
@@ -158,7 +158,7 @@ class _OrderedTask(object):
                               `timeout_timer` expires while waiting.
         """
         with self._cond:
-            msg = '%s is waiting for %s to complete' % (caller, self._name)
+            msg = '{} is waiting for {} to complete'.format(caller, self._name)
             self._wait(lambda: not self.complete,
                        msg, log_after, timeout_timer)
 
@@ -206,11 +206,11 @@ class _OrderedTask(object):
                            msg, log_after, timeout_timer)
 
 
-class _OrderedTaskRunner(object):
+class _OrderedTaskRunner:
     """Mixin for a class which executes ordered tasks."""
 
     def __init__(self, *args, **kwargs):
-        super(_OrderedTaskRunner, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
 
         # Get a list of methods on this object which have the _ordered
         # attribute
@@ -358,7 +358,7 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
 
         self._started = False
 
-        super(MessageHandlingServer, self).__init__()
+        super().__init__()
 
     def _on_incoming(self, incoming):
         """Handles on_incoming event

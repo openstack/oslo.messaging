@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -27,7 +26,7 @@ from oslo_messaging import transport
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
-class _FakeDriver(object):
+class _FakeDriver:
 
     def __init__(self, conf):
         self.conf = conf
@@ -42,7 +41,7 @@ class _FakeDriver(object):
         pass
 
 
-class _FakeManager(object):
+class _FakeManager:
 
     def __init__(self, driver):
         self.driver = driver
@@ -160,13 +159,13 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 class _SetDefaultsFixture(fixtures.Fixture):
 
     def __init__(self, set_defaults, opts, *names):
-        super(_SetDefaultsFixture, self).__init__()
+        super().__init__()
         self.set_defaults = set_defaults
         self.opts = opts
         self.names = names
 
     def setUp(self):
-        super(_SetDefaultsFixture, self).setUp()
+        super().setUp()
 
         # FIXME(markmc): this comes from Id5c1f3ba
         def first(seq, default=None, key=None):
@@ -190,7 +189,7 @@ class _SetDefaultsFixture(fixtures.Fixture):
 class TestSetDefaults(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(TestSetDefaults, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
         self.useFixture(_SetDefaultsFixture(
             oslo_messaging.set_transport_defaults,
             transport._transport_opts,
@@ -293,7 +292,7 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
 
 class TestTransportUrlCustomisation(test_utils.BaseTestCase):
     def setUp(self):
-        super(TestTransportUrlCustomisation, self).setUp()
+        super().setUp()
 
         def transport_url_parse(url):
             return transport.TransportURL.parse(self.conf, url)
@@ -333,7 +332,7 @@ class TestTransportUrlCustomisation(test_utils.BaseTestCase):
 
 class TestTransportHostCustomisation(test_utils.BaseTestCase):
     def setUp(self):
-        super(TestTransportHostCustomisation, self).setUp()
+        super().setUp()
         self.host1 = transport.TransportHost("host1", 5662, "user", "pass")
         self.host2 = transport.TransportHost("host1", 5662, "user", "pass")
         self.host3 = transport.TransportHost("host1", 5663, "user", "pass")

@@ -1,4 +1,3 @@
-
 # Copyright 2011 OpenStack Foundation.
 # All Rights Reserved.
 # Copyright 2013 Red Hat, Inc.
@@ -36,8 +35,8 @@ class LogDriver(notifier.Driver):
     LOGGER_BASE = 'oslo.messaging.notification'
 
     def notify(self, ctxt, message, priority, retry):
-        logger = logging.getLogger('%s.%s' % (self.LOGGER_BASE,
-                                              message['event_type']))
+        logger = logging.getLogger('{}.{}'.format(self.LOGGER_BASE,
+                                                  message['event_type']))
         method = getattr(logger, priority.lower(), None)
         if method:
             method(jsonutils.dumps(strutils.mask_dict_password(message)))

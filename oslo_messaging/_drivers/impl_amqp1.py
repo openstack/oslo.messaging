@@ -110,7 +110,7 @@ def unmarshal_request(message):
 class ProtonIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, listener, message, disposition):
         request, ctxt, client_timeout = unmarshal_request(message)
-        super(ProtonIncomingMessage, self).__init__(ctxt, request)
+        super().__init__(ctxt, request)
         self.listener = listener
         self.client_timeout = client_timeout
         self._reply_to = message.reply_to
@@ -170,7 +170,7 @@ class ProtonIncomingMessage(base.RpcIncomingMessage):
 
 
 @removals.removed_class("Queue")
-class Queue(object):
+class Queue:
     def __init__(self):
         self._queue = collections.deque()
         self._lock = threading.Lock()
@@ -202,7 +202,7 @@ class Queue(object):
 @removals.removed_class("ProtonListener")
 class ProtonListener(base.PollStyleListener):
     def __init__(self, driver):
-        super(ProtonListener, self).__init__(driver.prefetch_size)
+        super().__init__(driver.prefetch_size)
         self.driver = driver
         self.incoming = Queue()
         self.id = uuid.uuid4().hex
@@ -232,8 +232,8 @@ class ProtonDriver(base.BaseDriver):
         if proton is None or controller is None:
             raise NotImplementedError("Proton AMQP C libraries not installed")
 
-        super(ProtonDriver, self).__init__(conf, url, default_exchange,
-                                           allowed_remote_exmods)
+        super().__init__(conf, url, default_exchange,
+                         allowed_remote_exmods)
 
         opt_group = cfg.OptGroup(name='oslo_messaging_amqp',
                                  title='AMQP 1.0 driver options')
@@ -429,7 +429,7 @@ class ProtonDriver(base.BaseDriver):
         # this is how the destination target is created by the notifier,
         # see MessagingDriver.notify in oslo_messaging/notify/messaging.py
         for target, priority in targets_and_priorities:
-            topic = '%s.%s' % (target.topic, priority)
+            topic = '{}.{}'.format(target.topic, priority)
             # Sooo... the exchange is simply discarded? (see above comment)
             task = controller.SubscribeTask(Target(topic=topic),
                                             listener, notifications=True)

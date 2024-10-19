@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -120,7 +119,7 @@ class ConfFixture(fixtures.Fixture):
             self.conf.clear_override = self.conf.clear_override.wrapped
 
     def setUp(self):
-        super(ConfFixture, self).setUp()
+        super().setUp()
         self._setup_decorator()
         self.addCleanup(self._teardown_decorator)
         self.addCleanup(self.conf.reset)

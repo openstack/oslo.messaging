@@ -44,7 +44,7 @@ def compute_timeout(offset):
     return math.ceil(time.monotonic() + offset)
 
 
-class _SocketConnection(object):
+class _SocketConnection:
     """Associates a pyngus Connection with a python network socket,
     and handles all connection-related I/O and timer events.
     """
@@ -71,7 +71,7 @@ class _SocketConnection(object):
             try:
                 pyngus.read_socket_input(self.pyngus_conn, self.socket)
                 self.pyngus_conn.process(time.monotonic())
-            except (socket.timeout, socket.error) as e:
+            except (socket.timeout, OSError) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.pyngus_conn.close_input()
                 self.pyngus_conn.close_output()
@@ -83,7 +83,7 @@ class _SocketConnection(object):
             try:
                 pyngus.write_socket_output(self.pyngus_conn, self.socket)
                 self.pyngus_conn.process(time.monotonic())
-            except (socket.timeout, socket.error) as e:
+            except (socket.timeout, OSError) as e:
                 # pyngus handles EAGAIN/EWOULDBLOCK and EINTER
                 self.pyngus_conn.close_output()
                 self.pyngus_conn.close_input()
@@ -104,7 +104,7 @@ class _SocketConnection(object):
         my_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         try:
             my_socket.connect(addr[0][4])
-        except socket.error as e:
+        except OSError as e:
             if e.errno != errno.EINPROGRESS:
                 error = "Socket connect failure '%s'" % str(e)
                 LOG.error("Socket connect failure '%s'", str(e))
@@ -159,10 +159,10 @@ class _SocketConnection(object):
             self.socket = None
 
 
-class Scheduler(object):
+class Scheduler:
     """Schedule callables to be run in the future.
     """
-    class Event(object):
+    class Event:
         # simply hold a reference to a callback that can be set to None if the
         # alarm is canceled
         def __init__(self, callback):
@@ -229,7 +229,7 @@ class Scheduler(object):
                 pass
 
 
-class Requests(object):
+class Requests:
     """A queue of callables to execute from the eventloop thread's main
     loop.
     """
@@ -273,7 +273,7 @@ class Thread(threading.Thread):
     threads.
     """
     def __init__(self, container_name, node, command, pid):
-        super(Thread, self).__init__()
+        super().__init__()
 
         # callables from other threads:
         self._requests = Requests()
@@ -325,7 +325,8 @@ class Thread(threading.Thread):
 
     def connect(self, host, handler, properties):
         """Get a _SocketConnection to a peer represented by url."""
-        key = "openstack.org/om/connection/%s:%s/" % (host.hostname, host.port)
+        key = "openstack.org/om/connection/{}:{}/".format(
+            host.hostname, host.port)
         # return pre-existing
         conn = self._container.get_connection(key)
         if conn:
@@ -379,7 +380,7 @@ class Thread(threading.Thread):
             # and now we wait...
             try:
                 select.select(readfds, writefds, [], timeout)
-            except select.error as serror:
+            except OSError as serror:
                 if serror[0] == errno.EINTR:
                     LOG.warning("ignoring interrupt from select(): %s",
                                 str(serror))
