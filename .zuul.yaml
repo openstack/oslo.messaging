@@ -73,6 +73,7 @@
     irrelevant-files:
       - ^(test-|)requirements.txt$
       - ^setup.cfg$
+      - ^\.pre-commit-config\.yaml$
 
 - job:
     name: oslo.messaging-grenade-multinode
@@ -83,6 +84,7 @@
     irrelevant-files:
       - ^(test-|)requirements.txt$
       - ^setup.cfg$
+      - ^\.pre-commit-config\.yaml$
 
 - project:
     templates:
