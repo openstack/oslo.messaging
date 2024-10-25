@@ -50,7 +50,8 @@ dispatched. Refer to the Executor documentation for descriptions of the types
 of executors.
 
 *Note:* If the "eventlet" executor is used, the threading and time library need
-to be monkeypatched.
+to be monkeypatched. The Eventlet executor is deprecated and the threading
+executor will be the only available executor.
 
 The RPC reply operation is best-effort: the server will consider the message
 containing the reply successfully sent once it is accepted by the messaging
@@ -124,6 +125,7 @@ import logging
 import sys
 import time
 
+import debtcollector
 from oslo_messaging import exceptions
 from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
@@ -217,6 +219,10 @@ class RPCServer(msg_server.MessageHandlingServer):
             del failure
 
 
+@debtcollector.removals.removed_kwarg(
+    'executor',
+    message="the eventlet executor is now deprecated. Threading "
+            "will be the only execution model available.")
 def get_rpc_server(transport, target, endpoints,
                    executor=None, serializer=None, access_policy=None,
                    server_cls=RPCServer):
@@ -228,8 +234,9 @@ def get_rpc_server(transport, target, endpoints,
     :type target: Target
     :param endpoints: a list of endpoint objects
     :type endpoints: list
-    :param executor: name of message executor - available values are
-                     'eventlet' and 'threading'
+    :param executor: (DEPRECATED) name of message executor -
+        available values are 'eventlet' and 'threading'.
+        The Eventlet executor is also deprecated.
     :type executor: str
     :param serializer: an optional entity serializer
     :type serializer: Serializer

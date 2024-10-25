@@ -23,6 +23,7 @@ import logging
 import threading
 import traceback
 
+import debtcollector
 from oslo_config import cfg
 from oslo_service import service
 from oslo_utils import eventletutils
@@ -305,6 +306,10 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
     new tasks.
     """
 
+    @debtcollector.removals.removed_kwarg(
+        'executor',
+        message="the eventlet executor is now deprecated. Threading "
+                "will be the only execution model available.")
     def __init__(self, transport, dispatcher, executor=None):
         """Construct a message handling server.
 
@@ -322,8 +327,9 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
         :param dispatcher: has a dispatch() method which is invoked for each
                            incoming request
         :type dispatcher: DispatcherBase
-        :param executor: name of message executor - available values are
-                         'eventlet' and 'threading'
+        :param executor: (DEPRECATED) name of message executor -
+            available values are 'eventlet' and 'threading'.
+            The Eventlet executor is also deprecated.
         :type executor: str
         """
         if executor and executor not in ("threading", "eventlet"):
@@ -339,10 +345,22 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
         self.transport = transport
         self.dispatcher = dispatcher
         self.executor_type = executor
+
         if self.executor_type == "eventlet":
             eventletutils.warn_eventlet_not_patched(
                 expected_patched_modules=['thread'],
                 what="the 'oslo.messaging eventlet executor'")
+
+            debtcollector.deprecate(
+                'Eventlet usages are deprecated and the removal '
+                'of Eventlet from OpenStack is planned, for this reason '
+                'the Eventlet executor is deprecated. '
+                'Start migrating your stack to the '
+                'threading executor. Please also start considering '
+                'removing your internal Eventlet usages.',
+                version="2025.1", removal_version="2026.1",
+                category=DeprecationWarning
+            )
 
         self.listener = None
 

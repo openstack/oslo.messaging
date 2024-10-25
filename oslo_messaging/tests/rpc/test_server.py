@@ -15,6 +15,7 @@
 
 import threading
 from unittest import mock
+import warnings
 
 
 import eventlet
@@ -140,13 +141,15 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIs(server.dispatcher.serializer, serializer)
         self.assertEqual('threading', server.executor_type)
 
-    def test_constructor_with_eventlet_executor(self):
+    @mock.patch('warnings.warn')
+    def test_constructor_with_eventlet_executor(self, warn):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         target = oslo_messaging.Target(topic='foo', server='bar')
         endpoints = [object()]
         serializer = object()
         access_policy = dispatcher.DefaultRPCAccessPolicy
 
+        warnings.simplefilter("always", DeprecationWarning)
         server = oslo_messaging.get_rpc_server(transport,
                                                target,
                                                endpoints,
@@ -159,6 +162,22 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
         self.assertEqual('eventlet', server.executor_type)
+        self.assertEqual([
+            mock.call(
+                "Using the 'executor' argument is deprecated: "
+                "the eventlet executor is now deprecated. "
+                "Threading will be the only execution model available.",
+                category=DeprecationWarning, stacklevel=3),
+            mock.call(
+                "Eventlet usages are deprecated and the removal "
+                "of Eventlet from OpenStack is planned, for this "
+                "reason the Eventlet executor is deprecated. "
+                "Start migrating your stack to the threading executor. "
+                "Please also start considering removing your internal "
+                "Eventlet usages. in version '2025.1' and will be "
+                "removed in version '2026.1'",
+                category=DeprecationWarning, stacklevel=3)
+        ], warn.mock_calls)
 
     def test_constructor_with_unrecognized_executor(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
