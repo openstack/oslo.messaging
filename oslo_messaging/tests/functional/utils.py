@@ -25,7 +25,7 @@ from oslo_messaging.notify import notifier
 from oslo_messaging.tests import utils as test_utils
 
 
-class TestServerEndpoint(object):
+class TestServerEndpoint:
     """This MessagingServer that will be used during functional testing."""
 
     def __init__(self):
@@ -58,7 +58,7 @@ class TransportFixture(fixtures.Fixture):
         self.url = url
 
     def setUp(self):
-        super(TransportFixture, self).setUp()
+        super().setUp()
         self.transport = oslo_messaging.get_transport(self.conf, url=self.url)
 
     def cleanUp(self):
@@ -66,7 +66,7 @@ class TransportFixture(fixtures.Fixture):
             self.transport.cleanup()
         except fixtures.TimeoutException:
             pass
-        super(TransportFixture, self).cleanUp()
+        super().cleanUp()
 
     def wait(self):
         # allow time for the server to connect to the broker
@@ -77,7 +77,7 @@ class RPCTransportFixture(TransportFixture):
     """Fixture defined to setup RPC transport."""
 
     def setUp(self):
-        super(RPCTransportFixture, self).setUp()
+        super().setUp()
         self.transport = oslo_messaging.get_rpc_transport(self.conf,
                                                           url=self.url)
 
@@ -86,7 +86,7 @@ class NotificationTransportFixture(TransportFixture):
     """Fixture defined to setup notification transport."""
 
     def setUp(self):
-        super(NotificationTransportFixture, self).setUp()
+        super().setUp()
         self.transport = oslo_messaging.get_notification_transport(
             self.conf, url=self.url)
 
@@ -96,7 +96,7 @@ class RpcServerFixture(fixtures.Fixture):
 
     def __init__(self, conf, url, target, endpoint=None, ctrl_target=None,
                  executor='eventlet'):
-        super(RpcServerFixture, self).__init__()
+        super().__init__()
         self.conf = conf
         self.url = url
         self.target = target
@@ -106,7 +106,7 @@ class RpcServerFixture(fixtures.Fixture):
         self.ctrl_target = ctrl_target or self.target
 
     def setUp(self):
-        super(RpcServerFixture, self).setUp()
+        super().setUp()
         endpoints = [self.endpoint, self]
         transport = self.useFixture(RPCTransportFixture(self.conf, self.url))
         self.server = oslo_messaging.get_rpc_server(
@@ -121,7 +121,7 @@ class RpcServerFixture(fixtures.Fixture):
 
     def cleanUp(self):
         self._stop()
-        super(RpcServerFixture, self).cleanUp()
+        super().cleanUp()
 
     def _start(self):
         self.thread = test_utils.ServerThreadHelper(self.server)
@@ -156,7 +156,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         self.endpoint = endpoint
 
     def setUp(self):
-        super(RpcServerGroupFixture, self).setUp()
+        super().setUp()
         self.servers = [self.useFixture(self._server(t)) for t in self.targets]
 
     def _target(self, server=None, fanout=False):
@@ -205,7 +205,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
                 raise ValueError("Invalid value for server: %r" % server)
 
 
-class RpcCall(object):
+class RpcCall:
     def __init__(self, client, method, context):
         self.client = client
         self.method = method
@@ -225,7 +225,7 @@ class RpcCast(RpcCall):
         self.client.cast(self.context, self.method, **kwargs)
 
 
-class ClientStub(object):
+class ClientStub:
     def __init__(self, transport, target, cast=False, name=None,
                  transport_options=None, **kwargs):
         self.name = name or "functional-tests"
@@ -244,7 +244,7 @@ class ClientStub(object):
             return RpcCall(self.client, name, context)
 
 
-class InvalidDistribution(object):
+class InvalidDistribution:
     def __init__(self, original, received):
         self.original = original
         self.received = received
@@ -253,10 +253,11 @@ class InvalidDistribution(object):
         self.wrong_order = []
 
     def describe(self):
-        text = "Sent %s, got %s; " % (self.original, self.received)
+        text = "Sent {}, got {}; ".format(self.original, self.received)
         e1 = ["%r was missing" % m for m in self.missing]
         e2 = ["%r was not expected" % m for m in self.extra]
-        e3 = ["%r expected before %r" % (m[0], m[1]) for m in self.wrong_order]
+        e3 = ["{!r} expected before {!r}".format(
+            m[0], m[1]) for m in self.wrong_order]
         return text + ", ".join(e1 + e2 + e3)
 
     def __len__(self):
@@ -266,7 +267,7 @@ class InvalidDistribution(object):
         return {}
 
 
-class IsValidDistributionOf(object):
+class IsValidDistributionOf:
     """Test whether a given list can be split into particular
     sub-lists. All items in the original list must be in exactly one
     sub-list, and must appear in that sub-list in the same order with
@@ -303,7 +304,7 @@ class IsValidDistributionOf(object):
 
 class SkipIfNoTransportURL(test_utils.BaseTestCase):
     def setUp(self, conf=cfg.CONF):
-        super(SkipIfNoTransportURL, self).setUp(conf=conf)
+        super().setUp(conf=conf)
 
         self.rpc_url = os.environ.get('RPC_TRANSPORT_URL')
         self.notify_url = os.environ.get('NOTIFY_TRANSPORT_URL')
@@ -319,7 +320,7 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
 
 class NotificationFixture(fixtures.Fixture):
     def __init__(self, conf, url, topics, batch=None):
-        super(NotificationFixture, self).__init__()
+        super().__init__()
         self.conf = conf
         self.url = url
         self.topics = topics
@@ -328,7 +329,7 @@ class NotificationFixture(fixtures.Fixture):
         self.batch = batch
 
     def setUp(self):
-        super(NotificationFixture, self).setUp()
+        super().setUp()
         targets = [oslo_messaging.Target(topic=t) for t in self.topics]
         # add a special topic for internal notifications
         targets.append(oslo_messaging.Target(topic=self.name))
@@ -341,7 +342,7 @@ class NotificationFixture(fixtures.Fixture):
 
     def cleanUp(self):
         self._stop()
-        super(NotificationFixture, self).cleanUp()
+        super().cleanUp()
 
     def _get_server(self, transport, targets):
         return oslo_messaging.get_notification_listener(
@@ -402,7 +403,7 @@ class NotificationFixture(fixtures.Fixture):
 
 class BatchNotificationFixture(NotificationFixture):
     def __init__(self, conf, url, topics, batch_size=5, batch_timeout=2):
-        super(BatchNotificationFixture, self).__init__(conf, url, topics)
+        super().__init__(conf, url, topics)
         self.batch_size = batch_size
         self.batch_timeout = batch_timeout
 

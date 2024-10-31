@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -47,7 +46,7 @@ class PoolTestCase(test_utils.BaseTestCase):
         def create(self, retry=None):
             return uuid.uuid4()
 
-    class ThreadWaitWaiter(object):
+    class ThreadWaitWaiter:
 
         """A gross hack.
 

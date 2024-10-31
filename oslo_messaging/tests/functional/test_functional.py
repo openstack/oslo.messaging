@@ -28,7 +28,7 @@ from oslo_messaging.tests.functional import utils
 class CallTestCase(utils.SkipIfNoTransportURL):
 
     def setUp(self):
-        super(CallTestCase, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
         if self.rpc_url.startswith("kafka://"):
             self.skipTest("kafka does not support RPC API")
 
@@ -197,7 +197,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
         target = oslo_messaging.Target(topic='topic_' + str(uuid.uuid4()),
                                        server='server_' + str(uuid.uuid4()))
 
-        class _endpoint(object):
+        class _endpoint:
             def delay(self, ctxt, seconds):
                 time.sleep(seconds)
                 return seconds
@@ -231,7 +231,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
                                        namespace="Name1",
                                        version="7.5")
 
-        class _endpoint(object):
+        class _endpoint:
             def __init__(self, target):
                 self.target = target()
 
@@ -274,7 +274,7 @@ class CallTestCase(utils.SkipIfNoTransportURL):
     def test_bad_endpoint(self):
         # 'target' attribute is reserved and should be of type Target
 
-        class _endpoint(object):
+        class _endpoint:
             def target(self, ctxt, echo):
                 return echo
 
@@ -297,7 +297,7 @@ class CastTestCase(utils.SkipIfNoTransportURL):
     # making the necessary assertions.
 
     def setUp(self):
-        super(CastTestCase, self).setUp()
+        super().setUp()
         if self.rpc_url.startswith("kafka://"):
             self.skipTest("kafka does not support RPC API")
 
@@ -572,7 +572,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 class MetricsTestCase(utils.SkipIfNoTransportURL):
 
     def setUp(self):
-        super(MetricsTestCase, self).setUp(conf=cfg.ConfigOpts())
+        super().setUp(conf=cfg.ConfigOpts())
         if self.rpc_url.startswith("kafka://"):
             self.skipTest("kafka does not support RPC API")
 

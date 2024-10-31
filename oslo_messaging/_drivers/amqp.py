@@ -49,7 +49,7 @@ class RpcContext(rpc_common.CommonRpcContext):
     def __init__(self, **kwargs):
         self.msg_id = kwargs.pop('msg_id', None)
         self.reply_q = kwargs.pop('reply_q', None)
-        super(RpcContext, self).__init__(**kwargs)
+        super().__init__(**kwargs)
 
     def deepcopy(self):
         values = self.to_dict()
@@ -91,7 +91,7 @@ def pack_context(msg, context):
                for (key, value) in context_d)
 
 
-class _MsgIdCache(object):
+class _MsgIdCache:
     """This class checks any duplicate messages."""
 
     # NOTE: This value is considered can be a configuration item, but

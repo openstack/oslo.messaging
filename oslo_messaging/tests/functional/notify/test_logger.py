@@ -50,7 +50,7 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
 
     def test_logging(self):
         # NOTE(gtt): Using different topic to make tests run in parallel
-        topic = 'test_logging_%s_driver_%s' % (self.priority, self.driver)
+        topic = 'test_logging_{}_driver_{}'.format(self.priority, self.driver)
 
         if self.notify_url.startswith("kafka://"):
             self.conf.set_override('consumer_group', str(uuid.uuid4()),

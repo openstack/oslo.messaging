@@ -63,7 +63,7 @@ class RequestNotifier(base.Middleware):
         self.service_name = conf.get('service_name')
         self.ignore_req_list = [x.upper().strip() for x in
                                 conf.get('ignore_req_list', '').split(',')]
-        super(RequestNotifier, self).__init__(app)
+        super().__init__(app)
 
     @staticmethod
     def environ_to_dict(environ):
@@ -71,8 +71,8 @@ class RequestNotifier(base.Middleware):
         include them.
 
         """
-        return dict((k, v) for k, v in environ.items()
-                    if k.isupper() and k != 'HTTP_X_AUTH_TOKEN')
+        return {k: v for k, v in environ.items()
+                if k.isupper() and k != 'HTTP_X_AUTH_TOKEN'}
 
     @log_and_ignore_error
     def process_request(self, request):

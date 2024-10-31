@@ -22,7 +22,7 @@ from oslo_messaging.tests.functional import utils
 from oslo_messaging.tests import utils as test_utils
 
 
-class ConnectedPortMatcher(object):
+class ConnectedPortMatcher:
     def __init__(self, port):
         self.port = port
 

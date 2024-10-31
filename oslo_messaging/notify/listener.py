@@ -147,8 +147,8 @@ class NotificationServerBase(msg_server.MessageHandlingServer):
     def __init__(self, transport, targets, dispatcher, executor=None,
                  allow_requeue=True, pool=None, batch_size=1,
                  batch_timeout=None):
-        super(NotificationServerBase, self).__init__(transport, dispatcher,
-                                                     executor)
+        super().__init__(transport, dispatcher,
+                         executor)
         self._allow_requeue = allow_requeue
         self._pool = pool
         self.targets = targets
@@ -175,7 +175,7 @@ class NotificationServer(NotificationServerBase):
                         "get_notification_transport to obtain a "
                         "notification transport instance.")
 
-        super(NotificationServer, self).__init__(
+        super().__init__(
             transport, targets, dispatcher, executor, allow_requeue, pool, 1,
             None
         )

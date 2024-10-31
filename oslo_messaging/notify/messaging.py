@@ -1,4 +1,3 @@
-
 # Copyright 2011 OpenStack Foundation.
 # All Rights Reserved.
 # Copyright 2013 Red Hat, Inc.
@@ -67,13 +66,14 @@ class MessagingDriver(notifier.Driver):
     """
 
     def __init__(self, conf, topics, transport, version=1.0):
-        super(MessagingDriver, self).__init__(conf, topics, transport)
+        super().__init__(conf, topics, transport)
         self.version = version
 
     def notify(self, ctxt, message, priority, retry):
         priority = priority.lower()
         for topic in self.topics:
-            target = oslo_messaging.Target(topic='%s.%s' % (topic, priority))
+            target = oslo_messaging.Target(
+                topic='{}.{}'.format(topic, priority))
             try:
                 self.transport._send_notification(target, ctxt, message,
                                                   version=self.version,
@@ -89,4 +89,4 @@ class MessagingV2Driver(MessagingDriver):
     "Send notifications using the 2.0 message format."
 
     def __init__(self, conf, **kwargs):
-        super(MessagingV2Driver, self).__init__(conf, version=2.0, **kwargs)
+        super().__init__(conf, version=2.0, **kwargs)

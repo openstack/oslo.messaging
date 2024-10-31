@@ -16,7 +16,7 @@
 import re
 
 
-class NotificationFilter(object):
+class NotificationFilter:
 
     r"""Filter notification messages
 
@@ -55,7 +55,7 @@ class NotificationFilter(object):
     def _build_regex_dict(regex_list):
         if regex_list is None:
             return {}
-        return dict((k, re.compile(regex_list[k])) for k in regex_list)
+        return {k: re.compile(regex_list[k]) for k in regex_list}
 
     @staticmethod
     def _check_for_single_mismatch(data, regex):

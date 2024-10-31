@@ -24,7 +24,7 @@ from oslo_messaging._drivers import common
 LOG = logging.getLogger(__name__)
 
 
-class Pool(object, metaclass=abc.ABCMeta):
+class Pool(metaclass=abc.ABCMeta):
     """A thread-safe object pool.
 
     Modelled after the eventlet.pools.Pool interface, but designed to be safe
@@ -35,7 +35,7 @@ class Pool(object, metaclass=abc.ABCMeta):
     """
 
     def __init__(self, max_size=4, min_size=2, ttl=1200, on_expire=None):
-        super(Pool, self).__init__()
+        super().__init__()
         self._min_size = min_size
         self._max_size = max_size
         self._item_ttl = ttl
@@ -122,8 +122,8 @@ class ConnectionPool(Pool):
         self.connection_cls = connection_cls
         self.conf = conf
         self.url = url
-        super(ConnectionPool, self).__init__(max_size, min_size, ttl,
-                                             self._on_expire)
+        super().__init__(max_size, min_size, ttl,
+                         self._on_expire)
 
     def _on_expire(self, connection):
         connection.close()

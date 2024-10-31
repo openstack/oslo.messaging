@@ -1,4 +1,3 @@
-
 # Copyright 2012 OpenStack Foundation
 # Copyright 2013 Red Hat, Inc.
 #

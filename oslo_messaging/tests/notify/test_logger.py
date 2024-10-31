@@ -46,7 +46,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
     ]
 
     def setUp(self):
-        super(TestLogNotifier, self).setUp()
+        super().setUp()
         self.addCleanup(oslo_messaging.notify._impl_test.reset)
         self.config(driver=['test'],
                     group='oslo_messaging_notifications')

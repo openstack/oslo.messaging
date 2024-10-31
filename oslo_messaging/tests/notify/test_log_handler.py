@@ -23,7 +23,7 @@ from unittest import mock
 class PublishErrorsHandlerTestCase(test_utils.BaseTestCase):
     """Tests for log.PublishErrorsHandler"""
     def setUp(self):
-        super(PublishErrorsHandlerTestCase, self).setUp()
+        super().setUp()
         self.publisherrorshandler = (log_handler.
                                      PublishErrorsHandler(logging.ERROR))
 

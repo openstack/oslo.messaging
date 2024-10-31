@@ -52,7 +52,7 @@ from oslo_messaging import transport
 LOG = logging.getLogger(__name__)
 
 
-class Task(object):
+class Task:
     """Run a command on the eventloop thread, wait until it completes
     """
 
@@ -74,7 +74,7 @@ class SubscribeTask(Task):
     arriving from the target are given to the listener.
     """
     def __init__(self, target, listener, notifications=False):
-        super(SubscribeTask, self).__init__()
+        super().__init__()
         self._target = target()  # mutable - need a copy
         self._subscriber_id = listener.id
         self._in_queue = listener.incoming
@@ -95,7 +95,7 @@ class SendTask(Task):
     """
     def __init__(self, name, message, target, deadline, retry,
                  wait_for_ack, notification=False):
-        super(SendTask, self).__init__()
+        super().__init__()
         self.name = name
         # note: target can be either a Target class or a string
         # target is mutable - make copy
@@ -195,18 +195,18 @@ class RPCCallTask(SendTask):
     the destination.
     """
     def __init__(self, target, message, deadline, retry, wait_for_ack):
-        super(RPCCallTask, self).__init__("RPC Call", message, target,
-                                          deadline, retry, wait_for_ack)
+        super().__init__("RPC Call", message, target,
+                         deadline, retry, wait_for_ack)
         self._reply_link = None
         self._reply_msg = None
         self._msg_id = None
 
     def wait(self):
-        error = super(RPCCallTask, self).wait()
+        error = super().wait()
         return error or self._reply_msg
 
     def _prepare(self, sender):
-        super(RPCCallTask, self)._prepare(sender)
+        super()._prepare(sender)
         # reserve a message id for mapping the received response
         if self._msg_id:
             # already set so this is a re-transmit. To be safe cancel the old
@@ -224,7 +224,7 @@ class RPCCallTask(SendTask):
 
     def _on_ack(self, state, info):
         if state != pyngus.SenderLink.ACCEPTED:
-            super(RPCCallTask, self)._on_ack(state, info)
+            super()._on_ack(state, info)
         # must wait for reply if ACCEPTED
 
     def _cleanup(self):
@@ -232,7 +232,7 @@ class RPCCallTask(SendTask):
             self._reply_link.cancel_response(self._msg_id)
             self._msg_id = None
         self._reply_link = None
-        super(RPCCallTask, self)._cleanup()
+        super()._cleanup()
 
 
 class RPCMonitoredCallTask(RPCCallTask):
@@ -243,8 +243,8 @@ class RPCMonitoredCallTask(RPCCallTask):
     """
     def __init__(self, target, message, deadline, call_monitor_timeout,
                  retry, wait_for_ack):
-        super(RPCMonitoredCallTask, self).__init__(target, message, deadline,
-                                                   retry, wait_for_ack)
+        super().__init__(target, message, deadline,
+                         retry, wait_for_ack)
         assert call_monitor_timeout is not None  # nosec
         self._monitor_timeout = call_monitor_timeout
         self._monitor_timer = None
@@ -254,7 +254,7 @@ class RPCMonitoredCallTask(RPCCallTask):
         self._set_alarm = controller.processor.defer
         self._monitor_timer = self._set_alarm(self._call_timeout,
                                               self._monitor_timeout)
-        super(RPCMonitoredCallTask, self)._execute(controller)
+        super()._execute(controller)
 
     def _call_timeout(self):
         # monitor_timeout expired
@@ -274,14 +274,14 @@ class RPCMonitoredCallTask(RPCCallTask):
             self._monitor_timer = self._set_alarm(self._call_timeout,
                                                   self._monitor_timeout)
         else:
-            super(RPCMonitoredCallTask, self)._on_reply(message)
+            super()._on_reply(message)
 
     def _cleanup(self):
         self._set_alarm = None
         if self._monitor_timer:
             self._monitor_timer.cancel()
             self._monitor_timer = None
-        super(RPCMonitoredCallTask, self)._cleanup()
+        super()._cleanup()
 
 
 class MessageDispositionTask(Task):
@@ -289,7 +289,7 @@ class MessageDispositionTask(Task):
     for a Server
     """
     def __init__(self, disposition, released=False):
-        super(MessageDispositionTask, self).__init__()
+        super().__init__()
         self._disposition = disposition
         self._released = released
 
@@ -311,7 +311,7 @@ class Sender(pyngus.SenderEventHandler):
     """A link for sending to a particular destination on the message bus.
     """
     def __init__(self, destination, scheduler, delay, service):
-        super(Sender, self).__init__()
+        super().__init__()
         self._destination = destination
         self._service = service
         self._address = None
@@ -537,8 +537,8 @@ class Sender(pyngus.SenderEventHandler):
                 self._send(self._pending_sends.popleft())
 
     def _open_link(self):
-        name = "openstack.org/om/sender/[%s]/%s" % (self._address,
-                                                    uuid.uuid4().hex)
+        name = "openstack.org/om/sender/[{}]/{}".format(self._address,
+                                                        uuid.uuid4().hex)
         link = self._connection.create_sender(name=name,
                                               source_address=self._address,
                                               target_address=self._address,
@@ -685,7 +685,8 @@ class Server(pyngus.ReceiverEventHandler):
         """
         self._connection = connection
         for a in self._addresses:
-            name = "openstack.org/om/receiver/[%s]/%s" % (a, uuid.uuid4().hex)
+            name = "openstack.org/om/receiver/[{}]/{}".format(
+                a, uuid.uuid4().hex)
             r = self._open_link(a, name)
             self._receivers.append(r)
 
@@ -786,8 +787,8 @@ class Server(pyngus.ReceiverEventHandler):
 class RPCServer(Server):
     """Subscribes to RPC addresses"""
     def __init__(self, target, incoming, scheduler, delay, capacity):
-        super(RPCServer, self).__init__(target, incoming, scheduler, delay,
-                                        capacity)
+        super().__init__(target, incoming, scheduler, delay,
+                         capacity)
 
     def attach(self, connection, addresser):
         # Generate the AMQP 1.0 addresses for the base class
@@ -797,14 +798,14 @@ class RPCServer(Server):
             addresser.anycast_address(self._target, SERVICE_RPC)
         ]
         # now invoke the base class with the generated addresses
-        super(RPCServer, self).attach(connection)
+        super().attach(connection)
 
 
 class NotificationServer(Server):
     """Subscribes to Notification addresses"""
     def __init__(self, target, incoming, scheduler, delay, capacity):
-        super(NotificationServer, self).__init__(target, incoming, scheduler,
-                                                 delay, capacity)
+        super().__init__(target, incoming, scheduler,
+                         delay, capacity)
 
     def attach(self, connection, addresser):
         # Generate the AMQP 1.0 addresses for the base class
@@ -812,10 +813,10 @@ class NotificationServer(Server):
             addresser.anycast_address(self._target, SERVICE_NOTIFY)
         ]
         # now invoke the base class with the generated addresses
-        super(NotificationServer, self).attach(connection)
+        super().attach(connection)
 
 
-class Hosts(object):
+class Hosts:
     """An order list of TransportHost addresses. Connection failover progresses
     from one host to the next.  The default realm comes from the configuration
     and is only used if no realm is present in the URL.

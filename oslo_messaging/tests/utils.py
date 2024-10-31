@@ -33,7 +33,7 @@ TRUE_VALUES = ('true', '1', 'yes')
 class BaseTestCase(base.BaseTestCase):
 
     def setUp(self, conf=cfg.CONF):
-        super(BaseTestCase, self).setUp()
+        super().setUp()
 
         from oslo_messaging import conffixture
         self.messaging_conf = self.useFixture(conffixture.ConfFixture(conf))
@@ -62,14 +62,14 @@ class BaseTestCase(base.BaseTestCase):
 
 class ServerThreadHelper(threading.Thread):
     def __init__(self, server):
-        super(ServerThreadHelper, self).__init__()
+        super().__init__()
         self.daemon = True
         self._server = server
         self._stop_event = eventletutils.Event()
         self._start_event = eventletutils.Event()
 
     def start(self):
-        super(ServerThreadHelper, self).start()
+        super().start()
         self._start_event.wait()
 
     def run(self):

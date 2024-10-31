@@ -27,7 +27,7 @@ load_tests = testscenarios.load_tests_apply_scenarios
 class TestKafkaDriverLoad(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(TestKafkaDriverLoad, self).setUp()
+        super().setUp()
         self.messaging_conf.transport_url = 'kafka:/'
 
     def test_driver_load(self):
@@ -79,7 +79,7 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
     ]
 
     def setUp(self):
-        super(TestKafkaTransportURL, self).setUp()
+        super().setUp()
         self.messaging_conf.transport_url = 'kafka:/'
 
     def test_transport_url(self):
@@ -100,7 +100,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
     """
 
     def setUp(self):
-        super(TestKafkaDriver, self).setUp()
+        super().setUp()
         self.messaging_conf.transport_url = 'kafka:/'
         transport = oslo_messaging.get_notification_transport(self.conf)
         self.driver = transport._driver
@@ -202,7 +202,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
 class TestKafkaConnection(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(TestKafkaConnection, self).setUp()
+        super().setUp()
         self.messaging_conf.transport_url = 'kafka:/'
         transport = oslo_messaging.get_notification_transport(self.conf)
         self.driver = transport._driver

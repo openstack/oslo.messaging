@@ -66,7 +66,7 @@ class TransportDriverError(exceptions.MessagingException):
     """Base class for transport driver specific exceptions."""
 
 
-class IncomingMessage(object, metaclass=abc.ABCMeta):
+class IncomingMessage(metaclass=abc.ABCMeta):
     """The IncomingMessage class represents a single message received from the
     messaging backend. Instances of this class are passed to up a server's
     messaging processing logic. The backend driver must provide a concrete
@@ -173,7 +173,7 @@ class RpcIncomingMessage(IncomingMessage, metaclass=abc.ABCMeta):
         """
 
 
-class PollStyleListener(object, metaclass=abc.ABCMeta):
+class PollStyleListener(metaclass=abc.ABCMeta):
     """A PollStyleListener is used to transfer received messages to a server
     for processing. A polling pattern is used to retrieve messages.  A
     PollStyleListener uses a separate thread to run the polling loop.  A
@@ -229,7 +229,7 @@ class PollStyleListener(object, metaclass=abc.ABCMeta):
         pass
 
 
-class Listener(object, metaclass=abc.ABCMeta):
+class Listener(metaclass=abc.ABCMeta):
     """A Listener is used to transfer incoming messages from the driver to a
     server for processing.  A callback is used by the driver to transfer the
     messages.
@@ -287,7 +287,7 @@ class PollStyleListenerAdapter(Listener):
     """
 
     def __init__(self, poll_style_listener, batch_size, batch_timeout):
-        super(PollStyleListenerAdapter, self).__init__(
+        super().__init__(
             batch_size, batch_timeout, poll_style_listener.prefetch_size
         )
         self._poll_style_listener = poll_style_listener
@@ -296,7 +296,7 @@ class PollStyleListenerAdapter(Listener):
         self._started = False
 
     def start(self, on_incoming_callback):
-        super(PollStyleListenerAdapter, self).start(on_incoming_callback)
+        super().start(on_incoming_callback)
         self._started = True
         self._listen_thread.start()
 
@@ -323,13 +323,13 @@ class PollStyleListenerAdapter(Listener):
         self._started = False
         self._poll_style_listener.stop()
         self._listen_thread.join()
-        super(PollStyleListenerAdapter, self).stop()
+        super().stop()
 
     def cleanup(self):
         self._poll_style_listener.cleanup()
 
 
-class BaseDriver(object, metaclass=abc.ABCMeta):
+class BaseDriver(metaclass=abc.ABCMeta):
     """Defines the backend driver interface. Each backend driver implementation
     must provide a concrete derivation of this class implementing the backend
     specific logic for its public methods.

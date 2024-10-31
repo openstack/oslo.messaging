@@ -40,7 +40,7 @@ from unittest import mock
 load_tests = testscenarios.load_tests_apply_scenarios
 
 
-class JsonMessageMatcher(object):
+class JsonMessageMatcher:
     def __init__(self, message):
         self.message = message
 
@@ -57,7 +57,7 @@ class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
     during cleanup.
     """
 
-    class FakeLogger(object):
+    class FakeLogger:
 
         def __init__(self):
             self.exceptions = []
@@ -69,7 +69,7 @@ class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
             return
 
     def setUp(self):
-        super(_ReRaiseLoggedExceptionsFixture, self).setUp()
+        super().setUp()
 
         self.logger = self.FakeLogger()
 
@@ -145,7 +145,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                                                          cls._retry)
 
     def setUp(self):
-        super(TestMessagingNotifier, self).setUp()
+        super().setUp()
 
         self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
         self.useFixture(fixtures.MockPatchObject(
@@ -211,8 +211,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                     send_kwargs['retry'] = self.retry
                 else:
                     send_kwargs['retry'] = -1
-                target = oslo_messaging.Target(topic='%s.%s' % (topic,
-                                                                self.priority))
+                target = oslo_messaging.Target(topic='{}.{}'.format(
+                    topic, self.priority))
                 calls.append(mock.call(target,
                                        self.ctxt,
                                        message,
@@ -307,7 +307,7 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
 class TestSerializer(test_utils.BaseTestCase):
 
     def setUp(self):
-        super(TestSerializer, self).setUp()
+        super().setUp()
         self.addCleanup(_impl_test.reset)
 
     @mock.patch('oslo_utils.timeutils.utcnow')
@@ -484,7 +484,7 @@ class TestNotificationConfig(test_utils.BaseTestCase):
 
 class TestRoutingNotifier(test_utils.BaseTestCase):
     def setUp(self):
-        super(TestRoutingNotifier, self).setUp()
+        super().setUp()
         self.config(driver=['routing'],
                     group='oslo_messaging_notifications')
 
@@ -503,7 +503,7 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         return extension.ExtensionManager.make_test_instance([])
 
     def test_should_load_plugin(self):
-        self.router.used_drivers = set(["zoo", "blah"])
+        self.router.used_drivers = {"zoo", "blah"}
         ext = mock.MagicMock()
         ext.name = "foo"
         self.assertFalse(self.router._should_load_plugin(ext))

@@ -117,7 +117,7 @@ def update_message(message, **kwargs):
     return Message(*message)._replace(**kwargs)
 
 
-class MessageStatsCollector(object):
+class MessageStatsCollector:
     def __init__(self, label):
         self.label = label
         self.buffer = []  # buffer to store messages during report interval
@@ -237,7 +237,7 @@ class MessageStatsCollector(object):
         return stats
 
 
-class NotifyEndpoint(object):
+class NotifyEndpoint:
     def __init__(self, wait_before_answer, requeue):
         self.wait_before_answer = wait_before_answer
         self.requeue = requeue
@@ -273,7 +273,7 @@ def notify_server(transport, topic, wait_before_answer, duration, requeue):
     return endpoints[0]
 
 
-class BatchNotifyEndpoint(object):
+class BatchNotifyEndpoint:
     def __init__(self, wait_before_answer, requeue):
         self.wait_before_answer = wait_before_answer
         self.requeue = requeue
@@ -306,7 +306,7 @@ def batch_notify_server(transport, topic, wait_before_answer, duration,
     return endpoints[0]
 
 
-class RpcEndpoint(object):
+class RpcEndpoint:
     def __init__(self, wait_before_answer):
         self.wait_before_answer = wait_before_answer
         self.received_messages = MessageStatsCollector('server')
@@ -325,7 +325,7 @@ class RpcEndpoint(object):
         return reply
 
 
-class ServerControlEndpoint(object):
+class ServerControlEndpoint:
     def __init__(self, controlled_server):
         self.connected_clients = set()
         self.controlled_server = controlled_server
@@ -356,7 +356,7 @@ class ServerControlEndpoint(object):
         self.controlled_server.wait()
 
 
-class Client(object):
+class Client:
     def __init__(self, client_id, client, method, has_result,
                  wait_after_msg):
         self.client_id = client_id
@@ -413,10 +413,9 @@ class RPCClient(Client):
         client = rpc.get_rpc_client(transport, target)
         method = _rpc_cast if is_cast else _rpc_call
 
-        super(RPCClient, self).__init__(client_id,
-                                        client.prepare(timeout=timeout),
-                                        method,
-                                        not is_cast, wait_after_msg)
+        super().__init__(client_id,
+                         client.prepare(timeout=timeout),
+                         method, not is_cast, wait_after_msg)
         self.sync_mode = sync_mode
         self.is_sync = False
 
@@ -430,7 +429,7 @@ class RPCClient(Client):
     def send_msg(self):
         if self.sync_mode and not self.is_sync:
             self.is_sync = self.sync_start()
-        super(RPCClient, self).send_msg()
+        super().send_msg()
 
     def sync_start(self):
         try:
@@ -441,7 +440,7 @@ class RPCClient(Client):
             LOG.error('The client: %s failed to sync with %s.' %
                       (self.client_id, self.client.target))
             return False
-        LOG.info('The client: %s successfully sync with  %s' % (
+        LOG.info('The client: {} successfully sync with  {}'.format(
             self.client_id, self.client.target))
         return True
 
@@ -464,8 +463,7 @@ class NotifyClient(Client):
         client = notify.Notifier(transport, driver='messaging', topics=topic)
         client = client.prepare(publisher_id='publisher-%d' % client_id)
         method = _notify
-        super(NotifyClient, self).__init__(client_id, client, method,
-                                           False, wait_after_msg)
+        super().__init__(client_id, client, method, False, wait_after_msg)
 
 
 def generate_messages(messages_count):
@@ -668,7 +666,7 @@ def write_json_file(filename, output):
 
 class SignalExit(SystemExit):
     def __init__(self, signo, exccode=1):
-        super(SignalExit, self).__init__(exccode)
+        super().__init__(exccode)
         self.signo = signo
 
 

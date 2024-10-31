@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,7 +13,7 @@
 #    under the License.
 
 
-class Target(object):
+class Target:
 
     """Identifies the destination of messages.
 

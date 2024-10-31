@@ -22,7 +22,7 @@ from oslo_messaging.tests import utils
 from unittest import mock
 
 
-class FakeApp(object):
+class FakeApp:
     def __call__(self, env, start_response):
         body = 'Some response'
         start_response('200 OK', [
@@ -32,7 +32,7 @@ class FakeApp(object):
         return [body]
 
 
-class FakeFailingApp(object):
+class FakeFailingApp:
     def __call__(self, env, start_response):
         raise Exception("It happens!")
 
@@ -51,7 +51,7 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             call_args = notify.call_args_list[0][0]
             self.assertEqual('http.request', call_args[1])
             self.assertEqual('INFO', call_args[3])
-            self.assertEqual(set(['request']),
+            self.assertEqual({'request'},
                              set(call_args[2].keys()))
 
             request = call_args[2]['request']
@@ -67,7 +67,7 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             call_args = notify.call_args_list[1][0]
             self.assertEqual('http.response', call_args[1])
             self.assertEqual('INFO', call_args[3])
-            self.assertEqual(set(['request', 'response']),
+            self.assertEqual({'request', 'response'},
                              set(call_args[2].keys()))
 
             request = call_args[2]['request']
@@ -99,7 +99,7 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             call_args = notify.call_args_list[0][0]
             self.assertEqual('http.request', call_args[1])
             self.assertEqual('INFO', call_args[3])
-            self.assertEqual(set(['request']),
+            self.assertEqual({'request'},
                              set(call_args[2].keys()))
 
             request = call_args[2]['request']
@@ -115,7 +115,7 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             call_args = notify.call_args_list[1][0]
             self.assertEqual('http.response', call_args[1])
             self.assertEqual('INFO', call_args[3])
-            self.assertEqual(set(['request', 'exception']),
+            self.assertEqual({'request', 'exception'},
                              set(call_args[2].keys()))
 
             request = call_args[2]['request']
@@ -177,7 +177,7 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             call_args = notify.call_args_list[0][0]
             self.assertEqual('http.request', call_args[1])
             self.assertEqual('INFO', call_args[3])
-            self.assertEqual(set(['request']),
+            self.assertEqual({'request'},
                              set(call_args[2].keys()))
 
             request = call_args[2]['request']
@@ -187,5 +187,5 @@ class NotifierMiddlewareTest(utils.BaseTestCase):
             call_args = notify.call_args_list[1][0]
             self.assertEqual('http.response', call_args[1])
             self.assertEqual('INFO', call_args[3])
-            self.assertEqual(set(['request', 'response']),
+            self.assertEqual({'request', 'response'},
                              set(call_args[2].keys()))

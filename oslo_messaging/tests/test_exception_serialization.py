@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -36,7 +35,7 @@ class NovaStyleException(Exception):
         self.kwargs = kwargs
         if not message:
             message = self.format % kwargs
-        super(NovaStyleException, self).__init__(message)
+        super().__init__(message)
 
 
 class KwargsStyleException(NovaStyleException):

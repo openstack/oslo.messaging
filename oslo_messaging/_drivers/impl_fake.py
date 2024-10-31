@@ -27,7 +27,7 @@ from oslo_messaging._drivers import base
 
 class FakeIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, ctxt, message, reply_q, requeue):
-        super(FakeIncomingMessage, self).__init__(ctxt, message)
+        super().__init__(ctxt, message)
         self.requeue_callback = requeue
         self._reply_q = reply_q
 
@@ -46,7 +46,7 @@ class FakeIncomingMessage(base.RpcIncomingMessage):
 class FakeListener(base.PollStyleListener):
 
     def __init__(self, exchange_manager, targets, pool=None):
-        super(FakeListener, self).__init__()
+        super().__init__()
         self._exchange_manager = exchange_manager
         self._targets = targets
         self._pool = pool
@@ -87,7 +87,7 @@ class FakeListener(base.PollStyleListener):
         self._stopped.set()
 
 
-class FakeExchange(object):
+class FakeExchange:
 
     def __init__(self, name):
         self.name = name
@@ -145,7 +145,7 @@ class FakeExchange(object):
             return queue.pop(0) if queue else (None, None, None, None)
 
 
-class FakeExchangeManager(object):
+class FakeExchangeManager:
     _exchanges_lock = threading.Lock()
     _exchanges = {}
 
@@ -173,8 +173,8 @@ class FakeDriver(base.BaseDriver):
 
     def __init__(self, conf, url, default_exchange=None,
                  allowed_remote_exmods=None):
-        super(FakeDriver, self).__init__(conf, url, default_exchange,
-                                         allowed_remote_exmods)
+        super().__init__(conf, url, default_exchange,
+                         allowed_remote_exmods)
 
         self._exchange_manager = FakeExchangeManager(default_exchange)
 
@@ -248,7 +248,7 @@ class FakeDriver(base.BaseDriver):
                                  batch_size, batch_timeout):
         targets = [
             oslo_messaging.Target(
-                topic='%s.%s' % (target.topic, priority),
+                topic='{}.{}'.format(target.topic, priority),
                 exchange=target.exchange)
             for target, priority in targets_and_priorities]
         listener = FakeListener(self._exchange_manager, targets, pool)

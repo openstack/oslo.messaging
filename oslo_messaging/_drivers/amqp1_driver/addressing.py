@@ -68,7 +68,7 @@ def keyify(address, service=SERVICE_RPC):
         return "String:{%s}" % address
 
 
-class Addresser(object):
+class Addresser:
     """Base class message bus address generator. Used to convert an
     oslo.messaging address into an AMQP 1.0 address string used over the
     connection to the message bus.
@@ -118,7 +118,7 @@ class LegacyAddresser(Addresser):
     """
     def __init__(self, default_exchange, server_prefix, broadcast_prefix,
                  group_prefix, vhost):
-        super(LegacyAddresser, self).__init__(default_exchange)
+        super().__init__(default_exchange)
         self._server_prefix = server_prefix
         self._broadcast_prefix = broadcast_prefix
         self._group_prefix = group_prefix
@@ -181,7 +181,7 @@ class RoutableAddresser(Addresser):
     def __init__(self, default_exchange, rpc_exchange, rpc_prefix,
                  notify_exchange, notify_prefix, unicast_tag, multicast_tag,
                  anycast_tag, vhost):
-        super(RoutableAddresser, self).__init__(default_exchange)
+        super().__init__(default_exchange)
         if not self._default_exchange:
             self._default_exchange = "openstack"
 
@@ -260,7 +260,7 @@ class RoutableAddresser(Addresser):
                                   else self._notify_prefix)
 
 
-class AddresserFactory(object):
+class AddresserFactory:
     """Generates the proper Addresser based on configuration and the type of
     message bus the driver is connected to.
     """

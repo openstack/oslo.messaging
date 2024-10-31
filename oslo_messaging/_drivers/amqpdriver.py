@@ -1,4 +1,3 @@
-
 # Copyright 2013 Red Hat, Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -42,7 +41,7 @@ ACK_REQUEUE_EVERY_SECONDS_MIN = 0.001
 ACK_REQUEUE_EVERY_SECONDS_MAX = 5.0
 
 
-class QManager(object):
+class QManager:
     """Queue Manager to build queue name for reply (and fanout) type.
     This class is used only when use_queue_manager is set to True in config
     file.
@@ -61,8 +60,9 @@ class QManager(object):
         self.hostname = hostname
         self.processname = processname
         # This is where the counter is kept
-        self.file_name = '/dev/shm/%s_%s_qmanager' % (self.hostname,  # nosec
-                                                      self.processname)
+        self.file_name = '/dev/shm/{}_{}_qmanager'.format(  # nosec
+            self.hostname,
+            self.processname)
         # We use the process group to restart the counter on service restart
         self.pg = os.getpgrp()
 
@@ -70,18 +70,19 @@ class QManager(object):
         # parse start time (in jiffies) since system boot
         #
         # https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
-        with open(f'/proc/{self.pg}/stat', 'r') as f:
+        with open(f'/proc/{self.pg}/stat') as f:
             self.start_time = int(f.read().split()[21])
 
     def get(self):
-        lock_name = 'oslo_read_shm_%s_%s' % (self.hostname, self.processname)
+        lock_name = 'oslo_read_shm_{}_{}'.format(
+            self.hostname, self.processname)
 
         @lockutils.synchronized(lock_name, external=True)
         def read_from_shm():
             # Grab the counter from shm
             # This function is thread and process safe thanks to lockutils
             try:
-                with open(self.file_name, 'r') as f:
+                with open(self.file_name) as f:
                     pg, counter, start_time = f.readline().split(':')
                     pg = int(pg)
                     counter = int(counter)
@@ -110,14 +111,14 @@ class QManager(object):
         return self.hostname + ":" + self.processname + ":" + str(counter)
 
 
-class MessageOperationsHandler(object):
+class MessageOperationsHandler:
     """Queue used by message operations to ensure that all tasks are
     serialized and run in the same thread, since underlying drivers like kombu
     are not thread safe.
     """
 
     def __init__(self, name):
-        self.name = "%s (%s)" % (name, hex(id(self)))
+        self.name = "{} ({})".format(name, hex(id(self)))
         self._tasks = queue.Queue()
 
         self._shutdown = eventletutils.Event()
@@ -159,7 +160,7 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
     def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q,
                  client_timeout, obsolete_reply_queues,
                  message_operations_handler):
-        super(AMQPIncomingMessage, self).__init__(ctxt, message, msg_id)
+        super().__init__(ctxt, message, msg_id)
         self.orig_msg_id = msg_id
         self.listener = listener
 
@@ -317,7 +318,7 @@ class NotificationAMQPIncomingMessage(AMQPIncomingMessage):
         self._message_operations_handler.do(_do_requeue)
 
 
-class ObsoleteReplyQueuesCache(object):
+class ObsoleteReplyQueuesCache:
     """Cache of reply queue id that doesn't exist anymore.
 
     NOTE(sileht): In case of a broker restart/failover
@@ -365,7 +366,7 @@ class AMQPListener(base.PollStyleListener):
     use_cache = False
 
     def __init__(self, driver, conn):
-        super(AMQPListener, self).__init__(driver.prefetch_size)
+        super().__init__(driver.prefetch_size)
         self.driver = driver
         self.conn = conn
         self.msg_id_cache = rpc_amqp._MsgIdCache()
@@ -493,14 +494,14 @@ class RpcAMQPListener(AMQPListener):
             # succeeds there is no guarantee the broker actually gets the ACK
             # since acknowledge() simply writes the ACK to the socket (there is
             # no ACK confirmation coming back from the broker)
-            super(RpcAMQPListener, self).__call__(message)
+            super().__call__(message)
 
 
 class NotificationAMQPListener(AMQPListener):
     message_cls = NotificationAMQPIncomingMessage
 
 
-class ReplyWaiters(object):
+class ReplyWaiters:
 
     def __init__(self):
         self._queues = {}
@@ -547,7 +548,7 @@ class ReplyWaiters(object):
         del self._queues[msg_id]
 
 
-class ReplyWaiter(object):
+class ReplyWaiter:
     def __init__(self, reply_q, conn, allowed_remote_exmods):
         self.conn = conn
         self.allowed_remote_exmods = allowed_remote_exmods
@@ -675,8 +676,8 @@ class AMQPDriverBase(base.BaseDriver):
 
     def __init__(self, conf, url, connection_pool,
                  default_exchange=None, allowed_remote_exmods=None):
-        super(AMQPDriverBase, self).__init__(conf, url, default_exchange,
-                                             allowed_remote_exmods)
+        super().__init__(conf, url, default_exchange,
+                         allowed_remote_exmods)
 
         self._default_exchange = default_exchange
 
@@ -768,15 +769,15 @@ class AMQPDriverBase(base.BaseDriver):
                                                      'topic': target.topic})
                     conn.notify_send(exchange, target.topic, msg, retry=retry)
                 elif target.fanout:
-                    log_msg += "FANOUT topic '%(topic)s'" % {
-                        'topic': target.topic}
+                    log_msg += "FANOUT topic '{topic}'".format(
+                        topic=target.topic)
                     LOG.debug(log_msg)
                     conn.fanout_send(target.topic, msg, retry=retry)
                 else:
                     topic = target.topic
                     exchange = self._get_exchange(target)
                     if target.server:
-                        topic = '%s.%s' % (target.topic, target.server)
+                        topic = '{}.{}'.format(target.topic, target.server)
                     LOG.debug(log_msg + "exchange '%(exchange)s'"
                               " topic '%(topic)s'", {'exchange': exchange,
                                                      'topic': topic})
@@ -813,8 +814,8 @@ class AMQPDriverBase(base.BaseDriver):
                                     topic=target.topic,
                                     callback=listener)
         conn.declare_topic_consumer(exchange_name=self._get_exchange(target),
-                                    topic='%s.%s' % (target.topic,
-                                                     target.server),
+                                    topic='{}.{}'.format(target.topic,
+                                                         target.server),
                                     callback=listener)
         conn.declare_fanout_consumer(target.topic, listener)
 
@@ -829,7 +830,7 @@ class AMQPDriverBase(base.BaseDriver):
         for target, priority in targets_and_priorities:
             conn.declare_topic_consumer(
                 exchange_name=self._get_exchange(target),
-                topic='%s.%s' % (target.topic, priority),
+                topic='{}.{}'.format(target.topic, priority),
                 callback=listener, queue_name=pool)
         return base.PollStyleListenerAdapter(listener, batch_size,
                                              batch_timeout)
