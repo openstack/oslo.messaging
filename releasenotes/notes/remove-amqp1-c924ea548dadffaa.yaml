@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The AMQP1 driver, which was deprecated in 14.1.0 was removed, due to
+    limited usage and lack of support on recent distributions. Use any of
+    the other supported driver, such as RabbitMQ or Kafka.

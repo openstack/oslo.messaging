@@ -23,4 +23,3 @@ different 3rd party libraries that don't ensure that. In certain
 cases, with some drivers, it does work:
 
 * rabbit: works only if no connection have already been established.
-* amqp1: works

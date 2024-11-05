@@ -16,7 +16,6 @@ import copy
 import itertools
 
 from oslo_messaging._drivers import amqp
-from oslo_messaging._drivers.amqp1_driver import opts as amqp_opts
 from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers.kafka_driver import kafka_options
@@ -40,7 +39,6 @@ _global_opt_lists = [
 
 _opts = [
     (None, list(itertools.chain(*_global_opt_lists))),
-    ('oslo_messaging_amqp', amqp_opts.amqp1_opts),
     ('oslo_messaging_notifications', notifier._notifier_opts),
     ('oslo_messaging_rabbit', list(
         itertools.chain(amqp.amqp_opts, impl_rabbit.rabbit_opts))),

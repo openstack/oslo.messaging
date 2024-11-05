@@ -45,12 +45,11 @@ through the definition of separate RPC and notification
 `transport urls`__ in the service configuration. When the Kafka driver
 is deployed for *oslo.messaging* notifications, a separate driver and
 messaging backend must be deployed for RPC communications. For these
-hybrid messaging configurations, either the `rabbit`__ or `amqp`__
-drivers can be deployed for *oslo.messaging* RPC.
+hybrid messaging configurations, the `rabbit`__ drivers can be deployed for
+*oslo.messaging* RPC.
 
 __ https://docs.openstack.org/oslo.messaging/latest/reference/transport.html
 __ https://docs.openstack.org/oslo.messaging/latest/admin/drivers.html#rabbit
-__ https://docs.openstack.org/oslo.messaging/latest/admin/AMQP1.0.html
 
 Topics and vhost Support
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -131,7 +130,7 @@ service backends for RPC and Notify. The URL is of the form::
     transport://user:pass@host1:port[,hostN:portN]/virtual_host
 
 Where the transport value specifies the RPC or notification backend as
-one of ``amqp``, ``rabbit``, ``kafka``, etc. To specify and enable the
+one of ``rabbit``, ``kafka``, etc. To specify and enable the
 Kafka driver for notifications, in the section
 ``[oslo_messaging_notifications]`` of the service configuration file,
 specify the ``transport_url`` parameter::
@@ -207,10 +206,10 @@ the configuration
 
 The ``RPC_`` and ``NOTIFY_`` variables will define the message bus
 configuration that will be used. The hybrid configurations will allow
-for the *rabbit* and *amqp* drivers to be used for the RPC transports
-while the *kafka* driver will be used for the notification transport. The
-setting of the service variables will select which messaging
-intermediary is enabled for the configuration:
+for the *rabbit* drivers to be used for the RPC transports while the
+*kafka* driver will be used for the notification transport. The setting
+of the service variables will select which messaging intermediary is
+enabled for the configuration:
 
 +------------+--------------------+--------------------+
 |            |         RPC        |        NOTIFY      |
@@ -218,8 +217,6 @@ intermediary is enabled for the configuration:
 |            |  SERVICE  |  PORT  |  SERVICE  |  PORT  |
 +------------+-----------+--------+-----------+--------+
 |  Config 1  |  rabbit   |  5672  |  kafka    |  9092  |
-+------------+-----------+--------+-----------+--------+
-|  Config 1  |  amqp     |  5672  |  kafka    |  9092  |
 +------------+-----------+--------+-----------+--------+
 
 __ https://github.com/openstack/devstack-plugin-kafka.git

@@ -14,15 +14,6 @@ libffi-devel [platform:rpm]
 rabbitmq-server [platform:dpkg rabbit]
 rabbitmq-server [platform:rpm rabbit]
 
-# AMQP1 dpkg
-# This needs qpid/testing, will be installed by tools/test-setup.sh
-# qdrouterd [platform:dpkg amqp1 test]
-sasl2-bin [platform:dpkg amqp1 test]
-uuid-dev [platform:dpkg amqp1 test]
-swig [platform:dpkg amqp1 test]
-libsasl2-modules [platform:dpkg amqp1 test]
-default-jdk [platform:dpkg amqp1 test !platform:debian]
-
 # kafka dpkg
 default-jdk [platform:dpkg kafka]
 librdkafka1 [platform:dpkg kafka]
