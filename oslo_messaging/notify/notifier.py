@@ -30,26 +30,16 @@ from oslo_messaging import transport as msg_transport
 _notifier_opts = [
     cfg.MultiStrOpt('driver',
                     default=[],
-                    deprecated_name='notification_driver',
-                    deprecated_group='DEFAULT',
                     help='The Drivers(s) to handle sending notifications. '
                          'Possible values are messaging, messagingv2, '
                          'routing, log, test, noop'),
     cfg.StrOpt('transport_url',
-               deprecated_name='notification_transport_url',
-               deprecated_group='DEFAULT',
                secret=True,
                help='A URL representing the messaging driver to use for '
                     'notifications. If not set, we fall back to the same '
                     'configuration used for RPC.'),
     cfg.ListOpt('topics',
                 default=['notifications', ],
-                deprecated_opts=[
-                    cfg.DeprecatedOpt('topics',
-                                      group='rpc_notifier2'),
-                    cfg.DeprecatedOpt('notification_topics',
-                                      group='DEFAULT')
-                ],
                 help='AMQP topic used for OpenStack notifications.'),
     cfg.IntOpt('retry', default=-1,
                help='The maximum number of attempts to re-send a notification '

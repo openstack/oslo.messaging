@@ -26,8 +26,6 @@ from oslo_messaging.notify import notifier
 LOG = logging.getLogger(__name__)
 
 router_config = cfg.StrOpt('routing_config', default='',
-                           deprecated_group='DEFAULT',
-                           deprecated_name='routing_notifier_config',
                            help='RoutingNotifier configuration file location.')
 
 CONF = cfg.CONF

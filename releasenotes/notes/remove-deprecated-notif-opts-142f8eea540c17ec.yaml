@@ -1,0 +1,14 @@
+---
+upgrade:
+  - |
+    The following deprecated options have been removed. Use the equivalent
+    options in the ``[oslo_messaging_notifications]`` secion instead.
+
+    - ``[DEFAULT] notification_driver``
+    - ``[DEFAULT] notification_transport_url``
+    - ``[DEFAULT] notification_topics``
+    - ``[DEFAULT] routing_config``
+
+  - |
+    The deprecated ``[rpc_notifier2] topics`` option has been removed. Use
+    the ``[oslo_messaging_notifications] topics`` option instead.
