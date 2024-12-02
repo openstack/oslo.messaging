@@ -486,6 +486,64 @@ class TestRabbitConsume(test_utils.BaseTestCase):
                 # Ensure a new channel have been setuped
                 self.assertNotEqual(channel, conn.connection.channel)
 
+    def test_consume_switches_host_when_disconnected(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_LISTEN) as conn:
+            with mock.patch('kombu.connection.Connection.connected',
+                            new_callable=mock.PropertyMock,
+                            return_value=False), \
+                 mock.patch('kombu.connection.Connection.'
+                            'recoverable_connection_errors',
+                            new_callable=mock.PropertyMock,
+                            return_value=(driver_common.Timeout,)), \
+                 mock.patch.object(
+                     conn.connection.connection,
+                     'maybe_switch_next') as mock_switch:
+                # The recoverable error is raised repeatedly until the
+                # consume timeout expires and Timeout is re-raised.
+                self.assertRaises(driver_common.Timeout,
+                                  conn.consume, timeout=0.01)
+                # We failed over to the next host at least once ...
+                mock_switch.assert_called()
+
+    def test_heartbeat_check_only_on_timeout(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_LISTEN) as conn:
+            with mock.patch.object(
+                    conn.connection, '_heartbeat_check') as mock_hb:
+                conn.connection.connection.drain_events = mock.Mock(
+                    return_value=None)
+                conn.consume(timeout=0.01)
+                # heartbeat_check should NOT be called when
+                # drain_events succeeds
+                mock_hb.assert_not_called()
+
+    def test_heartbeat_check_called_on_drain_events_timeout(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_LISTEN) as conn:
+            with mock.patch.object(
+                    conn.connection, '_heartbeat_check') as mock_hb, \
+                 mock.patch.object(
+                    conn.connection,
+                    '_heartbeat_supported_and_enabled',
+                    return_value=True):
+                conn.connection.connection.drain_events = mock.Mock(
+                    side_effect=TimeoutError)
+                self.assertRaises(driver_common.Timeout,
+                                  conn.consume, timeout=0.01)
+                # _heartbeat_check is only called when timeout raised,
+                # otherwise it is unnecessary as the connection is alive.
+                mock_hb.assert_called()
+
 
 class TestRabbitTransportURL(test_utils.BaseTestCase):
 
