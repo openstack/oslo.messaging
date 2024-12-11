@@ -1,0 +1,25 @@
+---
+upgrade:
+  - |
+    The deprecated ``[oslo_messaging_rabbit] rabbit_use_ssl`` option has been
+    removed. Use the ``ssl`` option instead.
+
+  - |
+    The following deprecated options in ``[oslo_messaging_rabbit]`` section
+    have been removed. Use the ones without ``kombu_`` prefix.
+
+    - ``kombu_ssl_version``
+    - ``kombu_ssl_keyfile``
+    - ``kombu_ssl_certfile``
+    - ``kombu_ssl_ca_certs``
+
+  - |
+    The following options are no longer loaded from the ``[DEFAULT]`` section.
+    Use the ``[oslo_messaging_rabbit]`` section instead.
+
+    - ``amqp_auto_delete``
+    - ``kombu_reconnect_delay``
+    - ``rabbit_login_method``
+    - ``rabbit_retry_backoff``
+    - ``rabbit_ha_queues``
+    - ``rpc_conn_pool_size``

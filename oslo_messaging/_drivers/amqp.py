@@ -37,7 +37,6 @@ amqp_opts = [
                 'be ignored.'),
     cfg.BoolOpt('amqp_auto_delete',
                 default=False,
-                deprecated_group='DEFAULT',
                 help='Auto-delete queues in AMQP.'),
 ]
 
