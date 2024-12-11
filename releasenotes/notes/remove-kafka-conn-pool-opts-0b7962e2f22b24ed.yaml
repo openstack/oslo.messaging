@@ -1,0 +1,9 @@
+---
+upgrade:
+  - |
+    The following deprecated options in the ``[oslo_messaging_kafka]`` section
+    have been removed.
+
+    - ``pool_size``
+    - ``conn_pool_min_size``
+    - ``conn_pool_ttl``
