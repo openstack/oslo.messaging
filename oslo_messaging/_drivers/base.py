@@ -16,22 +16,10 @@ import abc
 import threading
 import uuid
 
-from oslo_config import cfg
 from oslo_utils import excutils
 from oslo_utils import timeutils
 
 from oslo_messaging import exceptions
-
-base_opts = [
-    cfg.IntOpt('rpc_conn_pool_size', default=30,
-               deprecated_group='DEFAULT',
-               help='Size of RPC connection pool.',
-               min=1),
-    cfg.IntOpt('conn_pool_min_size', default=2,
-               help='The pool size limit for connections expiration policy'),
-    cfg.IntOpt('conn_pool_ttl', default=1200,
-               help='The time-to-live in sec of idle connections in the pool')
-]
 
 
 def batch_poll_helper(func):

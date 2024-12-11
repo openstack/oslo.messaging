@@ -41,7 +41,6 @@ from oslo_utils import netutils
 import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
 from oslo_messaging._drivers import amqpdriver
-from oslo_messaging._drivers import base
 from oslo_messaging._drivers import common as rpc_common
 from oslo_messaging._drivers import pool
 from oslo_messaging import _utils
@@ -58,6 +57,14 @@ QuorumMemConfig = collections.namedtuple('QuorumMemConfig',
 TCP_USER_TIMEOUT = 18
 
 rabbit_opts = [
+    cfg.IntOpt('rpc_conn_pool_size', default=30,
+               deprecated_group='DEFAULT',
+               help='Size of RPC connection pool.',
+               min=1),
+    cfg.IntOpt('conn_pool_min_size', default=2,
+               help='The pool size limit for connections expiration policy'),
+    cfg.IntOpt('conn_pool_ttl', default=1200,
+               help='The time-to-live in sec of idle connections in the pool'),
     cfg.BoolOpt('ssl',
                 default=False,
                 deprecated_name='rabbit_use_ssl',
@@ -1766,7 +1773,6 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
         conf.register_group(opt_group)
         conf.register_opts(rabbit_opts, group=opt_group)
         conf.register_opts(rpc_amqp.amqp_opts, group=opt_group)
-        conf.register_opts(base.base_opts, group=opt_group)
         conf = rpc_common.ConfigOptsProxy(conf, url, opt_group.name)
 
         self.missing_destination_retry_timeout = (

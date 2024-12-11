@@ -16,7 +16,6 @@ import copy
 import itertools
 
 from oslo_messaging._drivers import amqp
-from oslo_messaging._drivers import base as drivers_base
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers.kafka_driver import kafka_options
 from oslo_messaging.notify import notifier
@@ -30,7 +29,6 @@ __all__ = [
 ]
 
 _global_opt_lists = [
-    drivers_base.base_opts,
     server._pool_opts,
     client._client_opts,
     transport._transport_opts,
