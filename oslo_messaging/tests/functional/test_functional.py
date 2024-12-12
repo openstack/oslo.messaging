@@ -11,7 +11,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import os
 import requests
 import subprocess
 import time
@@ -517,12 +516,6 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
     def test_simple_batch(self):
         get_timeout = 3
         batch_timeout = 2
-        if self.notify_url.startswith("amqp:"):
-            backend = os.environ.get("AMQP1_BACKEND")
-            if backend == "qdrouterd":
-                # end-to-end acknowledgement with router intermediary
-                # sender pends until batch_size or timeout reached
-                self.skipTest("qdrouterd backend")
         if self.notify_url.startswith("kafka://"):
             get_timeout = 10
             batch_timeout = 5
