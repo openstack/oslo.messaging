@@ -58,7 +58,6 @@ TCP_USER_TIMEOUT = 18
 
 rabbit_opts = [
     cfg.IntOpt('rpc_conn_pool_size', default=30,
-               deprecated_group='DEFAULT',
                help='Size of RPC connection pool.',
                min=1),
     cfg.IntOpt('conn_pool_min_size', default=2,
@@ -67,11 +66,9 @@ rabbit_opts = [
                help='The time-to-live in sec of idle connections in the pool'),
     cfg.BoolOpt('ssl',
                 default=False,
-                deprecated_name='rabbit_use_ssl',
                 help='Connect over SSL.'),
     cfg.StrOpt('ssl_version',
                default='',
-               deprecated_name='kombu_ssl_version',
                help='SSL version to use (valid only if SSL enabled). '
                     'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
                     'TLSv1_1, and TLSv1_2 may be available on some '
@@ -79,15 +76,12 @@ rabbit_opts = [
                ),
     cfg.StrOpt('ssl_key_file',
                default='',
-               deprecated_name='kombu_ssl_keyfile',
                help='SSL key file (valid only if SSL enabled).'),
     cfg.StrOpt('ssl_cert_file',
                default='',
-               deprecated_name='kombu_ssl_certfile',
                help='SSL cert file (valid only if SSL enabled).'),
     cfg.StrOpt('ssl_ca_file',
                default='',
-               deprecated_name='kombu_ssl_ca_certs',
                help='SSL certification authority file '
                     '(valid only if SSL enabled).'),
     cfg.BoolOpt('ssl_enforce_fips_mode',
@@ -122,7 +116,6 @@ rabbit_opts = [
                  default=1.0,
                  min=0.0,
                  max=amqpdriver.ACK_REQUEUE_EVERY_SECONDS_MAX * 0.9,
-                 deprecated_group='DEFAULT',
                  help='How long to wait (in seconds) before reconnecting in '
                       'response to an AMQP consumer cancel notification.'),
     cfg.StrOpt('kombu_compression',
@@ -145,14 +138,12 @@ rabbit_opts = [
     cfg.StrOpt('rabbit_login_method',
                choices=('PLAIN', 'AMQPLAIN', 'EXTERNAL', 'RABBIT-CR-DEMO'),
                default='AMQPLAIN',
-               deprecated_group='DEFAULT',
                help='The RabbitMQ login method.'),
     cfg.IntOpt('rabbit_retry_interval',
                default=1,
                help='How frequently to retry connecting with RabbitMQ.'),
     cfg.IntOpt('rabbit_retry_backoff',
                default=2,
-               deprecated_group='DEFAULT',
                help='How long to backoff for between retries when connecting '
                     'to RabbitMQ.'),
     cfg.IntOpt('rabbit_interval_max',
@@ -161,7 +152,6 @@ rabbit_opts = [
                     'Default is 30 seconds.'),
     cfg.BoolOpt('rabbit_ha_queues',
                 default=False,
-                deprecated_group='DEFAULT',
                 help='Try to use HA queues in RabbitMQ (x-ha-policy: all). '
                 'If you change this option, you must wipe the RabbitMQ '
                 'database. In RabbitMQ 3.0, queue mirroring is no longer '
