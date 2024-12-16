@@ -37,8 +37,7 @@
 - job:
     name: oslo.messaging-src-dsvm-full-kafka-hybrid
     description: |
-      Run the full tempest tests using the AMQP 1.0 driver for RPC and
-      Apache Kafka for Notifications.
+      Run the full tempest tests using Apache Kafka for Notifications.
     parent: oslo.messaging-devstack-tempest-full-base
     required-projects:
       - openstack/devstack-plugin-kafka
