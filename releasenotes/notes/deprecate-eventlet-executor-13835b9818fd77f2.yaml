@@ -1,0 +1,12 @@
+---
+deprecations:
+  - |
+    Eventlet usages are deprecated and the removal of Eventlet from
+    OpenStack `is planned <https://governance.openstack.org/tc//goals/proposed/remove-eventlet.html>`_, for this reason the Eventlet executor is
+    deprecated. Start migrating your stack to the threading executor.
+    Please also start considering removing your internal Eventlet usages.
+  - |
+    The `executor` parameter of the `MessageHandlingServer` class is now
+    deprecated and planned for removal. The Eventlet executor is deprecated.
+    Only the threading executor will remains available so the `executor`
+    parameter is useless.
