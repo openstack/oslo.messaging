@@ -140,16 +140,18 @@ rabbit_opts = [
                default='AMQPLAIN',
                help='The RabbitMQ login method.'),
     cfg.IntOpt('rabbit_retry_interval',
+               min=1,
                default=1,
                help='How frequently to retry connecting with RabbitMQ.'),
     cfg.IntOpt('rabbit_retry_backoff',
                default=2,
+               min=0,
                help='How long to backoff for between retries when connecting '
                     'to RabbitMQ.'),
     cfg.IntOpt('rabbit_interval_max',
                default=30,
-               help='Maximum interval of RabbitMQ connection retries. '
-                    'Default is 30 seconds.'),
+               min=1,
+               help='Maximum interval of RabbitMQ connection retries.'),
     cfg.BoolOpt('rabbit_ha_queues',
                 default=False,
                 help='Try to use HA queues in RabbitMQ (x-ha-policy: all). '
@@ -1053,7 +1055,7 @@ class Connection:
         self.connection.ensure_connection(
             errback=on_error,
             max_retries=self.max_retries,
-            interval_start=self.interval_start or 1,
+            interval_start=self.interval_start,
             interval_step=self.interval_stepping,
             interval_max=self.interval_max,
         )
@@ -1156,7 +1158,7 @@ class Connection:
                 execute_method, channel=self.channel,
                 max_retries=retry,
                 errback=on_error,
-                interval_start=self.interval_start or 1,
+                interval_start=self.interval_start,
                 interval_step=self.interval_stepping,
                 interval_max=self.interval_max,
                 on_revive=on_reconnection)

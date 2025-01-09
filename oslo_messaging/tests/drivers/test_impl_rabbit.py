@@ -1038,8 +1038,8 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
         super().setUp()
         transport_url = 'rabbit:/host1,host2,host3,host4,host5/'
         self.messaging_conf.transport_url = transport_url
-        self.config(rabbit_retry_interval=0.01,
-                    rabbit_retry_backoff=0.01,
+        self.config(rabbit_retry_interval=1.0,
+                    rabbit_retry_backoff=1.0,
                     kombu_reconnect_delay=0,
                     heartbeat_timeout_threshold=0,
                     group="oslo_messaging_rabbit")
