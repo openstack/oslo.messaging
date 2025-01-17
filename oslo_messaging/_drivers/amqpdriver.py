@@ -70,7 +70,13 @@ class QManager(object):
         # parse start time (in jiffies) since system boot
         #
         # https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
-        with open(f'/proc/{self.pg}/stat', 'r') as f:
+        #
+        # We fallback to process id here when process group id is 0, as /proc/0
+        # does not exist. This is only hit in an edge case with the crun
+        # container runtime (default for podman), see issue for more details:
+        # https://github.com/containers/crun/issues/1642
+        proc_id = self.pg if self.pg != 0 else os.getpid()
+        with open(f'/proc/{proc_id}/stat', 'r') as f:
             self.start_time = int(f.read().split()[21])
 
     def get(self):
