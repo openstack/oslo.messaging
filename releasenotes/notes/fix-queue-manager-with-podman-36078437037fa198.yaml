@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    Fixes a bug where calling some OpenStack utilites, such as ``nova-manage``,
+    within podman containers would fail when using Queue Manager.
+    `LP#2091703 <https://bugs.launchpad.net/oslo.messaging/+bug/2095178>`__
