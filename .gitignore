@@ -27,3 +27,5 @@ RELEASENOTES.rst
 releasenotes/notes/reno.cache
 releasenotes/build
 cover/
+.venv/
+oslo.messaging.conf

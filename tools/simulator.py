@@ -55,9 +55,9 @@ USAGE = """ Usage: ./simulator.py [-h] [--url URL] [-d DEBUG]\
 
 Usage example:
  python tools/simulator.py\
- --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-server
+ --url rabbit://pifpaf:secret@127.0.0.1:5682/ rpc-server
  python tools/simulator.py\
- --url rabbit://stackrabbit:secretrabbit@localhost/ rpc-client\
+ --url rabbit://pifpaf:secret@127.0.0.1:5682/ rpc-client\
  --exit-wait 15000 -p 64 -m 64"""
 
 MESSAGES_LIMIT = 1000

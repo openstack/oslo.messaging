@@ -8,3 +8,4 @@ Contributing to oslo.messaging
    contributing
    driver-dev-guide
    supported-messaging-drivers
+   using-simulator
