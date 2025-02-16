@@ -104,7 +104,7 @@ class QManager:
             # Write the new counter
             with open(self.file_name, 'w') as f:
                 f.write(str(self.pg) + ':' + str(counter) + ':' +
-                        str(start_time))
+                        str(self.start_time))
             return counter
 
         counter = read_from_shm()
