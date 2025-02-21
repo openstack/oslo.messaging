@@ -20,23 +20,9 @@ import time
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_metrics import message_type
-from oslo_utils import eventletutils
-from oslo_utils import importutils
 
 
 LOG = logging.getLogger(__name__)
-
-eventlet = importutils.try_import('eventlet')
-if eventlet and eventletutils.is_monkey_patched("thread"):
-    # Here we initialize module with the native python threading module
-    # if it was already monkey patched by eventlet/greenlet.
-    stdlib_threading = eventlet.patcher.original('threading')
-else:
-    # Manage the case where we run this driver in a non patched environment
-    # and where user even so configure the driver to run heartbeat through
-    # a python thread, if we don't do that when the heartbeat will start
-    # we will facing an issue by trying to override the threading module.
-    stdlib_threading = threading
 
 
 oslo_messaging_metrics = [
@@ -113,6 +99,10 @@ class MetricsCollectorClient:
         if not self.send_thread.is_alive():
             self.send_thread = threading.Thread(target=self.send_loop)
             self.send_thread.start()
+
+        # TODO(tkajinam): This is needed to ensure context switch in eventlet
+        # case and may be removed after eventlet support is removed.
+        time.sleep(0)
 
     def send_loop(self):
         timeout = self.conf.metrics_thread_stop_timeout
@@ -247,8 +237,6 @@ METRICS_COLLECTOR = None
 
 
 def get_collector(conf, metrics_type, **kwargs):
-    global threading
-    threading = stdlib_threading
     global METRICS_COLLECTOR
     if METRICS_COLLECTOR is None:
         METRICS_COLLECTOR = MetricsCollectorClient(
