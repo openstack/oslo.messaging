@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixes delayed metrics processing in services using eventlet, caused by
+    mixing a native thread with an eventlet-patched queue.
+    See `bug 2098714 <https://launchpad.net/bugs/2098714>`__
+    for details.
