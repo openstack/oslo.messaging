@@ -14,6 +14,7 @@
 __all__ = [
     'MetricsCollectorClient',
     'get_collector',
+    'measure_metrics',
 ]
 
 from .client import *

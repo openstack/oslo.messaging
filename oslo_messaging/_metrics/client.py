@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import contextlib
 import queue
 import socket
 import threading
@@ -20,6 +21,8 @@ import time
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_metrics import message_type
+
+import oslo_messaging
 
 
 LOG = logging.getLogger(__name__)
@@ -52,35 +55,14 @@ cfg.CONF.register_opts(oslo_messaging_metrics, group='oslo_messaging_metrics')
 
 class MetricsCollectorClient:
 
-    def __init__(self, conf, metrics_type, **kwargs):
+    def __init__(self, conf):
         self.conf = conf.oslo_messaging_metrics
         self.unix_socket = self.conf.metrics_socket_file
         buffer_size = self.conf.metrics_buffer_size
         self.tx_queue = queue.Queue(buffer_size)
         self.next_send_metric = None
-        self.metrics_type = metrics_type
-        self.args = kwargs
         self.send_thread = threading.Thread(target=self.send_loop)
         self.send_thread.start()
-
-    def __enter__(self):
-        if not self.conf.metrics_enabled:
-            return None
-        self.start_time = time.time()
-        send_method = getattr(self, self.metrics_type +
-                              "_invocation_start_total")
-        send_method(**self.args)
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if self.conf.metrics_enabled:
-            duration = time.time() - self.start_time
-            send_method = getattr(
-                self, self.metrics_type + "_processing_seconds")
-            send_method(duration=duration, **self.args)
-            send_method = getattr(
-                self, self.metrics_type + "_invocation_end_total")
-            send_method(**self.args)
 
     def put_into_txqueue(self, metrics_name, action, **labels):
 
@@ -236,9 +218,39 @@ class MetricsCollectorClient:
 METRICS_COLLECTOR = None
 
 
-def get_collector(conf, metrics_type, **kwargs):
+def get_collector(conf):
     global METRICS_COLLECTOR
     if METRICS_COLLECTOR is None:
-        METRICS_COLLECTOR = MetricsCollectorClient(
-            conf, metrics_type, **kwargs)
+        METRICS_COLLECTOR = MetricsCollectorClient(conf)
     return METRICS_COLLECTOR
+
+
+@contextlib.contextmanager
+def measure_metrics(
+        conf: cfg.ConfigOpts, target: 'oslo_messaging.Target',
+        method: str, call_type: str):
+    metrics_enabled = conf.oslo_messaging_metrics.metrics_enabled
+    if not metrics_enabled:
+        yield
+        return
+
+    collector = get_collector(conf)
+    kwargs = {
+        "target": target,
+        "method": method,
+        "call_type": call_type,
+    }
+    collector.rpc_client_invocation_start_total(**kwargs)
+
+    start_time = time.time()
+    try:
+        yield
+    except Exception as ex:
+        collector.rpc_client_exception_total(
+            exception=ex.__class__.__name__, **kwargs
+        )
+        raise
+
+    duration = time.time() - start_time
+    collector.rpc_client_processing_seconds(duration=duration, **kwargs)
+    collector.rpc_client_invocation_end_total(**kwargs)

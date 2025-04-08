@@ -17,6 +17,7 @@ import testscenarios
 from unittest import mock
 
 import oslo_messaging
+from oslo_messaging._metrics import client as metrics_client
 from oslo_messaging import exceptions
 from oslo_messaging import serializer as msg_serializer
 from oslo_messaging.tests import utils as test_utils
@@ -618,3 +619,65 @@ class TestTransportWarning(test_utils.BaseTestCase):
             "Using notification transport for RPC. Please use "
             "get_rpc_transport to obtain an RPC transport "
             "instance.")
+
+
+class TestClientMetrics(test_utils.BaseTestCase):
+    @mock.patch.object(metrics_client.MetricsCollectorClient,
+                       "put_into_txqueue")
+    def test_metrics(self, mock_put):
+        metrics = []
+
+        def fake_put_into_tx_queue(*args, **kwargs):
+            metrics.append((args, kwargs))
+
+        mock_put.side_effect = fake_put_into_tx_queue
+
+        metrics_client.METRICS_COLLECTOR = None
+        self.config(metrics_enabled=True, group="oslo_messaging_metrics")
+        self.ctxt = {}
+
+        transport_options = oslo_messaging.TransportOptions()
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
+        transport._send = mock.Mock()
+        target = oslo_messaging.Target(topic="topic1")
+
+        self.client = oslo_messaging.RPCClient(
+            transport, target,
+            transport_options=transport_options)
+
+        self.client.call(self.ctxt, 'foo')
+
+        self.assertTrue(metrics)
+        for _args, labels in metrics:
+            self.assertEqual(
+                {
+                    'call_type': 'call',
+                    'exchange': None,
+                    'fanout': None,
+                    'method': 'foo',
+                    'namespace': None,
+                    'server': None,
+                    'timeout': None,
+                    'topic': 'topic1',
+                    'version': None,
+                }, labels)
+
+        metrics = []
+
+        self.client.target.topic = 'topic2'
+        self.client.cast(self.ctxt, 'bar')
+
+        self.assertTrue(metrics)
+        for _args, labels in metrics:
+            self.assertEqual(
+                {
+                    'call_type': 'cast',
+                    'exchange': None,
+                    'fanout': None,
+                    'method': 'bar',
+                    'namespace': None,
+                    'server': None,
+                    'timeout': None,
+                    'topic': 'topic2',
+                    'version': None,
+                }, labels)

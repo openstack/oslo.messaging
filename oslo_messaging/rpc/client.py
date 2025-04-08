@@ -148,23 +148,14 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
 
         self._check_version_cap(msg.get('version'))
 
-        with metrics.get_collector(self.conf, "rpc_client",
-                                   target=self.target,
-                                   method=method,
-                                   call_type="cast") as metrics_collector:
+        with metrics.measure_metrics(self.conf, target=self.target,
+                                     method=method, call_type="cast"):
             try:
                 self.transport._send(self.target, msg_ctxt, msg,
                                      retry=self.retry,
                                      transport_options=self.transport_options)
             except driver_base.TransportDriverError as ex:
-                self._metrics_api.rpc_client_exception_total(
-                    self.target, method, "cast", ex.__class__.__name__)
                 raise ClientSendError(self.target, ex)
-            except Exception as ex:
-                if self.conf.oslo_messaging_metrics.metrics_enabled:
-                    metrics_collector.rpc_client_exception_total(
-                        self.target, method, "cast", ex.__class__.__name__)
-                raise
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
@@ -183,23 +174,16 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
 
         self._check_version_cap(msg.get('version'))
 
-        with metrics.get_collector(self.conf, "rpc_client",
-                                   target=self.target, method=method,
-                                   call_type="call") as metrics_collector:
+        with metrics.measure_metrics(self.conf, target=self.target,
+                                     method=method, call_type="call"):
             try:
                 result = self.transport._send(
                     self.target, msg_ctxt, msg, wait_for_reply=True,
                     timeout=timeout, call_monitor_timeout=cm_timeout,
                     retry=self.retry, transport_options=self.transport_options)
             except driver_base.TransportDriverError as ex:
-                self._metrics_api.rpc_client_exception_total(
-                    self.target, method, "call", ex.__class__.__name__)
                 raise ClientSendError(self.target, ex)
-            except Exception as ex:
-                if self.conf.oslo_messaging_metrics.metrics_enabled:
-                    metrics_collector.rpc_client_exception_total(
-                        self.target, method, "call", ex.__class__.__name__)
-                raise
+
             return self.serializer.deserialize_entity(ctxt, result)
 
     @abc.abstractmethod
