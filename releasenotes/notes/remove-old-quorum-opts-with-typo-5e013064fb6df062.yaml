@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The following options in ``[oslo_messaging_rabbit]`` secion have been
+    removed.
+
+    - ``rabbit_quroum_max_memory_length``
+    - ``rabbit_quroum_max_memory_bytes``
