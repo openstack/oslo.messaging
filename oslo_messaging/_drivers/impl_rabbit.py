@@ -1796,12 +1796,25 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
             conf, max_size, min_size, ttl,
             url, Connection)
 
+        if conf.oslo_messaging_rabbit.use_queue_manager:
+            self._q_manager = amqpdriver.QManager(
+                hostname=conf.oslo_messaging_rabbit.hostname,
+                processname=conf.oslo_messaging_rabbit.processname)
+        else:
+            self._q_manager = None
+
         super().__init__(
             conf, url,
             connection_pool,
             default_exchange,
             allowed_remote_exmods
         )
+
+    def _get_reply_queue_name(self):
+        if self._q_manager:
+            return 'reply_' + self._q_manager.get()
+        else:
+            return super()._get_reply_queue_name()
 
     def require_features(self, requeue=True):
         pass

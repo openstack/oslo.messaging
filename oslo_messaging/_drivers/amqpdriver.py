@@ -687,12 +687,6 @@ class AMQPDriverBase(base.BaseDriver):
         self._reply_q = None
         self._reply_q_conn = None
         self._waiter = None
-        if conf.oslo_messaging_rabbit.use_queue_manager:
-            self._q_manager = QManager(
-                hostname=conf.oslo_messaging_rabbit.hostname,
-                processname=conf.oslo_messaging_rabbit.processname)
-        else:
-            self._q_manager = None
 
     def _get_exchange(self, target):
         return target.exchange or self._default_exchange
@@ -702,6 +696,9 @@ class AMQPDriverBase(base.BaseDriver):
                                             purpose=purpose,
                                             retry=retry)
 
+    def _get_reply_queue_name(self):
+        return 'reply_' + uuid.uuid4().hex
+
     def _get_reply_q(self):
         with self._reply_q_lock:
             # NOTE(amorin) Re-use reply_q when it already exists
@@ -709,10 +706,7 @@ class AMQPDriverBase(base.BaseDriver):
             if self._reply_q is not None:
                 return self._reply_q
 
-            if self._q_manager:
-                reply_q = 'reply_' + self._q_manager.get()
-            else:
-                reply_q = 'reply_' + uuid.uuid4().hex
+            reply_q = self._get_reply_queue_name()
             LOG.debug('Creating reply queue: %s', reply_q)
 
             conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
