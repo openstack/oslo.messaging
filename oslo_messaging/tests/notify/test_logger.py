@@ -61,7 +61,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
                         return_value=fake_transport):
             self.logger = oslo_messaging.LoggingNotificationHandler('test://')
 
-        mock_utcnow.return_value = datetime.datetime.utcnow()
+        mock_utcnow.return_value = datetime.datetime.utcnow().replace(
+            tzinfo=None)
 
         levelno = getattr(logging, self.priority.upper(), 42)
 
@@ -121,7 +122,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
                 },
             })
 
-        mock_utcnow.return_value = datetime.datetime.utcnow()
+        mock_utcnow.return_value = datetime.datetime.utcnow().replace(
+            tzinfo=None)
 
         levelno = getattr(logging, self.priority.upper())
 
