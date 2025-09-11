@@ -1,3 +1,65 @@
 [build-system]
 requires = ["pbr>=6.1.1"]
 build-backend = "pbr.build"
+
+[project]
+name = "oslo.messaging"
+description = "Oslo Messaging API"
+readme = "README.rst"
+authors = [
+    {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Environment :: OpenStack",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Homepage = "https://docs.openstack.org/oslo.messaging"
+Repository = "https://opendev.org/openstack/oslo.messaging"
+
+[project.optional-dependencies]
+# package dependencies for optional (non-rabbitmq) messaging drivers.
+# projects can test-depend on oslo.messaging[<drivers>]
+# e.g.: oslo.messaging[kafka]
+kafka = ["confluent-kafka>=1.3.0"]
+
+[project.scripts]
+oslo-messaging-send-notification = "oslo_messaging.notify.notifier:_send_notification"
+
+[project.entry-points."oslo.messaging.drivers"]
+rabbit = "oslo_messaging._drivers.impl_rabbit:RabbitDriver"
+kafka = "oslo_messaging._drivers.impl_kafka:KafkaDriver"
+kombu = "oslo_messaging._drivers.impl_rabbit:RabbitDriver"
+fake = "oslo_messaging._drivers.impl_fake:FakeDriver"
+
+[project.entry-points."oslo.messaging.executors"]
+eventlet = "futurist:GreenThreadPoolExecutor"
+threading = "futurist:ThreadPoolExecutor"
+
+[project.entry-points."oslo.messaging.notify.drivers"]
+messagingv2 = "oslo_messaging.notify.messaging:MessagingV2Driver"
+messaging = "oslo_messaging.notify.messaging:MessagingDriver"
+log = "oslo_messaging.notify._impl_log:LogDriver"
+test = "oslo_messaging.notify._impl_test:TestDriver"
+noop = "oslo_messaging.notify._impl_noop:NoOpDriver"
+routing = "oslo_messaging.notify._impl_routing:RoutingDriver"
+
+[project.entry-points."oslo.config.opts"]
+"oslo.messaging" = "oslo_messaging.opts:list_opts"
+
+[tool.setuptools]
+packages = ["oslo_messaging"]
