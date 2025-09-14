@@ -35,7 +35,9 @@ Repository = "https://opendev.org/openstack/oslo.messaging"
 # package dependencies for optional (non-rabbitmq) messaging drivers.
 # projects can test-depend on oslo.messaging[<drivers>]
 # e.g.: oslo.messaging[kafka]
-kafka = ["confluent-kafka>=1.3.0"]
+kafka = [
+    "confluent-kafka>=1.3.0", # Apache-2.0
+]
 
 [project.scripts]
 oslo-messaging-send-notification = "oslo_messaging.notify.notifier:_send_notification"
