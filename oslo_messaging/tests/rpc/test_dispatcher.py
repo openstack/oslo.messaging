@@ -214,7 +214,7 @@ class TestDispatcher(test_utils.BaseTestCase):
                         self.ctxt, **self.msg.get('args', {}))
                 else:
                     self.assertEqual(0, method.call_count,
-                                     'method: {}'.format(method))
+                                     f'method: {method}')
 
 
 class TestDispatcherWithPingEndpoint(test_utils.BaseTestCase):

@@ -73,7 +73,7 @@ class MessagingDriver(notifier.Driver):
         priority = priority.lower()
         for topic in self.topics:
             target = oslo_messaging.Target(
-                topic='{}.{}'.format(topic, priority))
+                topic=f'{topic}.{priority}')
             try:
                 self.transport._send_notification(target, ctxt, message,
                                                   version=self.version,

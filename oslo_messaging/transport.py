@@ -184,7 +184,7 @@ class DriverLoadFailure(exceptions.MessagingException):
     """Raised if a transport driver can't be loaded."""
 
     def __init__(self, driver, ex):
-        msg = 'Failed to load transport driver "{}": {}'.format(driver, ex)
+        msg = f'Failed to load transport driver "{driver}": {ex}'
         super().__init__(msg)
         self.driver = driver
         self.ex = ex

@@ -65,7 +65,7 @@ class ExecutorLoadFailure(MessagingServerError):
     """Raised if an executor can't be loaded."""
 
     def __init__(self, executor, ex):
-        msg = 'Failed to load executor "{}": {}'.format(executor, ex)
+        msg = f'Failed to load executor "{executor}": {ex}'
         super().__init__(msg)
         self.executor = executor
         self.ex = ex
@@ -75,7 +75,7 @@ class ServerListenError(MessagingServerError):
     """Raised if we failed to listen on a target."""
 
     def __init__(self, target, ex):
-        msg = 'Failed to listen on target "{}": {}'.format(target, ex)
+        msg = f'Failed to listen on target "{target}": {ex}'
         super().__init__(msg)
         self.target = target
         self.ex = ex
@@ -159,7 +159,7 @@ class _OrderedTask:
                               `timeout_timer` expires while waiting.
         """
         with self._cond:
-            msg = '{} is waiting for {} to complete'.format(caller, self._name)
+            msg = f'{caller} is waiting for {self._name} to complete'
             self._wait(lambda: not self.complete,
                        msg, log_after, timeout_timer)
 

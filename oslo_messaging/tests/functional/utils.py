@@ -253,7 +253,7 @@ class InvalidDistribution:
         self.wrong_order = []
 
     def describe(self):
-        text = "Sent {}, got {}; ".format(self.original, self.received)
+        text = f"Sent {self.original}, got {self.received}; "
         e1 = ["%r was missing" % m for m in self.missing]
         e2 = ["%r was not expected" % m for m in self.extra]
         e3 = ["{!r} expected before {!r}".format(

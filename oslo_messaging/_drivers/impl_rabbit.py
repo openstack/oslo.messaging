@@ -1366,7 +1366,7 @@ class Connection:
                         # already do that for other connection
                         try:
                             self.connection.drain_events(timeout=0.001)
-                        except socket.timeout:
+                        except TimeoutError:
                             pass
                     # NOTE(hberaud): In a clustered rabbitmq when
                     # a node disappears, we get a ConnectionRefusedError
@@ -1376,9 +1376,7 @@ class Connection:
                     # Catch these exceptions to ensure that we call
                     # ensure_connection for switching the
                     # connection destination.
-                    except (socket.timeout,
-                            ConnectionRefusedError,
-                            OSError,
+                    except (TimeoutError, ConnectionRefusedError, OSError,
                             kombu.exceptions.OperationalError,
                             amqp_ex.ConnectionForced) as exc:
                         LOG.info("A recoverable connection/channel error "
@@ -1462,7 +1460,7 @@ class Connection:
                 try:
                     self.connection.drain_events(timeout=poll_timeout)
                     return
-                except socket.timeout:
+                except TimeoutError:
                     poll_timeout = timer.check_return(
                         _raise_timeout, maximum=self._poll_timeout)
                 except self.connection.channel_errors as exc:
@@ -1533,7 +1531,7 @@ class Connection:
                 unique = self._q_manager.get()
             else:
                 unique = uuid.uuid4().hex
-            queue_name = '{}_fanout_{}'.format(topic, unique)
+            queue_name = f'{topic}_fanout_{unique}'
         LOG.debug('Creating fanout queue: %s', queue_name)
 
         is_durable = (self.rabbit_transient_quorum_queue or

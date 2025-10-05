@@ -88,7 +88,7 @@ class UnsupportedVersion(RPCDispatcherError):
     def __init__(self, version, method=None):
         msg = "Endpoint does not support RPC version %s" % version
         if method:
-            msg = "{}. Attempted method: {}".format(msg, method)
+            msg = f"{msg}. Attempted method: {method}"
         super().__init__(msg)
         self.version = version
         self.method = method
@@ -177,7 +177,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                          " for namespace and version filtering.  It must" + \
                          " be of type oslo_messaging.Target. Do not" + \
                          " define an Endpoint method named 'target'"
-                raise TypeError("{}: endpoint={}".format(errmsg, ep))
+                raise TypeError(f"{errmsg}: endpoint={ep}")
 
             # Check if we have an attribute named 'oslo_rpc_server_ping'
             oslo_rpc_server_ping = getattr(ep, 'oslo_rpc_server_ping', None)
@@ -186,7 +186,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                          " attribute which can be use to ping the" + \
                          " endpoint. Please avoid using any oslo_* " + \
                          " naming."
-                LOG.warning("{} (endpoint={})".format(errmsg, ep))
+                LOG.warning(f"{errmsg} (endpoint={ep})")
 
         self.endpoints = endpoints
 

@@ -248,7 +248,7 @@ class FakeDriver(base.BaseDriver):
                                  batch_size, batch_timeout):
         targets = [
             oslo_messaging.Target(
-                topic='{}.{}'.format(target.topic, priority),
+                topic=f'{target.topic}.{priority}',
                 exchange=target.exchange)
             for target, priority in targets_and_priorities]
         listener = FakeListener(self._exchange_manager, targets, pool)

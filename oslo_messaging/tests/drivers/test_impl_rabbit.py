@@ -778,7 +778,7 @@ def _declare_queue(target):
                                          type='topic',
                                          durable=False,
                                          auto_delete=False)
-        topic = '{}.{}'.format(target.topic, target.server)
+        topic = f'{target.topic}.{target.server}'
         queue = kombu.entity.Queue(name=topic,
                                    channel=channel,
                                    exchange=exchange,
@@ -928,7 +928,7 @@ def _create_producer(target):
                                          type='topic',
                                          durable=False,
                                          auto_delete=False)
-        topic = '{}.{}'.format(target.topic, target.server)
+        topic = f'{target.topic}.{target.server}'
         producer = kombu.messaging.Producer(exchange=exchange,
                                             channel=channel,
                                             routing_key=topic)

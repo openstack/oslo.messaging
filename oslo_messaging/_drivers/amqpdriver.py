@@ -124,7 +124,7 @@ class MessageOperationsHandler:
     """
 
     def __init__(self, name):
-        self.name = "{} ({})".format(name, hex(id(self)))
+        self.name = f"{name} ({hex(id(self))})"
         self._tasks = queue.Queue()
 
         self._shutdown = eventletutils.Event()
@@ -777,7 +777,7 @@ class AMQPDriverBase(base.BaseDriver):
                     topic = target.topic
                     exchange = self._get_exchange(target)
                     if target.server:
-                        topic = '{}.{}'.format(target.topic, target.server)
+                        topic = f'{target.topic}.{target.server}'
                     LOG.debug(log_msg + "exchange '%(exchange)s'"
                               " topic '%(topic)s'", {'exchange': exchange,
                                                      'topic': topic})
@@ -830,7 +830,7 @@ class AMQPDriverBase(base.BaseDriver):
         for target, priority in targets_and_priorities:
             conn.declare_topic_consumer(
                 exchange_name=self._get_exchange(target),
-                topic='{}.{}'.format(target.topic, priority),
+                topic=f'{target.topic}.{priority}',
                 callback=listener, queue_name=pool)
         return base.PollStyleListenerAdapter(listener, batch_size,
                                              batch_timeout)

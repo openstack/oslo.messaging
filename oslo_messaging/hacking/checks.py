@@ -124,7 +124,7 @@ class CheckForLoggingIssues(BaseASTChecker):
 
     def visit_ImportFrom(self, node):
         for alias in node.names:
-            full_name = '{}.{}'.format(node.module, alias.name)
+            full_name = f'{node.module}.{alias.name}'
             self._filter_imports(full_name, alias)
         return super().generic_visit(node)
 

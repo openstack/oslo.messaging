@@ -80,7 +80,7 @@ class ClientSendError(exceptions.MessagingException):
     """Raised if we failed to send a message to a target."""
 
     def __init__(self, target, ex):
-        msg = 'Failed to send to target "{}": {}'.format(target, ex)
+        msg = f'Failed to send to target "{target}": {ex}'
         super().__init__(msg)
         self.target = target
         self.ex = ex

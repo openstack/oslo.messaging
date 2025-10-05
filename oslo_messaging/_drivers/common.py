@@ -235,7 +235,7 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
     str_override = lambda self: message
     new_ex_type = type(ex_type.__name__ + _REMOTE_POSTFIX, (ex_type,),
                        {'__str__': str_override, '__unicode__': str_override})
-    new_ex_type.__module__ = '{}{}'.format(module, _REMOTE_POSTFIX)
+    new_ex_type.__module__ = f'{module}{_REMOTE_POSTFIX}'
     try:
         # NOTE(ameade): Dynamically create a new exception type and swap it in
         # as the new type for the exception. This only works on user defined
