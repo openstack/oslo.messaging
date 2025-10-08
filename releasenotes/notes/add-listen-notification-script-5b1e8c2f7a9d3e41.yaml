@@ -1,0 +1,7 @@
+---
+features:
+  - |
+    A new ``oslo-messaging-listen-notification`` console script is available
+    to consume and print notifications from a topic. It accepts
+    ``--config-file``, ``--transport-url`` and ``--topic`` options and is
+    the counterpart of ``oslo-messaging-send-notification``.

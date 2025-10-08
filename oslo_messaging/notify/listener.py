@@ -137,14 +137,78 @@ and arguments from primitive types.
 
 """
 
+import argparse
 import itertools
 import logging
 
+from oslo_config import cfg
 from oslo_messaging.notify import dispatcher as notify_dispatcher
+from oslo_messaging.notify import notifier as notifier
 from oslo_messaging import server as msg_server
+from oslo_messaging import target as msg_target
 from oslo_messaging import transport as msg_transport
 
 LOG = logging.getLogger(__name__)
+
+
+class _PrintEndpoint:
+    def _print(
+        self, priority, ctxt, publisher_id, event_type, payload, metadata
+    ):
+        print(
+            f"Received {priority} {event_type} from {publisher_id}: {payload}"
+        )
+
+    def audit(self, *args):
+        self._print('audit', *args)
+
+    def debug(self, *args):
+        self._print('debug', *args)
+
+    def info(self, *args):
+        self._print('info', *args)
+
+    def warn(self, *args):
+        self._print('warn', *args)
+
+    def error(self, *args):
+        self._print('error', *args)
+
+    def critical(self, *args):
+        self._print('critical', *args)
+
+    def sample(self, *args):
+        self._print('sample', *args)
+
+
+def _listen_notification():
+    """Command line tool to listen for notifications manually."""
+    parser = argparse.ArgumentParser(
+        description='Oslo.messaging notification listening',
+    )
+    parser.add_argument('--config-file', help='Path to configuration file')
+    parser.add_argument('--transport-url', help='Transport URL')
+    parser.add_argument(
+        '--topic', help="Topic to read from", default="notifications"
+    )
+    args = parser.parse_args()
+    conf = cfg.ConfigOpts()
+    conf(
+        [],
+        default_config_files=[args.config_file] if args.config_file else None,
+    )
+    transport = notifier.get_notification_transport(
+        conf, url=args.transport_url
+    )
+    target = msg_target.Target(topic=args.topic)
+    endpoints = [_PrintEndpoint()]
+    listener = get_notification_listener(transport, [target], endpoints)
+    listener.start()
+    try:
+        listener.wait()
+    except KeyboardInterrupt:
+        listener.stop()
+        listener.wait()
 
 
 class NotificationServerBase(msg_server.MessageHandlingServer):
