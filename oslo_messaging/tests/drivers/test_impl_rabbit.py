@@ -1048,19 +1048,15 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             'kombu.connection.Connection.connection'))
         self.useFixture(fixtures.MockPatch(
             'kombu.connection.Connection.channel'))
-        # TODO(stephenfin): Drop hasattr when we drop support for kombo < 4.6.8
-        if hasattr(kombu.connection.Connection, '_connection_factory'):
-            self.useFixture(fixtures.MockPatch(
-                'kombu.connection.Connection._connection_factory'))
+        self.useFixture(fixtures.MockPatch(
+            'kombu.connection.Connection._connection_factory'))
 
         # starting from the first broker in the list
         url = oslo_messaging.TransportURL.parse(self.conf, None)
         self.connection = rabbit_driver.Connection(self.conf, url,
                                                    driver_common.PURPOSE_SEND)
-        # TODO(stephenfin): Remove when we drop support for kombo < 4.6.8
-        if hasattr(kombu.connection.Connection, 'connect'):
-            self.useFixture(fixtures.MockPatch(
-                'kombu.connection.Connection.connect'))
+        self.useFixture(fixtures.MockPatch(
+            'kombu.connection.Connection.connect'))
         self.addCleanup(self.connection.close)
 
     def test_ensure_four_retry(self):
