@@ -75,7 +75,7 @@ class QManager:
         # does not exist. This is only hit in an edge case with the crun
         # container runtime (default for podman), see issue for more details:
         # https://github.com/containers/crun/issues/1642
-        proc_id = self.pg if self.pg != 0 else os.getpid()
+        proc_id = self.pg or os.getpid()
         with open(f'/proc/{proc_id}/stat') as f:
             self.start_time = int(f.read().split()[21])
 
