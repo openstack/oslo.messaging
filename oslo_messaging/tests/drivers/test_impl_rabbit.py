@@ -19,6 +19,7 @@ import threading
 import time
 import uuid
 
+from amqp import exceptions as amqp_ex
 import fixtures
 import kombu
 import kombu.connection
@@ -267,6 +268,23 @@ class TestRabbitDriverLoadSSLWithFIPS(test_utils.BaseTestCase):
 
 class TestRabbitPublisher(test_utils.BaseTestCase):
     @mock.patch('kombu.messaging.Producer.publish')
+    def test_send(self, fake_publish):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        exchange_mock = mock.Mock()
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            conn._publish(exchange_mock, 'msg', routing_key='routing_key')
+        exchange_mock.return_value.declare.assert_not_called()
+        fake_publish.assert_called_with(
+            'msg', expiration=None,
+            mandatory=False,
+            compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+            exchange=exchange_mock,
+            routing_key='routing_key')
+
+    @mock.patch('kombu.messaging.Producer.publish')
     def test_send_with_timeout(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
@@ -285,14 +303,53 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
             routing_key='routing_key')
 
     @mock.patch('kombu.messaging.Producer.publish')
-    def test_send_no_timeout(self, fake_publish):
+    def test_send_declare(self, fake_publish):
         transport = oslo_messaging.get_transport(self.conf,
                                                  'kombu+memory:////')
         exchange_mock = mock.Mock()
+        exchange_mock.passive = False
         with transport._driver._get_connection(
                 driver_common.PURPOSE_SEND) as pool_conn:
             conn = pool_conn.connection
             conn._publish(exchange_mock, 'msg', routing_key='routing_key')
+        exchange_mock.return_value.declare.assert_called_once_with()
+        fake_publish.assert_called_with(
+            'msg', expiration=None,
+            mandatory=False,
+            compression=self.conf.oslo_messaging_rabbit.kombu_compression,
+            exchange=exchange_mock,
+            routing_key='routing_key')
+
+    @mock.patch('kombu.messaging.Producer.publish')
+    def test_send_declare_precondition_failed(self, fake_publish):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        exchange_mock = mock.Mock()
+        exchange_mock.passive = False
+        exchange_mock.return_value.declare.side_effect = \
+            amqp_ex.PreconditionFailed('error')
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            self.assertRaises(
+                amqp_ex.PreconditionFailed,
+                conn._publish, exchange_mock, 'msg', routing_key='routing_key')
+        fake_publish.assert_not_called()
+
+    @mock.patch('kombu.messaging.Producer.publish')
+    def test_send_declare_precondition_failed_durable(self, fake_publish):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        exchange_mock = mock.Mock()
+        exchange_mock.passive = False
+        exchange_mock.return_value.declare.side_effect = [
+            amqp_ex.PreconditionFailed(
+                "PRECONDITION_FAILED - inequivalent arg 'durable'"), None]
+        with transport._driver._get_connection(
+                driver_common.PURPOSE_SEND) as pool_conn:
+            conn = pool_conn.connection
+            conn._publish(exchange_mock, 'msg', routing_key='routing_key')
+        self.assertEqual(2, exchange_mock.return_value.declare.call_count)
         fake_publish.assert_called_with(
             'msg', expiration=None,
             mandatory=False,

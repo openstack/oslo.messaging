@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    `Bug 2131652 <https://bugs.launchpad.net/oslo.messaging/+bug/2131652>`_:
+    Fixed ignorance of Precondition Failed error by rabbitmq driver so that
+    the error is properly raised to clients.
