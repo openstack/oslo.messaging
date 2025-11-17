@@ -421,7 +421,7 @@ class Consumer:
         self.rabbit_stream_fanout = rabbit_stream_fanout
         self.next_stream_offset = "last"
 
-    def _declare_fallback(self, err, conn, consumer_arguments):
+    def _declare_fallback_nondurable(self, err, conn, consumer_arguments):
         """Fallback by declaring a non durable queue.
 
         When a control exchange is shared between services it is possible
@@ -433,26 +433,25 @@ class Consumer:
         to fallback by creating a non durable queue to match the default
         config.
         """
-        if "PRECONDITION_FAILED - inequivalent arg 'durable'" in str(err):
-            LOG.info(
-                "[%s] Retrying to declare the exchange (%s) as "
-                "non durable", conn.connection_id, self.exchange_name)
-            self.exchange = kombu.entity.Exchange(
-                name=self.exchange_name,
-                type=self.type,
-                durable=False,
-                auto_delete=self.queue_auto_delete)
-            self.queue = kombu.entity.Queue(
-                name=self.queue_name,
-                channel=conn.channel,
-                exchange=self.exchange,
-                durable=False,
-                auto_delete=self.queue_auto_delete,
-                routing_key=self.routing_key,
-                queue_arguments=self.queue_arguments,
-                consumer_arguments=consumer_arguments
-            )
-            self.queue.declare()
+        LOG.info(
+            "[%s] Retrying to declare the exchange (%s) as "
+            "non durable", conn.connection_id, self.exchange_name)
+        self.exchange = kombu.entity.Exchange(
+            name=self.exchange_name,
+            type=self.type,
+            durable=False,
+            auto_delete=self.queue_auto_delete)
+        self.queue = kombu.entity.Queue(
+            name=self.queue_name,
+            channel=conn.channel,
+            exchange=self.exchange,
+            durable=False,
+            auto_delete=self.queue_auto_delete,
+            routing_key=self.routing_key,
+            queue_arguments=self.queue_arguments,
+            consumer_arguments=consumer_arguments
+        )
+        self.queue.declare()
 
     def reset_stream_offset(self):
         if not self.rabbit_stream_fanout:
@@ -495,16 +494,21 @@ class Consumer:
             try:
                 self.queue.declare()
             except amqp_ex.PreconditionFailed as err:
-                # NOTE(hberaud): This kind of exception may be triggered
-                # when a control exchange is shared between services and
-                # when services try to create it with configs that differ
-                # from each others. RabbitMQ will reject the services
-                # that try to create it with a configuration that differ
-                # from the one used first.
-                LOG.warning('[%s] Queue %s could not be declared probably '
-                            'because of conflicting configurations: %s',
-                            conn.connection_id, self.queue_name, err)
-                self._declare_fallback(err, conn, consumer_arguments)
+                if "PRECONDITION_FAILED - inequivalent arg 'durable'" in \
+                        str(err):
+                    # NOTE(hberaud): This kind of exception may be triggered
+                    # when a control exchange is shared between services and
+                    # when services try to create it with configs that differ
+                    # from each others. RabbitMQ will reject the services
+                    # that try to create it with a configuration that differ
+                    # from the one used first.
+                    LOG.warning('[%s] Queue %s could not be declared probably '
+                                'because of conflicting configurations: %s',
+                                conn.connection_id, self.queue_name, err)
+                    self._declare_fallback_nondurable(
+                        err, conn, consumer_arguments)
+                else:
+                    raise
             except amqp_ex.NotFound as ex:
                 # NOTE(viktor.krivak): This exception is raised when
                 # non-durable and non-ha queue is hosted on node that
@@ -1601,17 +1605,19 @@ class Connection:
             try:
                 exchange(self.channel).declare()
             except amqp_ex.PreconditionFailed as err:
-                # NOTE(hberaud): This kind of exception may be triggered
-                # when a control exchange is shared between services and
-                # when services try to create it with configs that differ
-                # from each others. RabbitMQ will reject the services
-                # that try to create it with a configuration that differ
-                # from the one used first.
                 if "PRECONDITION_FAILED - inequivalent arg 'durable'" \
                    in str(err):
+                    # NOTE(hberaud): This kind of exception may be triggered
+                    # when a control exchange is shared between services and
+                    # when services try to create it with configs that differ
+                    # from each others. RabbitMQ will reject the services
+                    # that try to create it with a configuration that differ
+                    # from the one used first.
                     LOG.warning("Force creating a non durable exchange.")
                     exchange.durable = False
                     exchange(self.channel).declare()
+                else:
+                    raise
             self._declared_exchanges.add(exchange.name)
 
         log_info = {'msg': msg,
