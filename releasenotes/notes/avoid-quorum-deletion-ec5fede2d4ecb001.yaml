@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Avoid deleting RabbitMQ ``quorum`` queues if they are failing on server
+    side with ``Internal Server Error`` (error ``541``).
