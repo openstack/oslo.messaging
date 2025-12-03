@@ -1092,8 +1092,8 @@ class Connection:
             retry = float('inf')
 
         def on_error(exc, interval):
-            LOG.debug("[%s] Received recoverable error from kombu:"
-                      % self.connection_id,
+            LOG.debug("[%s] Received recoverable error from kombu:",
+                      self.connection_id,
                       exc_info=True)
 
             recoverable_error_callback and recoverable_error_callback(exc)
@@ -1248,7 +1248,7 @@ class Connection:
                 for consumer in filter(lambda c: c.type == 'fanout',
                                        self._consumers):
                     LOG.debug('[connection close] Deleting fanout '
-                              'queue: %s ' % consumer.queue.name)
+                              'queue: %s ', consumer.queue.name)
                     consumer.queue.delete()
             self._set_current_channel(None)
             self.connection.release()
@@ -1303,8 +1303,8 @@ class Connection:
             sock = self.channel.connection.sock
         except AttributeError as e:
             # Level is set to debug because otherwise we would spam the logs
-            LOG.debug('[%s] Failed to get socket attribute: %s'
-                      % (self.connection_id, str(e)))
+            LOG.debug('[%s] Failed to get socket attribute: %s',
+                      self.connection_id, e)
         else:
             sock.settimeout(timeout)
             # TCP_USER_TIMEOUT is not defined on Windows and Mac OS X

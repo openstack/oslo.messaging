@@ -74,9 +74,9 @@ class MetricsCollectorClient:
         try:
             self.tx_queue.put_nowait(m)
         except queue.Full:
-            LOG.warning("tx queues is already full(%s/%s). Fails to "
-                        "send the metrics(%s)" %
-                        (self.tx_queue.qsize(), self.tx_queue.maxsize, m))
+            LOG.warning("tx queues is already full(%d/%d). Fails to "
+                        "send the metrics(%s)",
+                        self.tx_queue.qsize(), self.tx_queue.maxsize, m)
 
         if not self.send_thread.is_alive():
             self.send_thread = threading.Thread(target=self.send_loop)
@@ -101,7 +101,7 @@ class MetricsCollectorClient:
                 stoptime = time.time() + timeout
             except Exception as e:
                 LOG.error("Failed to send metrics: %s. "
-                          "Wait 1 seconds for next try." % e)
+                          "Wait 1 second for next try.", e)
                 time.sleep(1)
 
     def send_metric(self, metric):

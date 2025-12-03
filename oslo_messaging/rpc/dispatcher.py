@@ -243,16 +243,16 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             client_timeout = cm_heartbeat_interval = 0
 
         if cm_heartbeat_interval < 1:
-            LOG.warning('Client provided an invalid timeout value of %r' % (
-                incoming.client_timeout))
+            LOG.warning('Client provided an invalid timeout value of %r',
+                        incoming.client_timeout)
             return
 
         while not event.wait(cm_heartbeat_interval):
             LOG.debug(
                 'Sending call-monitor heartbeat for active call to %(method)s '
-                '(interval=%(interval)i)' % (
-                    {'method': incoming.message.get('method'),
-                     'interval': cm_heartbeat_interval}))
+                '(interval=%(interval)i)',
+                {'method': incoming.message.get('method'),
+                 'interval': cm_heartbeat_interval})
             try:
                 incoming.heartbeat()
             except Exception as exc:
@@ -260,8 +260,8 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                 # client has died. Nothing to do here but exit the watchdog
                 # thread. If the client is still alive (dead broker) then its
                 # RPC will timeout as expected.
-                LOG.debug("Call-monitor heartbeat failed: %(exc)s"
-                          % ({'exc': exc}))
+                LOG.debug("Call-monitor heartbeat failed: %(exc)s",
+                          {'exc': exc})
                 break
 
     def dispatch(self, incoming):

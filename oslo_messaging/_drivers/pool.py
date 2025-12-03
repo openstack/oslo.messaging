@@ -128,7 +128,7 @@ class ConnectionPool(Pool):
     def _on_expire(self, connection):
         connection.close()
         LOG.debug("Idle connection has expired and been closed."
-                  " Pool size: %d" % len(self._items))
+                  " Pool size: %d", len(self._items))
 
     def create(self, purpose=common.PURPOSE_SEND, retry=None):
         LOG.debug('Pool creating new connection')

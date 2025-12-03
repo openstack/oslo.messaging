@@ -304,7 +304,7 @@ class ProducerConnection(Connection):
                                              message, poll)
                     return self._produce_message(topic, message, poll)
                 except KafkaException as e:
-                    LOG.error("Produce message failed: %s" % str(e))
+                    LOG.error("Produce message failed: %s", e)
                     break
                 except BufferError:
                     LOG.debug("Produce message queue full, "

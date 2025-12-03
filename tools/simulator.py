@@ -334,14 +334,14 @@ class ServerControlEndpoint:
         """Handle start reports from clients"""
 
         client_id = message['id']
-        LOG.info('The client %s started to send messages' % client_id)
+        LOG.info('The client %s started to send messages', client_id)
         self.connected_clients.add(client_id)
 
     def sync_done(self, ctx, message):
         """Handle done reports from clients"""
 
         client_id = message['id']
-        LOG.info('The client %s finished msg sending.' % client_id)
+        LOG.info('The client %s finished msg sending.', client_id)
 
         if client_id in self.connected_clients:
             self.connected_clients.remove(client_id)
@@ -437,11 +437,11 @@ class RPCClient(Client):
             method = _rpc_call if self.sync_mode == 'call' else _rpc_cast
             method(self.sync_client, msg, 'sync_start')
         except Exception:
-            LOG.error('The client: %s failed to sync with %s.' %
-                      (self.client_id, self.client.target))
+            LOG.error('The client: %s failed to sync with %s.',
+                      self.client_id, self.client.target)
             return False
-        LOG.info('The client: {} successfully sync with  {}'.format(
-            self.client_id, self.client.target))
+        LOG.info('The client: %s successfully sync with %s',
+                 self.client_id, self.client.target)
         return True
 
     def sync_done(self):
@@ -450,11 +450,11 @@ class RPCClient(Client):
             method = _rpc_call if self.sync_mode == 'call' else _rpc_cast
             method(self.sync_client, msg, 'sync_done')
         except Exception:
-            LOG.error('The client: %s failed finish the sync with %s.'
-                      % (self.client_id, self.client.target))
+            LOG.error('The client: %s failed finish the sync with %s.',
+                      self.client_id, self.client.target)
             return False
-        LOG.info('The client: %s successfully finished sync with %s'
-                 % (self.client_id, self.client.target))
+        LOG.info('The client: %s successfully finished sync with %s',
+                 self.client_id, self.client.target)
         return True
 
 
