@@ -1,0 +1,5 @@
+---
+deprecations:
+  - |
+    The ``[oslo_messaging_rabbit] enforce_fips_mode`` option has been
+    deprecated and has no effect.
