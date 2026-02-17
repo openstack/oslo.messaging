@@ -561,14 +561,6 @@ class Consumer:
                           'Queue: [%(queue)s], '
                           'error message: [%(err_str)s]', info)
                 time.sleep(interval)
-                if self.queue_arguments.get('x-queue-type') == 'quorum':
-                    # Before re-declare queue, try to delete it
-                    # This is helping with issue #2028384
-                    # NOTE(amorin) we need to make sure the connection is
-                    # established again, because when an error occur, the
-                    # connection is closed.
-                    conn.ensure_connection()
-                    self.queue.delete()
                 self.queue.declare()
             else:
                 raise
@@ -609,24 +601,6 @@ class Consumer:
                 self.queue.consume(callback=self._callback,
                                    consumer_tag=str(tag),
                                    nowait=self.nowait)
-            else:
-                raise
-        except amqp_ex.InternalError as exc:
-            if self.queue_arguments.get('x-queue-type') == 'quorum':
-                # Before re-consume queue, try to delete it
-                # This is helping with issue #2028384
-                if exc.code == 541:
-                    LOG.warning('Queue %s seems broken, will try delete it '
-                                'before starting over.', self.queue.name)
-                    # NOTE(amorin) we need to make sure the connection is
-                    # established again, because when an error occur, the
-                    # connection is closed.
-                    conn.ensure_connection()
-                    self.queue.delete()
-                    self.declare(conn)
-                    self.queue.consume(callback=self._callback,
-                                       consumer_tag=str(tag),
-                                       nowait=self.nowait)
             else:
                 raise
 
