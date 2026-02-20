@@ -187,7 +187,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         message_id = uuid.uuid4()
         uuid.uuid4 = mock.Mock(return_value=message_id)
 
-        mock_utcnow.return_value = datetime.datetime.utcnow()
+        mock_utcnow.return_value = datetime.datetime.now(
+            datetime.timezone.utc).replace(tzinfo=None)
 
         message = {
             'message_id': str(message_id),
@@ -326,7 +327,8 @@ class TestSerializer(test_utils.BaseTestCase):
         message_id = uuid.uuid4()
         uuid.uuid4 = mock.Mock(return_value=message_id)
 
-        mock_utcnow.return_value = datetime.datetime.utcnow()
+        mock_utcnow.return_value = datetime.datetime.now(
+            datetime.timezone.utc).replace(tzinfo=None)
 
         serializer.serialize_context = mock.Mock()
         serializer.serialize_context.return_value = dict(user_name='alice')
@@ -395,7 +397,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
         uuid.uuid4 = mock.Mock()
         uuid.uuid4.return_value = message_id
 
-        mock_utcnow.return_value = datetime.datetime.utcnow()
+        mock_utcnow.return_value = datetime.datetime.now(
+            datetime.timezone.utc).replace(tzinfo=None)
 
         logger = mock.Mock()
 
