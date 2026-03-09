@@ -96,25 +96,6 @@ rabbit_opts = [
                 'Python versions on select environments. If the Python '
                 'executable used does not support OpenSSL FIPS mode, '
                 'an exception will be raised.'),
-    cfg.BoolOpt('heartbeat_in_pthread',
-                default=False,
-                deprecated_for_removal=True,
-                deprecated_reason='The option is related to Eventlet which '
-                                  'will be removed. In addition this has '
-                                  'never worked as expected with services '
-                                  'using eventlet for core service framework.',
-                help="(DEPRECATED) It is recommend not to use this option "
-                     "anymore. Run the health check heartbeat thread "
-                     "through a native python thread by default. If this "
-                     "option is equal to False then the health check "
-                     "heartbeat will inherit the execution model "
-                     "from the parent process. For "
-                     "example if the parent process has monkey patched the "
-                     "stdlib by using eventlet/greenlet then the heartbeat "
-                     "will be run through a green thread. "
-                     "This option should be set to True only for the "
-                     "wsgi services.",
-                ),
     cfg.FloatOpt('kombu_reconnect_delay',
                  default=1.0,
                  min=0.0,
@@ -741,7 +722,6 @@ class Connection:
             driver_conf.kombu_missing_consumer_retry_timeout
         self.kombu_failover_strategy = driver_conf.kombu_failover_strategy
         self.kombu_compression = driver_conf.kombu_compression
-        self.heartbeat_in_pthread = driver_conf.heartbeat_in_pthread
         self.ssl_enforce_fips_mode = driver_conf.ssl_enforce_fips_mode
         self.enable_cancel_on_failover = driver_conf.enable_cancel_on_failover
         self.use_queue_manager = driver_conf.use_queue_manager
@@ -756,35 +736,6 @@ class Connection:
             raise RuntimeError('Configuration Error: rabbit_stream_fanout '
                                'need rabbit_transient_quorum_queue to be set '
                                'to true.')
-
-        if self.heartbeat_in_pthread:
-            # NOTE(hberaud): Experimental: threading module is in use to run
-            # the rabbitmq health check heartbeat. in some situation like
-            # with nova-api, nova need green threads to run the cells
-            # mechanismes in an async mode, so they used eventlet and
-            # greenlet to monkey patch the python stdlib and get green threads.
-            # The issue here is that nova-api run under the apache MPM prefork
-            # module and mod_wsgi. The apache prefork module doesn't support
-            # epoll and recent kernel features, and evenlet is built over epoll
-            # and libevent, so when we run the rabbitmq heartbeat we inherit
-            # from the execution model of the parent process (nova-api), and
-            # in this case we will run the heartbeat through a green thread.
-            # We want to allow users to choose between pthread and
-            # green threads if needed in some specific situations.
-            # This experimental feature allow user to use pthread in an env
-            # that doesn't support eventlet without forcing the parent process
-            # to stop to use eventlet if they need monkey patching for some
-            # specific reasons.
-            # If users want to use pthread we need to make sure that we
-            # will use the *native* threading module for
-            # initialize the heartbeat thread.
-            # Here we override globaly the previously imported
-            # threading module with the native python threading module
-            # if it was already monkey patched by eventlet/greenlet.
-            global threading
-            threading = _utils.stdlib_threading
-            amqpdriver.threading = _utils.stdlib_threading
-            amqpdriver.queue = _utils.stdlib_queue
 
         self.direct_mandatory_flag = driver_conf.direct_mandatory_flag
 

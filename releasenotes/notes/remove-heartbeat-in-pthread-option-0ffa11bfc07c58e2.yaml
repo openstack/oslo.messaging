@@ -1,0 +1,6 @@
+---
+upgrade:
+  - |
+    The deprecated ``heartbeat_in_pthread`` option in the
+    ``[oslo_messaging_rabbit]`` section has been removed. Operators should
+    remove this option from their configuration files.

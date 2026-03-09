@@ -93,11 +93,6 @@ class TestHeartbeat(test_utils.BaseTestCase):
             info='A recoverable connection/channel error occurred, '
             'trying to reconnect: %s')
 
-    def test_run_heartbeat_in_pthread(self):
-        self.config(heartbeat_in_pthread=True,
-                    group="oslo_messaging_rabbit")
-        self._do_test_heartbeat_sent()
-
 
 class TestRabbitQos(test_utils.BaseTestCase):
 
