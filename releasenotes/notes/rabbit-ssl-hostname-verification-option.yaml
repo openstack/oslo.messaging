@@ -1,0 +1,23 @@
+---
+security:
+  - |
+    Under TLS with ``ssl_ca_file``, oslo.messaging validated the broker
+    certificate chain but did not verify the RabbitMQ broker hostname. A
+    man-in-the-middle attacker with a certificate trusted by that CA could
+    impersonate the broker.
+
+    The RabbitMQ driver now verifies the broker hostname when ``ssl_ca_file``
+    is set and ``[oslo_messaging_rabbit] ssl_enforce_hostname_verification``
+    is enabled. Using ``ssl=true`` without ``ssl_ca_file`` still does not
+    verify the broker hostname.
+
+    The ``ssl_enforce_hostname_verification`` option is deprecated and
+    scheduled for removal after deployments finish migrating; hostname
+    verification should remain enabled.
+
+    For transport URLs with multiple brokers and hostname verification
+    enabled, Kombu 5.2.0 or newer substitutes the active broker hostname for
+    TLS. Older Kombu versions log a warning and use the first configured
+    broker hostname as a best effort; operators should upgrade Kombu or use a
+    certificate (SAN or wildcard) that covers all configured broker
+    hostnames.

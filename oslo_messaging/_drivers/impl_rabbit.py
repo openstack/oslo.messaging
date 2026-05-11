@@ -16,6 +16,7 @@ import collections
 import contextlib
 import errno
 import functools
+import importlib.metadata
 import itertools
 import math
 import os
@@ -37,6 +38,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import eventletutils
 from oslo_utils import netutils
+from oslo_utils import versionutils
 
 import oslo_messaging
 from oslo_messaging._drivers import amqp as rpc_amqp
@@ -84,6 +86,18 @@ rabbit_opts = [
                default='',
                help='SSL certification authority file '
                     '(valid only if SSL enabled).'),
+    cfg.BoolOpt('ssl_enforce_hostname_verification',
+                default=True,
+                deprecated_for_removal=True,
+                deprecated_reason='Hostname verification should remain '
+                                  'enabled once operators have completed '
+                                  'the migration.',
+                help='When true, verify the broker hostname against the '
+                     'certificate when ``ssl_ca_file`` is set. When false, '
+                     '``ssl`` with ``ssl_ca_file`` still validates the '
+                     'certificate chain but does not verify the broker '
+                     'hostname. ``ssl=true`` without ``ssl_ca_file`` never '
+                     'enables hostname verification.'),
     cfg.BoolOpt('ssl_enforce_fips_mode',
                 default=False,
                 deprecated_for_removal=True,
@@ -744,6 +758,11 @@ class Connection:
             self.ssl_key_file = driver_conf.ssl_key_file
             self.ssl_cert_file = driver_conf.ssl_cert_file
             self.ssl_ca_file = driver_conf.ssl_ca_file
+            self.ssl_enforce_hostname_verification = (
+                driver_conf.ssl_enforce_hostname_verification)
+            self.ssl_server_hostname = None
+            if (self.ssl_ca_file and self.ssl_enforce_hostname_verification):
+                self.ssl_server_hostname = self._get_ssl_server_hostname(url)
 
         self._url = ''
         if url.hosts:
@@ -913,6 +932,33 @@ class Connection:
         except KeyError:
             raise RuntimeError("Invalid SSL version : %s" % version)
 
+    @staticmethod
+    def _get_ssl_server_hostname(url):
+        if len(url.hosts) == 1:
+            return url.hosts[0].hostname
+        if len(url.hosts) > 1:
+            kombu_ver = importlib.metadata.version('kombu')
+            try:
+                kombu_substitutes_failover_hostname = (
+                    versionutils.convert_version_to_tuple(kombu_ver) >=
+                    (5, 2, 0)
+                )
+            except ValueError:
+                kombu_substitutes_failover_hostname = False
+            if kombu_substitutes_failover_hostname:
+                # Kombu >= 5.2.0 substitutes None with the selected broker
+                # hostname after failover chooses the active URL.
+                return None
+            LOG.warning(
+                "Multi-host RabbitMQ TLS hostname verification with Kombu "
+                "before 5.2.0 cannot automatically track the active failover "
+                "broker for the TLS server name. Using the first configured "
+                "broker hostname as a best effort. Upgrade to Kombu >= "
+                "5.2.0, or use a broker certificate (SAN or wildcard) that "
+                "covers all configured broker hostnames.")
+            return url.hosts[0].hostname
+        return None
+
     def _get_quorum_configurations(self, driver_conf):
         """Get the quorum queue configurations"""
         delivery_limit = driver_conf.rabbit_quorum_delivery_limit
@@ -955,6 +1001,8 @@ class Connection:
                 # We might want to allow variations in the
                 # future with this?
                 ssl_params['cert_reqs'] = ssl.CERT_REQUIRED
+                if self.ssl_enforce_hostname_verification:
+                    ssl_params['server_hostname'] = self.ssl_server_hostname
             return ssl_params or True
         return False
 

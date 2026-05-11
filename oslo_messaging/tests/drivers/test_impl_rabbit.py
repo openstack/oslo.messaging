@@ -171,7 +171,20 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
                                                 keyfile='foo',
                                                 certfile='bar',
                                                 ca_certs='foobar',
-                                                cert_reqs=ssl.CERT_REQUIRED))),
+                                                cert_reqs=ssl.CERT_REQUIRED,
+                                                server_hostname=None))),
+        ('ssl_with_options_no_hostname_check',
+         dict(options=dict(ssl=True,
+                           ssl_version='TLSv1',
+                           ssl_key_file='foo',
+                           ssl_cert_file='bar',
+                           ssl_ca_file='foobar',
+                           ssl_enforce_hostname_verification=False),
+              expected=dict(ssl_version=3,
+                            keyfile='foo',
+                            certfile='bar',
+                            ca_certs='foobar',
+                            cert_reqs=ssl.CERT_REQUIRED))),
     ]
 
     @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
@@ -199,6 +212,162 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
             ssl=self.expected, login_method='AMQPLAIN',
             heartbeat=60, failover_strategy='round-robin'
         )
+
+
+class TestRabbitDriverSSLHostname(test_utils.BaseTestCase):
+
+    def test_ssl_enforce_hostname_verification_default_true(self):
+        transport = oslo_messaging.get_transport(self.conf,
+                                                 'kombu+memory:////')
+        self.addCleanup(transport.cleanup)
+        self.assertTrue(
+            self.conf.oslo_messaging_rabbit.ssl_enforce_hostname_verification)
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.LOG')
+    @mock.patch(
+        'oslo_messaging._drivers.impl_rabbit.importlib.metadata.version',
+        return_value='5.2.0')
+    def test_multi_host_kombu_5_2_uses_hostname_substitution(
+            self, mock_version, mock_log, connection_klass, fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672,host2:5672//')
+        self.addCleanup(transport.cleanup)
+
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertIsNone(ssl_params['server_hostname'])
+        mock_log.warning.assert_not_called()
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.LOG')
+    @mock.patch(
+        'oslo_messaging._drivers.impl_rabbit.importlib.metadata.version',
+        return_value='5.1.0')
+    def test_multi_host_old_kombu_warns_and_uses_first_hostname(
+            self, mock_version, mock_log, connection_klass, fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672,host2:5672//')
+        self.addCleanup(transport.cleanup)
+
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertEqual('host1', ssl_params['server_hostname'])
+        mock_log.warning.assert_called_once()
+        self.assertIn('Multi-host RabbitMQ TLS',
+                      mock_log.warning.call_args[0][0])
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.LOG')
+    @mock.patch(
+        'oslo_messaging._drivers.impl_rabbit.importlib.metadata.version',
+        return_value='unknown')
+    def test_multi_host_unparsable_kombu_version_warns_first_hostname(
+            self, mock_version, mock_log, connection_klass, fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672,host2:5672//')
+        self.addCleanup(transport.cleanup)
+
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertEqual('host1', ssl_params['server_hostname'])
+        mock_log.warning.assert_called_once()
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    def test_enforcement_disabled_omits_server_hostname(self, connection_klass,
+                                                        fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    ssl_enforce_hostname_verification=False,
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672//')
+        self.addCleanup(transport.cleanup)
+
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertNotIn('server_hostname', ssl_params)
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    def test_single_host_uses_hostname(self, connection_klass, fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672//')
+        self.addCleanup(transport.cleanup)
+
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertEqual('host1', ssl_params['server_hostname'])
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    @mock.patch(
+        'oslo_messaging._drivers.impl_rabbit.importlib.metadata.version',
+        return_value='5.1.0')
+    def test_multi_host_old_kombu_allowed_without_enforcement(
+            self, mock_version, connection_klass, fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    ssl_enforce_hostname_verification=False,
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672,host2:5672//')
+        self.addCleanup(transport.cleanup)
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertNotIn('server_hostname', ssl_params)
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    def test_multi_host_unknown_kombu_allowed_without_enforcement(
+            self, connection_klass, fake_ensure):
+        self.config(ssl=True, ssl_ca_file='foobar',
+                    ssl_enforce_hostname_verification=False,
+                    group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672,host2:5672//')
+        self.addCleanup(transport.cleanup)
+        transport._driver._get_connection()
+
+        ssl_params = connection_klass.call_args.kwargs['ssl']
+        self.assertNotIn('server_hostname', ssl_params)
+
+    @mock.patch('oslo_messaging._drivers.impl_rabbit.Connection'
+                '.ensure_connection')
+    @mock.patch('kombu.connection.Connection')
+    def test_ssl_without_ca_does_not_check_hostname(self, connection_klass,
+                                                    fake_ensure):
+        self.config(ssl=True, group='oslo_messaging_rabbit')
+        transport = oslo_messaging.get_transport(
+            self.conf, 'rabbit://host1:5672,host2:5672//')
+        self.addCleanup(transport.cleanup)
+
+        transport._driver._get_connection()
+
+        self.assertIs(True, connection_klass.call_args.kwargs['ssl'])
 
 
 class TestRabbitPublisher(test_utils.BaseTestCase):
