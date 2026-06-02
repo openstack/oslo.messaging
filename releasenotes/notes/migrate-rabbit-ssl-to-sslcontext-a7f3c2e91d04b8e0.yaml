@@ -1,0 +1,10 @@
+---
+deprecations:
+  - |
+    The ``[oslo_messaging_rabbit] ssl_version`` configuration option is now
+    deprecated.  The RabbitMQ driver automatically negotiates the highest
+    mutually supported TLS version (TLS 1.2 or 1.3) when this option is
+    not set.
+
+    Deployments should remove ``ssl_version`` from their configuration files.
+    The option will be removed in a future release.
