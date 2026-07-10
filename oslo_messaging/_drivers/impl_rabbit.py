@@ -232,7 +232,11 @@ rabbit_opts = [
         'exceeds the delivery limit the message gets dropped '
         'or dead-lettered (if a DLX exchange has been configured). '
         'Used only when rabbit_quorum_queue is enabled. '
-        'Default 0 which means dont set a limit.',
+        'The default of 0 leaves the x-delivery-limit queue argument '
+        'unset, so RabbitMQ applies its own default (20 on RabbitMQ '
+        '4.0 and later). Set to -1 to disable the limit and allow '
+        'unlimited redeliveries. See '
+        'https://www.rabbitmq.com/docs/quorum-queues',
     ),
     cfg.IntOpt(
         'rabbit_quorum_max_memory_length',
