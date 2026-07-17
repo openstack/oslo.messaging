@@ -63,21 +63,46 @@ class QManager:
         self.file_name = '/dev/shm/{}_{}_qmanager'.format(  # nosec
             self.hostname,
             self.processname)
-        # We use the process group to restart the counter on service restart
-        self.pg = os.getpgrp()
 
-        # We need to also handle containerized deployments, so let's
-        # parse start time (in jiffies) since system boot
+    @staticmethod
+    def _service_identity():
+        # The identity of the current *generation* of the service (the master
+        # and all its workers), used to decide whether the shared counter must
+        # be reset (the service restarted) or incremented.
         #
+        # It MUST be evaluated when the queue name is built, NOT captured at
+        # object construction time, because the process group can change
+        # *after* the oslo.messaging objects already exist: any supervisor
+        # that calls os.setsid() once its objects are instantiated moves the
+        # process into a new group. This is what happens with the cotyledon
+        # supervisor, whose master calls os.setsid() after the default
+        # transport is created (before the service starts serving) and then
+        # forks the workers that actually call get(). A QManager built in the
+        # master before setsid
+        # captures the *pre-setsid* process group (the container init group),
+        # while the workers that actually call get() run *after* setsid in the
+        # master's own group. As every QManager of the process (reply queue,
+        # per-cell transports, per-connection fanout queues) shares the same
+        # /dev/shm counter, mixing a master-born identity with a worker-born
+        # one makes them reset the counter for one another: several processes
+        # then build the same reply queue name (reply_<host>:<proc>:1) and
+        # steal each other's RPC replies.
+        # See https://bugs.launchpad.net/oslo.messaging/+bug/2110957
+        pg = os.getpgrp()
+
+        # Disambiguate a recycled pid across a restart with the start time (in
+        # jiffies since system boot) of that process.
         # https://www.man7.org/linux/man-pages//man5/proc_pid_stat.5.html
         #
-        # We fallback to process id here when process group id is 0, as /proc/0
-        # does not exist. This is only hit in an edge case with the crun
-        # container runtime (default for podman), see issue for more details:
+        # We fall back to our own pid when the process group id is 0, as
+        # /proc/0 does not exist. This is only hit in an edge case with the
+        # crun container runtime (default for podman) where a "podman exec"
+        # process gets no process group of its own, see
         # https://github.com/containers/crun/issues/1642
-        proc_id = self.pg or os.getpid()
+        proc_id = pg or os.getpid()
         with open(f'/proc/{proc_id}/stat') as f:
-            self.start_time = int(f.read().split()[21])
+            start_time = int(f.read().split()[21])
+        return pg, start_time
 
     def get(self):
         lock_name = 'oslo_read_shm_{}_{}'.format(
@@ -85,6 +110,11 @@ class QManager:
 
         @lockutils.synchronized(lock_name, external=True)
         def read_from_shm():
+            # Identity of the current service generation (the process group
+            # shared by the master and all its workers), re-evaluated on every
+            # call -- see _service_identity for why it must not be cached.
+            cur_pg, cur_start_time = self._service_identity()
+
             # Grab the counter from shm
             # This function is thread and process safe thanks to lockutils
             try:
@@ -94,12 +124,12 @@ class QManager:
                     counter = int(counter)
                     start_time = int(start_time)
             except (FileNotFoundError, ValueError):
-                pg = self.pg
+                pg = cur_pg
                 counter = 0
-                start_time = self.start_time
+                start_time = cur_start_time
 
             # Increment the counter
-            if pg == self.pg and start_time == self.start_time:
+            if pg == cur_pg and start_time == cur_start_time:
                 counter += 1
             else:
                 # The process group is changed, or start time since system boot
@@ -109,8 +139,8 @@ class QManager:
 
             # Write the new counter
             with open(self.file_name, 'w') as f:
-                f.write(str(self.pg) + ':' + str(counter) + ':' +
-                        str(self.start_time))
+                f.write(str(cur_pg) + ':' + str(counter) + ':' +
+                        str(cur_start_time))
             return counter
 
         counter = read_from_shm()
