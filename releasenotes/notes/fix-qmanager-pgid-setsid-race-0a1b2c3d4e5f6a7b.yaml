@@ -1,0 +1,17 @@
+---
+fixes:
+  - |
+    Fixed a reply queue name collision with ``use_queue_manager = True``. The
+    ``QManager`` used to only rely on the process-group identity captured at
+    object construction time to key the shared ``/dev/shm`` counter. When the
+    process group changes after some oslo.messaging objects already exist --
+    as happens under the cotyledon supervisor, whose master calls
+    ``os.setsid()`` after creating them -- a manager born in the master and a
+    manager born in a worker disagreed on that identity and kept resetting the
+    shared counter, so several processes built the same reply
+    queue name (``reply_<host>:<proc>:1``) and stole each other's RPC replies
+    (leading to ``No calling threads waiting for msg_id`` and
+    ``MessagingTimeout``). The identity is now re-evaluated when the queue
+    name is built. When the process group id is 0 (crun edge case) it falls
+    back to the process id, as before. See
+    `bug 2110957 <https://bugs.launchpad.net/oslo.messaging/+bug/2110957>`_.
