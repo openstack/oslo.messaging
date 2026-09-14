@@ -69,6 +69,10 @@ rabbit_opts = [
                 help='Connect over SSL.'),
     cfg.StrOpt('ssl_version',
                default='',
+               deprecated_for_removal=True,
+               deprecated_reason='TLS version negotiation is now handled '
+                                 'automatically by py-amqp via '
+                                 'ssl.SSLContext.',
                help='SSL version to use (valid only if SSL enabled). '
                     'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
                     'TLSv1_1, and TLSv1_2 may be available on some '
