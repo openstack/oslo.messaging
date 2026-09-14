@@ -5,16 +5,17 @@ build-backend = "pbr.build"
 [project]
 name = "oslo.messaging"
 description = "Oslo Messaging API"
-readme = "README.rst"
 authors = [
     {name = "OpenStack", email = "openstack-discuss@lists.openstack.org"},
 ]
+readme = {file = "README.rst", content-type = "text/x-rst"}
+license = "Apache-2.0"
+dynamic = ["version", "dependencies"]
 requires-python = ">=3.11"
 classifiers = [
     "Environment :: OpenStack",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
@@ -25,7 +26,6 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: Implementation :: CPython",
 ]
-dynamic = ["version", "dependencies"]
 
 [project.urls]
 Homepage = "https://docs.openstack.org/oslo.messaging"
@@ -71,5 +71,5 @@ routing = "oslo_messaging.notify._impl_routing:RoutingDriver"
 [project.entry-points."oslo.config.opts"]
 "oslo.messaging" = "oslo_messaging.opts:list_opts"
 
-[tool.setuptools]
-packages = ["oslo_messaging"]
+[tool.setuptools.packages.find]
+include = ["oslo_messaging*"]
