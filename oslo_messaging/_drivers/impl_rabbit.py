@@ -1121,6 +1121,10 @@ class Connection:
             # NOTE(gsantomaggio): we must reraise this without
             # trigger error_callback
             raise
+        except rpc_common.Timeout:
+            # NOTE must reraise this without
+            # trigger error_callback
+            raise
         except Exception as exc:
             error_callback and error_callback(exc)
             self._set_current_channel(None)
@@ -1376,11 +1380,17 @@ class Connection:
             LOG.error('Failed to consume message from queue: %s', exc)
 
         def _consume():
-            # NOTE(sileht): in case the acknowledgment or requeue of a
-            # message fail, the kombu transport can be disconnected
-            # In this case, we must redeclare our consumers, so raise
-            # a recoverable error to trigger the reconnection code.
+            # NOTE: Kombu transport can be interrupted if the acknowledgement
+            # or requeue of a message fails. We need to ensure the connection
+            # and re-declare consumers.
+            # Kombu's ensure_connection utilises a failover strategy, instead
+            # of retring to connect to the same host.
             if not self.connection.connected:
+                # NOTE(bug/2126768): When a rabbit host is dead, reconnecting
+                # to the same host would loop forever until the node is fixed.
+                # Instead switch to the next host given by the failover
+                # strategy and raise a recoverable connection error.
+                self.connection.maybe_switch_next()
                 raise self.connection.recoverable_connection_errors[0]
 
             while self._new_tags:
@@ -1395,13 +1405,18 @@ class Connection:
                 if self._consume_loop_stopped:
                     return
 
-                if self._heartbeat_supported_and_enabled():
-                    self._heartbeat_check()
-
                 try:
                     self.connection.drain_events(timeout=poll_timeout)
                     return
                 except TimeoutError:
+                    # Note(lajoskatona): Heartbeat check is only needed
+                    # on timeout (idle connection). When drain_events
+                    # returns successfully, the connection is clearly
+                    # alive, as kombu's own ConsumerMixin behavior works
+                    # https://github.com/celery/kombu/blob/3633f916e455ad4d8835ee23abc0b526f5920ed7/kombu/mixins.py#L197-L198
+                    if self._heartbeat_supported_and_enabled():
+                        self._heartbeat_check()
+
                     poll_timeout = timer.check_return(
                         _raise_timeout, maximum=self._poll_timeout)
                 except self.connection.channel_errors as exc:
