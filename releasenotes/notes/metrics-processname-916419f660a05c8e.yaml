@@ -1,0 +1,7 @@
+---
+upgrade:
+  - |
+    Default value of the ``[oslo_messaging_metrics] metrics_process_name``
+    option has been changed and now it defaults to the program/command name.
+    This is very helpful when multiple agents are reading/using the same
+    configuration file and thus cannot have a different setting.

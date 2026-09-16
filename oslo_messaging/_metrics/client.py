@@ -13,8 +13,10 @@
 #    under the License.
 
 import contextlib
+import os
 import queue
 import socket
+import sys
 import threading
 import time
 
@@ -38,7 +40,8 @@ oslo_messaging_metrics = [
                help='Unix domain socket file to be used'
                     ' to send rpc related metrics'),
     cfg.StrOpt('metrics_process_name',
-               default='',
+               default=os.path.basename(sys.argv[0]),
+               sample_default='<process_name>',
                help='Process name which is used to identify which process'
                     ' produce metrics'),
     cfg.IntOpt('metrics_thread_stop_timeout',
