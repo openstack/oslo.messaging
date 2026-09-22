@@ -62,7 +62,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
             self.logger = oslo_messaging.LoggingNotificationHandler('test://')
 
         mock_utcnow.return_value = datetime.datetime.now(
-            datetime.timezone.utc).replace(tzinfo=None)
+            datetime.UTC).replace(tzinfo=None)
 
         levelno = getattr(logging, self.priority.upper(), 42)
 
@@ -123,7 +123,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
             })
 
         mock_utcnow.return_value = datetime.datetime.now(
-            datetime.timezone.utc).replace(tzinfo=None)
+            datetime.UTC).replace(tzinfo=None)
 
         levelno = getattr(logging, self.priority.upper())
 

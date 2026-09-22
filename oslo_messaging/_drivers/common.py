@@ -232,7 +232,8 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
         return oslo_messaging.RemoteError(name, failure.get('message'), trace)
 
     ex_type = type(failure)
-    str_override = lambda self: message
+    def str_override(self):
+        return message
     new_ex_type = type(ex_type.__name__ + _REMOTE_POSTFIX, (ex_type,),
                        {'__str__': str_override, '__unicode__': str_override})
     new_ex_type.__module__ = f'{module}{_REMOTE_POSTFIX}'

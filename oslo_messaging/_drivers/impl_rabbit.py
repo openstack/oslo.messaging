@@ -785,8 +785,9 @@ class Connection:
             # NOTE(moguimar): default_password in this function's context is
             #                 a fallback option, not a hardcoded password.
             #                 username and password are read from host.
-            self._url = self._transform_transport_url(  # nosec
-                url, host, default_username='guest', default_password='guest',
+            self._url = self._transform_transport_url(
+                url, host, default_username='guest',
+                default_password='guest',  # noqa: S106
                 default_hostname='localhost')
 
         self._initial_pid = os.getpid()
@@ -1030,8 +1031,7 @@ class Connection:
 
         def on_error(exc, interval):
             LOG.debug("[%s] Received recoverable error from kombu:",
-                      self.connection_id,
-                      exc_info=True)
+                      self.connection_id)
 
             recoverable_error_callback and recoverable_error_callback(exc)
 
@@ -1039,9 +1039,7 @@ class Connection:
                         if self.kombu_reconnect_delay > 0
                         else interval)
             if self.kombu_reconnect_splay > 0:
-                interval += random.uniform(
-                    0,
-                    self.kombu_reconnect_splay)  # nosec
+                interval += random.uniform( 0, self.kombu_reconnect_splay)  # noqa: S311
 
             info = {'err_str': exc, 'sleep_time': interval}
             info.update(self._get_connection_info(conn_error=True))

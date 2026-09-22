@@ -60,9 +60,8 @@ class QManager:
         self.hostname = hostname
         self.processname = processname
         # This is where the counter is kept
-        self.file_name = '/dev/shm/{}_{}_qmanager'.format(  # nosec
-            self.hostname,
-            self.processname)
+        self.file_name = (
+            f'/dev/shm/{self.hostname}_{self.processname}_qmanager')  # noqa: S108
 
     @staticmethod
     def _service_identity():
@@ -105,8 +104,7 @@ class QManager:
         return pg, start_time
 
     def get(self):
-        lock_name = 'oslo_read_shm_{}_{}'.format(
-            self.hostname, self.processname)
+        lock_name = f'oslo_read_shm_{self.hostname}_{self.processname}'
 
         @lockutils.synchronized(lock_name, external=True)
         def read_from_shm():
@@ -788,23 +786,24 @@ class AMQPDriverBase(base.BaseDriver):
             with self._get_connection(rpc_common.PURPOSE_SEND, retry) as conn:
                 if notify:
                     exchange = self._get_exchange(target)
-                    LOG.debug(log_msg + "NOTIFY exchange '%(exchange)s'"
-                              " topic '%(topic)s'", {'exchange': exchange,
-                                                     'topic': target.topic})
+                    LOG.debug("%(log_msg)s NOTIFY exchange '%(exchange)s'"
+                              " topic '%(topic)s'",
+                              {'log_msg': log_msg, 'exchange': exchange,
+                               'topic': target.topic})
                     conn.notify_send(exchange, target.topic, msg, retry=retry)
                 elif target.fanout:
-                    log_msg += "FANOUT topic '{topic}'".format(
-                        topic=target.topic)
-                    LOG.debug(log_msg)
+                    LOG.debug("%(log_msg)s FANOUT topic '%(topic)s'",
+                              {'log_msg': log_msg, 'topic': target.topic})
                     conn.fanout_send(target.topic, msg, retry=retry)
                 else:
                     topic = target.topic
                     exchange = self._get_exchange(target)
                     if target.server:
                         topic = f'{target.topic}.{target.server}'
-                    LOG.debug(log_msg + "exchange '%(exchange)s'"
-                              " topic '%(topic)s'", {'exchange': exchange,
-                                                     'topic': topic})
+                    LOG.debug("%(log_msg) exchange '%(exchange)s'"
+                              " topic '%(topic)s'",
+                             {'log_msg': log_msg, 'exchange': exchange,
+                              'topic': topic})
                     conn.topic_send(exchange_name=exchange, topic=topic,
                                     msg=msg, timeout=timeout, retry=retry,
                                     transport_options=transport_options)
@@ -838,8 +837,7 @@ class AMQPDriverBase(base.BaseDriver):
                                     topic=target.topic,
                                     callback=listener)
         conn.declare_topic_consumer(exchange_name=self._get_exchange(target),
-                                    topic='{}.{}'.format(target.topic,
-                                                         target.server),
+                                    topic=f'{target.topic}.{target.server}',
                                     callback=listener)
         conn.declare_fanout_consumer(target.topic, listener)
 

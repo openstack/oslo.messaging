@@ -73,3 +73,26 @@ routing = "oslo_messaging.notify._impl_routing:RoutingDriver"
 
 [tool.setuptools.packages.find]
 include = ["oslo_messaging*"]
+
+[tool.ruff]
+line-length = 79
+
+[tool.ruff.format]
+quote-style = "preserve"
+docstring-code-format = true
+
+[tool.ruff.lint]
+select = ["E", "F", "G", "LOG", "S", "UP"]
+external = ["H"]
+ignore = [
+    "UP031",  # Enable this later when we fix 122 errors
+    "S101",  # asserts are only used for type narrowing
+]
+
+[tool.ruff.lint.per-file-ignores]
+"oslo_messaging/__init__.py" = ["F403"]
+"oslo_messaging/_metrics/__init__.py" = ["F403", "F405"]
+"oslo_messaging/notify/__init__.py" = ["F403", "F405"]
+"oslo_messaging/rpc/__init__.py" = ["F403", "F405"]
+"oslo_messaging/tests/*" = ["S"]
+"tools/*" = ["G003", "S"]

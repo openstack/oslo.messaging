@@ -31,7 +31,7 @@ class OptsTestCase(test_utils.BaseTestCase):
     def _test_list_opts(self, result):
         self.assertEqual(4, len(result))
 
-        groups = [g for (g, l) in result]
+        groups = [group for (group, _) in result]
         self.assertIn(None, groups)
         self.assertIn('oslo_messaging_notifications', groups)
         self.assertIn('oslo_messaging_rabbit', groups)

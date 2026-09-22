@@ -126,8 +126,7 @@ class Connection:
                     LOG.warning("Different transport usernames detected")
 
             if host.hostname:
-                hostaddr = "{}:{}".format(netutils.escape_ipv6(host.hostname),
-                                          host.port)
+                hostaddr = f"{netutils.escape_ipv6(host.hostname)}:{host.port}"
 
                 self.hostaddrs.append(hostaddr)
 

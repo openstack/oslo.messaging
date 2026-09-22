@@ -46,7 +46,8 @@ class KwargsStyleException(NovaStyleException):
 def add_remote_postfix(ex):
     ex_type = type(ex)
     message = str(ex)
-    str_override = lambda self: message
+    def str_override(self):
+        return message
     new_ex_type = type(ex_type.__name__ + "_Remote", (ex_type,),
                        {'__str__': str_override,
                         '__unicode__': str_override})

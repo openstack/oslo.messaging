@@ -36,7 +36,7 @@ oslo_messaging_metrics = [
     cfg.IntOpt('metrics_buffer_size', default=1000,
                help='Buffer size to store in oslo.messaging.'),
     cfg.StrOpt('metrics_socket_file',
-               default='/var/tmp/metrics_collector.sock',  # nosec
+               default='/var/tmp/metrics_collector.sock',  # noqa: S108
                help='Unix domain socket file to be used'
                     ' to send rpc related metrics'),
     cfg.StrOpt('metrics_process_name',

@@ -256,8 +256,7 @@ class InvalidDistribution:
         text = f"Sent {self.original}, got {self.received}; "
         e1 = ["%r was missing" % m for m in self.missing]
         e2 = ["%r was not expected" % m for m in self.extra]
-        e3 = ["{!r} expected before {!r}".format(
-            m[0], m[1]) for m in self.wrong_order]
+        e3 = [f"{m[0]!r} expected before {m[1]!r}" for m in self.wrong_order]
         return text + ", ".join(e1 + e2 + e3)
 
     def __len__(self):

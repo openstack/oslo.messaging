@@ -684,7 +684,7 @@ def _setup_logging(is_debug):
     logging.getLogger().handlers[0].addFilter(LoggingNoParsingFilter())
     for i in ['kombu', 'amqp', 'stevedore', 'qpid.messaging'
               'oslo.messaging._drivers.amqp', ]:
-        logging.getLogger(i).setLevel(logging.WARN)
+        logging.getLogger(i).setLevel(logging.WARNING)
 
 
 def main():

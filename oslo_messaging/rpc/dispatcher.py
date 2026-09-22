@@ -186,7 +186,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                          " attribute which can be use to ping the" + \
                          " endpoint. Please avoid using any oslo_* " + \
                          " naming."
-                LOG.warning(f"{errmsg} (endpoint={ep})")
+                LOG.warning("%s (endpoint=%s)", errmsg, ep)
 
         self.endpoints = endpoints
 

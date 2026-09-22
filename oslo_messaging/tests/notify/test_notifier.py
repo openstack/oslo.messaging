@@ -188,7 +188,7 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         uuid.uuid4 = mock.Mock(return_value=message_id)
 
         mock_utcnow.return_value = datetime.datetime.now(
-            datetime.timezone.utc).replace(tzinfo=None)
+            datetime.UTC).replace(tzinfo=None)
 
         message = {
             'message_id': str(message_id),
@@ -212,8 +212,8 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                     send_kwargs['retry'] = self.retry
                 else:
                     send_kwargs['retry'] = -1
-                target = oslo_messaging.Target(topic='{}.{}'.format(
-                    topic, self.priority))
+                target = oslo_messaging.Target(
+                    topic=f'{topic}.{self.priority}')
                 calls.append(mock.call(target,
                                        self.ctxt,
                                        message,
@@ -328,7 +328,7 @@ class TestSerializer(test_utils.BaseTestCase):
         uuid.uuid4 = mock.Mock(return_value=message_id)
 
         mock_utcnow.return_value = datetime.datetime.now(
-            datetime.timezone.utc).replace(tzinfo=None)
+            datetime.UTC).replace(tzinfo=None)
 
         serializer.serialize_context = mock.Mock()
         serializer.serialize_context.return_value = dict(user_name='alice')
@@ -398,7 +398,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
         uuid.uuid4.return_value = message_id
 
         mock_utcnow.return_value = datetime.datetime.now(
-            datetime.timezone.utc).replace(tzinfo=None)
+            datetime.UTC).replace(tzinfo=None)
 
         logger = mock.Mock()
 
