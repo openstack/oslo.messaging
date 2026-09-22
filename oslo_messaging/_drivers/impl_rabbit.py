@@ -684,8 +684,8 @@ class ConnectionLock(DummyConnectionLock):
             thread_id = self._get_thread_id()
             if self._lock_acquired != thread_id:
                 raise RuntimeError("We can't release lock acquired by another "
-                                   "thread/greenthread; %s vs %s" %
-                                   (self._lock_acquired, thread_id))
+                                   "thread/greenthread; "
+                                   f"{self._lock_acquired} vs {thread_id}")
             self._lock_acquired = None
             if self._heartbeat_waiting:
                 self._heartbeat_lock.notify()
@@ -777,7 +777,7 @@ class Connection:
             # NOTE(sileht): url have a + but no hosts
             # (like kombu+memory:///), pass it to kombu as-is
             transport = url.transport.replace('kombu+', '')
-            self._url = "%s://" % transport
+            self._url = f"{transport}://"
             if url.virtual_host:
                 self._url += url.virtual_host
         elif not url.hosts:
@@ -817,9 +817,8 @@ class Connection:
             self._connection_lock = DummyConnectionLock()
 
         self.connection_id = str(uuid.uuid4())
-        self.name = "%s:%d:%s" % (os.path.basename(sys.argv[0]),
-                                  os.getpid(),
-                                  self.connection_id)
+        self.name = (f'{os.path.basename(sys.argv[0])}:{os.getpid()}:'
+                     f'{self.connection_id}')
         self.connection = kombu.connection.Connection(
             self._url, ssl=self._fetch_ssl_params(),
             login_method=self.login_method,
@@ -927,7 +926,7 @@ class Connection:
         try:
             return cls._SSL_PROTOCOLS[key]
         except KeyError:
-            raise RuntimeError("Invalid SSL version : %s" % version)
+            raise RuntimeError(f"Invalid SSL version : {version}")
 
     @staticmethod
     def _get_ssl_server_hostname(url):
@@ -1131,8 +1130,8 @@ class Connection:
             info = {'err_str': exc, 'retry': retry}
             info.update(self.connection.info())
             msg = ('Unable to connect to AMQP server on '
-                   '%(hostname)s:%(port)s after %(retry)s '
-                   'tries: %(err_str)s' % info)
+                   '{hostname}:{port} after {retry} '
+                   'tries: {err_str}'.format(**info))
             LOG.error(msg)
             raise exceptions.MessageDeliveryFailure(msg)
 
@@ -1477,9 +1476,9 @@ class Connection:
     def declare_fanout_consumer(self, topic, callback):
         """Create a 'fanout' consumer."""
 
-        exchange_name = '%s_fanout' % topic
+        exchange_name = f'{topic}_fanout'
         if self.rabbit_stream_fanout:
-            queue_name = '%s_fanout' % topic
+            queue_name = f'{topic}_fanout'
         else:
             if self._q_manager:
                 unique = self._q_manager.get()
@@ -1649,7 +1648,7 @@ class Connection:
                 # the 404 kombu ChannelError and retry until the exchange
                 # appears
                 raise rpc_amqp.AMQPDestinationNotFound(
-                    "exchange %s doesn't exist" % exchange.name)
+                    f"exchange {exchange.name} doesn't exist")
             raise
 
     def direct_send(self, msg_id, msg):
@@ -1687,7 +1686,7 @@ class Connection:
     def fanout_send(self, topic, msg, retry=None):
         """Send a 'fanout' message."""
         exchange = kombu.entity.Exchange(
-            name='%s_fanout' % topic,
+            name=f'{topic}_fanout',
             type='fanout',
             durable=self.rabbit_transient_quorum_queue,
             auto_delete=True)

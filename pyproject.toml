@@ -85,7 +85,6 @@ docstring-code-format = true
 select = ["E", "F", "G", "LOG", "S", "UP"]
 external = ["H"]
 ignore = [
-    "UP031",  # Enable this later when we fix 122 errors
     "S101",  # asserts are only used for type narrowing
 ]
 

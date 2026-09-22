@@ -148,7 +148,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
         # NOTE(sileht): topic and server_name must be unique
         # to be able to run all tests in parallel
         self.topic = topic or str(uuid.uuid4())
-        self.names = names or ["server_%i_%s" % (i, str(uuid.uuid4())[:8])
+        self.names = names or [f"server_{i}_{str(uuid.uuid4())[:8]}"
                                for i in range(3)]
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]
@@ -183,7 +183,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
             elif 0 <= server < len(self.targets):
                 target = self.targets[server]
             else:
-                raise ValueError("Invalid value for server: %r" % server)
+                raise ValueError(f"Invalid value for server: {server!r}")
 
         transport = self.useFixture(RPCTransportFixture(self.conf, self.url))
         client = ClientStub(transport.transport, target, cast=cast,
@@ -202,7 +202,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
             elif 0 <= server < len(self.targets):
                 self.servers[server].syncq.get(timeout=5)
             else:
-                raise ValueError("Invalid value for server: %r" % server)
+                raise ValueError(f"Invalid value for server: {server!r}")
 
 
 class RpcCall:
@@ -254,8 +254,8 @@ class InvalidDistribution:
 
     def describe(self):
         text = f"Sent {self.original}, got {self.received}; "
-        e1 = ["%r was missing" % m for m in self.missing]
-        e2 = ["%r was not expected" % m for m in self.extra]
+        e1 = [f"{m!r} was missing" for m in self.missing]
+        e2 = [f"{m!r} was not expected" for m in self.extra]
         e3 = [f"{m[0]!r} expected before {m[1]!r}" for m in self.wrong_order]
         return text + ", ".join(e1 + e2 + e3)
 
@@ -276,7 +276,7 @@ class IsValidDistributionOf:
         self.original = original
 
     def __str__(self):
-        return 'IsValidDistribution(%s)' % self.original
+        return f'IsValidDistribution({self.original})'
 
     def match(self, actual):
         errors = InvalidDistribution(self.original, actual)

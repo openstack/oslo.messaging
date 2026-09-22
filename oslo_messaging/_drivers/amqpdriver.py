@@ -547,7 +547,7 @@ class ReplyWaiters:
         except queue.Empty:
             raise oslo_messaging.MessagingTimeout(
                 'Timed out waiting for a reply '
-                'to message ID %s' % msg_id)
+                f'to message ID {msg_id}')
 
     def put(self, msg_id, message_data):
         LOG.debug('Received RPC response for msg %s', msg_id)
@@ -778,9 +778,9 @@ class AMQPDriverBase(base.BaseDriver):
 
         if wait_for_reply:
             self._waiter.listen(msg_id)
-            log_msg = "CALL msg_id: %s " % msg_id
+            log_msg = f"CALL msg_id: {msg_id} "
         else:
-            log_msg = "CAST unique_id: %s " % unique_id
+            log_msg = f"CAST unique_id: {unique_id} "
 
         try:
             with self._get_connection(rpc_common.PURPOSE_SEND, retry) as conn:

@@ -58,9 +58,9 @@ class RemoteError(exceptions.MessagingException):
         self.exc_type = exc_type
         self.value = value
         self.traceback = traceback
-        msg = ("Remote error: %(exc_type)s %(value)s\n%(traceback)s." %
-               dict(exc_type=self.exc_type, value=self.value,
-                    traceback=self.traceback))
+        msg = ("Remote error: {exc_type} {value}\n{traceback}.".format(
+            **dict(exc_type=self.exc_type, value=self.value,
+                   traceback=self.traceback)))
         super().__init__(msg)
 
 
@@ -69,11 +69,11 @@ class RPCVersionCapError(exceptions.MessagingException):
     def __init__(self, version, version_cap):
         self.version = version
         self.version_cap = version_cap
-        msg = ("Requested message version, %(version)s is incompatible.  It "
+        msg = ("Requested message version, {version} is incompatible.  It "
                "needs to be equal in major version and less than or equal "
                "in minor version as the specified version cap "
-               "%(version_cap)s." %
-               dict(version=self.version, version_cap=self.version_cap))
+               "{version_cap}.".format(
+            **dict(version=self.version, version_cap=self.version_cap)))
         super().__init__(msg)
 
 
@@ -139,8 +139,8 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
                 utils.version_is_compatible(version, version)
             except (IndexError, ValueError):
                 raise exceptions.MessagingException(
-                    "Version must contain a major and minor integer. Got %s"
-                    % version)
+                    "Version must contain a major and minor integer. "
+                    f"Got {version}")
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately. See RPCClient.cast()."""

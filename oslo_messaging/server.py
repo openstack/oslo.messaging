@@ -201,8 +201,8 @@ class _OrderedTask:
                     finally:
                         self._cond.acquire()
             elif self._state == self.RUNNING:
-                msg = ('%s is waiting for another thread to complete'
-                       % self._name)
+                msg = (f'{self._name} is waiting for '
+                      'another thread to complete')
                 self._wait(lambda: self._state == self.RUNNING,
                            msg, log_after, timeout_timer)
 

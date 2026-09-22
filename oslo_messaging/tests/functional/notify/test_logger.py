@@ -70,7 +70,7 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         log.addHandler(log_notify)
 
         log_method = getattr(log, self.priority)
-        log_method('Test logging at priority: %s' % self.priority)
+        log_method(f'Test logging at priority: {self.priority}')
 
         events = listener.get_events(timeout=15)
         self.assertEqual(1, len(events))

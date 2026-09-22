@@ -436,7 +436,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
 
         n = listener_a.notifier('pub')
 
-        events_out = [('test-%s' % c, 'payload-%s' % c) for c in 'abcdefgh']
+        events_out = [(f'test-{c}', f'payload-{c}') for c in 'abcdefgh']
         for event_type, payload in events_out:
             n.info({}, event_type, payload)
 
@@ -467,11 +467,11 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         a = listener_a.notifier('pub-1', topics=['1'])
         b = listener_b.notifier('pub-2', topics=['2'])
 
-        a_out = [('test-1-%s' % c, 'payload-1-%s' % c) for c in 'abcdefgh']
+        a_out = [(f'test-1-{c}', f'payload-1-{c}') for c in 'abcdefgh']
         for event_type, payload in a_out:
             a.info({}, event_type, payload)
 
-        b_out = [('test-2-%s' % c, 'payload-2-%s' % c) for c in 'ijklmnop']
+        b_out = [(f'test-2-{c}', f'payload-2-{c}') for c in 'ijklmnop']
         for event_type, payload in b_out:
             b.info({}, event_type, payload)
 
@@ -530,7 +530,7 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         notifier = listener.notifier('abc')
 
         for i in range(0, 205):
-            notifier.info({}, 'test%s' % i, 'Hello World!')
+            notifier.info({}, f'test{i}', 'Hello World!')
         events = listener.get_events(timeout=get_timeout)
         self.assertEqual(3, len(events))
         self.assertEqual(100, len(events[0][1]))

@@ -273,7 +273,7 @@ class TransportHost:
             v = getattr(self, a)
             if v:
                 attrs.append((a, repr(v)))
-        values = ', '.join(['%s=%s' % i for i in attrs])
+        values = ', '.join(['{}={}'.format(*i) for i in attrs])
         return '<TransportHost ' + values + '>'
 
 
@@ -372,7 +372,7 @@ class TransportURL:
             v = getattr(self, a)
             if v:
                 attrs.append((a, repr(v)))
-        values = ', '.join(['%s=%s' % i for i in attrs])
+        values = ', '.join(['{}={}'.format(*i) for i in attrs])
         return '<TransportURL ' + values + '>'
 
     def __str__(self):
@@ -392,14 +392,14 @@ class TransportURL:
                 if username is not None:
                     netloc += parse.quote(username, '')
                 if password is not None:
-                    netloc += ':%s' % parse.quote(password, '')
+                    netloc += ':{}'.format(parse.quote(password, ''))
                 netloc += '@'
 
             # Build the network location portion of the transport URL
             if hostname:
                 netloc += netutils.escape_ipv6(hostname)
             if port is not None:
-                netloc += ':%d' % port
+                netloc += f':{port}'
 
             netlocs.append(netloc)
 

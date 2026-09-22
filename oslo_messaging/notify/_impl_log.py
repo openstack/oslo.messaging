@@ -43,4 +43,4 @@ class LogDriver(notifier.Driver):
         else:
             warnings.warn('Unable to log message as notify cannot find a '
                           'logger with the priority specified '
-                          '%s' % priority.lower())
+                          f'{priority.lower()}')

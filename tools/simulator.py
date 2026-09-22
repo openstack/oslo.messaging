@@ -161,16 +161,16 @@ class MessageStatsCollector:
 
         seq = len(self.series)
         stats = dict(seq=seq, timestamp=now, count=count, size=size)
-        msg = ('%-14s: seq: %-4d count: %-6d bytes: %-10d' %
-               (self.label, seq, count, size))
+        msg = (f'{self.label:-14s}: seq: {seq:-4d} '
+               f'count: {count:-6d} bytes: {size:-10d}')
 
         if sum_latencies:
             latency = sum_latencies / count
             stats.update(dict(latency=latency,
                               min_latency=min_latency,
                               max_latency=max_latency))
-            msg += (' latency: %-9.3f min: %-9.3f max: %-9.3f' %
-                    (latency, min_latency, max_latency))
+            msg += (f' latency: {latency:<9.3f}'
+                    f' min: {min_latency:<9.3f} max: {max_latency:<9.3f}')
 
         self.series.append(stats)
         LOG.info(msg)
@@ -219,18 +219,17 @@ class MessageStatsCollector:
                               count_p_s=count / duration,
                               size_p_s=size / duration))
 
-        msg = ('%s: duration: %.2f count: %d (%.1f msg/sec) '
-               'bytes: %d (%.0f bps)' %
-               (label, duration, count, stats['count_p_s'],
-                size, stats['size_p_s']))
+        msg = (f"{label}: duration: {duration:.2f} "
+               f"count: {count} ({stats['count_p_s']:.1f} msg/sec) "
+               f"bytes: {size} ({stats['size_p_s']:.0f} bps)")
 
         if sum_latencies:
             latency = sum_latencies / count
             stats.update(dict(latency=latency,
                               min_latency=min_latency,
                               max_latency=max_latency))
-            msg += (' latency: %.3f min: %.3f max: %.3f' %
-                    (latency, min_latency, max_latency))
+            msg += (f' latency: {latency:.3f}'
+                    f' min: {min_latency:.3f} max: {max_latency:.3f}')
 
         LOG.info(msg)
         return stats
@@ -369,12 +368,12 @@ class Client:
         # memory re-usage and generate more realistic load on the library
         # and a message transport
         self.position = random.randint(0, self.messages_count - 1)
-        self.sent_messages = MessageStatsCollector('client-%s' % client_id)
-        self.errors = MessageStatsCollector('error-%s' % client_id)
+        self.sent_messages = MessageStatsCollector(f'client-{client_id}')
+        self.errors = MessageStatsCollector(f'error-{client_id}')
 
         if has_result:
             self.round_trip_messages = MessageStatsCollector(
-                'round-trip-%s' % client_id)
+                f'round-trip-{client_id}')
 
     def host_based_id(self):
         _id = "%(client_id)s %(salt)s@%(hostname)s"
@@ -460,7 +459,7 @@ class RPCClient(Client):
 class NotifyClient(Client):
     def __init__(self, client_id, transport, topic, wait_after_msg):
         client = notify.Notifier(transport, driver='messaging', topics=topic)
-        client = client.prepare(publisher_id='publisher-%d' % client_id)
+        client = client.prepare(publisher_id=f'publisher-{client_id}')
         method = _notify
         super().__init__(client_id, client, method, False, wait_after_msg)
 
@@ -633,11 +632,11 @@ def show_client_stats(clients, json_filename, has_reply=False):
 
     for cl in clients:
         cl_id = cl.client_id
-        output['series']['client_%s' % cl_id] = cl.sent_messages.get_series()
-        output['series']['error_%s' % cl_id] = cl.errors.get_series()
+        output['series'][f'client_{cl_id}'] = cl.sent_messages.get_series()
+        output['series'][f'error_{cl_id}'] = cl.errors.get_series()
 
         if has_reply:
-            output['series']['round_trip_%s' % cl_id] = (
+            output['series'][f'round_trip_{cl_id}'] = (
                 cl.round_trip_messages.get_series())
 
     sent_stats = MessageStatsCollector.calc_stats(

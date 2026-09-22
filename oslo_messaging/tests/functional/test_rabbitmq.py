@@ -30,7 +30,7 @@ class ConnectedPortMatcher:
         return data.get("port") == self.port
 
     def __repr__(self):
-        return "<ConnectedPortMatcher port=%d>" % self.port
+        return f"<ConnectedPortMatcher port={self.port}>"
 
 
 class RabbitMQFailoverTests(test_utils.BaseTestCase):
@@ -132,5 +132,5 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
                  for cctxt in connection_contexts]
 
         self.assertEqual([port] * len(ports), ports,
-                         "expected: %s, rpc-server: %s, rpc-client: %s, "
-                         "rpc-replies: %s" % tuple([port] + ports))
+                         "expected: {}, rpc-server: {}, rpc-client: {}, "
+                         "rpc-replies: {}".format(*tuple([port] + ports)))

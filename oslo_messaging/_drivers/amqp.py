@@ -86,7 +86,7 @@ def pack_context(msg, context):
     else:
         context_d = context.to_dict().items()
 
-    msg.update(('_context_%s' % key, value)
+    msg.update((f'_context_{key}', value)
                for (key, value) in context_d)
 
 

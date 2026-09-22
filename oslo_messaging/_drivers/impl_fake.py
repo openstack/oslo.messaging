@@ -215,7 +215,7 @@ class FakeDriver(base.BaseDriver):
                     return reply
             except queue.Empty:
                 raise oslo_messaging.MessagingTimeout(
-                    'No reply on topic %s' % target.topic)
+                    f'No reply on topic {target.topic}')
 
         return None
 

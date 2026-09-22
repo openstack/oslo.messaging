@@ -85,7 +85,7 @@ class AssignedPartition:
         super().__init__()
         self.topic = topic
         self.partition = partition
-        self.skey = '%s %d' % (self.topic, self.partition)
+        self.skey = f'{self.topic} {self.partition}'
 
     def to_dict(self):
         return {'topic': self.topic, 'partition': self.partition}
@@ -152,7 +152,7 @@ class ConsumerConnection(Connection):
 
     def find_assignment(self, topic, partition):
         """Find and return existing assignment based on topic and partition"""
-        skey = '%s %d' % (topic, partition)
+        skey = f'{topic} {partition}'
         return self.assignment_dict.get(skey)
 
     def on_assign(self, consumer, topic_partitions):

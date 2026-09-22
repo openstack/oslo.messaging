@@ -99,7 +99,7 @@ class Target:
             v = getattr(self, a)
             if v:
                 attrs.append((a, v))
-        values = ', '.join(['%s=%s' % i for i in attrs])
+        values = ', '.join(['{}={}'.format(*i) for i in attrs])
         return '<Target ' + values + '>'
 
     def __hash__(self):
