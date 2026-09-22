@@ -14,6 +14,7 @@
 """
 Driver for the Python logging package that sends log records as a notification.
 """
+
 import logging
 
 from oslo_config import cfg
@@ -43,13 +44,18 @@ class LoggingNotificationHandler(logging.Handler):
 
     """
 
-    def __init__(self, url, publisher_id=None, driver=None,
-                 topic=None, serializer=None):
+    def __init__(
+        self, url, publisher_id=None, driver=None, topic=None, serializer=None
+    ):
         self.notifier = notifier.Notifier(
             notifier.get_notification_transport(self.CONF, url),
-            publisher_id, driver, serializer() if serializer else None,
-            topics=(topic if isinstance(topic, list) or topic is None
-                    else [topic]))
+            publisher_id,
+            driver,
+            serializer() if serializer else None,
+            topics=(
+                topic if isinstance(topic, list) or topic is None else [topic]
+            ),
+        )
         logging.Handler.__init__(self)
 
     def emit(self, record):
@@ -79,5 +85,5 @@ class LoggingNotificationHandler(logging.Handler):
                 'processName': record.processName,
                 'process': record.process,
                 'extra': getattr(record, 'extra', None),
-            }
+            },
         )

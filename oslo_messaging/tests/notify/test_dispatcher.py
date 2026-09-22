@@ -27,54 +27,84 @@ notification_msg = dict(
     event_type="compute.start",
     payload={"info": "fuu"},
     message_id="uuid",
-    timestamp=str(timeutils.utcnow())
+    timestamp=str(timeutils.utcnow()),
 )
 
 
 class TestDispatcher(test_utils.BaseTestCase):
-
     scenarios = [
-        ('no_endpoints',
-         dict(endpoints=[],
-              endpoints_expect_calls=[],
-              priority='info',
-              ex=None,
-              return_value=oslo_messaging.NotificationResult.HANDLED)),
-        ('one_endpoints',
-         dict(endpoints=[['warn']],
-              endpoints_expect_calls=['warn'],
-              priority='warn',
-              ex=None,
-              return_value=oslo_messaging.NotificationResult.HANDLED)),
-        ('two_endpoints_only_one_match',
-         dict(endpoints=[['warn'], ['info']],
-              endpoints_expect_calls=[None, 'info'],
-              priority='info',
-              ex=None,
-              return_value=oslo_messaging.NotificationResult.HANDLED)),
-        ('two_endpoints_both_match',
-         dict(endpoints=[['debug', 'info'], ['info', 'debug']],
-              endpoints_expect_calls=['debug', 'debug'],
-              priority='debug',
-              ex=None,
-              return_value=oslo_messaging.NotificationResult.HANDLED)),
-        ('no_return_value',
-         dict(endpoints=[['warn']],
-              endpoints_expect_calls=['warn'],
-              priority='warn',
-              ex=None, return_value=None)),
-        ('requeue',
-         dict(endpoints=[['debug', 'warn']],
-              endpoints_expect_calls=['debug'],
-              priority='debug', msg=notification_msg,
-              ex=None,
-              return_value=oslo_messaging.NotificationResult.REQUEUE)),
-        ('exception',
-         dict(endpoints=[['debug', 'warn']],
-              endpoints_expect_calls=['debug'],
-              priority='debug', msg=notification_msg,
-              ex=Exception,
-              return_value=oslo_messaging.NotificationResult.HANDLED)),
+        (
+            'no_endpoints',
+            dict(
+                endpoints=[],
+                endpoints_expect_calls=[],
+                priority='info',
+                ex=None,
+                return_value=oslo_messaging.NotificationResult.HANDLED,
+            ),
+        ),
+        (
+            'one_endpoints',
+            dict(
+                endpoints=[['warn']],
+                endpoints_expect_calls=['warn'],
+                priority='warn',
+                ex=None,
+                return_value=oslo_messaging.NotificationResult.HANDLED,
+            ),
+        ),
+        (
+            'two_endpoints_only_one_match',
+            dict(
+                endpoints=[['warn'], ['info']],
+                endpoints_expect_calls=[None, 'info'],
+                priority='info',
+                ex=None,
+                return_value=oslo_messaging.NotificationResult.HANDLED,
+            ),
+        ),
+        (
+            'two_endpoints_both_match',
+            dict(
+                endpoints=[['debug', 'info'], ['info', 'debug']],
+                endpoints_expect_calls=['debug', 'debug'],
+                priority='debug',
+                ex=None,
+                return_value=oslo_messaging.NotificationResult.HANDLED,
+            ),
+        ),
+        (
+            'no_return_value',
+            dict(
+                endpoints=[['warn']],
+                endpoints_expect_calls=['warn'],
+                priority='warn',
+                ex=None,
+                return_value=None,
+            ),
+        ),
+        (
+            'requeue',
+            dict(
+                endpoints=[['debug', 'warn']],
+                endpoints_expect_calls=['debug'],
+                priority='debug',
+                msg=notification_msg,
+                ex=None,
+                return_value=oslo_messaging.NotificationResult.REQUEUE,
+            ),
+        ),
+        (
+            'exception',
+            dict(
+                endpoints=[['debug', 'warn']],
+                endpoints_expect_calls=['debug'],
+                priority='debug',
+                msg=notification_msg,
+                ex=Exception,
+                return_value=oslo_messaging.NotificationResult.HANDLED,
+            ),
+        ),
     ]
 
     def test_dispatcher(self):
@@ -100,9 +130,11 @@ class TestDispatcher(test_utils.BaseTestCase):
 
         expected_res = (
             notify_dispatcher.NotificationResult.REQUEUE
-            if (self.return_value ==
-                notify_dispatcher.NotificationResult.REQUEUE or
-                self.ex is not None)
+            if (
+                self.return_value
+                == notify_dispatcher.NotificationResult.REQUEUE
+                or self.ex is not None
+            )
             else notify_dispatcher.NotificationResult.HANDLED
         )
 
@@ -117,10 +149,9 @@ class TestDispatcher(test_utils.BaseTestCase):
                         {},
                         msg['publisher_id'],
                         msg['event_type'],
-                        msg['payload'], {
-                            'timestamp': mock.ANY,
-                            'message_id': mock.ANY
-                        })
+                        msg['payload'],
+                        {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                    )
                 else:
                     self.assertEqual(0, endpoints[i].call_count)
 
@@ -129,118 +160,182 @@ class TestDispatcher(test_utils.BaseTestCase):
         msg = notification_msg.copy()
         msg['priority'] = 'what???'
         dispatcher = notify_dispatcher.NotificationDispatcher(
-            [mock.Mock()], None)
+            [mock.Mock()], None
+        )
         res = dispatcher.dispatch(mock.Mock(ctxt={}, message=msg))
         self.assertIsNone(res)
-        mylog.warning.assert_called_once_with('Unknown priority "%s"',
-                                              'what???')
+        mylog.warning.assert_called_once_with(
+            'Unknown priority "%s"', 'what???'
+        )
 
 
 class TestDispatcherFilter(test_utils.BaseTestCase):
     scenarios = [
-        ('publisher_id_match',
-         dict(filter_rule=dict(publisher_id='^compute.*'),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=True)),
-        ('publisher_id_nomatch',
-         dict(filter_rule=dict(publisher_id='^compute.*'),
-              publisher_id='network01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=False)),
-        ('event_type_match',
-         dict(filter_rule=dict(event_type=r'^instance\.create'),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=True)),
-        ('event_type_nomatch',
-         dict(filter_rule=dict(event_type=r'^instance\.delete'),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=False)),
+        (
+            'publisher_id_match',
+            dict(
+                filter_rule=dict(publisher_id='^compute.*'),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=True,
+            ),
+        ),
+        (
+            'publisher_id_nomatch',
+            dict(
+                filter_rule=dict(publisher_id='^compute.*'),
+                publisher_id='network01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=False,
+            ),
+        ),
+        (
+            'event_type_match',
+            dict(
+                filter_rule=dict(event_type=r'^instance\.create'),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=True,
+            ),
+        ),
+        (
+            'event_type_nomatch',
+            dict(
+                filter_rule=dict(event_type=r'^instance\.delete'),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=False,
+            ),
+        ),
         # this is only for simulation
-        ('event_type_not_string',
-         dict(filter_rule=dict(event_type=r'^instance\.delete'),
-              publisher_id='compute01.manager',
-              event_type=['instance.swim', 'instance.fly'],
-              context={},
-              match=False)),
-        ('context_match',
-         dict(filter_rule=dict(context={'user': '^adm'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={'user': 'admin'},
-              match=True)),
-        ('context_key_missing',
-         dict(filter_rule=dict(context={'user': '^adm'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={'project': 'admin'},
-              metadata={},
-              match=False)),
-        ('metadata_match',
-         dict(filter_rule=dict(metadata={'message_id': '^99'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=True)),
-        ('metadata_key_missing',
-         dict(filter_rule=dict(metadata={'user': '^adm'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=False)),
-        ('payload_match',
-         dict(filter_rule=dict(payload={'state': '^active$'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=True)),
-        ('payload_no_match',
-         dict(filter_rule=dict(payload={'state': '^deleted$'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=False)),
-        ('payload_key_missing',
-         dict(filter_rule=dict(payload={'user': '^adm'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=False)),
-        ('payload_value_none',
-         dict(filter_rule=dict(payload={'virtual_size': '2048'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={},
-              match=False)),
-        ('mix_match',
-         dict(filter_rule=dict(event_type=r'^instance\.create',
-                               publisher_id='^compute',
-                               context={'user': '^adm'}),
-              publisher_id='compute01.manager',
-              event_type='instance.create.start',
-              context={'user': 'admin'},
-              match=True)),
+        (
+            'event_type_not_string',
+            dict(
+                filter_rule=dict(event_type=r'^instance\.delete'),
+                publisher_id='compute01.manager',
+                event_type=['instance.swim', 'instance.fly'],
+                context={},
+                match=False,
+            ),
+        ),
+        (
+            'context_match',
+            dict(
+                filter_rule=dict(context={'user': '^adm'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={'user': 'admin'},
+                match=True,
+            ),
+        ),
+        (
+            'context_key_missing',
+            dict(
+                filter_rule=dict(context={'user': '^adm'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={'project': 'admin'},
+                metadata={},
+                match=False,
+            ),
+        ),
+        (
+            'metadata_match',
+            dict(
+                filter_rule=dict(metadata={'message_id': '^99'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=True,
+            ),
+        ),
+        (
+            'metadata_key_missing',
+            dict(
+                filter_rule=dict(metadata={'user': '^adm'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=False,
+            ),
+        ),
+        (
+            'payload_match',
+            dict(
+                filter_rule=dict(payload={'state': '^active$'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=True,
+            ),
+        ),
+        (
+            'payload_no_match',
+            dict(
+                filter_rule=dict(payload={'state': '^deleted$'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=False,
+            ),
+        ),
+        (
+            'payload_key_missing',
+            dict(
+                filter_rule=dict(payload={'user': '^adm'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=False,
+            ),
+        ),
+        (
+            'payload_value_none',
+            dict(
+                filter_rule=dict(payload={'virtual_size': '2048'}),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={},
+                match=False,
+            ),
+        ),
+        (
+            'mix_match',
+            dict(
+                filter_rule=dict(
+                    event_type=r'^instance\.create',
+                    publisher_id='^compute',
+                    context={'user': '^adm'},
+                ),
+                publisher_id='compute01.manager',
+                event_type='instance.create.start',
+                context={'user': 'admin'},
+                match=True,
+            ),
+        ),
     ]
 
     def test_filters(self):
         notification_filter = oslo_messaging.NotificationFilter(
-            **self.filter_rule)
+            **self.filter_rule
+        )
         endpoint = mock.Mock(spec=['info'], filter_rule=notification_filter)
 
         dispatcher = notify_dispatcher.NotificationDispatcher(
-            [endpoint], serializer=None)
-        message = {'payload': {'state': 'active', 'virtual_size': None},
-                   'priority': 'info',
-                   'publisher_id': self.publisher_id,
-                   'event_type': self.event_type,
-                   'timestamp': '2014-03-03 18:21:04.369234',
-                   'message_id': '99863dda-97f0-443a-a0c1-6ed317b7fd45'}
+            [endpoint], serializer=None
+        )
+        message = {
+            'payload': {'state': 'active', 'virtual_size': None},
+            'priority': 'info',
+            'publisher_id': self.publisher_id,
+            'event_type': self.event_type,
+            'timestamp': '2014-03-03 18:21:04.369234',
+            'message_id': '99863dda-97f0-443a-a0c1-6ed317b7fd45',
+        }
         incoming = mock.Mock(ctxt=self.context, message=message)
         dispatcher.dispatch(incoming)
 

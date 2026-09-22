@@ -28,23 +28,34 @@ from oslo_messaging import serializer as msg_serializer
 from oslo_messaging import transport as msg_transport
 
 _notifier_opts = [
-    cfg.MultiStrOpt('driver',
-                    default=[],
-                    help='The Drivers(s) to handle sending notifications. '
-                         'Possible values are messaging, messagingv2, '
-                         'routing, log, test, noop'),
-    cfg.StrOpt('transport_url',
-               secret=True,
-               help='A URL representing the messaging driver to use for '
-                    'notifications. If not set, we fall back to the same '
-                    'configuration used for RPC.'),
-    cfg.ListOpt('topics',
-                default=['notifications', ],
-                help='AMQP topic used for OpenStack notifications.'),
-    cfg.IntOpt('retry', default=-1,
-               help='The maximum number of attempts to re-send a notification '
-                    'message which failed to be delivered due to a '
-                    'recoverable error. 0 - No retry, -1 - indefinite'),
+    cfg.MultiStrOpt(
+        'driver',
+        default=[],
+        help='The Drivers(s) to handle sending notifications. '
+        'Possible values are messaging, messagingv2, '
+        'routing, log, test, noop',
+    ),
+    cfg.StrOpt(
+        'transport_url',
+        secret=True,
+        help='A URL representing the messaging driver to use for '
+        'notifications. If not set, we fall back to the same '
+        'configuration used for RPC.',
+    ),
+    cfg.ListOpt(
+        'topics',
+        default=[
+            'notifications',
+        ],
+        help='AMQP topic used for OpenStack notifications.',
+    ),
+    cfg.IntOpt(
+        'retry',
+        default=-1,
+        help='The maximum number of attempts to re-send a notification '
+        'message which failed to be delivered due to a '
+        'recoverable error. 0 - No retry, -1 - indefinite',
+    ),
 ]
 
 _LOG = logging.getLogger(__name__)
@@ -55,42 +66,36 @@ def _send_notification():
     parser = argparse.ArgumentParser(
         description='Oslo.messaging notification sending',
     )
-    parser.add_argument('--config-file',
-                        help='Path to configuration file')
-    parser.add_argument('--transport-url',
-                        help='Transport URL')
-    parser.add_argument('--publisher-id',
-                        help='Publisher ID')
-    parser.add_argument('--event-type',
-                        default="test",
-                        help="Event type")
-    parser.add_argument('--topic',
-                        nargs='*',
-                        help="Topic to send to")
-    parser.add_argument('--priority',
-                        default="info",
-                        choices=("info",
-                                 "audit",
-                                 "warn",
-                                 "error",
-                                 "critical",
-                                 "sample"),
-                        help='Event type')
-    parser.add_argument('--driver',
-                        default="messagingv2",
-                        choices=extension.ExtensionManager(
-                            'oslo.messaging.notify.drivers'
-                        ).names(),
-                        help='Notification driver')
-    parser.add_argument('payload',
-                        help="the notification payload (dict)")
+    parser.add_argument('--config-file', help='Path to configuration file')
+    parser.add_argument('--transport-url', help='Transport URL')
+    parser.add_argument('--publisher-id', help='Publisher ID')
+    parser.add_argument('--event-type', default="test", help="Event type")
+    parser.add_argument('--topic', nargs='*', help="Topic to send to")
+    parser.add_argument(
+        '--priority',
+        default="info",
+        choices=("info", "audit", "warn", "error", "critical", "sample"),
+        help='Event type',
+    )
+    parser.add_argument(
+        '--driver',
+        default="messagingv2",
+        choices=extension.ExtensionManager(
+            'oslo.messaging.notify.drivers'
+        ).names(),
+        help='Notification driver',
+    )
+    parser.add_argument('payload', help="the notification payload (dict)")
     args = parser.parse_args()
     conf = cfg.ConfigOpts()
-    conf([],
-         default_config_files=[args.config_file] if args.config_file else None)
+    conf(
+        [],
+        default_config_files=[args.config_file] if args.config_file else None,
+    )
     transport = get_notification_transport(conf, url=args.transport_url)
-    notifier = Notifier(transport, args.publisher_id, topics=args.topic,
-                        driver=args.driver)
+    notifier = Notifier(
+        transport, args.publisher_id, topics=args.topic, driver=args.driver
+    )
     notifier._notify({}, args.event_type, args.payload, args.priority)
 
 
@@ -151,13 +156,15 @@ def get_notification_transport(conf, url=None, allowed_remote_exmods=None):
                                   from
     :type allowed_remote_exmods: list
     """
-    conf.register_opts(_notifier_opts,
-                       group='oslo_messaging_notifications')
+    conf.register_opts(_notifier_opts, group='oslo_messaging_notifications')
     if url is None:
         url = conf.oslo_messaging_notifications.transport_url
     return msg_transport._get_transport(
-        conf, url, allowed_remote_exmods,
-        transport_cls=msg_transport.NotificationTransport)
+        conf,
+        url,
+        allowed_remote_exmods,
+        transport_cls=msg_transport.NotificationTransport,
+    )
 
 
 def _sanitize_context(ctxt):
@@ -173,13 +180,14 @@ def _sanitize_context(ctxt):
     except AttributeError:
         # NOTE(JayF): We'd rather send a notification without any context
         #             than missing sending the notification altogether.
-        _LOG.warning("Unable to properly redact context for "
-                     "notification, omitting context from notification.")
+        _LOG.warning(
+            "Unable to properly redact context for "
+            "notification, omitting context from notification."
+        )
         return {}
 
 
 class Notifier:
-
     """Send notification messages.
 
     The Notifier class is used for sending notification messages over a
@@ -197,8 +205,9 @@ class Notifier:
     A Notifier object can be instantiated with a transport object and a
     publisher ID::
 
-        notifier = messaging.Notifier(get_notification_transport(CONF),
-                                      'compute')
+        notifier = messaging.Notifier(
+            get_notification_transport(CONF), 'compute'
+        )
 
     and notifications are sent via drivers chosen with the driver
     config option and on the topics chosen with the topics config
@@ -208,10 +217,12 @@ class Notifier:
     driver or topic::
 
         transport = notifier.get_notification_transport(CONF)
-        notifier = notifier.Notifier(transport,
-                                     'compute.host',
-                                     driver='messaging',
-                                     topics=['notifications'])
+        notifier = notifier.Notifier(
+            transport,
+            'compute.host',
+            driver='messaging',
+            topics=['notifications'],
+        )
 
     Notifier objects are relatively expensive to instantiate (mostly the cost
     of loading notification drivers), so it is possible to specialize a given
@@ -221,9 +232,15 @@ class Notifier:
         notifier.info(ctxt, event_type, payload)
     """
 
-    def __init__(self, transport, publisher_id=None,
-                 driver=None, serializer=None, retry=None,
-                 topics=None):
+    def __init__(
+        self,
+        transport,
+        publisher_id=None,
+        driver=None,
+        serializer=None,
+        retry=None,
+        topics=None,
+    ):
         """Construct a Notifier object.
 
         :param transport: the transport to use for sending messages
@@ -245,13 +262,16 @@ class Notifier:
         :type topics: list of strings
         """
         conf = transport.conf
-        conf.register_opts(_notifier_opts,
-                           group='oslo_messaging_notifications')
+        conf.register_opts(
+            _notifier_opts, group='oslo_messaging_notifications'
+        )
 
         if not isinstance(transport, msg_transport.NotificationTransport):
-            _LOG.warning("Using RPC transport for notifications. Please use "
-                         "get_notification_transport to obtain a "
-                         "notification transport instance.")
+            _LOG.warning(
+                "Using RPC transport for notifications. Please use "
+                "get_notification_transport to obtain a "
+                "notification transport instance."
+            )
         self.transport = transport
         self.publisher_id = publisher_id
         if retry is not None:
@@ -259,8 +279,11 @@ class Notifier:
         else:
             self.retry = conf.oslo_messaging_notifications.retry
 
-        self._driver_names = ([driver] if driver is not None else
-                              conf.oslo_messaging_notifications.driver)
+        self._driver_names = (
+            [driver]
+            if driver is not None
+            else conf.oslo_messaging_notifications.driver
+        )
 
         if topics is not None:
             self._topics = topics
@@ -276,7 +299,7 @@ class Notifier:
             invoke_kwds={
                 'topics': self._topics,
                 'transport': self.transport,
-            }
+            },
         )
 
     _marker = object()
@@ -300,8 +323,15 @@ class Notifier:
         """
         return _SubNotifier._prepare(self, publisher_id, retry=retry)
 
-    def _notify(self, ctxt, event_type, payload, priority, publisher_id=None,
-                retry=None):
+    def _notify(
+        self,
+        ctxt,
+        event_type,
+        payload,
+        priority,
+        publisher_id=None,
+        retry=None,
+    ):
         payload = self._serializer.serialize_entity(ctxt, payload)
 
         # NOTE(JayF): We must remove secure information from notification
@@ -310,20 +340,24 @@ class Notifier:
         safe_ctxt = _sanitize_context(ctxt)
         ctxt = self._serializer.serialize_context(safe_ctxt)
 
-        msg = dict(message_id=str(uuid.uuid4()),
-                   publisher_id=publisher_id or self.publisher_id,
-                   event_type=event_type,
-                   priority=priority,
-                   payload=payload,
-                   timestamp=str(timeutils.utcnow()))
+        msg = dict(
+            message_id=str(uuid.uuid4()),
+            publisher_id=publisher_id or self.publisher_id,
+            event_type=event_type,
+            priority=priority,
+            payload=payload,
+            timestamp=str(timeutils.utcnow()),
+        )
 
         def do_notify(ext):
             try:
                 ext.obj.notify(ctxt, msg, priority, retry or self.retry)
             except Exception as e:
-                _LOG.exception("Problem '%(e)s' attempting to send to "
-                               "notification system. Payload=%(payload)s",
-                               {'e': e, 'payload': payload})
+                _LOG.exception(
+                    "Problem '%(e)s' attempting to send to "
+                    "notification system. Payload=%(payload)s",
+                    {'e': e, 'payload': payload},
+                )
 
         if self._driver_mgr.extensions:
             self._driver_mgr.map(do_notify)
@@ -444,7 +478,6 @@ class Notifier:
 
 
 class _SubNotifier(Notifier):
-
     _marker = Notifier._marker
 
     def __init__(self, base, publisher_id, retry):

@@ -25,7 +25,6 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class PoolTestCase(test_utils.BaseTestCase):
-
     _max_size = [
         ('default_size', dict(max_size=None, n_iters=4)),
         ('set_max_size', dict(max_size=10, n_iters=10)),
@@ -38,16 +37,15 @@ class PoolTestCase(test_utils.BaseTestCase):
 
     @classmethod
     def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._max_size,
-                                                         cls._create_error)
+        cls.scenarios = testscenarios.multiply_scenarios(
+            cls._max_size, cls._create_error
+        )
 
     class TestPool(pool.Pool):
-
         def create(self, retry=None):
             return uuid.uuid4()
 
     class ThreadWaitWaiter:
-
         """A gross hack.
 
         Stub out the condition variable's wait() method and spin until it
@@ -64,14 +62,17 @@ class PoolTestCase(test_utils.BaseTestCase):
             def count_waits(**kwargs):
                 self.n_waits += 1
                 self.orig_wait(**kwargs)
-            self.test.useFixture(fixtures.MockPatchObject(
-                self.cond, 'wait', count_waits))
+
+            self.test.useFixture(
+                fixtures.MockPatchObject(self.cond, 'wait', count_waits)
+            )
 
         def wait(self):
             while self.n_waits < self.n_threads:
                 pass
-            self.test.useFixture(fixtures.MockPatchObject(
-                self.cond, 'wait', self.orig_wait))
+            self.test.useFixture(
+                fixtures.MockPatchObject(self.cond, 'wait', self.orig_wait)
+            )
 
     def test_pool(self):
         kwargs = {}
@@ -81,14 +82,16 @@ class PoolTestCase(test_utils.BaseTestCase):
         p = self.TestPool(**kwargs)
 
         if self.create_error:
+
             def create_error(retry=None):
                 raise RuntimeError
+
             orig_create = p.create
-            self.useFixture(fixtures.MockPatchObject(
-                p, 'create', create_error))
+            self.useFixture(
+                fixtures.MockPatchObject(p, 'create', create_error)
+            )
             self.assertRaises(RuntimeError, p.get)
-            self.useFixture(fixtures.MockPatchObject(
-                p, 'create', orig_create))
+            self.useFixture(fixtures.MockPatchObject(p, 'create', orig_create))
 
         objs = []
         for i in range(self.n_iters):

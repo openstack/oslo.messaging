@@ -14,6 +14,7 @@
 try:
     # Avoid https://github.com/PyCQA/pycodestyle/issues/472
     import eventlet
+
     eventlet.monkey_patch()
 except ImportError:
     raise
@@ -69,13 +70,15 @@ def init_random_generator():
     file_dir = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(file_dir, 'messages_length.yaml')) as m_file:
         content = yaml.safe_load(m_file)
-        data += [int(n) for n in content[
-            'test_data']['string_lengths'].split(', ')]
+        data += [
+            int(n) for n in content['test_data']['string_lengths'].split(', ')
+        ]
 
     ranges = collections.defaultdict(int)
     for msg_length in data:
-        range_start = ((msg_length // DISTRIBUTION_BUCKET_SIZE) *
-                       DISTRIBUTION_BUCKET_SIZE + 1)
+        range_start = (
+            msg_length // DISTRIBUTION_BUCKET_SIZE
+        ) * DISTRIBUTION_BUCKET_SIZE + 1
         ranges[range_start] += 1
 
     ranges_start = sorted(ranges.keys())
@@ -106,7 +109,8 @@ class LoggingNoParsingFilter(logging.Filter):
 
 
 Message = collections.namedtuple(
-    'Message', ['seq', 'cargo', 'client_ts', 'server_ts', 'return_ts'])
+    'Message', ['seq', 'cargo', 'client_ts', 'server_ts', 'return_ts']
+)
 
 
 def make_message(seq, cargo, client_ts=0, server_ts=0, return_ts=0):
@@ -161,16 +165,24 @@ class MessageStatsCollector:
 
         seq = len(self.series)
         stats = dict(seq=seq, timestamp=now, count=count, size=size)
-        msg = (f'{self.label:-14s}: seq: {seq:-4d} '
-               f'count: {count:-6d} bytes: {size:-10d}')
+        msg = (
+            f'{self.label:-14s}: seq: {seq:-4d} '
+            f'count: {count:-6d} bytes: {size:-10d}'
+        )
 
         if sum_latencies:
             latency = sum_latencies / count
-            stats.update(dict(latency=latency,
-                              min_latency=min_latency,
-                              max_latency=max_latency))
-            msg += (f' latency: {latency:<9.3f}'
-                    f' min: {min_latency:<9.3f} max: {max_latency:<9.3f}')
+            stats.update(
+                dict(
+                    latency=latency,
+                    min_latency=min_latency,
+                    max_latency=max_latency,
+                )
+            )
+            msg += (
+                f' latency: {latency:<9.3f}'
+                f' min: {min_latency:<9.3f} max: {max_latency:<9.3f}'
+            )
 
         self.series.append(stats)
         LOG.info(msg)
@@ -212,24 +224,38 @@ class MessageStatsCollector:
         # for the prior second
         start -= 1
         duration = end - start if count else 0
-        stats = dict(count=count, size=size, duration=duration, count_p_s=0,
-                     size_p_s=0)
+        stats = dict(
+            count=count, size=size, duration=duration, count_p_s=0, size_p_s=0
+        )
         if duration:
-            stats.update(dict(start=start, end=end,
-                              count_p_s=count / duration,
-                              size_p_s=size / duration))
+            stats.update(
+                dict(
+                    start=start,
+                    end=end,
+                    count_p_s=count / duration,
+                    size_p_s=size / duration,
+                )
+            )
 
-        msg = (f"{label}: duration: {duration:.2f} "
-               f"count: {count} ({stats['count_p_s']:.1f} msg/sec) "
-               f"bytes: {size} ({stats['size_p_s']:.0f} bps)")
+        msg = (
+            f"{label}: duration: {duration:.2f} "
+            f"count: {count} ({stats['count_p_s']:.1f} msg/sec) "
+            f"bytes: {size} ({stats['size_p_s']:.0f} bps)"
+        )
 
         if sum_latencies:
             latency = sum_latencies / count
-            stats.update(dict(latency=latency,
-                              min_latency=min_latency,
-                              max_latency=max_latency))
-            msg += (f' latency: {latency:.3f}'
-                    f' min: {min_latency:.3f} max: {max_latency:.3f}')
+            stats.update(
+                dict(
+                    latency=latency,
+                    min_latency=min_latency,
+                    max_latency=max_latency,
+                )
+            )
+            msg += (
+                f' latency: {latency:.3f}'
+                f' min: {min_latency:.3f} max: {max_latency:.3f}'
+            )
 
         LOG.info(msg)
         return stats
@@ -264,8 +290,9 @@ class NotifyEndpoint:
 def notify_server(transport, topic, wait_before_answer, duration, requeue):
     endpoints = [NotifyEndpoint(wait_before_answer, requeue)]
     target = messaging.Target(topic=topic)
-    server = notify.get_notification_listener(transport, [target],
-                                              endpoints, executor='eventlet')
+    server = notify.get_notification_listener(
+        transport, [target], endpoints, executor='eventlet'
+    )
     run_server(server, duration=duration)
 
     return endpoints[0]
@@ -291,14 +318,19 @@ class BatchNotifyEndpoint:
         return messaging.NotificationResult.HANDLED
 
 
-def batch_notify_server(transport, topic, wait_before_answer, duration,
-                        requeue):
+def batch_notify_server(
+    transport, topic, wait_before_answer, duration, requeue
+):
     endpoints = [BatchNotifyEndpoint(wait_before_answer, requeue)]
     target = messaging.Target(topic=topic)
     server = notify.get_batch_notification_listener(
-        transport, [target],
-        endpoints, executor='eventlet',
-        batch_size=1000, batch_timeout=5)
+        transport,
+        [target],
+        endpoints,
+        executor='eventlet',
+        batch_size=1000,
+        batch_timeout=5,
+    )
     run_server(server, duration=duration)
 
     return endpoints[0]
@@ -346,7 +378,8 @@ class ServerControlEndpoint:
 
         if not self.connected_clients:
             LOG.info(
-                'The clients sent all messages. Shutting down the server..')
+                'The clients sent all messages. Shutting down the server..'
+            )
             threading.Timer(1, self._stop_server_with_delay).start()
 
     def _stop_server_with_delay(self):
@@ -355,8 +388,7 @@ class ServerControlEndpoint:
 
 
 class Client:
-    def __init__(self, client_id, client, method, has_result,
-                 wait_after_msg):
+    def __init__(self, client_id, client, method, has_result, wait_after_msg):
         self.client_id = client_id
         self.client = client
         self.method = method
@@ -373,13 +405,16 @@ class Client:
 
         if has_result:
             self.round_trip_messages = MessageStatsCollector(
-                f'round-trip-{client_id}')
+                f'round-trip-{client_id}'
+            )
 
     def host_based_id(self):
         _id = "%(client_id)s %(salt)s@%(hostname)s"
-        return _id % {'hostname': CURRENT_HOST,
-                      'salt': hex(id(self))[2:],
-                      'client_id': self.client_id}
+        return _id % {
+            'hostname': CURRENT_HOST,
+            'salt': hex(id(self))[2:],
+            'client_id': self.client_id,
+        }
 
     def send_msg(self):
         msg = make_message(self.seq, MESSAGES[self.position], time.time())
@@ -405,15 +440,27 @@ class Client:
 
 
 class RPCClient(Client):
-    def __init__(self, client_id, transport, target, timeout, is_cast,
-                 wait_after_msg, sync_mode=False):
+    def __init__(
+        self,
+        client_id,
+        transport,
+        target,
+        timeout,
+        is_cast,
+        wait_after_msg,
+        sync_mode=False,
+    ):
 
         client = rpc.get_rpc_client(transport, target)
         method = _rpc_cast if is_cast else _rpc_call
 
-        super().__init__(client_id,
-                         client.prepare(timeout=timeout),
-                         method, not is_cast, wait_after_msg)
+        super().__init__(
+            client_id,
+            client.prepare(timeout=timeout),
+            method,
+            not is_cast,
+            wait_after_msg,
+        )
         self.sync_mode = sync_mode
         self.is_sync = False
 
@@ -435,11 +482,17 @@ class RPCClient(Client):
             method = _rpc_call if self.sync_mode == 'call' else _rpc_cast
             method(self.sync_client, msg, 'sync_start')
         except Exception:
-            LOG.error('The client: %s failed to sync with %s.',
-                      self.client_id, self.client.target)
+            LOG.error(
+                'The client: %s failed to sync with %s.',
+                self.client_id,
+                self.client.target,
+            )
             return False
-        LOG.info('The client: %s successfully sync with %s',
-                 self.client_id, self.client.target)
+        LOG.info(
+            'The client: %s successfully sync with %s',
+            self.client_id,
+            self.client.target,
+        )
         return True
 
     def sync_done(self):
@@ -448,11 +501,17 @@ class RPCClient(Client):
             method = _rpc_call if self.sync_mode == 'call' else _rpc_cast
             method(self.sync_client, msg, 'sync_done')
         except Exception:
-            LOG.error('The client: %s failed finish the sync with %s.',
-                      self.client_id, self.client.target)
+            LOG.error(
+                'The client: %s failed finish the sync with %s.',
+                self.client_id,
+                self.client.target,
+            )
             return False
-        LOG.info('The client: %s successfully finished sync with %s',
-                 self.client_id, self.client.target)
+        LOG.info(
+            'The client: %s successfully finished sync with %s',
+            self.client_id,
+            self.client.target,
+        )
         return True
 
 
@@ -473,8 +532,9 @@ def generate_messages(messages_count):
     generator = init_random_generator()
     for i in range(messages_count):
         length = generator()
-        msg = ''.join(random.choice(
-                      string.ascii_lowercase) for x in range(length))
+        msg = ''.join(
+            random.choice(string.ascii_lowercase) for x in range(length)
+        )
         MESSAGES.append(msg)
 
     LOG.info("Messages has been prepared")
@@ -485,14 +545,16 @@ def wrap_sigexit(f):
         try:
             return f(*args, **kwargs)
         except SignalExit as e:
-            LOG.info('Signal %s is caught. Interrupting the execution',
-                     e.signo)
+            LOG.info(
+                'Signal %s is caught. Interrupting the execution', e.signo
+            )
             for server in SERVERS:
                 server.stop()
                 server.wait()
         finally:
             if TRANSPORT:
                 TRANSPORT.cleanup()
+
     return inner
 
 
@@ -528,29 +590,46 @@ def rpc_server(transport, target, wait_before_answer, executor, duration):
 
 
 @wrap_sigexit
-def spawn_rpc_clients(threads, transport, targets, wait_after_msg, timeout,
-                      is_cast, messages_count, duration, sync_mode):
+def spawn_rpc_clients(
+    threads,
+    transport,
+    targets,
+    wait_after_msg,
+    timeout,
+    is_cast,
+    messages_count,
+    duration,
+    sync_mode,
+):
     p = eventlet.GreenPool(size=threads)
     targets = itertools.cycle(targets)
 
     for i in range(threads):
         target = next(targets)
         LOG.debug("starting RPC client for target %s", target)
-        client_builder = functools.partial(RPCClient, i, transport, target,
-                                           timeout, is_cast, wait_after_msg,
-                                           sync_mode)
-        p.spawn_n(send_messages, i, client_builder,
-                  messages_count, duration)
+        client_builder = functools.partial(
+            RPCClient,
+            i,
+            transport,
+            target,
+            timeout,
+            is_cast,
+            wait_after_msg,
+            sync_mode,
+        )
+        p.spawn_n(send_messages, i, client_builder, messages_count, duration)
     p.waitall()
 
 
 @wrap_sigexit
-def spawn_notify_clients(threads, topic, transport, message_count,
-                         wait_after_msg, timeout, duration):
+def spawn_notify_clients(
+    threads, topic, transport, message_count, wait_after_msg, timeout, duration
+):
     p = eventlet.GreenPool(size=threads)
     for i in range(threads):
-        client_builder = functools.partial(NotifyClient, i, transport, [topic],
-                                           wait_after_msg)
+        client_builder = functools.partial(
+            NotifyClient, i, transport, [topic], wait_after_msg
+        )
         p.spawn_n(send_messages, i, client_builder, message_count, duration)
     p.waitall()
 
@@ -572,8 +651,9 @@ def send_messages(client_id, client_builder, messages_count, duration):
                 eventlet.sleep()
         IS_RUNNING = False
     else:
-        LOG.debug("Sending %d messages using client %d",
-                  messages_count, client_id)
+        LOG.debug(
+            "Sending %d messages using client %d", messages_count, client_id
+        )
         for _ in range(messages_count):
             client.send_msg()
             eventlet.sleep()
@@ -619,7 +699,8 @@ def show_server_stats(endpoint, json_filename):
     output = dict(series={}, summary={})
     output['series']['server'] = endpoint.received_messages.get_series()
     stats = MessageStatsCollector.calc_stats(
-        'server', endpoint.received_messages)
+        'server', endpoint.received_messages
+    )
     output['summary'] = stats
 
     if json_filename:
@@ -637,19 +718,23 @@ def show_client_stats(clients, json_filename, has_reply=False):
 
         if has_reply:
             output['series'][f'round_trip_{cl_id}'] = (
-                cl.round_trip_messages.get_series())
+                cl.round_trip_messages.get_series()
+            )
 
     sent_stats = MessageStatsCollector.calc_stats(
-        'client', *(cl.sent_messages for cl in clients))
+        'client', *(cl.sent_messages for cl in clients)
+    )
     output['summary']['client'] = sent_stats
 
     error_stats = MessageStatsCollector.calc_stats(
-        'error', *(cl.errors for cl in clients))
+        'error', *(cl.errors for cl in clients)
+    )
     output['summary']['error'] = error_stats
 
     if has_reply:
         round_trip_stats = MessageStatsCollector.calc_stats(
-            'round-trip', *(cl.round_trip_messages for cl in clients))
+            'round-trip', *(cl.round_trip_messages for cl in clients)
+        )
         output['summary']['round_trip'] = round_trip_stats
 
     if json_filename:
@@ -678,11 +763,17 @@ def signal_handler(signum, frame):
 def _setup_logging(is_debug):
     log_level = logging.DEBUG if is_debug else logging.INFO
     logging.basicConfig(
-        stream=sys.stdout, level=log_level,
-        format="%(asctime)-15s %(levelname)s %(name)s %(message)s")
+        stream=sys.stdout,
+        level=log_level,
+        format="%(asctime)-15s %(levelname)s %(name)s %(message)s",
+    )
     logging.getLogger().handlers[0].addFilter(LoggingNoParsingFilter())
-    for i in ['kombu', 'amqp', 'stevedore', 'qpid.messaging'
-              'oslo.messaging._drivers.amqp', ]:
+    for i in [
+        'kombu',
+        'amqp',
+        'stevedore',
+        'qpid.messagingoslo.messaging._drivers.amqp',
+    ]:
         logging.getLogger(i).setLevel(logging.WARNING)
 
 
@@ -691,28 +782,57 @@ def main():
         description='Tools to play with oslo.messaging\'s RPC',
         usage=USAGE,
     )
-    parser.add_argument('--url', dest='url',
-                        help="oslo.messaging transport url")
-    parser.add_argument('-d', '--debug', dest='debug', action='store_true',
-                        help="Turn on DEBUG logging level instead of WARN")
-    parser.add_argument('-tp', '--topic', dest='topic',
-                        default="profiler_topic",
-                        help="Topics to publish/receive messages to/from.")
-    parser.add_argument('-s', '--server', dest='server',
-                        default="profiler_server",
-                        help="Servers to publish/receive messages to/from.")
-    parser.add_argument('-tg', '--targets', dest='targets', nargs="+",
-                        default=["profiler_topic.profiler_server"],
-                        help="Targets to publish/receive messages to/from.")
-    parser.add_argument('-l', dest='duration', type=int,
-                        help='send messages for certain time')
-    parser.add_argument('-j', '--json', dest='json_filename',
-                        help='File name to store results in JSON format')
-    parser.add_argument('--config-file', dest='config_file', type=str,
-                        help="Oslo messaging config file")
+    parser.add_argument(
+        '--url', dest='url', help="oslo.messaging transport url"
+    )
+    parser.add_argument(
+        '-d',
+        '--debug',
+        dest='debug',
+        action='store_true',
+        help="Turn on DEBUG logging level instead of WARN",
+    )
+    parser.add_argument(
+        '-tp',
+        '--topic',
+        dest='topic',
+        default="profiler_topic",
+        help="Topics to publish/receive messages to/from.",
+    )
+    parser.add_argument(
+        '-s',
+        '--server',
+        dest='server',
+        default="profiler_server",
+        help="Servers to publish/receive messages to/from.",
+    )
+    parser.add_argument(
+        '-tg',
+        '--targets',
+        dest='targets',
+        nargs="+",
+        default=["profiler_topic.profiler_server"],
+        help="Targets to publish/receive messages to/from.",
+    )
+    parser.add_argument(
+        '-l', dest='duration', type=int, help='send messages for certain time'
+    )
+    parser.add_argument(
+        '-j',
+        '--json',
+        dest='json_filename',
+        help='File name to store results in JSON format',
+    )
+    parser.add_argument(
+        '--config-file',
+        dest='config_file',
+        type=str,
+        help="Oslo messaging config file",
+    )
 
-    subparsers = parser.add_subparsers(dest='mode',
-                                       help='notify/rpc server/client mode')
+    subparsers = parser.add_subparsers(
+        dest='mode', help='notify/rpc server/client mode'
+    )
 
     server = subparsers.add_parser('notify-server')
     server.add_argument('-w', dest='wait_before_answer', type=int, default=-1)
@@ -723,40 +843,93 @@ def main():
     server.add_argument('--requeue', dest='requeue', action='store_true')
 
     client = subparsers.add_parser('notify-client')
-    client.add_argument('-p', dest='threads', type=int, default=1,
-                        help='number of client threads')
-    client.add_argument('-m', dest='messages', type=int, default=1,
-                        help='number of call per threads')
-    client.add_argument('-w', dest='wait_after_msg', type=float, default=-1,
-                        help='sleep time between two messages')
-    client.add_argument('--timeout', dest='timeout', type=int, default=3,
-                        help='client timeout')
+    client.add_argument(
+        '-p',
+        dest='threads',
+        type=int,
+        default=1,
+        help='number of client threads',
+    )
+    client.add_argument(
+        '-m',
+        dest='messages',
+        type=int,
+        default=1,
+        help='number of call per threads',
+    )
+    client.add_argument(
+        '-w',
+        dest='wait_after_msg',
+        type=float,
+        default=-1,
+        help='sleep time between two messages',
+    )
+    client.add_argument(
+        '--timeout', dest='timeout', type=int, default=3, help='client timeout'
+    )
 
     server = subparsers.add_parser('rpc-server')
     server.add_argument('-w', dest='wait_before_answer', type=int, default=-1)
-    server.add_argument('-e', '--executor', dest='executor',
-                        type=str, default='eventlet',
-                        help='name of a message executor')
+    server.add_argument(
+        '-e',
+        '--executor',
+        dest='executor',
+        type=str,
+        default='eventlet',
+        help='name of a message executor',
+    )
 
     client = subparsers.add_parser('rpc-client')
-    client.add_argument('-p', dest='threads', type=int, default=1,
-                        help='number of client threads')
-    client.add_argument('-m', dest='messages', type=int, default=1,
-                        help='number of call per threads')
-    client.add_argument('-w', dest='wait_after_msg', type=float, default=-1,
-                        help='sleep time between two messages')
-    client.add_argument('--timeout', dest='timeout', type=int, default=3,
-                        help='client timeout')
-    client.add_argument('--exit-wait', dest='exit_wait', type=int, default=0,
-                        help='Keep connections open N seconds after calls '
-                        'have been done')
-    client.add_argument('--is-cast', dest='is_cast', action='store_true',
-                        help='Use `call` or `cast` RPC methods')
-    client.add_argument('--is-fanout', dest='is_fanout', action='store_true',
-                        help='fanout=True for CAST messages')
+    client.add_argument(
+        '-p',
+        dest='threads',
+        type=int,
+        default=1,
+        help='number of client threads',
+    )
+    client.add_argument(
+        '-m',
+        dest='messages',
+        type=int,
+        default=1,
+        help='number of call per threads',
+    )
+    client.add_argument(
+        '-w',
+        dest='wait_after_msg',
+        type=float,
+        default=-1,
+        help='sleep time between two messages',
+    )
+    client.add_argument(
+        '--timeout', dest='timeout', type=int, default=3, help='client timeout'
+    )
+    client.add_argument(
+        '--exit-wait',
+        dest='exit_wait',
+        type=int,
+        default=0,
+        help='Keep connections open N seconds after calls have been done',
+    )
+    client.add_argument(
+        '--is-cast',
+        dest='is_cast',
+        action='store_true',
+        help='Use `call` or `cast` RPC methods',
+    )
+    client.add_argument(
+        '--is-fanout',
+        dest='is_fanout',
+        action='store_true',
+        help='fanout=True for CAST messages',
+    )
 
-    client.add_argument('--sync', dest='sync', choices=('call', 'fanout'),
-                        help="stop server when all msg was sent by clients")
+    client.add_argument(
+        '--sync',
+        dest='sync',
+        choices=('call', 'fanout'),
+        help="stop server when all msg was sent by clients",
+    )
 
     args = parser.parse_args()
 
@@ -769,8 +942,9 @@ def main():
     if args.mode in ['rpc-server', 'rpc-client']:
         TRANSPORT = messaging.get_transport(cfg.CONF, url=args.url)
     else:
-        TRANSPORT = messaging.get_notification_transport(cfg.CONF,
-                                                         url=args.url)
+        TRANSPORT = messaging.get_notification_transport(
+            cfg.CONF, url=args.url
+        )
 
     if args.mode in ['rpc-client', 'notify-client']:
         # always generate maximum number of messages for duration-limited tests
@@ -786,39 +960,65 @@ def main():
 
     if args.mode == 'rpc-server':
         target = messaging.Target(topic=args.topic, server=args.server)
-        endpoint = rpc_server(TRANSPORT, target, args.wait_before_answer,
-                              args.executor, args.duration)
+        endpoint = rpc_server(
+            TRANSPORT,
+            target,
+            args.wait_before_answer,
+            args.executor,
+            args.duration,
+        )
         show_server_stats(endpoint, args.json_filename)
 
     elif args.mode == 'notify-server':
-        endpoint = notify_server(TRANSPORT, args.topic,
-                                 args.wait_before_answer, args.duration,
-                                 args.requeue)
+        endpoint = notify_server(
+            TRANSPORT,
+            args.topic,
+            args.wait_before_answer,
+            args.duration,
+            args.requeue,
+        )
         show_server_stats(endpoint, args.json_filename)
 
     elif args.mode == 'batch-notify-server':
-        endpoint = batch_notify_server(TRANSPORT, args.topic,
-                                       args.wait_before_answer,
-                                       args.duration, args.requeue)
+        endpoint = batch_notify_server(
+            TRANSPORT,
+            args.topic,
+            args.wait_before_answer,
+            args.duration,
+            args.requeue,
+        )
         show_server_stats(endpoint, args.json_filename)
 
     elif args.mode == 'notify-client':
-        spawn_notify_clients(args.threads, args.topic, TRANSPORT,
-                             args.messages, args.wait_after_msg,
-                             args.timeout, args.duration)
+        spawn_notify_clients(
+            args.threads,
+            args.topic,
+            TRANSPORT,
+            args.messages,
+            args.wait_after_msg,
+            args.timeout,
+            args.duration,
+        )
         show_client_stats(CLIENTS, args.json_filename)
 
     elif args.mode == 'rpc-client':
-
         targets = []
         for target in args.targets:
             tp, srv = target.partition('.')[::2]
             t = messaging.Target(topic=tp, server=srv, fanout=args.is_fanout)
             targets.append(t)
 
-        spawn_rpc_clients(args.threads, TRANSPORT, targets,
-                          args.wait_after_msg, args.timeout, args.is_cast,
-                          args.messages, args.duration, args.sync)
+        spawn_rpc_clients(
+            args.threads,
+            TRANSPORT,
+            targets,
+            args.wait_after_msg,
+            args.timeout,
+            args.is_cast,
+            args.messages,
+            args.duration,
+            args.sync,
+        )
         show_client_stats(CLIENTS, args.json_filename, not args.is_cast)
 
         if args.exit_wait:

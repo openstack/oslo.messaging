@@ -52,11 +52,10 @@ class BaseASTChecker(ast.NodeVisitor):
 
 
 class CheckForLoggingIssues(BaseASTChecker):
-
     DEBUG_CHECK_DESC = 'O324 Using translated string in debug logging'
     NONDEBUG_CHECK_DESC = 'O325 Not using translating helper for logging'
     EXCESS_HELPER_CHECK_DESC = 'O326 Using hints when _ is necessary'
-    LOG_MODULES = ('logging')
+    LOG_MODULES = 'logging'
 
     name = 'check_for_logging_issues'
     version = '1.0'
@@ -103,8 +102,9 @@ class CheckForLoggingIssues(BaseASTChecker):
         """Return the fully qualified name or a Name or Attribute."""
         if isinstance(node, ast.Name):
             return node.id
-        elif (isinstance(node, ast.Attribute) and
-                isinstance(node.value, (ast.Name, ast.Attribute))):
+        elif isinstance(node, ast.Attribute) and isinstance(
+            node.value, (ast.Name, ast.Attribute)
+        ):
             method_name = node.attr
             obj_name = self._find_name(node.value)
             if obj_name is None:
@@ -123,17 +123,20 @@ class CheckForLoggingIssues(BaseASTChecker):
         """
         attr_node_types = (ast.Name, ast.Attribute)
 
-        if (len(node.targets) != 1 or
-                not isinstance(node.targets[0], attr_node_types)):
+        if len(node.targets) != 1 or not isinstance(
+            node.targets[0], attr_node_types
+        ):
             # say no to: "x, y = ..."
             return super().generic_visit(node)
 
         target_name = self._find_name(node.targets[0])
 
-        if (isinstance(node.value, ast.BinOp) and
-                isinstance(node.value.op, ast.Mod)):
-            if (isinstance(node.value.left, ast.Call) and
-                    isinstance(node.value.left.func, ast.Name)):
+        if isinstance(node.value, ast.BinOp) and isinstance(
+            node.value.op, ast.Mod
+        ):
+            if isinstance(node.value.left, ast.Call) and isinstance(
+                node.value.left.func, ast.Name
+            ):
                 # NOTE(dstanek): this is done to match cases like:
                 # `msg = _('something %s') % x`
                 node = ast.Assign(value=node.value.left)
@@ -147,8 +150,9 @@ class CheckForLoggingIssues(BaseASTChecker):
             self.assignments[target_name] = node.value.func.id
             return super().generic_visit(node)
 
-        if (not isinstance(node.value.func, ast.Attribute) or
-                not isinstance(node.value.func.value, attr_node_types)):
+        if not isinstance(node.value.func, ast.Attribute) or not isinstance(
+            node.value.func.value, attr_node_types
+        ):
             # function must be an attribute on an object like
             # logging.getLogger
             return super().generic_visit(node)
@@ -156,8 +160,10 @@ class CheckForLoggingIssues(BaseASTChecker):
         object_name = self._find_name(node.value.func.value)
         func_name = node.value.func.attr
 
-        if (object_name in self.logger_module_names and
-                func_name == 'getLogger'):
+        if (
+            object_name in self.logger_module_names
+            and func_name == 'getLogger'
+        ):
             self.logger_names.append(target_name)
 
         return super().generic_visit(node)
@@ -196,13 +202,14 @@ class CheckForLoggingIssues(BaseASTChecker):
     def _process_debug(self, node):
         msg = node.args[0]  # first arg to a logging method is the msg
 
-        if (isinstance(msg, ast.Call) and
-                isinstance(msg.func, ast.Name)):
+        if isinstance(msg, ast.Call) and isinstance(msg.func, ast.Name):
             self.add_error(msg, message=self.DEBUG_CHECK_DESC)
 
-        elif (isinstance(msg, ast.Name) and
-                msg.id in self.assignments and
-                not self._is_raised_later(node, msg.id)):
+        elif (
+            isinstance(msg, ast.Name)
+            and msg.id in self.assignments
+            and not self._is_raised_later(node, msg.id)
+        ):
             self.add_error(msg, message=self.DEBUG_CHECK_DESC)
 
     def _process_non_debug(self, node, method_name):
@@ -212,7 +219,6 @@ class CheckForLoggingIssues(BaseASTChecker):
             self.add_error(msg, message=self.NONDEBUG_CHECK_DESC)
 
         elif isinstance(msg, ast.Name):
-
             # FIXME(dstanek): to make sure more robust we should be checking
             # all names passed into a logging method. we can't right now
             # because:
@@ -235,7 +241,7 @@ class CheckForLoggingIssues(BaseASTChecker):
             node_for_line = node._parent
             for _field, value in ast.iter_fields(node._parent._parent):
                 if isinstance(value, list) and node_for_line in value:
-                    return value[value.index(node_for_line) + 1:]
+                    return value[value.index(node_for_line) + 1 :]
                 continue
             return []
 
@@ -243,10 +249,12 @@ class CheckForLoggingIssues(BaseASTChecker):
         for peer in peers:
             if isinstance(peer, ast.Raise):
                 exc = peer.exc
-                if (isinstance(exc, ast.Call) and
-                        len(exc.args) > 0 and
-                        isinstance(exc.args[0], ast.Name) and
-                        name in (a.id for a in exc.args)):
+                if (
+                    isinstance(exc, ast.Call)
+                    and len(exc.args) > 0
+                    and isinstance(exc.args[0], ast.Name)
+                    and name in (a.id for a in exc.args)
+                ):
                     return True
                 else:
                     return False

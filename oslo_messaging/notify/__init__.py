@@ -12,15 +12,17 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-__all__ = ['Notifier',
-           'LoggingNotificationHandler',
-           'get_notification_transport',
-           'get_notification_listener',
-           'get_batch_notification_listener',
-           'NotificationResult',
-           'NotificationFilter',
-           'PublishErrorsHandler',
-           'LoggingErrorNotificationHandler']
+__all__ = [
+    'Notifier',
+    'LoggingNotificationHandler',
+    'get_notification_transport',
+    'get_notification_listener',
+    'get_batch_notification_listener',
+    'NotificationResult',
+    'NotificationFilter',
+    'PublishErrorsHandler',
+    'LoggingErrorNotificationHandler',
+]
 
 from .filter import NotificationFilter
 from .notifier import *

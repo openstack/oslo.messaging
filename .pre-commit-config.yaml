@@ -17,7 +17,7 @@ repos:
     hooks:
       - id: ruff-check
         args: ['--fix', '--unsafe-fixes']
-      #- id: ruff-format
+      - id: ruff-format
   - repo: https://opendev.org/openstack/hacking
     rev: 8.1.0
     hooks:

@@ -14,7 +14,6 @@
 
 
 class Target:
-
     """Identifies the destination of messages.
 
     A Target encapsulates all the information to identify where a message
@@ -69,9 +68,16 @@ class Target:
     :type legacy_namespaces: list of strings
     """
 
-    def __init__(self, exchange=None, topic=None, namespace=None,
-                 version=None, server=None, fanout=None,
-                 legacy_namespaces=None):
+    def __init__(
+        self,
+        exchange=None,
+        topic=None,
+        namespace=None,
+        version=None,
+        server=None,
+        fanout=None,
+        legacy_namespaces=None,
+    ):
         self.exchange = exchange
         self.topic = topic
         self.namespace = namespace
@@ -81,8 +87,14 @@ class Target:
         self.accepted_namespaces = [namespace] + (legacy_namespaces or [])
 
     def __call__(self, **kwargs):
-        for a in ('exchange', 'topic', 'namespace',
-                  'version', 'server', 'fanout'):
+        for a in (
+            'exchange',
+            'topic',
+            'namespace',
+            'version',
+            'server',
+            'fanout',
+        ):
             kwargs.setdefault(a, getattr(self, a))
         return Target(**kwargs)
 
@@ -94,8 +106,14 @@ class Target:
 
     def __repr__(self):
         attrs = []
-        for a in ['exchange', 'topic', 'namespace',
-                  'version', 'server', 'fanout']:
+        for a in [
+            'exchange',
+            'topic',
+            'namespace',
+            'version',
+            'server',
+            'fanout',
+        ]:
             v = getattr(self, a)
             if v:
                 attrs.append((a, v))

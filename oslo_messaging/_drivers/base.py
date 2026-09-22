@@ -235,8 +235,7 @@ class Listener(metaclass=abc.ABCMeta):
     :type prefetch_size: int
     """
 
-    def __init__(self, batch_size, batch_timeout,
-                 prefetch_size=-1):
+    def __init__(self, batch_size, batch_timeout, prefetch_size=-1):
         self.on_incoming_callback = None
         self.batch_timeout = batch_timeout
         self.prefetch_size = prefetch_size
@@ -292,7 +291,8 @@ class PollStyleListenerAdapter(Listener):
     def _runner(self):
         while self._started:
             incoming = self._poll_style_listener.poll(
-                batch_size=self.batch_size, batch_timeout=self.batch_timeout)
+                batch_size=self.batch_size, batch_timeout=self.batch_timeout
+            )
 
             if incoming:
                 self.on_incoming_callback(incoming)
@@ -301,7 +301,8 @@ class PollStyleListenerAdapter(Listener):
         # messages
         while True:
             incoming = self._poll_style_listener.poll(
-                batch_size=self.batch_size, batch_timeout=self.batch_timeout)
+                batch_size=self.batch_size, batch_timeout=self.batch_timeout
+            )
 
             if not incoming:
                 return
@@ -334,10 +335,12 @@ class BaseDriver(metaclass=abc.ABCMeta):
         to an RPC call.
     :type allowed_remote_exmods: list
     """
+
     prefetch_size = 0
 
-    def __init__(self, conf, url,
-                 default_exchange=None, allowed_remote_exmods=None):
+    def __init__(
+        self, conf, url, default_exchange=None, allowed_remote_exmods=None
+    ):
         self.conf = conf
         self._url = url
         self._default_exchange = default_exchange
@@ -348,13 +351,22 @@ class BaseDriver(metaclass=abc.ABCMeta):
         flags passed as True are not supported.
         """
         if requeue:
-            raise NotImplementedError('Message requeueing not supported by '
-                                      'this transport driver')
+            raise NotImplementedError(
+                'Message requeueing not supported by this transport driver'
+            )
 
     @abc.abstractmethod
-    def send(self, target, ctxt, message,
-             wait_for_reply=None, timeout=None, call_monitor_timeout=None,
-             retry=None, transport_options=None):
+    def send(
+        self,
+        target,
+        ctxt,
+        message,
+        wait_for_reply=None,
+        timeout=None,
+        call_monitor_timeout=None,
+        retry=None,
+        transport_options=None,
+    ):
         """Send a message to the given target and optionally wait for a reply.
         This method is used by the RPC client when sending RPC requests to a
         server.
@@ -536,8 +548,9 @@ class BaseDriver(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def listen_for_notifications(self, targets_and_priorities, pool,
-                                 batch_size, batch_timeout):
+    def listen_for_notifications(
+        self, targets_and_priorities, pool, batch_size, batch_timeout
+    ):
         """Construct a notification listener for the given list of
         tuples of (target, priority) addresses.
 

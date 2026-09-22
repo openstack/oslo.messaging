@@ -49,8 +49,7 @@ class QManagerTestCase(test_utils.BaseTestCase):
 
     def test_get_increments_for_a_stable_identity(self):
         qm = self._make_qmanager()
-        with mock.patch.object(qm, '_service_identity',
-                               return_value=(7, 111)):
+        with mock.patch.object(qm, '_service_identity', return_value=(7, 111)):
             self.assertEqual('host:conductor:1', qm.get())
             self.assertEqual('host:conductor:2', qm.get())
             self.assertEqual('host:conductor:3', qm.get())
@@ -59,12 +58,10 @@ class QManagerTestCase(test_utils.BaseTestCase):
         # A different (pg, start_time) means the service was restarted: the
         # counter must start over so queue names get reused.
         qm = self._make_qmanager()
-        with mock.patch.object(qm, '_service_identity',
-                               return_value=(7, 111)):
+        with mock.patch.object(qm, '_service_identity', return_value=(7, 111)):
             self.assertEqual('host:conductor:1', qm.get())
             self.assertEqual('host:conductor:2', qm.get())
-        with mock.patch.object(qm, '_service_identity',
-                               return_value=(9, 222)):
+        with mock.patch.object(qm, '_service_identity', return_value=(9, 222)):
             self.assertEqual('host:conductor:1', qm.get())
 
     def test_get_resets_on_restart_with_constant_pid(self):
@@ -73,13 +70,11 @@ class QManagerTestCase(test_utils.BaseTestCase):
         # jiffies since boot) differs, so the restart must still be detected
         # and the counter reset. This is why start_time is part of the key.
         qm = self._make_qmanager()
-        with mock.patch.object(qm, '_service_identity',
-                               return_value=(1, 111)):
+        with mock.patch.object(qm, '_service_identity', return_value=(1, 111)):
             self.assertEqual('host:conductor:1', qm.get())
             self.assertEqual('host:conductor:2', qm.get())
         # Same pgid (1), different start_time -> restarted.
-        with mock.patch.object(qm, '_service_identity',
-                               return_value=(1, 999)):
+        with mock.patch.object(qm, '_service_identity', return_value=(1, 999)):
             self.assertEqual('host:conductor:1', qm.get())
 
     def test_identity_evaluated_at_get_time_not_at_init(self):
@@ -91,8 +86,7 @@ class QManagerTestCase(test_utils.BaseTestCase):
         # Now the worker (pgid 7) uses it: the stored identity must be the
         # worker's, so the reply queue is stable and no longer keyed on the
         # pre-setsid process group of the master.
-        with mock.patch.object(qm, '_service_identity',
-                               return_value=(7, 111)):
+        with mock.patch.object(qm, '_service_identity', return_value=(7, 111)):
             self.assertEqual('host:conductor:1', qm.get())
             self.assertEqual('host:conductor:2', qm.get())
 
@@ -104,27 +98,36 @@ class QManagerTestCase(test_utils.BaseTestCase):
         # the counter for one another, both landing on ":1". Now both resolve
         # the identity at get() time -> same worker identity -> the counter
         # keeps growing and names stay unique.
-        reply_qm = self._make_qmanager()          # master-born
-        fanout_qm = self._make_qmanager()         # worker-born
+        reply_qm = self._make_qmanager()  # master-born
+        fanout_qm = self._make_qmanager()  # worker-born
         fanout_qm.file_name = reply_qm.file_name  # same shared counter
 
         worker_identity = (7, 111)
-        with mock.patch.object(reply_qm, '_service_identity',
-                               return_value=worker_identity), \
-                mock.patch.object(fanout_qm, '_service_identity',
-                                  return_value=worker_identity):
+        with (
+            mock.patch.object(
+                reply_qm, '_service_identity', return_value=worker_identity
+            ),
+            mock.patch.object(
+                fanout_qm, '_service_identity', return_value=worker_identity
+            ),
+        ):
             first = reply_qm.get()
             second = fanout_qm.get()
 
         self.assertNotEqual(first, second)
-        self.assertEqual(['host:conductor:1', 'host:conductor:2'],
-                         [first, second])
+        self.assertEqual(
+            ['host:conductor:1', 'host:conductor:2'], [first, second]
+        )
 
     def test_service_identity_uses_process_group(self):
-        stat = ('7 (nova-conductor) S 1 7 7 0 -1 0 0 0 0 0 0 0 0 0 20 0 2 0 '
-                '424242 0 0')
-        with mock.patch.object(amqpdriver.os, 'getpgrp', return_value=7), \
-                mock.patch('builtins.open', mock.mock_open(read_data=stat)):
+        stat = (
+            '7 (nova-conductor) S 1 7 7 0 -1 0 0 0 0 0 0 0 0 0 20 0 2 0 '
+            '424242 0 0'
+        )
+        with (
+            mock.patch.object(amqpdriver.os, 'getpgrp', return_value=7),
+            mock.patch('builtins.open', mock.mock_open(read_data=stat)),
+        ):
             pg, start_time = amqpdriver.QManager._service_identity()
         self.assertEqual(7, pg)
         self.assertEqual(424242, start_time)
@@ -135,11 +138,15 @@ class QManagerTestCase(test_utils.BaseTestCase):
         # is read from our own pid instead. This is evaluated here at call
         # time, no longer relying on the identity cached at construction. The
         # returned pgid stays 0, which is shared across the exec'd processes.
-        stat = ('123 (nova-conductor) S 1 123 123 0 -1 0 0 0 0 0 0 0 0 0 20 0 '
-                '2 0 424242 0 0')
-        with mock.patch.object(amqpdriver.os, 'getpgrp', return_value=0), \
-                mock.patch.object(amqpdriver.os, 'getpid', return_value=123), \
-                mock.patch('builtins.open', mock.mock_open(read_data=stat)):
+        stat = (
+            '123 (nova-conductor) S 1 123 123 0 -1 0 0 0 0 0 0 0 0 0 20 0 '
+            '2 0 424242 0 0'
+        )
+        with (
+            mock.patch.object(amqpdriver.os, 'getpgrp', return_value=0),
+            mock.patch.object(amqpdriver.os, 'getpid', return_value=123),
+            mock.patch('builtins.open', mock.mock_open(read_data=stat)),
+        ):
             pg, start_time = amqpdriver.QManager._service_identity()
         self.assertEqual(0, pg)
         self.assertEqual(424242, start_time)

@@ -55,7 +55,6 @@ LOG = logging.getLogger(__name__)
 
 
 class MessagingDriver(notifier.Driver):
-
     """Send notifications using the 1.0 message format.
 
     This driver sends notifications over the configured messaging transport,
@@ -72,20 +71,20 @@ class MessagingDriver(notifier.Driver):
     def notify(self, ctxt, message, priority, retry):
         priority = priority.lower()
         for topic in self.topics:
-            target = oslo_messaging.Target(
-                topic=f'{topic}.{priority}')
+            target = oslo_messaging.Target(topic=f'{topic}.{priority}')
             try:
-                self.transport._send_notification(target, ctxt, message,
-                                                  version=self.version,
-                                                  retry=retry)
+                self.transport._send_notification(
+                    target, ctxt, message, version=self.version, retry=retry
+                )
             except Exception:
-                LOG.exception("Could not send notification to %(topic)s. "
-                              "Payload=%(message)s",
-                              {'topic': topic, 'message': message})
+                LOG.exception(
+                    "Could not send notification to %(topic)s. "
+                    "Payload=%(message)s",
+                    {'topic': topic, 'message': message},
+                )
 
 
 class MessagingV2Driver(MessagingDriver):
-
     "Send notifications using the 2.0 message format."
 
     def __init__(self, conf, **kwargs):

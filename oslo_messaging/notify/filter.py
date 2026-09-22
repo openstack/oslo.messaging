@@ -17,7 +17,6 @@ import re
 
 
 class NotificationFilter:
-
     r"""Filter notification messages
 
     The NotificationFilter class is used to filter notifications that an
@@ -38,8 +37,14 @@ class NotificationFilter:
 
     """
 
-    def __init__(self, context=None, publisher_id=None, event_type=None,
-                 metadata=None, payload=None):
+    def __init__(
+        self,
+        context=None,
+        publisher_id=None,
+        event_type=None,
+        metadata=None,
+        payload=None,
+    ):
         self._regex_publisher_id = None
         self._regex_event_type = None
 
@@ -80,10 +85,12 @@ class NotificationFilter:
             return cls._check_for_single_mismatch(data, regex)
 
     def match(self, context, publisher_id, event_type, metadata, payload):
-        if (self._check_for_mismatch(publisher_id, self._regex_publisher_id) or
-                self._check_for_mismatch(event_type, self._regex_event_type) or
-                self._check_for_mismatch(context, self._regexs_context) or
-                self._check_for_mismatch(metadata, self._regexs_metadata) or
-                self._check_for_mismatch(payload, self._regexs_payload)):
+        if (
+            self._check_for_mismatch(publisher_id, self._regex_publisher_id)
+            or self._check_for_mismatch(event_type, self._regex_event_type)
+            or self._check_for_mismatch(context, self._regexs_context)
+            or self._check_for_mismatch(metadata, self._regexs_metadata)
+            or self._check_for_mismatch(payload, self._regexs_payload)
+        ):
             return False
         return True

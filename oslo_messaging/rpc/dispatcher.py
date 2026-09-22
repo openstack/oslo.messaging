@@ -32,10 +32,12 @@ from oslo_messaging import server as msg_server
 from oslo_messaging import target as msg_target
 
 _dispatcher_opts = [
-    cfg.BoolOpt('rpc_ping_enabled',
-                default=False,
-                help='Add an endpoint to answer to ping calls. '
-                     'Endpoint is named oslo_rpc_server_ping'),
+    cfg.BoolOpt(
+        'rpc_ping_enabled',
+        default=False,
+        help='Add an endpoint to answer to ping calls. '
+        'Endpoint is named oslo_rpc_server_ping',
+    ),
 ]
 
 __all__ = [
@@ -65,6 +67,7 @@ class ExpectedException(Exception):
     information, which  will be passed back to the RPC client without
     exceptional logging.
     """
+
     def __init__(self):
         self.exc_info = sys.exc_info()
 
@@ -160,6 +163,7 @@ class RPCDispatcher(dispatcher.DispatcherBase):
 
 
     """
+
     def __init__(self, endpoints, serializer, access_policy=None):
         """Construct a rpc server dispatcher.
 
@@ -173,19 +177,23 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             # Check if we have an attribute named 'target'
             target = getattr(ep, 'target', None)
             if target and not isinstance(target, msg_target.Target):
-                errmsg = "'target' is a reserved Endpoint attribute used" + \
-                         " for namespace and version filtering.  It must" + \
-                         " be of type oslo_messaging.Target. Do not" + \
-                         " define an Endpoint method named 'target'"
+                errmsg = (
+                    "'target' is a reserved Endpoint attribute used"
+                    + " for namespace and version filtering.  It must"
+                    + " be of type oslo_messaging.Target. Do not"
+                    + " define an Endpoint method named 'target'"
+                )
                 raise TypeError(f"{errmsg}: endpoint={ep}")
 
             # Check if we have an attribute named 'oslo_rpc_server_ping'
             oslo_rpc_server_ping = getattr(ep, 'oslo_rpc_server_ping', None)
             if oslo_rpc_server_ping:
-                errmsg = "'oslo_rpc_server_ping' is a reserved Endpoint" + \
-                         " attribute which can be use to ping the" + \
-                         " endpoint. Please avoid using any oslo_* " + \
-                         " naming."
+                errmsg = (
+                    "'oslo_rpc_server_ping' is a reserved Endpoint"
+                    + " attribute which can be use to ping the"
+                    + " endpoint. Please avoid using any oslo_* "
+                    + " naming."
+                )
                 LOG.warning("%s (endpoint=%s)", errmsg, ep)
 
         self.endpoints = endpoints
@@ -193,10 +201,12 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         # Add ping endpoint if enabled in config
         if cfg.CONF.rpc_ping_enabled:
             if oslo_rpc_server_ping:
-                LOG.warning("rpc_ping_enabled=True in config but "
-                            "oslo_rpc_server_ping is already declared "
-                            "in an other Endpoint. Not enabling rpc_ping "
-                            "Endpoint.")
+                LOG.warning(
+                    "rpc_ping_enabled=True in config but "
+                    "oslo_rpc_server_ping is already declared "
+                    "in an other Endpoint. Not enabling rpc_ping "
+                    "Endpoint."
+                )
             else:
                 self.endpoints.append(PingEndpoint())
 
@@ -206,8 +216,9 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             if issubclass(access_policy, RPCAccessPolicyBase):
                 self.access_policy = access_policy()
             else:
-                raise TypeError('access_policy must be a subclass of '
-                                'RPCAccessPolicyBase')
+                raise TypeError(
+                    'access_policy must be a subclass of RPCAccessPolicyBase'
+                )
         else:
             self.access_policy = DefaultRPCAccessPolicy()
 
@@ -243,16 +254,21 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             client_timeout = cm_heartbeat_interval = 0
 
         if cm_heartbeat_interval < 1:
-            LOG.warning('Client provided an invalid timeout value of %r',
-                        incoming.client_timeout)
+            LOG.warning(
+                'Client provided an invalid timeout value of %r',
+                incoming.client_timeout,
+            )
             return
 
         while not event.wait(cm_heartbeat_interval):
             LOG.debug(
                 'Sending call-monitor heartbeat for active call to %(method)s '
                 '(interval=%(interval)i)',
-                {'method': incoming.message.get('method'),
-                 'interval': cm_heartbeat_interval})
+                {
+                    'method': incoming.message.get('method'),
+                    'interval': cm_heartbeat_interval,
+                },
+            )
             try:
                 incoming.heartbeat()
             except Exception as exc:
@@ -260,8 +276,9 @@ class RPCDispatcher(dispatcher.DispatcherBase):
                 # client has died. Nothing to do here but exit the watchdog
                 # thread. If the client is still alive (dead broker) then its
                 # RPC will timeout as expected.
-                LOG.debug("Call-monitor heartbeat failed: %(exc)s",
-                          {'exc': exc})
+                LOG.debug(
+                    "Call-monitor heartbeat failed: %(exc)s", {'exc': exc}
+                )
                 break
 
     def dispatch(self, incoming):
@@ -285,8 +302,9 @@ class RPCDispatcher(dispatcher.DispatcherBase):
         # for the event to be signaled, which we do explicitly below
         # after dispatching the method call.
         completion_event = eventletutils.Event()
-        watchdog_thread = threading.Thread(target=self._watchdog,
-                                           args=(completion_event, incoming))
+        watchdog_thread = threading.Thread(
+            target=self._watchdog, args=(completion_event, incoming)
+        )
         if incoming.client_timeout:
             # NOTE(danms): The client provided a timeout, so we start
             # the watchdog thread. If the client is old or didn't send
@@ -299,8 +317,10 @@ class RPCDispatcher(dispatcher.DispatcherBase):
             if not target:
                 target = self._default_target
 
-            if not (self._is_namespace(target, namespace) and
-                    self._is_compatible(target, version)):
+            if not (
+                self._is_namespace(target, namespace)
+                and self._is_compatible(target, version)
+            ):
                 continue
 
             if hasattr(endpoint, method):

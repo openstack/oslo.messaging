@@ -54,16 +54,19 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         # NOTE(sileht): Allow only one response at a time, to
         # have only one tcp connection for reply and ensure it will failover
         # correctly
-        self.config(heartbeat_timeout_threshold=1,
-                    rpc_conn_pool_size=1,
-                    kombu_reconnect_delay=0,
-                    rabbit_retry_interval=0,
-                    rabbit_retry_backoff=0,
-                    enable_cancel_on_failover=enable_cancel_on_failover,
-                    group='oslo_messaging_rabbit')
+        self.config(
+            heartbeat_timeout_threshold=1,
+            rpc_conn_pool_size=1,
+            kombu_reconnect_delay=0,
+            rabbit_retry_interval=0,
+            rabbit_retry_backoff=0,
+            enable_cancel_on_failover=enable_cancel_on_failover,
+            group='oslo_messaging_rabbit',
+        )
 
-        self.pifpaf = self.useFixture(rabbitmq.RabbitMQDriver(cluster=True,
-                                                              port=5692))
+        self.pifpaf = self.useFixture(
+            rabbitmq.RabbitMQDriver(cluster=True, port=5692)
+        )
 
         self.url = self.pifpaf.env["PIFPAF_URL"]
         self.n1 = self.pifpaf.env["PIFPAF_RABBITMQ_NODENAME1"]
@@ -74,13 +77,19 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
         self.pifpaf.stop_node(self.n2)
         self.pifpaf.stop_node(self.n3)
 
-        self.servers = self.useFixture(utils.RpcServerGroupFixture(
-            self.conf, self.url, endpoint=self, names=["server"]))
+        self.servers = self.useFixture(
+            utils.RpcServerGroupFixture(
+                self.conf, self.url, endpoint=self, names=["server"]
+            )
+        )
 
         # Don't randomize rabbit hosts
-        self.useFixture(fixtures.MockPatch(
-            'oslo_messaging._drivers.impl_rabbit.random',
-            side_effect=lambda x: x))
+        self.useFixture(
+            fixtures.MockPatch(
+                'oslo_messaging._drivers.impl_rabbit.random',
+                side_effect=lambda x: x,
+            )
+        )
 
         # NOTE(sileht): this connects server connections and reply
         # connection to nodename n1
@@ -128,9 +137,14 @@ class RabbitMQFailoverTests(test_utils.BaseTestCase):
             self.client.client.transport._driver._reply_q_conn,
         ]
 
-        ports = [cctxt.connection.channel.connection.sock.getpeername()[1]
-                 for cctxt in connection_contexts]
+        ports = [
+            cctxt.connection.channel.connection.sock.getpeername()[1]
+            for cctxt in connection_contexts
+        ]
 
-        self.assertEqual([port] * len(ports), ports,
-                         "expected: {}, rpc-server: {}, rpc-client: {}, "
-                         "rpc-replies: {}".format(*tuple([port] + ports)))
+        self.assertEqual(
+            [port] * len(ports),
+            ports,
+            "expected: {}, rpc-server: {}, rpc-client: {}, "
+            "rpc-replies: {}".format(*tuple([port] + ports)),
+        )

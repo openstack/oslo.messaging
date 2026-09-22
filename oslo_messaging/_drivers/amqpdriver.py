@@ -53,6 +53,7 @@ class QManager:
     avoiding deletion/creation of queues on rabbitmq side (which cost a lot
     at scale).
     """
+
     def __init__(self, hostname, processname):
         # We will use hostname and processname in queue names to help identify
         # them easily.
@@ -61,7 +62,8 @@ class QManager:
         self.processname = processname
         # This is where the counter is kept
         self.file_name = (
-            f'/dev/shm/{self.hostname}_{self.processname}_qmanager')  # noqa: S108
+            f'/dev/shm/{self.hostname}_{self.processname}_qmanager'  # noqa: S108
+        )
 
     @staticmethod
     def _service_identity():
@@ -137,8 +139,13 @@ class QManager:
 
             # Write the new counter
             with open(self.file_name, 'w') as f:
-                f.write(str(cur_pg) + ':' + str(counter) + ':' +
-                        str(cur_start_time))
+                f.write(
+                    str(cur_pg)
+                    + ':'
+                    + str(counter)
+                    + ':'
+                    + str(cur_start_time)
+                )
             return counter
 
         counter = read_from_shm()
@@ -157,7 +164,8 @@ class MessageOperationsHandler:
 
         self._shutdown = eventletutils.Event()
         self._shutdown_thread = threading.Thread(
-            target=self._process_in_background)
+            target=self._process_in_background
+        )
         self._shutdown_thread.daemon = True
 
     def stop(self):
@@ -190,10 +198,18 @@ class MessageOperationsHandler:
 
 
 class AMQPIncomingMessage(base.RpcIncomingMessage):
-
-    def __init__(self, listener, ctxt, message, unique_id, msg_id, reply_q,
-                 client_timeout, obsolete_reply_queues,
-                 message_operations_handler):
+    def __init__(
+        self,
+        listener,
+        ctxt,
+        message,
+        unique_id,
+        msg_id,
+        reply_q,
+        client_timeout,
+        obsolete_reply_queues,
+        message_operations_handler,
+    ):
         super().__init__(ctxt, message, msg_id)
         self.orig_msg_id = msg_id
         self.listener = listener
@@ -207,26 +223,35 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
         self.stopwatch.start()
 
     def _send_reply(self, conn, reply=None, failure=None, ending=True):
-        if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
-                                                         self.msg_id):
+        if not self._obsolete_reply_queues.reply_q_valid(
+            self.reply_q, self.msg_id
+        ):
             return
 
         if failure:
             failure = rpc_common.serialize_remote_exception(failure)
         # NOTE(sileht): ending can be removed in N*, see Listener.wait()
         # for more detail.
-        msg = {'result': reply, 'failure': failure, 'ending': ending,
-               '_msg_id': self.msg_id}
+        msg = {
+            'result': reply,
+            'failure': failure,
+            'ending': ending,
+            '_msg_id': self.msg_id,
+        }
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
 
-        LOG.debug("sending reply msg_id: %(msg_id)s "
-                  "reply queue: %(reply_q)s "
-                  "time elapsed: %(elapsed)ss", {
-                      'msg_id': self.msg_id,
-                      'unique_id': unique_id,
-                      'reply_q': self.reply_q,
-                      'elapsed': self.stopwatch.elapsed()})
+        LOG.debug(
+            "sending reply msg_id: %(msg_id)s "
+            "reply queue: %(reply_q)s "
+            "time elapsed: %(elapsed)ss",
+            {
+                'msg_id': self.msg_id,
+                'unique_id': unique_id,
+                'reply_q': self.reply_q,
+                'elapsed': self.stopwatch.elapsed(),
+            },
+        )
         conn.direct_send(self.reply_q, rpc_common.serialize_msg(msg))
 
     def reply(self, reply=None, failure=None):
@@ -236,8 +261,9 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
             return
 
         # NOTE(sileht): return without hold the a connection if possible
-        if not self._obsolete_reply_queues.reply_q_valid(self.reply_q,
-                                                         self.msg_id):
+        if not self._obsolete_reply_queues.reply_q_valid(
+            self.reply_q, self.msg_id
+        ):
             return
 
         # NOTE(sileht): we read the configuration value from the driver
@@ -262,17 +288,20 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
                     LOG.error(
                         'The reply %(msg_id)s failed to send after '
                         '%(duration)d seconds due to a missing queue '
-                        '(%(reply_q)s). Abandoning...', {
+                        '(%(reply_q)s). Abandoning...',
+                        {
                             'msg_id': self.msg_id,
                             'duration': duration,
-                            'reply_q': self.reply_q})
+                            'reply_q': self.reply_q,
+                        },
+                    )
                     return
 
                 LOG.debug(
                     'The reply %(msg_id)s could not be sent due to a missing '
-                    'queue (%(reply_q)s). Retrying...', {
-                        'msg_id': self.msg_id,
-                        'reply_q': self.reply_q})
+                    'queue (%(reply_q)s). Retrying...',
+                    {'msg_id': self.msg_id, 'reply_q': self.reply_q},
+                )
                 time.sleep(0.25)
             except rpc_amqp.AMQPDestinationNotFound as exc:
                 # exchange not found/down
@@ -281,17 +310,20 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
                     LOG.error(
                         'The reply %(msg_id)s failed to send after '
                         '%(duration)d seconds due to a broker issue '
-                        '(%(exc)s). Abandoning...', {
+                        '(%(exc)s). Abandoning...',
+                        {
                             'msg_id': self.msg_id,
                             'duration': duration,
-                            'exc': exc})
+                            'exc': exc,
+                        },
+                    )
                     return
 
                 LOG.debug(
                     'The reply %(msg_id)s could not be sent due to a broker '
-                    'issue (%(exc)s). Retrying...', {
-                        'msg_id': self.msg_id,
-                        'exc': exc})
+                    'issue (%(exc)s). Retrying...',
+                    {'msg_id': self.msg_id, 'exc': exc},
+                )
                 time.sleep(0.25)
 
     def heartbeat(self):
@@ -305,12 +337,14 @@ class AMQPIncomingMessage(base.RpcIncomingMessage):
                 # internal exception that indicates queue gone -
                 # broker unreachable.
                 raise MessageDeliveryFailure(
-                    "Heartbeat send failed. Missing queue")
+                    "Heartbeat send failed. Missing queue"
+                )
             except rpc_amqp.AMQPDestinationNotFound:
                 # internal exception that indicates exchange gone -
                 # broker unreachable.
                 raise MessageDeliveryFailure(
-                    "Heartbeat send failed. Missing exchange")
+                    "Heartbeat send failed. Missing exchange"
+                )
 
     # NOTE(sileht): Those have already be ack in RpcListener IO thread
     # We keep them as noop until all drivers do the same
@@ -334,6 +368,7 @@ class NotificationAMQPIncomingMessage(AMQPIncomingMessage):
                 # (unacked msg is returned to the queue by the broker), but the
                 # driver tries to catch that using the msg_id_cache.
                 LOG.warning("Failed to acknowledge received message: %s", exc)
+
         self._message_operations_handler.do(_do_ack)
         self.listener.msg_id_cache.add(self.unique_id)
 
@@ -349,6 +384,7 @@ class NotificationAMQPIncomingMessage(AMQPIncomingMessage):
                 self.message.requeue()
             except Exception as exc:
                 LOG.warning("Failed to requeue received message: %s", exc)
+
         self._message_operations_handler.do(_do_requeue)
 
 
@@ -392,8 +428,10 @@ class ObsoleteReplyQueuesCache:
         self._no_reply_log(reply_q, msg_id)
 
     def _no_reply_log(self, reply_q, msg_id):
-        LOG.warning("%(reply_queue)s doesn't exist, drop reply to "
-                    "%(msg_id)s", {'reply_queue': reply_q, "msg_id": msg_id})
+        LOG.warning(
+            "%(reply_queue)s doesn't exist, drop reply to %(msg_id)s",
+            {'reply_queue': reply_q, "msg_id": msg_id},
+        )
 
 
 class AMQPListener(base.PollStyleListener):
@@ -409,7 +447,8 @@ class AMQPListener(base.PollStyleListener):
         self._shutoff = eventletutils.Event()
         self._obsolete_reply_queues = ObsoleteReplyQueuesCache()
         self._message_operations_handler = MessageOperationsHandler(
-            "AMQPListener")
+            "AMQPListener"
+        )
         self._current_timeout = ACK_REQUEUE_EVERY_SECONDS_MIN
 
     def __call__(self, message):
@@ -422,22 +461,26 @@ class AMQPListener(base.PollStyleListener):
         if self.use_cache:
             self.msg_id_cache.add(unique_id)
         if ctxt.msg_id:
-            LOG.debug("received message msg_id: %(msg_id)s reply to "
-                      "%(queue)s", {'queue': ctxt.reply_q,
-                                    'msg_id': ctxt.msg_id})
+            LOG.debug(
+                "received message msg_id: %(msg_id)s reply to %(queue)s",
+                {'queue': ctxt.reply_q, 'msg_id': ctxt.msg_id},
+            )
         else:
             LOG.debug("received message with unique_id: %s", unique_id)
 
-        self.incoming.append(self.message_cls(
-            self,
-            ctxt.to_dict(),
-            message,
-            unique_id,
-            ctxt.msg_id,
-            ctxt.reply_q,
-            ctxt.client_timeout,
-            self._obsolete_reply_queues,
-            self._message_operations_handler))
+        self.incoming.append(
+            self.message_cls(
+                self,
+                ctxt.to_dict(),
+                message,
+                unique_id,
+                ctxt.msg_id,
+                ctxt.reply_q,
+                ctxt.client_timeout,
+                self._obsolete_reply_queues,
+                self._message_operations_handler,
+            )
+        )
 
     @base.batch_poll_helper
     def poll(self, timeout=None):
@@ -448,8 +491,10 @@ class AMQPListener(base.PollStyleListener):
             LOG.debug("Listener is running")
 
             if self.incoming:
-                LOG.debug("Poll the incoming message with unique_id: %s",
-                          self.incoming[0].unique_id)
+                LOG.debug(
+                    "Poll the incoming message with unique_id: %s",
+                    self.incoming[0].unique_id,
+                )
                 return self.incoming.pop(0)
 
             left = stopwatch.leftover(return_none=True)
@@ -463,8 +508,9 @@ class AMQPListener(base.PollStyleListener):
                 self.conn.consume(timeout=min(self._current_timeout, left))
             except rpc_common.Timeout:
                 LOG.debug("AMQPListener connection timeout")
-                self._current_timeout = min(self._current_timeout * 2,
-                                            ACK_REQUEUE_EVERY_SECONDS_MAX)
+                self._current_timeout = min(
+                    self._current_timeout * 2, ACK_REQUEUE_EVERY_SECONDS_MAX
+                )
             else:
                 self._current_timeout = ACK_REQUEUE_EVERY_SECONDS_MIN
 
@@ -473,8 +519,10 @@ class AMQPListener(base.PollStyleListener):
         LOG.debug("Listener is stopped")
         self._message_operations_handler.process()
         if self.incoming:
-            LOG.debug("Poll the incoming message with unique_id: %s",
-                      self.incoming[0].unique_id)
+            LOG.debug(
+                "Poll the incoming message with unique_id: %s",
+                self.incoming[0].unique_id,
+            )
             return self.incoming.pop(0)
 
         self._shutoff.set()
@@ -521,8 +569,9 @@ class RpcAMQPListener(AMQPListener):
         try:
             message.acknowledge()
         except Exception as exc:
-            LOG.warning("Discarding RPC request due to failed acknowledge: %s",
-                        exc)
+            LOG.warning(
+                "Discarding RPC request due to failed acknowledge: %s", exc
+            )
         else:
             # NOTE(kgiusti): be aware that even if the acknowledge call
             # succeeds there is no guarantee the broker actually gets the ACK
@@ -536,7 +585,6 @@ class NotificationAMQPListener(AMQPListener):
 
 
 class ReplyWaiters:
-
     def __init__(self):
         self._queues = {}
         self._wrn_threshold = 10
@@ -546,16 +594,18 @@ class ReplyWaiters:
             return self._queues[msg_id].get(block=True, timeout=timeout)
         except queue.Empty:
             raise oslo_messaging.MessagingTimeout(
-                'Timed out waiting for a reply '
-                f'to message ID {msg_id}')
+                f'Timed out waiting for a reply to message ID {msg_id}'
+            )
 
     def put(self, msg_id, message_data):
         LOG.debug('Received RPC response for msg %s', msg_id)
         queue = self._queues.get(msg_id)
         if not queue:
             LOG.info('No calling threads waiting for msg_id : %s', msg_id)
-            LOG.debug(' queues: %(queues)s, message: %(message)s',
-                      {'queues': len(self._queues), 'message': message_data})
+            LOG.debug(
+                ' queues: %(queues)s, message: %(message)s',
+                {'queues': len(self._queues), 'message': message_data},
+            )
         else:
             queue.put(message_data)
 
@@ -563,13 +613,17 @@ class ReplyWaiters:
         self._queues[msg_id] = queue.Queue()
         queues_length = len(self._queues)
         if queues_length > self._wrn_threshold:
-            LOG.warning('Number of call queues is %(queues_length)s, '
-                        'greater than warning threshold: %(old_threshold)s. '
-                        'There could be a leak. Increasing threshold to: '
-                        '%(threshold)s',
-                        {'queues_length': queues_length,
-                         'old_threshold': self._wrn_threshold,
-                         'threshold': self._wrn_threshold * 2})
+            LOG.warning(
+                'Number of call queues is %(queues_length)s, '
+                'greater than warning threshold: %(old_threshold)s. '
+                'There could be a leak. Increasing threshold to: '
+                '%(threshold)s',
+                {
+                    'queues_length': queues_length,
+                    'old_threshold': self._wrn_threshold,
+                    'threshold': self._wrn_threshold * 2,
+                },
+            )
             self._wrn_threshold *= 2
 
     def remove(self, msg_id):
@@ -604,8 +658,9 @@ class ReplyWaiter:
                 # ack every ACK_REQUEUE_EVERY_SECONDS_MAX seconds
                 self.conn.consume(timeout=current_timeout)
             except rpc_common.Timeout:
-                current_timeout = min(current_timeout * 2,
-                                      ACK_REQUEUE_EVERY_SECONDS_MAX)
+                current_timeout = min(
+                    current_timeout * 2, ACK_REQUEUE_EVERY_SECONDS_MAX
+                )
             except Exception:
                 LOG.exception("Failed to process incoming message, retrying..")
             else:
@@ -633,14 +688,16 @@ class ReplyWaiter:
         raise oslo_messaging.MessagingTimeout(
             'Timed out waiting for a reply %(reply_q)s '
             'to message ID %(msg_id)s.',
-            {'msg_id': msg_id, 'reply_q': reply_q})
+            {'msg_id': msg_id, 'reply_q': reply_q},
+        )
 
     def _process_reply(self, data):
         self.msg_id_cache.check_duplicate_message(data)
         if data['failure']:
             failure = data['failure']
             result = rpc_common.deserialize_remote_exception(
-                failure, self.allowed_remote_exmods)
+                failure, self.allowed_remote_exmods
+            )
         else:
             result = data.get('result', None)
 
@@ -658,7 +715,8 @@ class ReplyWaiter:
         timer.start()
         if call_monitor_timeout:
             call_monitor_timer = rpc_common.DecayingTimer(
-                duration=call_monitor_timeout)
+                duration=call_monitor_timeout
+            )
             call_monitor_timer.start()
         else:
             call_monitor_timer = None
@@ -666,25 +724,18 @@ class ReplyWaiter:
         ending = False
         while not ending:
             timeout = timer.check_return(
-                self._raise_timeout_exception,
-                msg_id,
-                reply_q
+                self._raise_timeout_exception, msg_id, reply_q
             )
             if call_monitor_timer and timeout > 0:
                 cm_timeout = call_monitor_timer.check_return(
-                    self._raise_timeout_exception,
-                    msg_id,
-                    reply_q
+                    self._raise_timeout_exception, msg_id, reply_q
                 )
                 if cm_timeout < timeout:
                     timeout = cm_timeout
             try:
                 message = self.waiters.get(msg_id, timeout=timeout)
             except queue.Empty:
-                self._raise_timeout_exception(
-                    msg_id,
-                    reply_q
-                )
+                self._raise_timeout_exception(msg_id, reply_q)
 
             reply, ending = self._process_reply(message)
             if reply is not None:
@@ -693,8 +744,9 @@ class ReplyWaiter:
                 # ending=True and no `result` field.
                 final_reply = reply
             elif ending is False:
-                LOG.debug('Call monitor heartbeat received; '
-                          'renewing timeout timer')
+                LOG.debug(
+                    'Call monitor heartbeat received; renewing timeout timer'
+                )
                 call_monitor_timer.restart()
         return final_reply
 
@@ -702,10 +754,15 @@ class ReplyWaiter:
 class AMQPDriverBase(base.BaseDriver):
     missing_destination_retry_timeout = 0
 
-    def __init__(self, conf, url, connection_pool,
-                 default_exchange=None, allowed_remote_exmods=None):
-        super().__init__(conf, url, default_exchange,
-                         allowed_remote_exmods)
+    def __init__(
+        self,
+        conf,
+        url,
+        connection_pool,
+        default_exchange=None,
+        allowed_remote_exmods=None,
+    ):
+        super().__init__(conf, url, default_exchange, allowed_remote_exmods)
 
         self._default_exchange = default_exchange
 
@@ -720,9 +777,9 @@ class AMQPDriverBase(base.BaseDriver):
         return target.exchange or self._default_exchange
 
     def _get_connection(self, purpose=rpc_common.PURPOSE_SEND, retry=None):
-        return rpc_common.ConnectionContext(self._connection_pool,
-                                            purpose=purpose,
-                                            retry=retry)
+        return rpc_common.ConnectionContext(
+            self._connection_pool, purpose=purpose, retry=retry
+        )
 
     def _get_reply_queue_name(self):
         return 'reply_' + uuid.uuid4().hex
@@ -739,23 +796,37 @@ class AMQPDriverBase(base.BaseDriver):
 
             conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
-            self._waiter = ReplyWaiter(reply_q, conn,
-                                       self._allowed_remote_exmods)
+            self._waiter = ReplyWaiter(
+                reply_q, conn, self._allowed_remote_exmods
+            )
 
             self._reply_q = reply_q
             self._reply_q_conn = conn
 
         return self._reply_q
 
-    def _send(self, target, ctxt, message,
-              wait_for_reply=None, timeout=None, call_monitor_timeout=None,
-              envelope=True, notify=False, retry=None, transport_options=None):
+    def _send(
+        self,
+        target,
+        ctxt,
+        message,
+        wait_for_reply=None,
+        timeout=None,
+        call_monitor_timeout=None,
+        envelope=True,
+        notify=False,
+        retry=None,
+        transport_options=None,
+    ):
 
         msg = message
         reply_q = None
         if 'method' in msg:
-            LOG.debug('Calling RPC method %s on target %s', msg.get('method'),
-                      target.topic)
+            LOG.debug(
+                'Calling RPC method %s on target %s',
+                msg.get('method'),
+                target.topic,
+            )
         else:
             LOG.debug('Sending message to topic %s', target.topic)
 
@@ -765,8 +836,7 @@ class AMQPDriverBase(base.BaseDriver):
             msg.update({'_msg_id': msg_id})
             msg.update({'_reply_q': reply_q})
             msg.update({'_timeout': call_monitor_timeout})
-            LOG.debug('Expecting reply to msg %s in queue %s', msg_id,
-                      reply_q)
+            LOG.debug('Expecting reply to msg %s in queue %s', msg_id, reply_q)
 
         rpc_amqp._add_unique_id(msg)
         unique_id = msg[rpc_amqp.UNIQUE_ID]
@@ -786,31 +856,48 @@ class AMQPDriverBase(base.BaseDriver):
             with self._get_connection(rpc_common.PURPOSE_SEND, retry) as conn:
                 if notify:
                     exchange = self._get_exchange(target)
-                    LOG.debug("%(log_msg)s NOTIFY exchange '%(exchange)s'"
-                              " topic '%(topic)s'",
-                              {'log_msg': log_msg, 'exchange': exchange,
-                               'topic': target.topic})
+                    LOG.debug(
+                        "%(log_msg)s NOTIFY exchange '%(exchange)s'"
+                        " topic '%(topic)s'",
+                        {
+                            'log_msg': log_msg,
+                            'exchange': exchange,
+                            'topic': target.topic,
+                        },
+                    )
                     conn.notify_send(exchange, target.topic, msg, retry=retry)
                 elif target.fanout:
-                    LOG.debug("%(log_msg)s FANOUT topic '%(topic)s'",
-                              {'log_msg': log_msg, 'topic': target.topic})
+                    LOG.debug(
+                        "%(log_msg)s FANOUT topic '%(topic)s'",
+                        {'log_msg': log_msg, 'topic': target.topic},
+                    )
                     conn.fanout_send(target.topic, msg, retry=retry)
                 else:
                     topic = target.topic
                     exchange = self._get_exchange(target)
                     if target.server:
                         topic = f'{target.topic}.{target.server}'
-                    LOG.debug("%(log_msg) exchange '%(exchange)s'"
-                              " topic '%(topic)s'",
-                             {'log_msg': log_msg, 'exchange': exchange,
-                              'topic': topic})
-                    conn.topic_send(exchange_name=exchange, topic=topic,
-                                    msg=msg, timeout=timeout, retry=retry,
-                                    transport_options=transport_options)
+                    LOG.debug(
+                        "%(log_msg) exchange '%(exchange)s' topic '%(topic)s'",
+                        {
+                            'log_msg': log_msg,
+                            'exchange': exchange,
+                            'topic': topic,
+                        },
+                    )
+                    conn.topic_send(
+                        exchange_name=exchange,
+                        topic=topic,
+                        msg=msg,
+                        timeout=timeout,
+                        retry=retry,
+                        transport_options=transport_options,
+                    )
 
             if wait_for_reply:
-                result = self._waiter.wait(msg_id, timeout,
-                                           call_monitor_timeout, reply_q)
+                result = self._waiter.wait(
+                    msg_id, timeout, call_monitor_timeout, reply_q
+                )
                 if isinstance(result, Exception):
                     raise result
                 return result
@@ -818,34 +905,62 @@ class AMQPDriverBase(base.BaseDriver):
             if wait_for_reply:
                 self._waiter.unlisten(msg_id)
 
-    def send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-             call_monitor_timeout=None, retry=None, transport_options=None):
-        return self._send(target, ctxt, message, wait_for_reply, timeout,
-                          call_monitor_timeout, retry=retry,
-                          transport_options=transport_options)
+    def send(
+        self,
+        target,
+        ctxt,
+        message,
+        wait_for_reply=None,
+        timeout=None,
+        call_monitor_timeout=None,
+        retry=None,
+        transport_options=None,
+    ):
+        return self._send(
+            target,
+            ctxt,
+            message,
+            wait_for_reply,
+            timeout,
+            call_monitor_timeout,
+            retry=retry,
+            transport_options=transport_options,
+        )
 
     def send_notification(self, target, ctxt, message, version, retry=None):
-        return self._send(target, ctxt, message,
-                          envelope=(version == 2.0), notify=True, retry=retry)
+        return self._send(
+            target,
+            ctxt,
+            message,
+            envelope=(version == 2.0),
+            notify=True,
+            retry=retry,
+        )
 
     def listen(self, target, batch_size, batch_timeout):
         conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
         listener = RpcAMQPListener(self, conn)
 
-        conn.declare_topic_consumer(exchange_name=self._get_exchange(target),
-                                    topic=target.topic,
-                                    callback=listener)
-        conn.declare_topic_consumer(exchange_name=self._get_exchange(target),
-                                    topic=f'{target.topic}.{target.server}',
-                                    callback=listener)
+        conn.declare_topic_consumer(
+            exchange_name=self._get_exchange(target),
+            topic=target.topic,
+            callback=listener,
+        )
+        conn.declare_topic_consumer(
+            exchange_name=self._get_exchange(target),
+            topic=f'{target.topic}.{target.server}',
+            callback=listener,
+        )
         conn.declare_fanout_consumer(target.topic, listener)
 
-        return base.PollStyleListenerAdapter(listener, batch_size,
-                                             batch_timeout)
+        return base.PollStyleListenerAdapter(
+            listener, batch_size, batch_timeout
+        )
 
-    def listen_for_notifications(self, targets_and_priorities, pool,
-                                 batch_size, batch_timeout):
+    def listen_for_notifications(
+        self, targets_and_priorities, pool, batch_size, batch_timeout
+    ):
         conn = self._get_connection(rpc_common.PURPOSE_LISTEN)
 
         listener = NotificationAMQPListener(self, conn)
@@ -853,9 +968,12 @@ class AMQPDriverBase(base.BaseDriver):
             conn.declare_topic_consumer(
                 exchange_name=self._get_exchange(target),
                 topic=f'{target.topic}.{priority}',
-                callback=listener, queue_name=pool)
-        return base.PollStyleListenerAdapter(listener, batch_size,
-                                             batch_timeout)
+                callback=listener,
+                queue_name=pool,
+            )
+        return base.PollStyleListenerAdapter(
+            listener, batch_size, batch_timeout
+        )
 
     def cleanup(self):
         if self._connection_pool:

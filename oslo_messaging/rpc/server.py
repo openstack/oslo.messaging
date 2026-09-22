@@ -78,16 +78,16 @@ A simple example of an RPC server with multiple endpoints might be::
     # monkey-patched.
 
     import eventlet
+
     eventlet.monkey_patch()
 
     from oslo_config import cfg
     import oslo_messaging
     import time
 
-    class ServerControlEndpoint(object):
 
-        target = oslo_messaging.Target(namespace='control',
-                                       version='2.0')
+    class ServerControlEndpoint(object):
+        target = oslo_messaging.Target(namespace='control', version='2.0')
 
         def __init__(self, server):
             self.server = server
@@ -96,10 +96,11 @@ A simple example of an RPC server with multiple endpoints might be::
             if self.server:
                 self.server.stop()
 
-    class TestEndpoint(object):
 
+    class TestEndpoint(object):
         def test(self, ctx, arg):
             return arg
+
 
     transport = oslo_messaging.get_rpc_transport(cfg.CONF)
     target = oslo_messaging.Target(topic='test', server='server1')
@@ -107,8 +108,9 @@ A simple example of an RPC server with multiple endpoints might be::
         ServerControlEndpoint(None),
         TestEndpoint(),
     ]
-    server = oslo_messaging.get_rpc_server(transport, target, endpoints,
-                                           executor='eventlet')
+    server = oslo_messaging.get_rpc_server(
+        transport, target, endpoints, executor='eventlet'
+    )
     try:
         server.start()
         while True:
@@ -132,11 +134,7 @@ from oslo_messaging.rpc import dispatcher as rpc_dispatcher
 from oslo_messaging import server as msg_server
 from oslo_messaging import transport as msg_transport
 
-__all__ = [
-    'get_rpc_server',
-    'expected_exceptions',
-    'expose'
-]
+__all__ = ['get_rpc_server', 'expected_exceptions', 'expose']
 
 LOG = logging.getLogger(__name__)
 
@@ -145,9 +143,11 @@ class RPCServer(msg_server.MessageHandlingServer):
     def __init__(self, transport, target, dispatcher, executor=None):
         super().__init__(transport, dispatcher, executor)
         if not isinstance(transport, msg_transport.RPCTransport):
-            LOG.warning("Using notification transport for RPC. Please use "
-                        "get_rpc_transport to obtain an RPC transport "
-                        "instance.")
+            LOG.warning(
+                "Using notification transport for RPC. Please use "
+                "get_rpc_transport to obtain an RPC transport "
+                "instance."
+            )
         self._target = target
 
     def _create_listener(self):
@@ -157,10 +157,11 @@ class RPCServer(msg_server.MessageHandlingServer):
         message = incoming[0]
         rpc_method = message.message.get('method')
         start = time.time()
-        LOG.debug("Receive incoming message with id %(msg_id)s and "
-                  "method: %(method)s.",
-                  {"msg_id": message.msg_id,
-                   "method": rpc_method})
+        LOG.debug(
+            "Receive incoming message with id %(msg_id)s and "
+            "method: %(method)s.",
+            {"msg_id": message.msg_id, "method": rpc_method},
+        )
 
         # TODO(sileht): We should remove that at some point and do
         # this directly in the driver
@@ -179,8 +180,7 @@ class RPCServer(msg_server.MessageHandlingServer):
                 # by another exception raised by a log handler during
                 # LOG.debug(). So keep a copy and delete it later.
                 failure = e.exc_info
-                LOG.debug('Expected exception during message handling (%s)',
-                          e)
+                LOG.debug('Expected exception during message handling (%s)', e)
             except rpc_dispatcher.NoSuchMethod as e:
                 failure = sys.exc_info()
                 if e.method.endswith('_ignore_errors'):
@@ -197,23 +197,31 @@ class RPCServer(msg_server.MessageHandlingServer):
                     LOG.debug(
                         "Replied success message with id %(msg_id)s and "
                         "method: %(method)s. Time elapsed: %(elapsed).3f",
-                        {"msg_id": message.msg_id,
-                         "method": rpc_method,
-                         "elapsed": (time.time() - start)})
+                        {
+                            "msg_id": message.msg_id,
+                            "method": rpc_method,
+                            "elapsed": (time.time() - start),
+                        },
+                    )
                 else:
                     message.reply(failure=failure)
                     LOG.debug(
                         "Replied failure for incoming message with "
                         "id %(msg_id)s and method: %(method)s. "
                         "Time elapsed: %(elapsed).3f",
-                        {"msg_id": message.msg_id,
-                         "method": rpc_method,
-                         "elapsed": (time.time() - start)})
+                        {
+                            "msg_id": message.msg_id,
+                            "method": rpc_method,
+                            "elapsed": (time.time() - start),
+                        },
+                    )
             except exceptions.MessageUndeliverable as e:
                 LOG.exception(
                     "MessageUndeliverable error, "
                     "source exception: %s, routing_key: %s, exchange: %s: ",
-                    e.exception, e.routing_key, e.exchange
+                    e.exception,
+                    e.routing_key,
+                    e.exchange,
                 )
             except Exception:
                 LOG.exception("Can not send reply for message")
@@ -227,10 +235,17 @@ class RPCServer(msg_server.MessageHandlingServer):
 @debtcollector.removals.removed_kwarg(
     'executor',
     message="the eventlet executor is now deprecated. Threading "
-            "will be the only execution model available.")
-def get_rpc_server(transport, target, endpoints,
-                   executor=None, serializer=None, access_policy=None,
-                   server_cls=RPCServer):
+    "will be the only execution model available.",
+)
+def get_rpc_server(
+    transport,
+    target,
+    endpoints,
+    executor=None,
+    serializer=None,
+    access_policy=None,
+    server_cls=RPCServer,
+):
     """Construct an RPC server.
 
     :param transport: the messaging transport
@@ -251,8 +266,9 @@ def get_rpc_server(transport, target, endpoints,
     :param server_cls: The server class to instantiate
     :type server_cls: class
     """
-    dispatcher = rpc_dispatcher.RPCDispatcher(endpoints, serializer,
-                                              access_policy)
+    dispatcher = rpc_dispatcher.RPCDispatcher(
+        endpoints, serializer, access_policy
+    )
     return server_cls(transport, target, dispatcher, executor)
 
 
@@ -295,6 +311,7 @@ def expose(func):
         # foo() cannot be invoked by an RPC client
         def foo(self):
             pass
+
 
         # bar() can be invoked by an RPC client
         @rpc.expose

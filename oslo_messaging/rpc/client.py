@@ -39,9 +39,11 @@ __all__ = [
 LOG = logging.getLogger(__name__)
 
 _client_opts = [
-    cfg.IntOpt('rpc_response_timeout',
-               default=60,
-               help='Seconds to wait for a response from a call.'),
+    cfg.IntOpt(
+        'rpc_response_timeout',
+        default=60,
+        help='Seconds to wait for a response from a call.',
+    ),
 ]
 
 
@@ -58,22 +60,28 @@ class RemoteError(exceptions.MessagingException):
         self.exc_type = exc_type
         self.value = value
         self.traceback = traceback
-        msg = ("Remote error: {exc_type} {value}\n{traceback}.".format(
-            **dict(exc_type=self.exc_type, value=self.value,
-                   traceback=self.traceback)))
+        msg = "Remote error: {exc_type} {value}\n{traceback}.".format(
+            **dict(
+                exc_type=self.exc_type,
+                value=self.value,
+                traceback=self.traceback,
+            )
+        )
         super().__init__(msg)
 
 
 class RPCVersionCapError(exceptions.MessagingException):
-
     def __init__(self, version, version_cap):
         self.version = version
         self.version_cap = version_cap
-        msg = ("Requested message version, {version} is incompatible.  It "
-               "needs to be equal in major version and less than or equal "
-               "in minor version as the specified version cap "
-               "{version_cap}.".format(
-            **dict(version=self.version, version_cap=self.version_cap)))
+        msg = (
+            "Requested message version, {version} is incompatible.  It "
+            "needs to be equal in major version and less than or equal "
+            "in minor version as the specified version cap "
+            "{version_cap}.".format(
+                **dict(version=self.version, version_cap=self.version_cap)
+            )
+        )
         super().__init__(msg)
 
 
@@ -88,12 +96,19 @@ class ClientSendError(exceptions.MessagingException):
 
 
 class _BaseCallContext(metaclass=abc.ABCMeta):
-
     _marker = object()
 
-    def __init__(self, transport, target, serializer,
-                 timeout=None, version_cap=None, retry=None,
-                 call_monitor_timeout=None, transport_options=None):
+    def __init__(
+        self,
+        transport,
+        target,
+        serializer,
+        timeout=None,
+        version_cap=None,
+        retry=None,
+        call_monitor_timeout=None,
+        transport_options=None,
+    ):
         self.conf = transport.conf
 
         self.transport = transport
@@ -123,8 +138,9 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
 
     def _check_version_cap(self, version):
         if not utils.version_is_compatible(self.version_cap, version):
-            raise RPCVersionCapError(version=version,
-                                     version_cap=self.version_cap)
+            raise RPCVersionCapError(
+                version=version, version_cap=self.version_cap
+            )
 
     def can_send_version(self, version=_marker):
         """Check to see if a version is compatible with the version cap."""
@@ -140,7 +156,8 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
             except (IndexError, ValueError):
                 raise exceptions.MessagingException(
                     "Version must contain a major and minor integer. "
-                    f"Got {version}")
+                    f"Got {version}"
+                )
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method and return immediately. See RPCClient.cast()."""
@@ -149,27 +166,38 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
 
         self._check_version_cap(msg.get('version'))
 
-        with tracing.trace_send(
-            self.conf, target=self.target,
-            method=method, call_type="cast",
-            msg_ctxt=msg_ctxt,
-        ), metrics.measure_metrics(
-            self.conf, target=self.target,
-            method=method, call_type="cast",
+        with (
+            tracing.trace_send(
+                self.conf,
+                target=self.target,
+                method=method,
+                call_type="cast",
+                msg_ctxt=msg_ctxt,
+            ),
+            metrics.measure_metrics(
+                self.conf,
+                target=self.target,
+                method=method,
+                call_type="cast",
+            ),
         ):
             try:
                 self.transport._send(
-                    self.target, msg_ctxt, msg,
+                    self.target,
+                    msg_ctxt,
+                    msg,
                     retry=self.retry,
-                    transport_options=self.transport_options)
+                    transport_options=self.transport_options,
+                )
             except driver_base.TransportDriverError as ex:
                 raise ClientSendError(self.target, ex)
 
     def call(self, ctxt, method, **kwargs):
         """Invoke a method and wait for a reply. See RPCClient.call()."""
         if self.target.fanout:
-            raise exceptions.InvalidTarget('A call cannot be used with fanout',
-                                           self.target)
+            raise exceptions.InvalidTarget(
+                'A call cannot be used with fanout', self.target
+            )
 
         msg = self._make_message(ctxt, method, kwargs)
         msg_ctxt = self.serializer.serialize_context(ctxt)
@@ -182,33 +210,51 @@ class _BaseCallContext(metaclass=abc.ABCMeta):
 
         self._check_version_cap(msg.get('version'))
 
-        with tracing.trace_send(
-            self.conf, target=self.target,
-            method=method, call_type="call",
-            msg_ctxt=msg_ctxt,
-        ), metrics.measure_metrics(
-            self.conf, target=self.target,
-            method=method, call_type="call",
+        with (
+            tracing.trace_send(
+                self.conf,
+                target=self.target,
+                method=method,
+                call_type="call",
+                msg_ctxt=msg_ctxt,
+            ),
+            metrics.measure_metrics(
+                self.conf,
+                target=self.target,
+                method=method,
+                call_type="call",
+            ),
         ):
             try:
                 result = self.transport._send(
-                    self.target, msg_ctxt, msg,
+                    self.target,
+                    msg_ctxt,
+                    msg,
                     wait_for_reply=True,
                     timeout=timeout,
                     call_monitor_timeout=cm_timeout,
                     retry=self.retry,
-                    transport_options=self.transport_options)
+                    transport_options=self.transport_options,
+                )
             except driver_base.TransportDriverError as ex:
                 raise ClientSendError(self.target, ex)
 
-            return self.serializer.deserialize_entity(
-                ctxt, result)
+            return self.serializer.deserialize_entity(ctxt, result)
 
     @abc.abstractmethod
-    def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
-                version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, version_cap=_marker, retry=_marker,
-                call_monitor_timeout=_marker):
+    def prepare(
+        self,
+        exchange=_marker,
+        topic=_marker,
+        namespace=_marker,
+        version=_marker,
+        server=_marker,
+        fanout=_marker,
+        timeout=_marker,
+        version_cap=_marker,
+        retry=_marker,
+        call_monitor_timeout=_marker,
+    ):
         """Prepare a method invocation context. See RPCClient.prepare()."""
 
 
@@ -216,11 +262,21 @@ class _CallContext(_BaseCallContext):
     _marker = _BaseCallContext._marker
 
     @classmethod
-    def _prepare(cls, call_context,
-                 exchange=_marker, topic=_marker, namespace=_marker,
-                 version=_marker, server=_marker, fanout=_marker,
-                 timeout=_marker, version_cap=_marker, retry=_marker,
-                 call_monitor_timeout=_marker, transport_options=_marker):
+    def _prepare(
+        cls,
+        call_context,
+        exchange=_marker,
+        topic=_marker,
+        namespace=_marker,
+        version=_marker,
+        server=_marker,
+        fanout=_marker,
+        timeout=_marker,
+        version_cap=_marker,
+        retry=_marker,
+        call_monitor_timeout=_marker,
+        transport_options=_marker,
+    ):
         cls._check_version(version)
         kwargs = dict(
             exchange=exchange,
@@ -228,9 +284,9 @@ class _CallContext(_BaseCallContext):
             namespace=namespace,
             version=version,
             server=server,
-            fanout=fanout)
-        kwargs = {k: v for k, v in kwargs.items()
-                  if v is not cls._marker}
+            fanout=fanout,
+        )
+        kwargs = {k: v for k, v in kwargs.items() if v is not cls._marker}
         target = call_context.target(**kwargs)
 
         if timeout is cls._marker:
@@ -244,20 +300,43 @@ class _CallContext(_BaseCallContext):
         if transport_options is cls._marker:
             transport_options = call_context.transport_options
 
-        return _CallContext(call_context.transport, target,
-                            call_context.serializer,
-                            timeout, version_cap, retry,
-                            call_monitor_timeout, transport_options)
+        return _CallContext(
+            call_context.transport,
+            target,
+            call_context.serializer,
+            timeout,
+            version_cap,
+            retry,
+            call_monitor_timeout,
+            transport_options,
+        )
 
-    def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
-                version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, version_cap=_marker, retry=_marker,
-                call_monitor_timeout=_marker):
-        return _CallContext._prepare(self,
-                                     exchange, topic, namespace,
-                                     version, server, fanout,
-                                     timeout, version_cap, retry,
-                                     call_monitor_timeout)
+    def prepare(
+        self,
+        exchange=_marker,
+        topic=_marker,
+        namespace=_marker,
+        version=_marker,
+        server=_marker,
+        fanout=_marker,
+        timeout=_marker,
+        version_cap=_marker,
+        retry=_marker,
+        call_monitor_timeout=_marker,
+    ):
+        return _CallContext._prepare(
+            self,
+            exchange,
+            topic,
+            namespace,
+            version,
+            server,
+            fanout,
+            timeout,
+            version_cap,
+            retry,
+            call_monitor_timeout,
+        )
 
 
 class RPCClient(_BaseCallContext):
@@ -298,7 +377,6 @@ class RPCClient(_BaseCallContext):
     call() or cast()::
 
         class TestClient(object):
-
             def __init__(self, transport):
                 target = messaging.Target(topic='test', version='2.0')
                 self._client = messaging.get_rpc_client(transport, target)
@@ -350,10 +428,18 @@ class RPCClient(_BaseCallContext):
 
     _marker = _BaseCallContext._marker
 
-    def __init__(self, transport, target,
-                 timeout=None, version_cap=None, serializer=None, retry=None,
-                 call_monitor_timeout=None, transport_options=None,
-                 _manual_load=True):
+    def __init__(
+        self,
+        transport,
+        target,
+        timeout=None,
+        version_cap=None,
+        serializer=None,
+        retry=None,
+        call_monitor_timeout=None,
+        transport_options=None,
+        _manual_load=True,
+    ):
         """Construct an RPC client.
 
         This should not be called directly, use the get_rpc_client function
@@ -388,29 +474,49 @@ class RPCClient(_BaseCallContext):
         :type _manual_load: bool
         """
         if _manual_load:
-            LOG.warning("Using RPCClient manually to instantiate client. "
-                        "Please use get_rpc_client to obtain an RPC client "
-                        "instance.")
+            LOG.warning(
+                "Using RPCClient manually to instantiate client. "
+                "Please use get_rpc_client to obtain an RPC client "
+                "instance."
+            )
 
         if serializer is None:
             serializer = msg_serializer.NoOpSerializer()
 
         if not isinstance(transport, msg_transport.RPCTransport):
-            LOG.warning("Using notification transport for RPC. Please use "
-                        "get_rpc_transport to obtain an RPC transport "
-                        "instance.")
+            LOG.warning(
+                "Using notification transport for RPC. Please use "
+                "get_rpc_transport to obtain an RPC transport "
+                "instance."
+            )
 
         super().__init__(
-            transport, target, serializer, timeout, version_cap, retry,
-            call_monitor_timeout, transport_options
+            transport,
+            target,
+            serializer,
+            timeout,
+            version_cap,
+            retry,
+            call_monitor_timeout,
+            transport_options,
         )
 
         self.conf.register_opts(_client_opts)
 
-    def prepare(self, exchange=_marker, topic=_marker, namespace=_marker,
-                version=_marker, server=_marker, fanout=_marker,
-                timeout=_marker, version_cap=_marker, retry=_marker,
-                call_monitor_timeout=_marker, transport_options=_marker):
+    def prepare(
+        self,
+        exchange=_marker,
+        topic=_marker,
+        namespace=_marker,
+        version=_marker,
+        server=_marker,
+        fanout=_marker,
+        timeout=_marker,
+        version_cap=_marker,
+        retry=_marker,
+        call_monitor_timeout=_marker,
+        transport_options=_marker,
+    ):
         """Prepare a method invocation context.
 
         Use this method to override client properties for an individual method
@@ -453,11 +559,20 @@ class RPCClient(_BaseCallContext):
                                      parameter).
         :type call_monitor_timeout: int
         """
-        return _CallContext._prepare(self,
-                                     exchange, topic, namespace,
-                                     version, server, fanout,
-                                     timeout, version_cap, retry,
-                                     call_monitor_timeout, transport_options)
+        return _CallContext._prepare(
+            self,
+            exchange,
+            topic,
+            namespace,
+            version,
+            server,
+            fanout,
+            timeout,
+            version_cap,
+            retry,
+            call_monitor_timeout,
+            transport_options,
+        )
 
     def cast(self, ctxt, method, **kwargs):
         """Invoke a method without blocking for a return value.

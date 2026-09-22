@@ -48,7 +48,6 @@ class RestartableServerThread:
 
 
 class ListenerSetupMixin:
-
     class ThreadTracker:
         def __init__(self):
             self._received_msgs = 0
@@ -84,8 +83,9 @@ class ListenerSetupMixin:
             self.trackers[pool].stop()
         self.trackers = {}
 
-    def _setup_listener(self, transport, endpoints,
-                        targets=None, pool=None, batch=False):
+    def _setup_listener(
+        self, transport, endpoints, targets=None, pool=None, batch=False
+    ):
 
         if pool is None:
             tracker_name = '__default__'
@@ -95,17 +95,27 @@ class ListenerSetupMixin:
         if targets is None:
             targets = [oslo_messaging.Target(topic='testtopic')]
 
-        tracker = self.trackers.setdefault(
-            tracker_name, self.ThreadTracker())
+        tracker = self.trackers.setdefault(tracker_name, self.ThreadTracker())
         if batch:
             listener = oslo_messaging.get_batch_notification_listener(
-                transport, targets=targets, endpoints=[tracker] + endpoints,
-                allow_requeue=True, pool=pool, executor='eventlet',
-                batch_size=batch[0], batch_timeout=batch[1])
+                transport,
+                targets=targets,
+                endpoints=[tracker] + endpoints,
+                allow_requeue=True,
+                pool=pool,
+                executor='eventlet',
+                batch_size=batch[0],
+                batch_timeout=batch[1],
+            )
         else:
             listener = oslo_messaging.get_notification_listener(
-                transport, targets=targets, endpoints=[tracker] + endpoints,
-                allow_requeue=True, pool=pool, executor='eventlet')
+                transport,
+                targets=targets,
+                endpoints=[tracker] + endpoints,
+                allow_requeue=True,
+                pool=pool,
+                executor='eventlet',
+            )
 
         thread = RestartableServerThread(listener)
         tracker.start(thread)
@@ -114,15 +124,18 @@ class ListenerSetupMixin:
     def wait_for_messages(self, expect_messages, tracker_name='__default__'):
         self.trackers[tracker_name].wait_for_messages(expect_messages)
 
-    def _setup_notifier(self, transport, topics=['testtopic'],
-                        publisher_id='testpublisher'):
-        return oslo_messaging.Notifier(transport, topics=topics,
-                                       driver='messaging',
-                                       publisher_id=publisher_id)
+    def _setup_notifier(
+        self, transport, topics=['testtopic'], publisher_id='testpublisher'
+    ):
+        return oslo_messaging.Notifier(
+            transport,
+            topics=topics,
+            driver='messaging',
+            publisher_id=publisher_id,
+        )
 
 
 class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
-
     def __init__(self, *args):
         super().__init__(*args)
         ListenerSetupMixin.__init__(self)
@@ -130,34 +143,40 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
     def setUp(self):
         super().setUp(conf=cfg.ConfigOpts())
         ListenerSetupMixin.setUp(self)
-        self.useFixture(fixtures.MonkeyPatch(
-            'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
-            new_value={}))
+        self.useFixture(
+            fixtures.MonkeyPatch(
+                'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
+                new_value={},
+            )
+        )
 
     def test_constructor(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
         target = oslo_messaging.Target(topic='foo')
         endpoints = [object()]
 
         listener = oslo_messaging.get_notification_listener(
-            transport, [target], endpoints, executor='threading')
+            transport, [target], endpoints, executor='threading'
+        )
 
         self.assertIs(listener.conf, self.conf)
         self.assertIs(listener.transport, transport)
-        self.assertIsInstance(listener.dispatcher,
-                              dispatcher.NotificationDispatcher)
+        self.assertIsInstance(
+            listener.dispatcher, dispatcher.NotificationDispatcher
+        )
         self.assertIs(listener.dispatcher.endpoints, endpoints)
         self.assertEqual('threading', listener.executor_type)
 
     def test_no_target_topic(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         listener = oslo_messaging.get_notification_listener(
-            transport,
-            [oslo_messaging.Target()],
-            [mock.Mock()])
+            transport, [oslo_messaging.Target()], [mock.Mock()]
+        )
         try:
             listener.start()
         except Exception as ex:
@@ -167,11 +186,13 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
 
     def test_unknown_executor(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         try:
-            oslo_messaging.get_notification_listener(transport, [], [],
-                                                     executor='foo')
+            oslo_messaging.get_notification_listener(
+                transport, [], [], executor='foo'
+            )
         except Exception as ex:
             self.assertIsInstance(ex, oslo_messaging.ExecutorLoadFailure)
             self.assertEqual('foo', ex.executor)
@@ -179,13 +200,15 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
             self.assertTrue(False)
 
     def test_batch_timeout(self):
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
-        listener_thread = self._setup_listener(transport, [endpoint],
-                                               batch=(5, 1))
+        listener_thread = self._setup_listener(
+            transport, [endpoint], batch=(5, 1)
+        )
 
         notifier = self._setup_notifier(transport)
         cxt = test_utils.TestContext()
@@ -195,25 +218,34 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.wait_for_messages(3)
         self.assertFalse(listener_thread.stop())
 
-        messages = [dict(ctxt=cxt,
-                         publisher_id='testpublisher',
-                         event_type='an_event.start',
-                         payload='test message',
-                         metadata={'message_id': mock.ANY,
-                                   'timestamp': mock.ANY})]
+        messages = [
+            dict(
+                ctxt=cxt,
+                publisher_id='testpublisher',
+                event_type='an_event.start',
+                payload='test message',
+                metadata={'message_id': mock.ANY, 'timestamp': mock.ANY},
+            )
+        ]
 
-        endpoint.info.assert_has_calls([mock.call(messages * 5),
-                                        mock.call(messages * 5),
-                                        mock.call(messages * 2)])
+        endpoint.info.assert_has_calls(
+            [
+                mock.call(messages * 5),
+                mock.call(messages * 5),
+                mock.call(messages * 2),
+            ]
+        )
 
     def test_batch_size(self):
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
-        listener_thread = self._setup_listener(transport, [endpoint],
-                                               batch=(5, None))
+        listener_thread = self._setup_listener(
+            transport, [endpoint], batch=(5, None)
+        )
 
         notifier = self._setup_notifier(transport)
         ctxt = test_utils.TestContext()
@@ -223,24 +255,30 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        messages = [dict(ctxt=ctxt,
-                         publisher_id='testpublisher',
-                         event_type='an_event.start',
-                         payload='test message',
-                         metadata={'message_id': mock.ANY,
-                                   'timestamp': mock.ANY})]
+        messages = [
+            dict(
+                ctxt=ctxt,
+                publisher_id='testpublisher',
+                event_type='an_event.start',
+                payload='test message',
+                metadata={'message_id': mock.ANY, 'timestamp': mock.ANY},
+            )
+        ]
 
-        endpoint.info.assert_has_calls([mock.call(messages * 5),
-                                        mock.call(messages * 5)])
+        endpoint.info.assert_has_calls(
+            [mock.call(messages * 5), mock.call(messages * 5)]
+        )
 
     def test_batch_size_exception_path(self):
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         endpoint = mock.Mock()
         endpoint.info.side_effect = [None, Exception('boom!')]
-        listener_thread = self._setup_listener(transport, [endpoint],
-                                               batch=(5, None))
+        listener_thread = self._setup_listener(
+            transport, [endpoint], batch=(5, None)
+        )
 
         notifier = self._setup_notifier(transport)
         ctxt = test_utils.TestContext()
@@ -250,18 +288,22 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        messages = [dict(ctxt=ctxt,
-                         publisher_id='testpublisher',
-                         event_type='an_event.start',
-                         payload='test message',
-                         metadata={'message_id': mock.ANY,
-                                   'timestamp': mock.ANY})]
+        messages = [
+            dict(
+                ctxt=ctxt,
+                publisher_id='testpublisher',
+                event_type='an_event.start',
+                payload='test message',
+                metadata={'message_id': mock.ANY, 'timestamp': mock.ANY},
+            )
+        ]
 
         endpoint.info.assert_has_calls([mock.call(messages * 5)])
 
     def test_one_topic(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
@@ -275,19 +317,27 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertFalse(listener_thread.stop())
 
         endpoint.info.assert_called_once_with(
-            cxt, 'testpublisher', 'an_event.start', 'test message',
-            {'message_id': mock.ANY, 'timestamp': mock.ANY})
+            cxt,
+            'testpublisher',
+            'an_event.start',
+            'test message',
+            {'message_id': mock.ANY, 'timestamp': mock.ANY},
+        )
 
     def test_two_topics(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
-        targets = [oslo_messaging.Target(topic="topic1"),
-                   oslo_messaging.Target(topic="topic2")]
-        listener_thread = self._setup_listener(transport, [endpoint],
-                                               targets=targets)
+        targets = [
+            oslo_messaging.Target(topic="topic1"),
+            oslo_messaging.Target(topic="topic2"),
+        ]
+        listener_thread = self._setup_listener(
+            transport, [endpoint], targets=targets
+        )
         notifier = self._setup_notifier(transport, topics=['topic1'])
         cxt1 = test_utils.TestContext(user_name='bob')
         notifier.info(cxt1, 'an_event.start1', 'test')
@@ -298,41 +348,59 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        endpoint.info.assert_has_calls([
-            mock.call(cxt1, 'testpublisher',
-                      'an_event.start1', 'test',
-                      {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-            mock.call(cxt2, 'testpublisher',
-                      'an_event.start2', 'test',
-                      {'timestamp': mock.ANY, 'message_id': mock.ANY})],
-            any_order=True)
+        endpoint.info.assert_has_calls(
+            [
+                mock.call(
+                    cxt1,
+                    'testpublisher',
+                    'an_event.start1',
+                    'test',
+                    {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                ),
+                mock.call(
+                    cxt2,
+                    'testpublisher',
+                    'an_event.start2',
+                    'test',
+                    {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                ),
+            ],
+            any_order=True,
+        )
 
     def test_two_exchanges(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         endpoint = mock.Mock()
         endpoint.info.return_value = None
-        targets = [oslo_messaging.Target(topic="topic",
-                                         exchange="exchange1"),
-                   oslo_messaging.Target(topic="topic",
-                                         exchange="exchange2")]
-        listener_thread = self._setup_listener(transport, [endpoint],
-                                               targets=targets)
+        targets = [
+            oslo_messaging.Target(topic="topic", exchange="exchange1"),
+            oslo_messaging.Target(topic="topic", exchange="exchange2"),
+        ]
+        listener_thread = self._setup_listener(
+            transport, [endpoint], targets=targets
+        )
 
         notifier = self._setup_notifier(transport, topics=["topic"])
 
         def mock_notifier_exchange(name):
             def side_effect(target, ctxt, message, version, retry):
                 target.exchange = name
-                return transport._driver.send_notification(target, ctxt,
-                                                           message, version,
-                                                           retry=retry)
-            transport._send_notification = mock.MagicMock(
-                side_effect=side_effect)
+                return transport._driver.send_notification(
+                    target, ctxt, message, version, retry=retry
+                )
 
-        notifier.info(test_utils.TestContext(user_name='bob0'),
-                      'an_event.start', 'test message default exchange')
+            transport._send_notification = mock.MagicMock(
+                side_effect=side_effect
+            )
+
+        notifier.info(
+            test_utils.TestContext(user_name='bob0'),
+            'an_event.start',
+            'test message default exchange',
+        )
         mock_notifier_exchange('exchange1')
         ctxt1 = test_utils.TestContext(user_name='bob1')
         notifier.info(ctxt1, 'an_event.start', 'test message exchange1')
@@ -343,25 +411,38 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        endpoint.info.assert_has_calls([
-            mock.call(ctxt1, 'testpublisher', 'an_event.start',
-                      'test message exchange1',
-                      {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-            mock.call(ctxt2, 'testpublisher', 'an_event.start',
-                      'test message exchange2',
-                      {'timestamp': mock.ANY, 'message_id': mock.ANY})],
-            any_order=True)
+        endpoint.info.assert_has_calls(
+            [
+                mock.call(
+                    ctxt1,
+                    'testpublisher',
+                    'an_event.start',
+                    'test message exchange1',
+                    {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                ),
+                mock.call(
+                    ctxt2,
+                    'testpublisher',
+                    'an_event.start',
+                    'test message exchange2',
+                    {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                ),
+            ],
+            any_order=True,
+        )
 
     def test_two_endpoints(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         endpoint1 = mock.Mock()
         endpoint1.info.return_value = None
         endpoint2 = mock.Mock()
         endpoint2.info.return_value = oslo_messaging.NotificationResult.HANDLED
-        listener_thread = self._setup_listener(transport,
-                                               [endpoint1, endpoint2])
+        listener_thread = self._setup_listener(
+            transport, [endpoint1, endpoint2]
+        )
         notifier = self._setup_notifier(transport)
         cxt = test_utils.TestContext()
         notifier.info(cxt, 'an_event.start', 'test')
@@ -370,18 +451,25 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertFalse(listener_thread.stop())
 
         endpoint1.info.assert_called_once_with(
-            cxt, 'testpublisher', 'an_event.start', 'test', {
-                'timestamp': mock.ANY,
-                'message_id': mock.ANY})
+            cxt,
+            'testpublisher',
+            'an_event.start',
+            'test',
+            {'timestamp': mock.ANY, 'message_id': mock.ANY},
+        )
 
         endpoint2.info.assert_called_once_with(
-            cxt, 'testpublisher', 'an_event.start', 'test', {
-                'timestamp': mock.ANY,
-                'message_id': mock.ANY})
+            cxt,
+            'testpublisher',
+            'an_event.start',
+            'test',
+            {'timestamp': mock.ANY, 'message_id': mock.ANY},
+        )
 
     def test_requeue(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
         endpoint = mock.Mock()
         endpoint.info = mock.Mock()
 
@@ -399,15 +487,29 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.wait_for_messages(2)
         self.assertFalse(listener_thread.stop())
 
-        endpoint.info.assert_has_calls([
-            mock.call(cxt, 'testpublisher', 'an_event.start', 'test',
-                      {'timestamp': mock.ANY, 'message_id': mock.ANY}),
-            mock.call(cxt, 'testpublisher', 'an_event.start', 'test',
-                      {'timestamp': mock.ANY, 'message_id': mock.ANY})])
+        endpoint.info.assert_has_calls(
+            [
+                mock.call(
+                    cxt,
+                    'testpublisher',
+                    'an_event.start',
+                    'test',
+                    {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                ),
+                mock.call(
+                    cxt,
+                    'testpublisher',
+                    'an_event.start',
+                    'test',
+                    {'timestamp': mock.ANY, 'message_id': mock.ANY},
+                ),
+            ]
+        )
 
     def test_two_pools(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         endpoint1 = mock.Mock()
         endpoint1.info.return_value = None
@@ -415,15 +517,17 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         endpoint2.info.return_value = None
 
         targets = [oslo_messaging.Target(topic="topic")]
-        listener1_thread = self._setup_listener(transport, [endpoint1],
-                                                targets=targets, pool="pool1")
-        listener2_thread = self._setup_listener(transport, [endpoint2],
-                                                targets=targets, pool="pool2")
+        listener1_thread = self._setup_listener(
+            transport, [endpoint1], targets=targets, pool="pool1"
+        )
+        listener2_thread = self._setup_listener(
+            transport, [endpoint2], targets=targets, pool="pool2"
+        )
 
         notifier = self._setup_notifier(transport, topics=["topic"])
         ctxts = [
             test_utils.TestContext(user_name='bob0'),
-            test_utils.TestContext(user_name='bob1')
+            test_utils.TestContext(user_name='bob1'),
         ]
         notifier.info(ctxts[0], 'an_event.start', 'test message0')
         notifier.info(ctxts[1], 'an_event.start', 'test message1')
@@ -434,18 +538,25 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertFalse(listener1_thread.stop())
 
         def mocked_endpoint_call(i, ctxts):
-            return mock.call(ctxts[i], 'testpublisher',
-                             'an_event.start', f'test message{i}',
-                             {'timestamp': mock.ANY, 'message_id': mock.ANY})
+            return mock.call(
+                ctxts[i],
+                'testpublisher',
+                'an_event.start',
+                f'test message{i}',
+                {'timestamp': mock.ANY, 'message_id': mock.ANY},
+            )
 
-        endpoint1.info.assert_has_calls([mocked_endpoint_call(0, ctxts),
-                                         mocked_endpoint_call(1, ctxts)])
-        endpoint2.info.assert_has_calls([mocked_endpoint_call(0, ctxts),
-                                         mocked_endpoint_call(1, ctxts)])
+        endpoint1.info.assert_has_calls(
+            [mocked_endpoint_call(0, ctxts), mocked_endpoint_call(1, ctxts)]
+        )
+        endpoint2.info.assert_has_calls(
+            [mocked_endpoint_call(0, ctxts), mocked_endpoint_call(1, ctxts)]
+        )
 
     def test_two_pools_three_listener(self):
         transport = msg_notifier.get_notification_transport(
-            self.conf, url='fake:')
+            self.conf, url='fake:'
+        )
 
         endpoint1 = mock.Mock()
         endpoint1.info.return_value = None
@@ -455,17 +566,24 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         endpoint3.info.return_value = None
 
         targets = [oslo_messaging.Target(topic="topic")]
-        listener1_thread = self._setup_listener(transport, [endpoint1],
-                                                targets=targets, pool="pool1")
-        listener2_thread = self._setup_listener(transport, [endpoint2],
-                                                targets=targets, pool="pool2")
-        listener3_thread = self._setup_listener(transport, [endpoint3],
-                                                targets=targets, pool="pool2")
+        listener1_thread = self._setup_listener(
+            transport, [endpoint1], targets=targets, pool="pool1"
+        )
+        listener2_thread = self._setup_listener(
+            transport, [endpoint2], targets=targets, pool="pool2"
+        )
+        listener3_thread = self._setup_listener(
+            transport, [endpoint3], targets=targets, pool="pool2"
+        )
 
         def mocked_endpoint_call(i, ctxt):
-            return mock.call(ctxt, 'testpublisher',
-                             'an_event.start', f'test message{i}',
-                             {'timestamp': mock.ANY, 'message_id': mock.ANY})
+            return mock.call(
+                ctxt,
+                'testpublisher',
+                'an_event.start',
+                f'test message{i}',
+                {'timestamp': mock.ANY, 'message_id': mock.ANY},
+            )
 
         notifier = self._setup_notifier(transport, topics=["topic"])
         mocked_endpoint1_calls = []
@@ -512,23 +630,26 @@ class TestNotifyListener(test_utils.BaseTestCase, ListenerSetupMixin):
         self.assertLessEqual(25, endpoint2.info.call_count)
         self.assertLessEqual(25, endpoint3.info.call_count)
 
-        self.assertEqual(100, endpoint2.info.call_count +
-                         endpoint3.info.call_count)
+        self.assertEqual(
+            100, endpoint2.info.call_count + endpoint3.info.call_count
+        )
         for call in mocked_endpoint1_calls:
-            self.assertIn(call, endpoint2.info.mock_calls +
-                          endpoint3.info.mock_calls)
+            self.assertIn(
+                call, endpoint2.info.mock_calls + endpoint3.info.mock_calls
+            )
 
 
 class TestListenerTransportWarning(test_utils.BaseTestCase):
-
     @mock.patch('oslo_messaging.notify.listener.LOG')
     def test_warning_when_rpc_transport(self, log):
         transport = oslo_messaging.get_rpc_transport(self.conf)
         target = oslo_messaging.Target(topic='foo')
         endpoints = [object()]
         oslo_messaging.get_notification_listener(
-            transport, [target], endpoints)
+            transport, [target], endpoints
+        )
         log.warning.assert_called_once_with(
             "Using RPC transport for notifications. Please use "
             "get_notification_transport to obtain a "
-            "notification transport instance.")
+            "notification transport instance."
+        )

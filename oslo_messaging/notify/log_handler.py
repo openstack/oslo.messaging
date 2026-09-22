@@ -20,25 +20,24 @@ class LoggingErrorNotificationHandler(logging.Handler):
         # NOTE(dhellmann): Avoid a cyclical import by doing this one
         # at runtime.
         import oslo_messaging
+
         logging.Handler.__init__(self, *args, **kwargs)
         self._transport = oslo_messaging.get_notification_transport(cfg.CONF)
         self._notifier = oslo_messaging.Notifier(
-            self._transport,
-            publisher_id='error.publisher')
+            self._transport, publisher_id='error.publisher'
+        )
 
     def emit(self, record):
         conf = self._transport.conf
         # NOTE(bnemec): Notifier registers this opt with the transport.
-        if ('log' in conf.oslo_messaging_notifications.driver):
+        if 'log' in conf.oslo_messaging_notifications.driver:
             # NOTE(lbragstad): If we detect that log is one of the
             # notification drivers, then return. This protects from infinite
             # recursion where something bad happens, it gets logged, the log
             # handler sends a notification, and the log_notifier sees the
             # notification and logs it.
             return
-        self._notifier.error({},
-                             'error_notification',
-                             dict(error=record.msg))
+        self._notifier.error({}, 'error_notification', dict(error=record.msg))
 
 
 PublishErrorsHandler = LoggingErrorNotificationHandler

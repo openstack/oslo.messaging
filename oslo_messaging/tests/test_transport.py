@@ -27,7 +27,6 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class _FakeDriver:
-
     def __init__(self, conf):
         self.conf = conf
 
@@ -42,49 +41,84 @@ class _FakeDriver:
 
 
 class _FakeManager:
-
     def __init__(self, driver):
         self.driver = driver
 
 
 class GetTransportTestCase(test_utils.BaseTestCase):
-
     scenarios = [
-        ('default',
-         dict(url=None, transport_url=None,
-              control_exchange=None, allowed=None,
-              expect=dict(backend='rabbit',
-                          exchange=None,
-                          url='rabbit:',
-                          allowed=[]))),
-        ('transport_url',
-         dict(url=None, transport_url='testtransport:',
-              control_exchange=None, allowed=None,
-              expect=dict(backend='testtransport',
-                          exchange=None,
-                          url='testtransport:',
-                          allowed=[]))),
-        ('url_param',
-         dict(url='testtransport:', transport_url=None,
-              control_exchange=None, allowed=None,
-              expect=dict(backend='testtransport',
-                          exchange=None,
-                          url='testtransport:',
-                          allowed=[]))),
-        ('control_exchange',
-         dict(url=None, transport_url='testbackend:',
-              control_exchange='testexchange', allowed=None,
-              expect=dict(backend='testbackend',
-                          exchange='testexchange',
-                          url='testbackend:',
-                          allowed=[]))),
-        ('allowed_remote_exmods',
-         dict(url=None, transport_url='testbackend:',
-              control_exchange=None, allowed=['foo', 'bar'],
-              expect=dict(backend='testbackend',
-                          exchange=None,
-                          url='testbackend:',
-                          allowed=['foo', 'bar']))),
+        (
+            'default',
+            dict(
+                url=None,
+                transport_url=None,
+                control_exchange=None,
+                allowed=None,
+                expect=dict(
+                    backend='rabbit', exchange=None, url='rabbit:', allowed=[]
+                ),
+            ),
+        ),
+        (
+            'transport_url',
+            dict(
+                url=None,
+                transport_url='testtransport:',
+                control_exchange=None,
+                allowed=None,
+                expect=dict(
+                    backend='testtransport',
+                    exchange=None,
+                    url='testtransport:',
+                    allowed=[],
+                ),
+            ),
+        ),
+        (
+            'url_param',
+            dict(
+                url='testtransport:',
+                transport_url=None,
+                control_exchange=None,
+                allowed=None,
+                expect=dict(
+                    backend='testtransport',
+                    exchange=None,
+                    url='testtransport:',
+                    allowed=[],
+                ),
+            ),
+        ),
+        (
+            'control_exchange',
+            dict(
+                url=None,
+                transport_url='testbackend:',
+                control_exchange='testexchange',
+                allowed=None,
+                expect=dict(
+                    backend='testbackend',
+                    exchange='testexchange',
+                    url='testbackend:',
+                    allowed=[],
+                ),
+            ),
+        ),
+        (
+            'allowed_remote_exmods',
+            dict(
+                url=None,
+                transport_url='testbackend:',
+                control_exchange=None,
+                allowed=['foo', 'bar'],
+                expect=dict(
+                    backend='testbackend',
+                    exchange=None,
+                    url='testbackend:',
+                    allowed=['foo', 'bar'],
+                ),
+            ),
+        ),
     ]
 
     @mock.patch('oslo_messaging.transport.LOG')
@@ -96,11 +130,14 @@ class GetTransportTestCase(test_utils.BaseTestCase):
 
         driver.DriverManager = mock.Mock()
 
-        invoke_args = [self.conf,
-                       oslo_messaging.TransportURL.parse(self.conf,
-                                                         self.expect['url'])]
-        invoke_kwds = dict(default_exchange=self.expect['exchange'],
-                           allowed_remote_exmods=self.expect['allowed'])
+        invoke_args = [
+            self.conf,
+            oslo_messaging.TransportURL.parse(self.conf, self.expect['url']),
+        ]
+        invoke_kwds = dict(
+            default_exchange=self.expect['exchange'],
+            allowed_remote_exmods=self.expect['allowed'],
+        )
 
         drvr = _FakeDriver(self.conf)
 
@@ -116,31 +153,53 @@ class GetTransportTestCase(test_utils.BaseTestCase):
         self.assertIs(transport_._driver, drvr)
         self.assertIsInstance(transport_, transport.RPCTransport)
 
-        driver.DriverManager.assert_called_once_with('oslo.messaging.drivers',
-                                                     self.expect['backend'],
-                                                     invoke_on_load=True,
-                                                     invoke_args=invoke_args,
-                                                     invoke_kwds=invoke_kwds)
+        driver.DriverManager.assert_called_once_with(
+            'oslo.messaging.drivers',
+            self.expect['backend'],
+            invoke_on_load=True,
+            invoke_args=invoke_args,
+            invoke_kwds=invoke_kwds,
+        )
 
 
 class GetTransportSadPathTestCase(test_utils.BaseTestCase):
-
     scenarios = [
-        ('invalid_transport_url',
-         dict(url=None, transport_url='invalid',
-              ex=dict(cls=oslo_messaging.InvalidTransportURL,
-                      msg_contains='No scheme specified',
-                      url='invalid'))),
-        ('invalid_url_param',
-         dict(url='invalid', transport_url=None,
-              ex=dict(cls=oslo_messaging.InvalidTransportURL,
-                      msg_contains='No scheme specified',
-                      url='invalid'))),
-        ('driver_load_failure',
-         dict(url=None, transport_url='testbackend:/',
-              ex=dict(cls=oslo_messaging.DriverLoadFailure,
-                      msg_contains='Failed to load',
-                      driver='testbackend'))),
+        (
+            'invalid_transport_url',
+            dict(
+                url=None,
+                transport_url='invalid',
+                ex=dict(
+                    cls=oslo_messaging.InvalidTransportURL,
+                    msg_contains='No scheme specified',
+                    url='invalid',
+                ),
+            ),
+        ),
+        (
+            'invalid_url_param',
+            dict(
+                url='invalid',
+                transport_url=None,
+                ex=dict(
+                    cls=oslo_messaging.InvalidTransportURL,
+                    msg_contains='No scheme specified',
+                    url='invalid',
+                ),
+            ),
+        ),
+        (
+            'driver_load_failure',
+            dict(
+                url=None,
+                transport_url='testbackend:/',
+                ex=dict(
+                    cls=oslo_messaging.DriverLoadFailure,
+                    msg_contains='Failed to load',
+                    driver='testbackend',
+                ),
+            ),
+        ),
     ]
 
     def test_get_transport_sad(self):
@@ -148,7 +207,8 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
         ex_cls = self.ex.pop('cls')
         ex_msg_contains = self.ex.pop('msg_contains')
         ex = self.assertRaises(
-            ex_cls, oslo_messaging.get_transport, self.conf, url=self.url)
+            ex_cls, oslo_messaging.get_transport, self.conf, url=self.url
+        )
         self.assertIn(ex_msg_contains, str(ex))
         for k, v in self.ex.items():
             self.assertTrue(hasattr(ex, k))
@@ -157,7 +217,6 @@ class GetTransportSadPathTestCase(test_utils.BaseTestCase):
 
 # FIXME(markmc): this could be used elsewhere
 class _SetDefaultsFixture(fixtures.Fixture):
-
     def __init__(self, set_defaults, opts, *names):
         super().__init__()
         self.set_defaults = set_defaults
@@ -187,13 +246,15 @@ class _SetDefaultsFixture(fixtures.Fixture):
 
 
 class TestSetDefaults(test_utils.BaseTestCase):
-
     def setUp(self):
         super().setUp(conf=cfg.ConfigOpts())
-        self.useFixture(_SetDefaultsFixture(
-            oslo_messaging.set_transport_defaults,
-            transport._transport_opts,
-            'control_exchange'))
+        self.useFixture(
+            _SetDefaultsFixture(
+                oslo_messaging.set_transport_defaults,
+                transport._transport_opts,
+                'control_exchange',
+            )
+        )
 
     def test_set_default_control_exchange(self):
         oslo_messaging.set_transport_defaults(control_exchange='foo')
@@ -201,20 +262,22 @@ class TestSetDefaults(test_utils.BaseTestCase):
         driver.DriverManager = mock.Mock()
         invoke_kwds = dict(default_exchange='foo', allowed_remote_exmods=[])
 
-        driver.DriverManager.return_value = \
-            _FakeManager(_FakeDriver(self.conf))
+        driver.DriverManager.return_value = _FakeManager(
+            _FakeDriver(self.conf)
+        )
 
         oslo_messaging.get_transport(self.conf)
 
-        driver.DriverManager.assert_called_once_with(mock.ANY,
-                                                     mock.ANY,
-                                                     invoke_on_load=mock.ANY,
-                                                     invoke_args=mock.ANY,
-                                                     invoke_kwds=invoke_kwds)
+        driver.DriverManager.assert_called_once_with(
+            mock.ANY,
+            mock.ANY,
+            invoke_on_load=mock.ANY,
+            invoke_args=mock.ANY,
+            invoke_kwds=invoke_kwds,
+        )
 
 
 class TestTransportMethodArgs(test_utils.BaseTestCase):
-
     _target = oslo_messaging.Target(topic='topic', server='server')
 
     def test_send_defaults(self):
@@ -224,34 +287,42 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
 
         t._send(self._target, 'ctxt', 'message')
 
-        t._driver.send.assert_called_once_with(self._target,
-                                               'ctxt',
-                                               'message',
-                                               wait_for_reply=None,
-                                               timeout=None,
-                                               call_monitor_timeout=None,
-                                               retry=None,
-                                               transport_options=None)
+        t._driver.send.assert_called_once_with(
+            self._target,
+            'ctxt',
+            'message',
+            wait_for_reply=None,
+            timeout=None,
+            call_monitor_timeout=None,
+            retry=None,
+            transport_options=None,
+        )
 
     def test_send_all_args(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
         t._driver.send = mock.Mock()
 
-        t._send(self._target, 'ctxt', 'message',
-                wait_for_reply='wait_for_reply',
-                timeout='timeout', call_monitor_timeout='cm_timeout',
-                retry='retry')
+        t._send(
+            self._target,
+            'ctxt',
+            'message',
+            wait_for_reply='wait_for_reply',
+            timeout='timeout',
+            call_monitor_timeout='cm_timeout',
+            retry='retry',
+        )
 
-        t._driver.send.\
-            assert_called_once_with(self._target,
-                                    'ctxt',
-                                    'message',
-                                    wait_for_reply='wait_for_reply',
-                                    timeout='timeout',
-                                    call_monitor_timeout='cm_timeout',
-                                    retry='retry',
-                                    transport_options=None)
+        t._driver.send.assert_called_once_with(
+            self._target,
+            'ctxt',
+            'message',
+            wait_for_reply='wait_for_reply',
+            timeout='timeout',
+            call_monitor_timeout='cm_timeout',
+            retry='retry',
+            transport_options=None,
+        )
 
     def test_send_notification(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
@@ -260,25 +331,22 @@ class TestTransportMethodArgs(test_utils.BaseTestCase):
 
         t._send_notification(self._target, 'ctxt', 'message', version=1.0)
 
-        t._driver.send_notification.assert_called_once_with(self._target,
-                                                            'ctxt',
-                                                            'message',
-                                                            1.0,
-                                                            retry=None)
+        t._driver.send_notification.assert_called_once_with(
+            self._target, 'ctxt', 'message', 1.0, retry=None
+        )
 
     def test_send_notification_all_args(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
 
         t._driver.send_notification = mock.Mock()
 
-        t._send_notification(self._target, 'ctxt', 'message', version=1.0,
-                             retry=5)
+        t._send_notification(
+            self._target, 'ctxt', 'message', version=1.0, retry=5
+        )
 
-        t._driver.send_notification.assert_called_once_with(self._target,
-                                                            'ctxt',
-                                                            'message',
-                                                            1.0,
-                                                            retry=5)
+        t._driver.send_notification.assert_called_once_with(
+            self._target, 'ctxt', 'message', 1.0, retry=5
+        )
 
     def test_listen(self):
         t = transport.Transport(_FakeDriver(cfg.CONF))
@@ -298,12 +366,15 @@ class TestTransportUrlCustomisation(test_utils.BaseTestCase):
             return transport.TransportURL.parse(self.conf, url)
 
         self.url1 = transport_url_parse(
-            "fake:/vhost1/localhost:5672/?x=1&y=2&z=3")
+            "fake:/vhost1/localhost:5672/?x=1&y=2&z=3"
+        )
         self.url2 = transport_url_parse("fake:/vhost2/localhost:5672/?foo=bar")
         self.url3 = transport_url_parse(
-            "fake:/vhost1/localhost:5672/?l=1&l=2&l=3")
+            "fake:/vhost1/localhost:5672/?l=1&l=2&l=3"
+        )
         self.url4 = transport_url_parse(
-            "fake:/vhost2/localhost:5672/?d=x:1&d=y:2&d=z:3")
+            "fake:/vhost2/localhost:5672/?d=x:1&d=y:2&d=z:3"
+        )
         self.url5 = transport_url_parse("fake://noport/?")
 
     def test_hash(self):

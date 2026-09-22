@@ -44,28 +44,29 @@ class NotificationDispatcher(dispatcher.DispatcherBase):
                 method = getattr(endpoint, prio)
                 screen = getattr(endpoint, 'filter_rule', None)
                 self._callbacks_by_priority.setdefault(prio, []).append(
-                    (screen, method))
+                    (screen, method)
+                )
 
     @property
     def supported_priorities(self):
         return self._callbacks_by_priority.keys()
 
     def dispatch(self, incoming):
-        """Dispatch notification messages to the appropriate endpoint method.
-        """
+        """Dispatch notifications to the appropriate endpoint method."""
         priority, raw_message, message = self._extract_user_message(incoming)
 
         if priority not in PRIORITIES:
             LOG.warning('Unknown priority "%s"', priority)
             return
 
-        for screen, callback in self._callbacks_by_priority.get(priority,
-                                                                []):
-            if screen and not screen.match(message["ctxt"],
-                                           message["publisher_id"],
-                                           message["event_type"],
-                                           message["metadata"],
-                                           message["payload"]):
+        for screen, callback in self._callbacks_by_priority.get(priority, []):
+            if screen and not screen.match(
+                message["ctxt"],
+                message["publisher_id"],
+                message["event_type"],
+                message["metadata"],
+                message["payload"],
+            ):
                 continue
 
             ret = self._exec_callback(callback, message)
@@ -75,11 +76,13 @@ class NotificationDispatcher(dispatcher.DispatcherBase):
 
     def _exec_callback(self, callback, message):
         try:
-            return callback(message["ctxt"],
-                            message["publisher_id"],
-                            message["event_type"],
-                            message["payload"],
-                            message["metadata"])
+            return callback(
+                message["ctxt"],
+                message["publisher_id"],
+                message["event_type"],
+                message["payload"],
+                message["metadata"],
+            )
         except Exception:
             LOG.exception("Callback raised an exception.")
             return NotificationResult.REQUEUE
@@ -92,16 +95,23 @@ class NotificationDispatcher(dispatcher.DispatcherBase):
         event_type = message.get('event_type')
         metadata = {
             'message_id': message.get('message_id'),
-            'timestamp': message.get('timestamp')
+            'timestamp': message.get('timestamp'),
         }
         priority = message.get('priority', '').lower()
-        payload = self.serializer.deserialize_entity(ctxt,
-                                                     message.get('payload'))
-        return priority, incoming, dict(ctxt=ctxt,
-                                        publisher_id=publisher_id,
-                                        event_type=event_type,
-                                        payload=payload,
-                                        metadata=metadata)
+        payload = self.serializer.deserialize_entity(
+            ctxt, message.get('payload')
+        )
+        return (
+            priority,
+            incoming,
+            dict(
+                ctxt=ctxt,
+                publisher_id=publisher_id,
+                event_type=event_type,
+                payload=payload,
+                metadata=metadata,
+            ),
+        )
 
 
 class BatchNotificationDispatcher(NotificationDispatcher):
@@ -113,12 +123,15 @@ class BatchNotificationDispatcher(NotificationDispatcher):
     """
 
     def dispatch(self, incoming):
-        """Dispatch notification messages to the appropriate endpoint method.
-        """
+        """Dispatch notifications to the appropriate endpoint method."""
 
-        messages_grouped = itertools.groupby(sorted(
-            (self._extract_user_message(m) for m in incoming),
-            key=operator.itemgetter(0)), operator.itemgetter(0))
+        messages_grouped = itertools.groupby(
+            sorted(
+                (self._extract_user_message(m) for m in incoming),
+                key=operator.itemgetter(0),
+            ),
+            operator.itemgetter(0),
+        )
 
         requeues = set()
         for priority, messages in messages_grouped:
@@ -126,16 +139,21 @@ class BatchNotificationDispatcher(NotificationDispatcher):
             if priority not in PRIORITIES:
                 LOG.warning('Unknown priority "%s"', priority)
                 continue
-            for screen, callback in self._callbacks_by_priority.get(priority,
-                                                                    []):
+            for screen, callback in self._callbacks_by_priority.get(
+                priority, []
+            ):
                 if screen:
-                    filtered_messages = [message for message in messages
-                                         if screen.match(
-                                             message["ctxt"],
-                                             message["publisher_id"],
-                                             message["event_type"],
-                                             message["metadata"],
-                                             message["payload"])]
+                    filtered_messages = [
+                        message
+                        for message in messages
+                        if screen.match(
+                            message["ctxt"],
+                            message["publisher_id"],
+                            message["event_type"],
+                            message["metadata"],
+                            message["payload"],
+                        )
+                    ]
                 else:
                     filtered_messages = list(messages)
 

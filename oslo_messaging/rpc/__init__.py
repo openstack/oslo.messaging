@@ -30,7 +30,7 @@ __all__ = [
     'get_rpc_transport',
     'get_rpc_server',
     'get_rpc_client',
-    'expose'
+    'expose',
 ]
 
 from .client import *

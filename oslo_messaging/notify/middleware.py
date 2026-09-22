@@ -16,6 +16,7 @@
 Send notifications on request
 
 """
+
 import logging
 import os.path
 import sys
@@ -37,7 +38,9 @@ def log_and_ignore_error(fn):
             return fn(*args, **kwargs)
         except Exception as e:
             LOG.exception(
-                'An exception occurred processing the API call: %s', e)
+                'An exception occurred processing the API call: %s', e
+            )
+
     return wrapped
 
 
@@ -52,17 +55,23 @@ class RequestNotifier(base.Middleware):
 
         def _factory(app):
             return cls(app, **conf)
+
         return _factory
 
     def __init__(self, app, **conf):
         self.notifier = notify.Notifier(
-            oslo_messaging.get_notification_transport(cfg.CONF,
-                                                      conf.get('url')),
-            publisher_id=conf.get('publisher_id',
-                                  os.path.basename(sys.argv[0])))
+            oslo_messaging.get_notification_transport(
+                cfg.CONF, conf.get('url')
+            ),
+            publisher_id=conf.get(
+                'publisher_id', os.path.basename(sys.argv[0])
+            ),
+        )
         self.service_name = conf.get('service_name')
-        self.ignore_req_list = [x.upper().strip() for x in
-                                conf.get('ignore_req_list', '').split(',')]
+        self.ignore_req_list = [
+            x.upper().strip()
+            for x in conf.get('ignore_req_list', '').split(',')
+        ]
         super().__init__(app)
 
     @staticmethod
@@ -71,24 +80,27 @@ class RequestNotifier(base.Middleware):
         include them.
 
         """
-        return {k: v for k, v in environ.items()
-                if k.isupper() and k != 'HTTP_X_AUTH_TOKEN'}
+        return {
+            k: v
+            for k, v in environ.items()
+            if k.isupper() and k != 'HTTP_X_AUTH_TOKEN'
+        }
 
     @log_and_ignore_error
     def process_request(self, request):
-        request.environ['HTTP_X_SERVICE_NAME'] = \
+        request.environ['HTTP_X_SERVICE_NAME'] = (
             self.service_name or request.host
+        )
         payload = {
             'request': self.environ_to_dict(request.environ),
         }
 
-        self.notifier.info({},
-                           'http.request',
-                           payload)
+        self.notifier.info({}, 'http.request', payload)
 
     @log_and_ignore_error
-    def process_response(self, request, response,
-                         exception=None, traceback=None):
+    def process_response(
+        self, request, response, exception=None, traceback=None
+    ):
         payload = {
             'request': self.environ_to_dict(request.environ),
         }
@@ -102,12 +114,10 @@ class RequestNotifier(base.Middleware):
         if exception:
             payload['exception'] = {
                 'value': repr(exception),
-                'traceback': tb.format_tb(traceback)
+                'traceback': tb.format_tb(traceback),
             }
 
-        self.notifier.info({},
-                           'http.response',
-                           payload)
+        self.notifier.info({}, 'http.response', payload)
 
     @webob.dec.wsgify
     def __call__(self, req):

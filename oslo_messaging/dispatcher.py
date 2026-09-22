@@ -13,9 +13,7 @@
 import abc
 
 
-__all__ = [
-    "DispatcherBase"
-]
+__all__ = ["DispatcherBase"]
 
 
 class DispatcherBase(metaclass=abc.ABCMeta):

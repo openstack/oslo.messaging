@@ -25,8 +25,11 @@ from oslo_messaging.notify import notifier
 
 LOG = logging.getLogger(__name__)
 
-router_config = cfg.StrOpt('routing_config', default='',
-                           help='RoutingNotifier configuration file location.')
+router_config = cfg.StrOpt(
+    'routing_config',
+    default='',
+    help='RoutingNotifier configuration file location.',
+)
 
 CONF = cfg.CONF
 CONF.register_opt(router_config, group='oslo_messaging_notifications')
@@ -60,7 +63,8 @@ class RoutingDriver(notifier.Driver):
 
         # Infer which drivers are used from the config file.
         self.routing_groups = yaml.safe_load(
-            self._get_notifier_config_file(filename))
+            self._get_notifier_config_file(filename)
+        )
         if not self.routing_groups:
             self.routing_groups = {}  # In case we got None from load()
             return
@@ -73,14 +77,17 @@ class RoutingDriver(notifier.Driver):
             namespace=self.NOTIFIER_PLUGIN_NAMESPACE,
             check_func=self._should_load_plugin,
             invoke_on_load=True,
-            invoke_args=None)
+            invoke_args=None,
+        )
         if not list(self.plugin_manager):
-            LOG.warning("Failed to load any notifiers for %s",
-                        self.NOTIFIER_PLUGIN_NAMESPACE)
+            LOG.warning(
+                "Failed to load any notifiers for %s",
+                self.NOTIFIER_PLUGIN_NAMESPACE,
+            )
 
     def _get_drivers_for_message(self, group, event_type, priority):
         """Which drivers should be called for this event_type
-           or priority.
+        or priority.
         """
         accepted_drivers = set()
 
@@ -88,33 +95,34 @@ class RoutingDriver(notifier.Driver):
             checks = []
             for key, patterns in rules.items():
                 if key == 'accepted_events':
-                    c = [fnmatch.fnmatch(event_type, p)
-                         for p in patterns]
+                    c = [fnmatch.fnmatch(event_type, p) for p in patterns]
                     checks.append(any(c))
                 if key == 'accepted_priorities':
-                    c = [fnmatch.fnmatch(priority, p.lower())
-                         for p in patterns]
+                    c = [
+                        fnmatch.fnmatch(priority, p.lower()) for p in patterns
+                    ]
                     checks.append(any(c))
             if all(checks):
                 accepted_drivers.add(driver)
 
         return list(accepted_drivers)
 
-    def _filter_func(self, ext, context, message, priority, retry,
-                     accepted_drivers):
-        """True/False if the driver should be called for this message.
-        """
+    def _filter_func(
+        self, ext, context, message, priority, retry, accepted_drivers
+    ):
+        """True/False if the driver should be called for this message."""
         # context is unused here, but passed in by map()
         return ext.name in accepted_drivers
 
-    def _call_notify(self, ext, context, message, priority, retry,
-                     accepted_drivers):
-        """Emit the notification.
-        """
+    def _call_notify(
+        self, ext, context, message, priority, retry, accepted_drivers
+    ):
+        """Emit the notification."""
         # accepted_drivers is passed in as a result of the map() function
-        LOG.info("Routing '%(event)s' notification to '%(driver)s' "
-                 "driver",
-                 {'event': message.get('event_type'), 'driver': ext.name})
+        LOG.info(
+            "Routing '%(event)s' notification to '%(driver)s' driver",
+            {'event': message.get('event_type'), 'driver': ext.name},
+        )
         ext.obj.notify(context, message, priority, retry)
 
     def notify(self, context, message, priority, retry):
@@ -127,8 +135,16 @@ class RoutingDriver(notifier.Driver):
         accepted_drivers = set()
         for group in self.routing_groups.values():
             accepted_drivers.update(
-                self._get_drivers_for_message(group, event_type,
-                                              priority.lower()))
-        self.plugin_manager.map(self._filter_func, self._call_notify, context,
-                                message, priority, retry,
-                                list(accepted_drivers))
+                self._get_drivers_for_message(
+                    group, event_type, priority.lower()
+                )
+            )
+        self.plugin_manager.map(
+            self._filter_func,
+            self._call_notify,
+            context,
+            message,
+            priority,
+            retry,
+            list(accepted_drivers),
+        )

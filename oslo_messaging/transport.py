@@ -40,25 +40,28 @@ __all__ = [
 LOG = logging.getLogger(__name__)
 
 _transport_opts = [
-    cfg.StrOpt('transport_url',
-               default="rabbit://",
-               secret=True,
-               help='The network address and optional user credentials for '
-                    'connecting to the messaging backend, in URL format. The '
-                    'expected format is:\n\n'
-                    'driver://[user:pass@]host:port[,[userN:passN@]hostN:'
-                    'portN]/virtual_host?query\n\n'
-                    'Example: rabbit://rabbitmq:password@127.0.0.1:5672//\n\n'
-                    'For full details on the fields in the URL see the '
-                    'documentation of oslo_messaging.TransportURL at '
-                    'https://docs.openstack.org/oslo.messaging/latest/'
-                    'reference/transport.html'),
-
-    cfg.StrOpt('control_exchange',
-               default='openstack',
-               help='The default exchange under which topics are scoped. May '
-                    'be overridden by an exchange name specified in the '
-                    'transport_url option.'),
+    cfg.StrOpt(
+        'transport_url',
+        default="rabbit://",
+        secret=True,
+        help='The network address and optional user credentials for '
+        'connecting to the messaging backend, in URL format. The '
+        'expected format is:\n\n'
+        'driver://[user:pass@]host:port[,[userN:passN@]hostN:'
+        'portN]/virtual_host?query\n\n'
+        'Example: rabbit://rabbitmq:password@127.0.0.1:5672//\n\n'
+        'For full details on the fields in the URL see the '
+        'documentation of oslo_messaging.TransportURL at '
+        'https://docs.openstack.org/oslo.messaging/latest/'
+        'reference/transport.html',
+    ),
+    cfg.StrOpt(
+        'control_exchange',
+        default='openstack',
+        help='The default exchange under which topics are scoped. May '
+        'be overridden by an exchange name specified in the '
+        'transport_url option.',
+    ),
 ]
 
 
@@ -68,12 +71,10 @@ def set_transport_defaults(control_exchange):
     :param control_exchange: the default exchange under which topics are scoped
     :type control_exchange: str
     """
-    cfg.set_defaults(_transport_opts,
-                     control_exchange=control_exchange)
+    cfg.set_defaults(_transport_opts, control_exchange=control_exchange)
 
 
 class Transport:
-
     """A messaging transport.
 
     This is a mostly opaque handle for an underlying messaging transport
@@ -115,40 +116,58 @@ class Transport:
     def _require_driver_features(self, requeue=False):
         self._driver.require_features(requeue=requeue)
 
-    def _send(self, target, ctxt, message, wait_for_reply=None, timeout=None,
-              call_monitor_timeout=None, retry=None, transport_options=None):
+    def _send(
+        self,
+        target,
+        ctxt,
+        message,
+        wait_for_reply=None,
+        timeout=None,
+        call_monitor_timeout=None,
+        retry=None,
+        transport_options=None,
+    ):
         if not target.topic:
-            raise exceptions.InvalidTarget('A topic is required to send',
-                                           target)
-        return self._driver.send(target, ctxt, message,
-                                 wait_for_reply=wait_for_reply,
-                                 timeout=timeout,
-                                 call_monitor_timeout=call_monitor_timeout,
-                                 retry=retry,
-                                 transport_options=transport_options)
+            raise exceptions.InvalidTarget(
+                'A topic is required to send', target
+            )
+        return self._driver.send(
+            target,
+            ctxt,
+            message,
+            wait_for_reply=wait_for_reply,
+            timeout=timeout,
+            call_monitor_timeout=call_monitor_timeout,
+            retry=retry,
+            transport_options=transport_options,
+        )
 
     def _send_notification(self, target, ctxt, message, version, retry=None):
         if not target.topic:
-            raise exceptions.InvalidTarget('A topic is required to send',
-                                           target)
-        self._driver.send_notification(target, ctxt, message, version,
-                                       retry=retry)
+            raise exceptions.InvalidTarget(
+                'A topic is required to send', target
+            )
+        self._driver.send_notification(
+            target, ctxt, message, version, retry=retry
+        )
 
     def _listen(self, target, batch_size, batch_timeout):
         if not (target.topic and target.server):
-            raise exceptions.InvalidTarget('A server\'s target must have '
-                                           'topic and server names specified',
-                                           target)
-        return self._driver.listen(target, batch_size,
-                                   batch_timeout)
+            raise exceptions.InvalidTarget(
+                'A server\'s target must have '
+                'topic and server names specified',
+                target,
+            )
+        return self._driver.listen(target, batch_size, batch_timeout)
 
-    def _listen_for_notifications(self, targets_and_priorities, pool,
-                                  batch_size, batch_timeout):
+    def _listen_for_notifications(
+        self, targets_and_priorities, pool, batch_size, batch_timeout
+    ):
         for target, priority in targets_and_priorities:
             if not target.topic:
-                raise exceptions.InvalidTarget('A target must have '
-                                               'topic specified',
-                                               target)
+                raise exceptions.InvalidTarget(
+                    'A target must have topic specified', target
+                )
         return self._driver.listen_for_notifications(
             targets_and_priorities, pool, batch_size, batch_timeout
         )
@@ -190,32 +209,35 @@ class DriverLoadFailure(exceptions.MessagingException):
         self.ex = ex
 
 
-def _get_transport(conf, url=None, allowed_remote_exmods=None,
-                   transport_cls=RPCTransport):
+def _get_transport(
+    conf, url=None, allowed_remote_exmods=None, transport_cls=RPCTransport
+):
     allowed_remote_exmods = allowed_remote_exmods or []
     conf.register_opts(_transport_opts)
 
     if not isinstance(url, TransportURL):
         url = TransportURL.parse(conf, url)
 
-    kwargs = dict(default_exchange=conf.control_exchange,
-                  allowed_remote_exmods=allowed_remote_exmods)
+    kwargs = dict(
+        default_exchange=conf.control_exchange,
+        allowed_remote_exmods=allowed_remote_exmods,
+    )
 
     try:
-        mgr = driver.DriverManager('oslo.messaging.drivers',
-                                   url.transport.split('+')[0],
-                                   invoke_on_load=True,
-                                   invoke_args=[conf, url],
-                                   invoke_kwds=kwargs)
+        mgr = driver.DriverManager(
+            'oslo.messaging.drivers',
+            url.transport.split('+')[0],
+            invoke_on_load=True,
+            invoke_args=[conf, url],
+            invoke_kwds=kwargs,
+        )
     except RuntimeError as ex:
         raise DriverLoadFailure(url.transport, ex)
 
     return transport_cls(mgr.driver)
 
 
-@removals.remove(
-    message='use get_rpc_transport or get_notification_transport'
-)
+@removals.remove(message='use get_rpc_transport or get_notification_transport')
 def get_transport(conf, url=None, allowed_remote_exmods=None):
     """A factory method for Transport objects.
 
@@ -244,12 +266,12 @@ def get_transport(conf, url=None, allowed_remote_exmods=None):
                                   from
     :type allowed_remote_exmods: list
     """
-    return _get_transport(conf, url, allowed_remote_exmods,
-                          transport_cls=RPCTransport)
+    return _get_transport(
+        conf, url, allowed_remote_exmods, transport_cls=RPCTransport
+    )
 
 
 class TransportHost:
-
     """A host element of a parsed transport URL."""
 
     def __init__(self, hostname=None, port=None, username=None, password=None):
@@ -278,7 +300,6 @@ class TransportHost:
 
 
 class TransportOptions:
-
     def __init__(self, at_least_once=False):
         self._at_least_once = at_least_once
 
@@ -288,7 +309,6 @@ class TransportOptions:
 
 
 class TransportURL:
-
     """A parsed transport URL.
 
     Transport URLs take the form::
@@ -340,8 +360,9 @@ class TransportURL:
     :type query: dict
     """
 
-    def __init__(self, conf, transport=None, virtual_host=None, hosts=None,
-                 query=None):
+    def __init__(
+        self, conf, transport=None, virtual_host=None, hosts=None, query=None
+    ):
         self.conf = conf
         self.conf.register_opts(_transport_opts)
         self.transport = transport
@@ -359,9 +380,11 @@ class TransportURL:
         return hash((tuple(self.hosts), self.transport, self.virtual_host))
 
     def __eq__(self, other):
-        return (self.transport == other.transport and
-                self.virtual_host == other.virtual_host and
-                self.hosts == other.hosts)
+        return (
+            self.transport == other.transport
+            and self.virtual_host == other.virtual_host
+            and self.hosts == other.hosts
+        )
 
     def __ne__(self, other):
         return not self == other
@@ -496,18 +519,27 @@ class TransportURL:
             else:
                 hosts_with_credentials.append(hostname)
 
-            hosts.append(TransportHost(hostname=hostname,
-                                       port=port,
-                                       username=username,
-                                       password=password))
+            hosts.append(
+                TransportHost(
+                    hostname=hostname,
+                    port=port,
+                    username=username,
+                    password=password,
+                )
+            )
 
-        if (len(hosts_with_credentials) > 0 and
-                len(hosts_without_credentials) > 0):
-            LOG.warning("All hosts must be set with username/password or "
-                        "not at the same time. Hosts with credentials "
-                        "are: %(hosts_with_credentials)s. Hosts without "
-                        "credentials are %(hosts_without_credentials)s.",
-                        {'hosts_with_credentials': hosts_with_credentials,
-                         'hosts_without_credentials':
-                         hosts_without_credentials})
+        if (
+            len(hosts_with_credentials) > 0
+            and len(hosts_without_credentials) > 0
+        ):
+            LOG.warning(
+                "All hosts must be set with username/password or "
+                "not at the same time. Hosts with credentials "
+                "are: %(hosts_with_credentials)s. Hosts without "
+                "credentials are %(hosts_without_credentials)s.",
+                {
+                    'hosts_with_credentials': hosts_with_credentials,
+                    'hosts_without_credentials': hosts_without_credentials,
+                },
+            )
         return cls(conf, transport, virtual_host, hosts, query)

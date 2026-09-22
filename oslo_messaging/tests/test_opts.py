@@ -18,6 +18,7 @@ import stevedore
 import testtools
 
 from oslo_messaging import server
+
 try:
     from oslo_messaging import opts
 except ImportError:
@@ -27,7 +28,6 @@ from oslo_messaging.tests import utils as test_utils
 
 @testtools.skipIf(opts is None, "Options not importable")
 class OptsTestCase(test_utils.BaseTestCase):
-
     def _test_list_opts(self, result):
         self.assertEqual(4, len(result))
 
@@ -42,8 +42,9 @@ class OptsTestCase(test_utils.BaseTestCase):
 
     def test_entry_point(self):
         result = None
-        for ext in stevedore.ExtensionManager('oslo.config.opts',
-                                              invoke_on_load=True):
+        for ext in stevedore.ExtensionManager(
+            'oslo.config.opts', invoke_on_load=True
+        ):
             if ext.name == "oslo.messaging":
                 result = ext.obj
                 break

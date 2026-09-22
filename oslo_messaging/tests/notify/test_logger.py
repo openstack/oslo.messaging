@@ -34,7 +34,6 @@ logging.addLevelName(logging.AUDIT, 'AUDIT')
 
 
 class TestLogNotifier(test_utils.BaseTestCase):
-
     scenarios = [
         ('debug', dict(priority='debug')),
         ('info', dict(priority='info')),
@@ -48,8 +47,7 @@ class TestLogNotifier(test_utils.BaseTestCase):
     def setUp(self):
         super().setUp()
         self.addCleanup(oslo_messaging.notify._impl_test.reset)
-        self.config(driver=['test'],
-                    group='oslo_messaging_notifications')
+        self.config(driver=['test'], group='oslo_messaging_notifications')
         # NOTE(jamespage) disable thread information logging for testing
         # as this can cause test failures when monkey_patch via eventlet
         logging.logThreads = 0
@@ -57,22 +55,21 @@ class TestLogNotifier(test_utils.BaseTestCase):
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logger(self, mock_utcnow):
         fake_transport = oslo_messaging.get_notification_transport(self.conf)
-        with mock.patch('oslo_messaging.transport._get_transport',
-                        return_value=fake_transport):
+        with mock.patch(
+            'oslo_messaging.transport._get_transport',
+            return_value=fake_transport,
+        ):
             self.logger = oslo_messaging.LoggingNotificationHandler('test://')
 
-        mock_utcnow.return_value = datetime.datetime.now(
-            datetime.UTC).replace(tzinfo=None)
+        mock_utcnow.return_value = datetime.datetime.now(datetime.UTC).replace(
+            tzinfo=None
+        )
 
         levelno = getattr(logging, self.priority.upper(), 42)
 
-        record = logging.LogRecord('foo',
-                                   levelno,
-                                   '/foo/bar',
-                                   42,
-                                   'Something happened',
-                                   None,
-                                   None)
+        record = logging.LogRecord(
+            'foo', levelno, '/foo/bar', 42, 'Something happened', None, None
+        )
 
         self.logger.emit(record)
 
@@ -80,50 +77,61 @@ class TestLogNotifier(test_utils.BaseTestCase):
         self.assertEqual({}, context)
 
         n = oslo_messaging.notify._impl_test.NOTIFICATIONS[0][1]
-        self.assertEqual(getattr(self, 'queue', self.priority.upper()),
-                         n['priority'])
+        self.assertEqual(
+            getattr(self, 'queue', self.priority.upper()), n['priority']
+        )
         self.assertEqual('logrecord', n['event_type'])
         self.assertEqual(str(timeutils.utcnow()), n['timestamp'])
         self.assertIsNone(n['publisher_id'])
         self.assertEqual(
-            {'process': os.getpid(),
-             'funcName': None,
-             'name': 'foo',
-             'thread': None,
-             'levelno': levelno,
-             'processName': 'MainProcess',
-             'pathname': '/foo/bar',
-             'lineno': 42,
-             'msg': 'Something happened',
-             'exc_info': None,
-             'levelname': logging.getLevelName(levelno),
-             'extra': None},
-            n['payload'])
+            {
+                'process': os.getpid(),
+                'funcName': None,
+                'name': 'foo',
+                'thread': None,
+                'levelno': levelno,
+                'processName': 'MainProcess',
+                'pathname': '/foo/bar',
+                'lineno': 42,
+                'msg': 'Something happened',
+                'exc_info': None,
+                'levelname': logging.getLevelName(levelno),
+                'extra': None,
+            },
+            n['payload'],
+        )
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_logging_conf(self, mock_utcnow):
         fake_transport = oslo_messaging.get_notification_transport(self.conf)
-        with mock.patch('oslo_messaging.transport._get_transport',
-                        return_value=fake_transport):
-            logging.config.dictConfig({
-                'version': 1,
-                'handlers': {
-                    'notification': {
-                        'class': 'oslo_messaging.LoggingNotificationHandler',
-                        'level': self.priority.upper(),
-                        'url': 'test://',
+        with mock.patch(
+            'oslo_messaging.transport._get_transport',
+            return_value=fake_transport,
+        ):
+            logging.config.dictConfig(
+                {
+                    'version': 1,
+                    'handlers': {
+                        'notification': {
+                            'class': (
+                                'oslo_messaging.LoggingNotificationHandler'
+                            ),
+                            'level': self.priority.upper(),
+                            'url': 'test://',
+                        },
                     },
-                },
-                'loggers': {
-                    'default': {
-                        'handlers': ['notification'],
-                        'level': self.priority.upper(),
+                    'loggers': {
+                        'default': {
+                            'handlers': ['notification'],
+                            'level': self.priority.upper(),
+                        },
                     },
-                },
-            })
+                }
+            )
 
-        mock_utcnow.return_value = datetime.datetime.now(
-            datetime.UTC).replace(tzinfo=None)
+        mock_utcnow.return_value = datetime.datetime.now(datetime.UTC).replace(
+            tzinfo=None
+        )
 
         levelno = getattr(logging, self.priority.upper())
 
@@ -132,8 +140,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
         logger.log(levelno, 'foobar')
 
         n = oslo_messaging.notify._impl_test.NOTIFICATIONS[0][1]
-        self.assertEqual(getattr(self, 'queue', self.priority.upper()),
-                         n['priority'])
+        self.assertEqual(
+            getattr(self, 'queue', self.priority.upper()), n['priority']
+        )
         self.assertEqual('logrecord', n['event_type'])
         self.assertEqual(str(timeutils.utcnow()), n['timestamp'])
         self.assertIsNone(n['publisher_id'])
@@ -142,15 +151,18 @@ class TestLogNotifier(test_utils.BaseTestCase):
             pathname = pathname[:-1]
         self.assertDictEqual(
             n['payload'],
-            {'process': os.getpid(),
-             'funcName': 'test_logging_conf',
-             'name': 'default',
-             'thread': None,
-             'levelno': levelno,
-             'processName': 'MainProcess',
-             'pathname': pathname,
-             'lineno': lineno,
-             'msg': 'foobar',
-             'exc_info': None,
-             'levelname': logging.getLevelName(levelno),
-             'extra': None})
+            {
+                'process': os.getpid(),
+                'funcName': 'test_logging_conf',
+                'name': 'default',
+                'thread': None,
+                'levelno': levelno,
+                'processName': 'MainProcess',
+                'pathname': pathname,
+                'lineno': lineno,
+                'msg': 'foobar',
+                'exc_info': None,
+                'levelname': logging.getLevelName(levelno),
+                'extra': None,
+            },
+        )

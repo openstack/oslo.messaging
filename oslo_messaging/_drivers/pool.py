@@ -87,10 +87,13 @@ class Pool(metaclass=abc.ABCMeta):
                     self._current_size += 1
                     break
 
-                LOG.warning("Connection pool limit exceeded: "
-                            "current size %s surpasses max "
-                            "configured rpc_conn_pool_size %s",
-                            self._current_size, self._max_size)
+                LOG.warning(
+                    "Connection pool limit exceeded: "
+                    "current size %s surpasses max "
+                    "configured rpc_conn_pool_size %s",
+                    self._current_size,
+                    self._max_size,
+                )
                 self._cond.wait()
 
         # We've grabbed a slot and dropped the lock, now do the creation
@@ -122,13 +125,14 @@ class ConnectionPool(Pool):
         self.connection_cls = connection_cls
         self.conf = conf
         self.url = url
-        super().__init__(max_size, min_size, ttl,
-                         self._on_expire)
+        super().__init__(max_size, min_size, ttl, self._on_expire)
 
     def _on_expire(self, connection):
         connection.close()
-        LOG.debug("Idle connection has expired and been closed."
-                  " Pool size: %d", len(self._items))
+        LOG.debug(
+            "Idle connection has expired and been closed. Pool size: %d",
+            len(self._items),
+        )
 
     def create(self, purpose=common.PURPOSE_SEND, retry=None):
         LOG.debug('Pool creating new connection')

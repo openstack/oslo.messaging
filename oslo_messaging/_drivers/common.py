@@ -84,8 +84,9 @@ class RPCException(Exception):
             except Exception:
                 # kwargs doesn't match a variable in the message
                 # log the issue and the kwargs
-                LOG.exception('Exception in string format operation, '
-                              'kwargs are:')
+                LOG.exception(
+                    'Exception in string format operation, kwargs are:'
+                )
                 for name, value in kwargs.items():
                     LOG.error("%s: %s", name, value)
                 # at least get the core message out if something happened
@@ -100,9 +101,12 @@ class Timeout(RPCException):
     This exception is raised if the rpc_response_timeout is reached while
     waiting for a response from the remote side.
     """
-    msg_fmt = ('Timeout while waiting on RPC response - '
-               'topic: "%(topic)s", RPC method: "%(method)s" '
-               'info: "%(info)s"')
+
+    msg_fmt = (
+        'Timeout while waiting on RPC response - '
+        'topic: "%(topic)s", RPC method: "%(method)s" '
+        'info: "%(info)s"'
+    )
 
     def __init__(self, info=None, topic=None, method=None):
         """Initiates Timeout object.
@@ -119,7 +123,8 @@ class Timeout(RPCException):
             None,
             info=info or '<unknown>',
             topic=topic or '<unknown>',
-            method=method or '<unknown>')
+            method=method or '<unknown>',
+        )
 
 
 class DuplicateMessageError(RPCException):
@@ -131,13 +136,16 @@ class InvalidRPCConnectionReuse(RPCException):
 
 
 class UnsupportedRpcVersion(RPCException):
-    msg_fmt = ("Specified RPC version, %(version)s, not supported by "
-               "this endpoint.")
+    msg_fmt = (
+        "Specified RPC version, %(version)s, not supported by this endpoint."
+    )
 
 
 class UnsupportedRpcEnvelopeVersion(RPCException):
-    msg_fmt = ("Specified RPC envelope version, %(version)s, "
-               "not supported by this endpoint.")
+    msg_fmt = (
+        "Specified RPC envelope version, %(version)s, "
+        "not supported by this endpoint."
+    )
 
 
 class RpcVersionCapError(RPCException):
@@ -151,6 +159,7 @@ class Connection:
     An instance of this class should never be created by users of the rpc API.
     Use rpc.create_connection() instead.
     """
+
     def close(self):
         """Close the connection.
 
@@ -179,10 +188,11 @@ def serialize_remote_exception(failure_info):
     # exceptions. Lets turn it back into the original exception type.
     cls_name = str(failure.__class__.__name__)
     mod_name = str(failure.__class__.__module__)
-    if (cls_name.endswith(_REMOTE_POSTFIX) and
-            mod_name.endswith(_REMOTE_POSTFIX)):
-        cls_name = cls_name[:-len(_REMOTE_POSTFIX)]
-        mod_name = mod_name[:-len(_REMOTE_POSTFIX)]
+    if cls_name.endswith(_REMOTE_POSTFIX) and mod_name.endswith(
+        _REMOTE_POSTFIX
+    ):
+        cls_name = cls_name[: -len(_REMOTE_POSTFIX)]
+        mod_name = mod_name[: -len(_REMOTE_POSTFIX)]
 
     data = {
         'class': cls_name,
@@ -190,7 +200,7 @@ def serialize_remote_exception(failure_info):
         'message': str(failure),
         'tb': tb,
         'args': failure.args,
-        'kwargs': kwargs
+        'kwargs': kwargs,
     }
 
     json_data = jsonutils.dumps(data)
@@ -227,15 +237,21 @@ def deserialize_remote_exception(data, allowed_remote_exmods):
 
         failure = klass(*failure.get('args', []), **failure.get('kwargs', {}))
     except (AttributeError, TypeError, ImportError) as error:
-        LOG.warning("Failed to rebuild remote exception due to error: %s",
-                    str(error))
+        LOG.warning(
+            "Failed to rebuild remote exception due to error: %s", str(error)
+        )
         return oslo_messaging.RemoteError(name, failure.get('message'), trace)
 
     ex_type = type(failure)
+
     def str_override(self):
         return message
-    new_ex_type = type(ex_type.__name__ + _REMOTE_POSTFIX, (ex_type,),
-                       {'__str__': str_override, '__unicode__': str_override})
+
+    new_ex_type = type(
+        ex_type.__name__ + _REMOTE_POSTFIX,
+        (ex_type,),
+        {'__str__': str_override, '__unicode__': str_override},
+    )
     new_ex_type.__module__ = f'{module}{_REMOTE_POSTFIX}'
     try:
         # NOTE(ameade): Dynamically create a new exception type and swap it in
@@ -282,6 +298,7 @@ class ClientException(Exception):
     Merely instantiating it records the current exception information, which
     will be passed back to the RPC client without exceptional logging.
     """
+
     def __init__(self):
         self._exc_info = sys.exc_info()
 
@@ -289,8 +306,10 @@ class ClientException(Exception):
 def serialize_msg(raw_msg):
     # NOTE(russellb) See the docstring for _RPC_ENVELOPE_VERSION for more
     # information about this format.
-    msg = {_VERSION_KEY: _RPC_ENVELOPE_VERSION,
-           _MESSAGE_KEY: jsonutils.dumps(raw_msg)}
+    msg = {
+        _VERSION_KEY: _RPC_ENVELOPE_VERSION,
+        _MESSAGE_KEY: jsonutils.dumps(raw_msg),
+    }
 
     return msg
 
@@ -331,8 +350,9 @@ def deserialize_msg(msg):
     # At this point we think we have the message envelope
     # format we were expecting. (#1.a above)
 
-    if not utils.version_is_compatible(_RPC_ENVELOPE_VERSION,
-                                       msg[_VERSION_KEY]):
+    if not utils.version_is_compatible(
+        _RPC_ENVELOPE_VERSION, msg[_VERSION_KEY]
+    ):
         raise UnsupportedRpcEnvelopeVersion(version=msg[_VERSION_KEY])
 
     raw_msg = jsonutils.loads(msg[_MESSAGE_KEY])
@@ -446,8 +466,9 @@ class ConnectionContext(Connection):
                     try:
                         self.connection.close()
                     except Exception as exc:
-                        LOG.debug("pooled conn close failure (ignored): %s",
-                                  str(exc))
+                        LOG.debug(
+                            "pooled conn close failure (ignored): %s", str(exc)
+                        )
                     self.connection = self.connection_pool.create()
                 finally:
                     self.connection_pool.put(self.connection)
@@ -455,8 +476,9 @@ class ConnectionContext(Connection):
                 try:
                     self.connection.close()
                 except Exception as exc:
-                    LOG.debug("pooled conn close failure (ignored): %s",
-                              str(exc))
+                    LOG.debug(
+                        "pooled conn close failure (ignored): %s", str(exc)
+                    )
             self.connection = None
 
     def __exit__(self, exc_type, exc_value, tb):
@@ -494,9 +516,9 @@ class ConfigOptsProxy(Mapping):
 
     def _validate_query(self):
         for name in self._url.query:
-            self.GroupAttrProxy(self._conf, self._group,
-                                self._conf[self._group],
-                                self._url)[name]
+            self.GroupAttrProxy(
+                self._conf, self._group, self._conf[self._group], self._url
+            )[name]
 
     def __getattr__(self, name):
         value = getattr(self._conf, name)

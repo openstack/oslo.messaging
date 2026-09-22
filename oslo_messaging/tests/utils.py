@@ -31,11 +31,11 @@ TRUE_VALUES = ('true', '1', 'yes')
 
 
 class BaseTestCase(base.BaseTestCase):
-
     def setUp(self, conf=cfg.CONF):
         super().setUp()
 
         from oslo_messaging import conffixture
+
         self.messaging_conf = self.useFixture(conffixture.ConfFixture(conf))
         self.messaging_conf.transport_url = 'fake:/'
         self.conf = self.messaging_conf.conf

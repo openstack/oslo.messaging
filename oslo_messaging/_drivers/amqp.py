@@ -30,14 +30,16 @@ from oslo_config import cfg
 from oslo_messaging._drivers import common as rpc_common
 
 amqp_opts = [
-    cfg.BoolOpt('amqp_durable_queues',
-                default=False,
-                help='Use durable queues in AMQP. If rabbit_quorum_queue '
-                'is enabled, queues will be durable and this value will '
-                'be ignored.'),
-    cfg.BoolOpt('amqp_auto_delete',
-                default=False,
-                help='Auto-delete queues in AMQP.'),
+    cfg.BoolOpt(
+        'amqp_durable_queues',
+        default=False,
+        help='Use durable queues in AMQP. If rabbit_quorum_queue '
+        'is enabled, queues will be durable and this value will '
+        'be ignored.',
+    ),
+    cfg.BoolOpt(
+        'amqp_auto_delete', default=False, help='Auto-delete queues in AMQP.'
+    ),
 ]
 
 UNIQUE_ID = '_unique_id'
@@ -45,6 +47,7 @@ UNIQUE_ID = '_unique_id'
 
 class RpcContext(rpc_common.CommonRpcContext):
     """Context that supports replying to a rpc.call."""
+
     def __init__(self, **kwargs):
         self.msg_id = kwargs.pop('msg_id', None)
         self.reply_q = kwargs.pop('reply_q', None)
@@ -86,8 +89,7 @@ def pack_context(msg, context):
     else:
         context_d = context.to_dict().items()
 
-    msg.update((f'_context_{key}', value)
-               for (key, value) in context_d)
+    msg.update((f'_context_{key}', value) for (key, value) in context_d)
 
 
 class _MsgIdCache:
@@ -99,12 +101,13 @@ class _MsgIdCache:
     DUP_MSG_CHECK_SIZE = 16
 
     def __init__(self, **kwargs):
-        self.prev_msgids = collections.deque([],
-                                             maxlen=self.DUP_MSG_CHECK_SIZE)
+        self.prev_msgids = collections.deque(
+            [], maxlen=self.DUP_MSG_CHECK_SIZE
+        )
 
     def check_duplicate_message(self, message_data):
         """AMQP consumers may read same message twice when exceptions occur
-           before ack is returned. This method prevents doing it.
+        before ack is returned. This method prevents doing it.
         """
         try:
             msg_id = message_data.pop(UNIQUE_ID)

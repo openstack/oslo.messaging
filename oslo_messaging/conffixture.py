@@ -26,7 +26,6 @@ def _import_opts(conf, module, opts, group=None):
 
 
 class ConfFixture(fixtures.Fixture):
-
     """Tweak configuration options for unit testing.
 
     oslo.messaging registers a number of configuration options, but rather than
@@ -46,28 +45,41 @@ class ConfFixture(fixtures.Fixture):
 
     def __init__(self, conf, transport_url=None):
         self.conf = conf
-        _import_opts(self.conf,
-                     'oslo_messaging._drivers.impl_rabbit', 'rabbit_opts',
-                     'oslo_messaging_rabbit')
-        _import_opts(self.conf,
-                     'oslo_messaging._drivers.amqp', 'amqp_opts',
-                     'oslo_messaging_rabbit')
+        _import_opts(
+            self.conf,
+            'oslo_messaging._drivers.impl_rabbit',
+            'rabbit_opts',
+            'oslo_messaging_rabbit',
+        )
+        _import_opts(
+            self.conf,
+            'oslo_messaging._drivers.amqp',
+            'amqp_opts',
+            'oslo_messaging_rabbit',
+        )
         _import_opts(self.conf, 'oslo_messaging.rpc.client', '_client_opts')
         _import_opts(self.conf, 'oslo_messaging.transport', '_transport_opts')
-        _import_opts(self.conf, 'oslo_messaging.rpc.dispatcher',
-                     '_dispatcher_opts')
-        _import_opts(self.conf,
-                     'oslo_messaging.notify.notifier',
-                     '_notifier_opts',
-                     'oslo_messaging_notifications')
-        _import_opts(self.conf,
-                     'oslo_messaging._metrics.client',
-                     'oslo_messaging_metrics',
-                     'oslo_messaging_metrics')
-        _import_opts(self.conf,
-                     'oslo_messaging._tracing.client',
-                     'oslo_messaging_tracing',
-                     'oslo_messaging_tracing')
+        _import_opts(
+            self.conf, 'oslo_messaging.rpc.dispatcher', '_dispatcher_opts'
+        )
+        _import_opts(
+            self.conf,
+            'oslo_messaging.notify.notifier',
+            '_notifier_opts',
+            'oslo_messaging_notifications',
+        )
+        _import_opts(
+            self.conf,
+            'oslo_messaging._metrics.client',
+            'oslo_messaging_metrics',
+            'oslo_messaging_metrics',
+        )
+        _import_opts(
+            self.conf,
+            'oslo_messaging._tracing.client',
+            'oslo_messaging_tracing',
+            'oslo_messaging_tracing',
+        )
 
         if transport_url is not None:
             self.transport_url = transport_url
@@ -86,6 +98,7 @@ class ConfFixture(fixtures.Fixture):
                 elif args[0] == 'notification_topics':
                     args = ('topics', args[1], group)
                 return wrapped_function(*args, **kwargs)
+
             _wrapper.wrapped = wrapped_function
             return _wrapper
 
@@ -100,15 +113,18 @@ class ConfFixture(fixtures.Fixture):
                 elif args[0] == 'notification_topics':
                     args = ('topics', group)
                 return wrapped_function(*args, **kwargs)
+
             _wrapper.wrapped = wrapped_function
             return _wrapper
 
         if not hasattr(self.conf.set_override, 'wrapped'):
             self.conf.set_override = decorator_for_set_override(
-                self.conf.set_override)
+                self.conf.set_override
+            )
         if not hasattr(self.conf.clear_override, 'wrapped'):
             self.conf.clear_override = decorator_for_clear_override(
-                self.conf.clear_override)
+                self.conf.clear_override
+            )
 
     def _teardown_decorator(self):
         if hasattr(self.conf.set_override, 'wrapped'):

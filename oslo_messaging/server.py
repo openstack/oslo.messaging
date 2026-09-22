@@ -49,11 +49,13 @@ DEFAULT_LOG_AFTER = 30
 
 
 _pool_opts = [
-    cfg.IntOpt('executor_thread_pool_size',
-               default=64,
-               deprecated_name="rpc_thread_pool_size",
-               help='Size of executor thread pool when'
-               ' executor is threading or eventlet.'),
+    cfg.IntOpt(
+        'executor_thread_pool_size',
+        default=64,
+        deprecated_name="rpc_thread_pool_size",
+        help='Size of executor thread pool when'
+        ' executor is threading or eventlet.',
+    ),
 ]
 
 
@@ -97,8 +99,8 @@ class _OrderedTask:
     sure that the task has completed after run_once returns.
     """
 
-    INIT = 0      # The task has not yet started
-    RUNNING = 1   # The task is running somewhere
+    INIT = 0  # The task has not yet started
+    RUNNING = 1  # The task is running somewhere
     COMPLETE = 2  # The task has run somewhere
 
     def __init__(self, name):
@@ -160,8 +162,9 @@ class _OrderedTask:
         """
         with self._cond:
             msg = f'{caller} is waiting for {self._name} to complete'
-            self._wait(lambda: not self.complete,
-                       msg, log_after, timeout_timer)
+            self._wait(
+                lambda: not self.complete, msg, log_after, timeout_timer
+            )
 
     def run_once(self, fn, log_after, timeout_timer):
         """Run a task exactly once. If it is currently running in another
@@ -201,10 +204,13 @@ class _OrderedTask:
                     finally:
                         self._cond.acquire()
             elif self._state == self.RUNNING:
-                msg = (f'{self._name} is waiting for '
-                      'another thread to complete')
-                self._wait(lambda: self._state == self.RUNNING,
-                           msg, log_after, timeout_timer)
+                msg = f'{self._name} is waiting for another thread to complete'
+                self._wait(
+                    lambda: self._state == self.RUNNING,
+                    msg,
+                    log_after,
+                    timeout_timer,
+                )
 
 
 class _OrderedTaskRunner:
@@ -215,10 +221,11 @@ class _OrderedTaskRunner:
 
         # Get a list of methods on this object which have the _ordered
         # attribute
-        self._tasks = [name
-                       for (name, member) in inspect.getmembers(self)
-                       if inspect.ismethod(member) and
-                       getattr(member, '_ordered', False)]
+        self._tasks = [
+            name
+            for (name, member) in inspect.getmembers(self)
+            if inspect.ismethod(member) and getattr(member, '_ordered', False)
+        ]
         self.reset_states()
 
         self._reset_lock = threading.Lock()
@@ -241,8 +248,10 @@ class _OrderedTaskRunner:
             # behaviour. It is safe without external locking, if the caller
             # instantiates a new object.
             with self._reset_lock:
-                if (reset_after is not None and
-                        self._states[reset_after].complete):
+                if (
+                    reset_after is not None
+                    and self._states[reset_after].complete
+                ):
                     self.reset_states()
 
             # Store the states we started with in case the state wraps on us
@@ -261,12 +270,15 @@ class _OrderedTaskRunner:
 
             # Wait for the given preceding state to complete
             if after is not None:
-                states[after].wait_for_completion(state,
-                                                  log_after, timeout_timer)
+                states[after].wait_for_completion(
+                    state, log_after, timeout_timer
+                )
 
             # Run this state
-            states[state].run_once(lambda: fn(self, *args, **kwargs),
-                                   log_after, timeout_timer)
+            states[state].run_once(
+                lambda: fn(self, *args, **kwargs), log_after, timeout_timer
+            )
+
         return wrapper
 
 
@@ -287,18 +299,22 @@ def ordered(after=None, reset_after=None):
                         all states when calling this method if `reset_after`
                         has completed.
     """
+
     def _ordered(fn):
         # Set an attribute on the method so we can find it later
         setattr(fn, '_ordered', True)
         state = fn.__name__
 
-        return _OrderedTaskRunner.decorate_ordered(fn, state, after,
-                                                   reset_after)
+        return _OrderedTaskRunner.decorate_ordered(
+            fn, state, after, reset_after
+        )
+
     return _ordered
 
 
-class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
-                            metaclass=abc.ABCMeta):
+class MessageHandlingServer(
+    service.ServiceBase, _OrderedTaskRunner, metaclass=abc.ABCMeta
+):
     """Server for handling messages.
 
     Connect a transport to a dispatcher that knows how to process the
@@ -309,7 +325,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
     @debtcollector.removals.removed_kwarg(
         'executor',
         message="the eventlet executor is now deprecated. Threading "
-                "will be the only execution model available.")
+        "will be the only execution model available.",
+    )
     def __init__(self, transport, dispatcher, executor=None):
         """Construct a message handling server.
 
@@ -335,7 +352,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
         if executor and executor not in ("threading", "eventlet"):
             raise ExecutorLoadFailure(
                 executor,
-                "Executor should be None or 'eventlet' and 'threading'")
+                "Executor should be None or 'eventlet' and 'threading'",
+            )
         if not executor:
             executor = utils.get_executor_with_context()
 
@@ -349,7 +367,8 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
         if self.executor_type == "eventlet":
             eventletutils.warn_eventlet_not_patched(
                 expected_patched_modules=['thread'],
-                what="the 'oslo.messaging eventlet executor'")
+                what="the 'oslo.messaging eventlet executor'",
+            )
 
             debtcollector.deprecate(
                 'Eventlet usages are deprecated and the removal '
@@ -358,15 +377,17 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
                 'Start migrating your stack to the '
                 'threading executor. Please also start considering '
                 'removing your internal Eventlet usages.',
-                version="2025.1", removal_version="2026.1",
-                category=DeprecationWarning
+                version="2025.1",
+                removal_version="2026.1",
+                category=DeprecationWarning,
             )
 
         self.listener = None
 
         try:
-            mgr = driver.DriverManager('oslo.messaging.executors',
-                                       self.executor_type)
+            mgr = driver.DriverManager(
+                'oslo.messaging.executors', self.executor_type
+            )
         except RuntimeError as ex:
             raise ExecutorLoadFailure(self.executor_type, ex)
 
@@ -414,8 +435,10 @@ class MessageHandlingServer(service.ServiceBase, _OrderedTaskRunner,
         current thread.
         """
         if self._started:
-            LOG.warning('The server has already been started. Ignoring '
-                        'the redundant call to start().')
+            LOG.warning(
+                'The server has already been started. Ignoring '
+                'the redundant call to start().'
+            )
             return
 
         self._started = True

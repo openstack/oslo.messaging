@@ -49,7 +49,6 @@ class JsonMessageMatcher:
 
 
 class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
-
     """Record logged exceptions and re-raise in cleanup.
 
     The notifier just logs notification send errors so, for the sake of
@@ -58,7 +57,6 @@ class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
     """
 
     class FakeLogger:
-
         def __init__(self):
             self.exceptions = []
 
@@ -81,7 +79,6 @@ class _ReRaiseLoggedExceptionsFixture(fixtures.Fixture):
 
 
 class TestMessagingNotifier(test_utils.BaseTestCase):
-
     _v1 = [
         ('v1', dict(v1=True)),
         ('not_v1', dict(v1=False)),
@@ -93,13 +90,21 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
     ]
 
     _publisher_id = [
-        ('ctor_pub_id', dict(ctor_pub_id='test',
-                             expected_pub_id='test')),
-        ('prep_pub_id', dict(prep_pub_id='test.localhost',
-                             expected_pub_id='test.localhost')),
-        ('override', dict(ctor_pub_id='test',
-                          prep_pub_id='test.localhost',
-                          expected_pub_id='test.localhost')),
+        ('ctor_pub_id', dict(ctor_pub_id='test', expected_pub_id='test')),
+        (
+            'prep_pub_id',
+            dict(
+                prep_pub_id='test.localhost', expected_pub_id='test.localhost'
+            ),
+        ),
+        (
+            'override',
+            dict(
+                ctor_pub_id='test',
+                prep_pub_id='test.localhost',
+                expected_pub_id='test.localhost',
+            ),
+        ),
     ]
 
     _topics = [
@@ -135,23 +140,27 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
 
     @classmethod
     def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._v1,
-                                                         cls._v2,
-                                                         cls._publisher_id,
-                                                         cls._topics,
-                                                         cls._priority,
-                                                         cls._payload,
-                                                         cls._context,
-                                                         cls._retry)
+        cls.scenarios = testscenarios.multiply_scenarios(
+            cls._v1,
+            cls._v2,
+            cls._publisher_id,
+            cls._topics,
+            cls._priority,
+            cls._payload,
+            cls._context,
+            cls._retry,
+        )
 
     def setUp(self):
         super().setUp()
 
         self.logger = self.useFixture(_ReRaiseLoggedExceptionsFixture()).logger
-        self.useFixture(fixtures.MockPatchObject(
-            messaging, 'LOG', self.logger))
-        self.useFixture(fixtures.MockPatchObject(
-            msg_notifier, '_LOG', self.logger))
+        self.useFixture(
+            fixtures.MockPatchObject(messaging, 'LOG', self.logger)
+        )
+        self.useFixture(
+            fixtures.MockPatchObject(msg_notifier, '_LOG', self.logger)
+        )
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):
@@ -161,16 +170,20 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         if self.v2:
             drivers.append('messagingv2')
 
-        self.config(driver=drivers,
-                    topics=self.topics,
-                    group='oslo_messaging_notifications')
+        self.config(
+            driver=drivers,
+            topics=self.topics,
+            group='oslo_messaging_notifications',
+        )
 
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         if hasattr(self, 'ctor_pub_id'):
-            notifier = oslo_messaging.Notifier(transport,
-                                               publisher_id=self.ctor_pub_id)
+            notifier = oslo_messaging.Notifier(
+                transport, publisher_id=self.ctor_pub_id
+            )
         else:
             notifier = oslo_messaging.Notifier(transport)
 
@@ -187,8 +200,9 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
         message_id = uuid.uuid4()
         uuid.uuid4 = mock.Mock(return_value=message_id)
 
-        mock_utcnow.return_value = datetime.datetime.now(
-            datetime.UTC).replace(tzinfo=None)
+        mock_utcnow.return_value = datetime.datetime.now(datetime.UTC).replace(
+            tzinfo=None
+        )
 
         message = {
             'message_id': str(message_id),
@@ -213,11 +227,11 @@ class TestMessagingNotifier(test_utils.BaseTestCase):
                 else:
                     send_kwargs['retry'] = -1
                 target = oslo_messaging.Target(
-                    topic=f'{topic}.{self.priority}')
-                calls.append(mock.call(target,
-                                       self.ctxt,
-                                       message,
-                                       **send_kwargs))
+                    topic=f'{topic}.{self.priority}'
+                )
+                calls.append(
+                    mock.call(target, self.ctxt, message, **send_kwargs)
+                )
 
         method = getattr(notifier, self.priority)
         method(self.ctxt, 'test.notify', self.payload)
@@ -232,7 +246,6 @@ TestMessagingNotifier.generate_scenarios()
 
 
 class TestMessagingNotifierRetry(test_utils.BaseTestCase):
-
     class TestingException(BaseException):
         pass
 
@@ -245,13 +258,16 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
             driver=["messagingv2"],
             topics=["test-retry"],
             retry=2,
-            group="oslo_messaging_notifications")
+            group="oslo_messaging_notifications",
+        )
         self.config(
             # just to speed up the test execution
             rabbit_retry_backoff=0,
-            group="oslo_messaging_rabbit")
+            group="oslo_messaging_rabbit",
+        )
         transport = oslo_messaging.get_notification_transport(
-            self.conf, url='rabbit://')
+            self.conf, url='rabbit://'
+        )
         notifier = oslo_messaging.Notifier(transport)
 
         orig_establish_connection = connection.Connection._establish_connection
@@ -261,14 +277,15 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
             if len(calls) > 2:
                 raise self.TestingException(
                     "Connection should only be retried twice due to "
-                    "configuration")
+                    "configuration"
+                )
             else:
                 calls.append((args, kwargs))
                 orig_establish_connection(*args, **kwargs)
 
         with mock.patch(
             'kombu.connection.Connection._establish_connection',
-            new=wrapped_establish_connection
+            new=wrapped_establish_connection,
         ):
             with mock.patch(
                 'oslo_messaging.notify.messaging.LOG.exception'
@@ -290,10 +307,12 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
             driver=["messagingv2"],
             topics=["test-retry"],
             retry=2,
-            group='oslo_messaging_notifications')
+            group='oslo_messaging_notifications',
+        )
 
         transport = oslo_messaging.get_notification_transport(
-            self.conf, url='kafka://')
+            self.conf, url='kafka://'
+        )
 
         notifier = oslo_messaging.Notifier(transport)
 
@@ -306,29 +325,32 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
 
 
 class TestSerializer(test_utils.BaseTestCase):
-
     def setUp(self):
         super().setUp()
         self.addCleanup(_impl_test.reset)
 
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_serializer(self, mock_utcnow):
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         serializer = msg_serializer.NoOpSerializer()
 
-        notifier = oslo_messaging.Notifier(transport,
-                                           'test.localhost',
-                                           driver='test',
-                                           topics=['test'],
-                                           serializer=serializer)
+        notifier = oslo_messaging.Notifier(
+            transport,
+            'test.localhost',
+            driver='test',
+            topics=['test'],
+            serializer=serializer,
+        )
 
         message_id = uuid.uuid4()
         uuid.uuid4 = mock.Mock(return_value=message_id)
 
-        mock_utcnow.return_value = datetime.datetime.now(
-            datetime.UTC).replace(tzinfo=None)
+        mock_utcnow.return_value = datetime.datetime.now(datetime.UTC).replace(
+            tzinfo=None
+        )
 
         serializer.serialize_context = mock.Mock()
         serializer.serialize_context.return_value = dict(user_name='alice')
@@ -348,8 +370,10 @@ class TestSerializer(test_utils.BaseTestCase):
             'timestamp': str(timeutils.utcnow()),
         }
 
-        self.assertEqual([(dict(user_name='alice'), message, 'INFO', -1)],
-                         _impl_test.NOTIFICATIONS)
+        self.assertEqual(
+            [(dict(user_name='alice'), message, 'INFO', -1)],
+            _impl_test.NOTIFICATIONS,
+        )
 
         # NOTE(JayF): This is also called when we create a TestContext
         uuid.uuid4.assert_has_calls([mock.call(), mock.call()])
@@ -358,38 +382,38 @@ class TestSerializer(test_utils.BaseTestCase):
 
 
 class TestNotifierTopics(test_utils.BaseTestCase):
-
     def test_topics_from_config(self):
-        self.config(driver=['log'],
-                    group='oslo_messaging_notifications')
-        self.config(topics=['topic1', 'topic2'],
-                    group='oslo_messaging_notifications')
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        self.config(driver=['log'], group='oslo_messaging_notifications')
+        self.config(
+            topics=['topic1', 'topic2'], group='oslo_messaging_notifications'
+        )
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
         self.assertEqual(['topic1', 'topic2'], notifier._topics)
 
     def test_topics_from_kwargs(self):
-        self.config(driver=['log'],
-                    group='oslo_messaging_notifications')
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        self.config(driver=['log'], group='oslo_messaging_notifications')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
-        notifier = oslo_messaging.Notifier(transport, 'test.localhost',
-                                           topics=['topic1', 'topic2'])
+        notifier = oslo_messaging.Notifier(
+            transport, 'test.localhost', topics=['topic1', 'topic2']
+        )
         self.assertEqual(['topic1', 'topic2'], notifier._topics)
 
 
 class TestLogNotifier(test_utils.BaseTestCase):
-
     @mock.patch('oslo_utils.timeutils.utcnow')
     def test_notifier(self, mock_utcnow):
-        self.config(driver=['log'],
-                    group='oslo_messaging_notifications')
+        self.config(driver=['log'], group='oslo_messaging_notifications')
 
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
 
@@ -397,8 +421,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
         uuid.uuid4 = mock.Mock()
         uuid.uuid4.return_value = message_id
 
-        mock_utcnow.return_value = datetime.datetime.now(
-            datetime.UTC).replace(tzinfo=None)
+        mock_utcnow.return_value = datetime.datetime.now(datetime.UTC).replace(
+            tzinfo=None
+        )
 
         logger = mock.Mock()
 
@@ -419,7 +444,8 @@ class TestLogNotifier(test_utils.BaseTestCase):
             # NOTE(JayF): TestContext calls this, too
             uuid.uuid4.assert_has_calls([mock.call(), mock.call()])
             logging.getLogger.assert_called_once_with(
-                'oslo.messaging.notification.test.notify')
+                'oslo.messaging.notification.test.notify'
+            )
 
         logger.info.assert_called_once_with(JsonMessageMatcher(message))
 
@@ -429,8 +455,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
         # Ensure logger drops sample-level notifications.
         driver = _impl_log.LogDriver(None, None, None)
 
-        logger = mock.Mock(spec=logging.getLogger('oslo.messaging.'
-                                                  'notification.foo'))
+        logger = mock.Mock(
+            spec=logging.getLogger('oslo.messaging.notification.foo')
+        )
         logger.sample = None
 
         msg = {'event_type': 'foo'}
@@ -440,8 +467,9 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
             driver.notify(None, msg, "sample", None)
 
-            logging.getLogger.assert_called_once_with('oslo.messaging.'
-                                                      'notification.foo')
+            logging.getLogger.assert_called_once_with(
+                'oslo.messaging.notification.foo'
+            )
 
     def test_mask_passwords(self):
         # Ensure that passwords are masked with notifications
@@ -459,27 +487,26 @@ class TestLogNotifier(test_utils.BaseTestCase):
 
 
 class TestNotificationConfig(test_utils.BaseTestCase):
-
     def test_retry_config(self):
         conf = self.messaging_conf.conf
-        self.config(driver=['messaging'],
-                    group='oslo_messaging_notifications')
+        self.config(driver=['messaging'], group='oslo_messaging_notifications')
 
         conf.set_override('retry', 3, group='oslo_messaging_notifications')
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
         notifier = oslo_messaging.Notifier(transport)
 
         self.assertEqual(3, notifier.retry)
 
     def test_notifier_retry_config(self):
         conf = self.messaging_conf.conf
-        self.config(driver=['messaging'],
-                    group='oslo_messaging_notifications')
+        self.config(driver=['messaging'], group='oslo_messaging_notifications')
 
         conf.set_override('retry', 3, group='oslo_messaging_notifications')
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
         notifier = oslo_messaging.Notifier(transport, retry=5)
 
         self.assertEqual(5, notifier.retry)
@@ -488,11 +515,11 @@ class TestNotificationConfig(test_utils.BaseTestCase):
 class TestRoutingNotifier(test_utils.BaseTestCase):
     def setUp(self):
         super().setUp()
-        self.config(driver=['routing'],
-                    group='oslo_messaging_notifications')
+        self.config(driver=['routing'], group='oslo_messaging_notifications')
 
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
         self.notifier = oslo_messaging.Notifier(transport)
         self.router = self.notifier._driver_mgr['routing'].obj
 
@@ -500,7 +527,10 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
 
     def _fake_extension_manager(self, ext):
         return extension.ExtensionManager.make_test_instance(
-            [extension.Extension('test', None, None, ext), ])
+            [
+                extension.Extension('test', None, None, ext),
+            ]
+        )
 
     def _empty_extension_manager(self):
         return extension.ExtensionManager.make_test_instance([])
@@ -520,25 +550,33 @@ class TestRoutingNotifier(test_utils.BaseTestCase):
         self.assertEqual(0, len(self.router.used_drivers))
 
     def test_load_notifiers_no_extensions(self):
-        self.config(routing_config="routing_notifier.yaml",
-                    group='oslo_messaging_notifications')
+        self.config(
+            routing_config="routing_notifier.yaml",
+            group='oslo_messaging_notifications',
+        )
         routing_config = r""
         config_file = mock.MagicMock()
         config_file.return_value = routing_config
 
-        with mock.patch.object(self.router, '_get_notifier_config_file',
-                               config_file):
-            with mock.patch('stevedore.dispatch.DispatchExtensionManager',
-                            return_value=self._empty_extension_manager()):
-                with mock.patch('oslo_messaging.notify.'
-                                '_impl_routing.LOG') as mylog:
+        with mock.patch.object(
+            self.router, '_get_notifier_config_file', config_file
+        ):
+            with mock.patch(
+                'stevedore.dispatch.DispatchExtensionManager',
+                return_value=self._empty_extension_manager(),
+            ):
+                with mock.patch(
+                    'oslo_messaging.notify._impl_routing.LOG'
+                ) as mylog:
                     self.router._load_notifiers()
                     self.assertFalse(mylog.debug.called)
         self.assertEqual({}, self.router.routing_groups)
 
     def test_load_notifiers_config(self):
-        self.config(routing_config="routing_notifier.yaml",
-                    group='oslo_messaging_notifications')
+        self.config(
+            routing_config="routing_notifier.yaml",
+            group='oslo_messaging_notifications',
+        )
         routing_config = r"""
 group_1:
    rpc : foo
@@ -549,13 +587,14 @@ group_2:
         config_file = mock.MagicMock()
         config_file.return_value = routing_config
 
-        with mock.patch.object(self.router, '_get_notifier_config_file',
-                               config_file):
-            with mock.patch('stevedore.dispatch.DispatchExtensionManager',
-                            return_value=self._fake_extension_manager(
-                                mock.MagicMock())):
-                with mock.patch('oslo_messaging.notify.'
-                                '_impl_routing.LOG'):
+        with mock.patch.object(
+            self.router, '_get_notifier_config_file', config_file
+        ):
+            with mock.patch(
+                'stevedore.dispatch.DispatchExtensionManager',
+                return_value=self._fake_extension_manager(mock.MagicMock()),
+            ):
+                with mock.patch('oslo_messaging.notify._impl_routing.LOG'):
                     self.router._load_notifiers()
                     groups = list(self.router.routing_groups.keys())
                     groups.sort()
@@ -574,24 +613,28 @@ group_1:
         group = groups['group_1']
 
         # No matching event ...
-        self.assertEqual([],
-                         self.router._get_drivers_for_message(
-                             group, "unknown", "info"))
+        self.assertEqual(
+            [], self.router._get_drivers_for_message(group, "unknown", "info")
+        )
 
         # Child of foo ...
-        self.assertEqual(['rpc'],
-                         self.router._get_drivers_for_message(
-                             group, "foo.1", "info"))
+        self.assertEqual(
+            ['rpc'],
+            self.router._get_drivers_for_message(group, "foo.1", "info"),
+        )
 
         # Foo itself ...
-        self.assertEqual([],
-                         self.router._get_drivers_for_message(
-                             group, "foo", "info"))
+        self.assertEqual(
+            [], self.router._get_drivers_for_message(group, "foo", "info")
+        )
 
         # Child of blah.zoo
-        self.assertEqual(['rpc'],
-                         self.router._get_drivers_for_message(
-                             group, "blah.zoo.zing", "info"))
+        self.assertEqual(
+            ['rpc'],
+            self.router._get_drivers_for_message(
+                group, "blah.zoo.zing", "info"
+            ),
+        )
 
     def test_get_drivers_for_message_accepted_priorities(self):
         config = r"""
@@ -605,19 +648,19 @@ group_1:
         group = groups['group_1']
 
         # No matching priority
-        self.assertEqual([],
-                         self.router._get_drivers_for_message(
-                             group, None, "unknown"))
+        self.assertEqual(
+            [], self.router._get_drivers_for_message(group, None, "unknown")
+        )
 
         # Info ...
-        self.assertEqual(['rpc'],
-                         self.router._get_drivers_for_message(
-                             group, None, "info"))
+        self.assertEqual(
+            ['rpc'], self.router._get_drivers_for_message(group, None, "info")
+        )
 
         # Error (to make sure the list is getting processed) ...
-        self.assertEqual(['rpc'],
-                         self.router._get_drivers_for_message(
-                             group, None, "error"))
+        self.assertEqual(
+            ['rpc'], self.router._get_drivers_for_message(group, None, "error")
+        )
 
     def test_get_drivers_for_message_both(self):
         config = r"""
@@ -638,14 +681,16 @@ group_1:
         group = groups['group_1']
 
         # Valid event, but no matching priority
-        self.assertEqual(['driver_2'],
-                         self.router._get_drivers_for_message(
-                             group, 'foo.blah', "unknown"))
+        self.assertEqual(
+            ['driver_2'],
+            self.router._get_drivers_for_message(group, 'foo.blah', "unknown"),
+        )
 
         # Valid priority, but no matching event
-        self.assertEqual(['driver_1'],
-                         self.router._get_drivers_for_message(
-                             group, 'unknown', "info"))
+        self.assertEqual(
+            ['driver_1'],
+            self.router._get_drivers_for_message(group, 'unknown', "info"),
+        )
 
         # Happy day ...
         x = self.router._get_drivers_for_message(group, 'foo.blah', "info")
@@ -657,12 +702,14 @@ group_1:
         ext.name = "rpc"
 
         # Good ...
-        self.assertTrue(self.router._filter_func(ext, {}, {}, 'info',
-                        None, ['foo', 'rpc']))
+        self.assertTrue(
+            self.router._filter_func(ext, {}, {}, 'info', None, ['foo', 'rpc'])
+        )
 
         # Bad
-        self.assertFalse(self.router._filter_func(ext, {}, {}, 'info',
-                                                  None, ['foo']))
+        self.assertFalse(
+            self.router._filter_func(ext, {}, {}, 'info', None, ['foo'])
+        )
 
     def test_notify(self):
         self.router.routing_groups = {'group_1': None, 'group_2': None}
@@ -670,15 +717,19 @@ group_1:
         drivers_mock.side_effect = [['rpc'], ['foo']]
 
         with mock.patch.object(self.router, 'plugin_manager') as pm:
-            with mock.patch.object(self.router, '_get_drivers_for_message',
-                                   drivers_mock):
+            with mock.patch.object(
+                self.router, '_get_drivers_for_message', drivers_mock
+            ):
                 self.notifier.info(test_utils.TestContext(), 'my_event', {})
-                self.assertEqual(sorted(['rpc', 'foo']),
-                                 sorted(pm.map.call_args[0][6]))
+                self.assertEqual(
+                    sorted(['rpc', 'foo']), sorted(pm.map.call_args[0][6])
+                )
 
     def test_notify_filtered(self):
-        self.config(routing_config="routing_notifier.yaml",
-                    group='oslo_messaging_notifications')
+        self.config(
+            routing_config="routing_notifier.yaml",
+            group='oslo_messaging_notifications',
+        )
         routing_config = r"""
 group_1:
     rpc:
@@ -699,34 +750,38 @@ group_1:
         bar_driver = mock.Mock()
 
         pm = dispatch.DispatchExtensionManager.make_test_instance(
-            [extension.Extension('rpc', None, None, rpc_driver),
-             extension.Extension('rpc2', None, None, rpc2_driver),
-             extension.Extension('bar', None, None, bar_driver)],
+            [
+                extension.Extension('rpc', None, None, rpc_driver),
+                extension.Extension('rpc2', None, None, rpc2_driver),
+                extension.Extension('bar', None, None, bar_driver),
+            ],
         )
 
-        with mock.patch.object(self.router, '_get_notifier_config_file',
-                               config_file):
-            with mock.patch('stevedore.dispatch.DispatchExtensionManager',
-                            return_value=pm):
-                with mock.patch('oslo_messaging.notify.'
-                                '_impl_routing.LOG'):
+        with mock.patch.object(
+            self.router, '_get_notifier_config_file', config_file
+        ):
+            with mock.patch(
+                'stevedore.dispatch.DispatchExtensionManager', return_value=pm
+            ):
+                with mock.patch('oslo_messaging.notify._impl_routing.LOG'):
                     cxt = test_utils.TestContext()
                     self.notifier.info(cxt, 'my_event', {})
                     self.assertFalse(bar_driver.info.called)
                     rpc_driver.notify.assert_called_once_with(
-                        cxt, mock.ANY, 'INFO', -1)
+                        cxt, mock.ANY, 'INFO', -1
+                    )
                     rpc2_driver.notify.assert_called_once_with(
-                        cxt, mock.ANY, 'INFO', -1)
+                        cxt, mock.ANY, 'INFO', -1
+                    )
 
 
 class TestNoOpNotifier(test_utils.BaseTestCase):
-
     def test_notifier(self):
-        self.config(driver=['noop'],
-                    group='oslo_messaging_notifications')
+        self.config(driver=['noop'], group='oslo_messaging_notifications')
 
-        transport = oslo_messaging.get_notification_transport(self.conf,
-                                                              url='fake:')
+        transport = oslo_messaging.get_notification_transport(
+            self.conf, url='fake:'
+        )
 
         notifier = oslo_messaging.Notifier(transport, 'test.localhost')
 
@@ -734,7 +789,6 @@ class TestNoOpNotifier(test_utils.BaseTestCase):
 
 
 class TestNotifierTransportWarning(test_utils.BaseTestCase):
-
     @mock.patch('oslo_messaging.notify.notifier._LOG')
     def test_warning_when_rpc_transport(self, log):
         transport = oslo_messaging.get_rpc_transport(self.conf)
@@ -742,4 +796,5 @@ class TestNotifierTransportWarning(test_utils.BaseTestCase):
         log.warning.assert_called_once_with(
             "Using RPC transport for notifications. Please use "
             "get_notification_transport to obtain a "
-            "notification transport instance.")
+            "notification transport instance."
+        )

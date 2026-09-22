@@ -63,8 +63,9 @@ def version_is_compatible(imp_version, version):
         return False
     if int(version_parts[1]) > int(imp_version_parts[1]):  # Minor
         return False
-    if (int(version_parts[1]) == int(imp_version_parts[1]) and
-            int(rev) > int(imp_rev)):  # Revision
+    if int(version_parts[1]) == int(imp_version_parts[1]) and int(rev) > int(
+        imp_rev
+    ):  # Revision
         return False
     return True
 

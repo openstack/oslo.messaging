@@ -45,23 +45,30 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
 
     @classmethod
     def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._priority,
-                                                         cls._driver)
+        cls.scenarios = testscenarios.multiply_scenarios(
+            cls._priority, cls._driver
+        )
 
     def test_logging(self):
         # NOTE(gtt): Using different topic to make tests run in parallel
         topic = f'test_logging_{self.priority}_driver_{self.driver}'
 
         if self.notify_url.startswith("kafka://"):
-            self.conf.set_override('consumer_group', str(uuid.uuid4()),
-                                   group='oslo_messaging_kafka')
+            self.conf.set_override(
+                'consumer_group',
+                str(uuid.uuid4()),
+                group='oslo_messaging_kafka',
+            )
 
-        self.config(driver=[self.driver],
-                    topics=[topic],
-                    group='oslo_messaging_notifications')
+        self.config(
+            driver=[self.driver],
+            topics=[topic],
+            group='oslo_messaging_notifications',
+        )
 
         listener = self.useFixture(
-            utils.NotificationFixture(self.conf, self.notify_url, [topic]))
+            utils.NotificationFixture(self.conf, self.notify_url, [topic])
+        )
 
         log_notify = oslo_messaging.LoggingNotificationHandler(self.notify_url)
 
@@ -80,9 +87,20 @@ class LoggingNotificationHandlerTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual(self.priority, info_event[0])
         self.assertEqual('logrecord', info_event[1])
 
-        for key in ['name', 'thread', 'extra', 'process', 'funcName',
-                    'levelno', 'processName', 'pathname', 'lineno',
-                    'msg', 'exc_info', 'levelname']:
+        for key in [
+            'name',
+            'thread',
+            'extra',
+            'process',
+            'funcName',
+            'levelno',
+            'processName',
+            'pathname',
+            'lineno',
+            'msg',
+            'exc_info',
+            'levelname',
+        ]:
             self.assertIn(key, info_event[2])
 
 

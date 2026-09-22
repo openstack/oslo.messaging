@@ -78,8 +78,9 @@ class RPCTransportFixture(TransportFixture):
 
     def setUp(self):
         super().setUp()
-        self.transport = oslo_messaging.get_rpc_transport(self.conf,
-                                                          url=self.url)
+        self.transport = oslo_messaging.get_rpc_transport(
+            self.conf, url=self.url
+        )
 
 
 class NotificationTransportFixture(TransportFixture):
@@ -88,14 +89,22 @@ class NotificationTransportFixture(TransportFixture):
     def setUp(self):
         super().setUp()
         self.transport = oslo_messaging.get_notification_transport(
-            self.conf, url=self.url)
+            self.conf, url=self.url
+        )
 
 
 class RpcServerFixture(fixtures.Fixture):
     """Fixture to setup the TestServerEndpoint."""
 
-    def __init__(self, conf, url, target, endpoint=None, ctrl_target=None,
-                 executor='eventlet'):
+    def __init__(
+        self,
+        conf,
+        url,
+        target,
+        endpoint=None,
+        ctrl_target=None,
+        executor='eventlet',
+    ):
         super().__init__()
         self.conf = conf
         self.url = url
@@ -113,9 +122,11 @@ class RpcServerFixture(fixtures.Fixture):
             transport=transport.transport,
             target=self.target,
             endpoints=endpoints,
-            executor=self.executor)
-        self._ctrl = oslo_messaging.get_rpc_client(transport.transport,
-                                                   self.ctrl_target)
+            executor=self.executor,
+        )
+        self._ctrl = oslo_messaging.get_rpc_client(
+            transport.transport, self.ctrl_target
+        )
         self._start()
         transport.wait()
 
@@ -141,15 +152,24 @@ class RpcServerFixture(fixtures.Fixture):
 
 
 class RpcServerGroupFixture(fixtures.Fixture):
-    def __init__(self, conf, url, topic=None, names=None, exchange=None,
-                 use_fanout_ctrl=False, endpoint=None):
+    def __init__(
+        self,
+        conf,
+        url,
+        topic=None,
+        names=None,
+        exchange=None,
+        use_fanout_ctrl=False,
+        endpoint=None,
+    ):
         self.conf = conf
         self.url = url
         # NOTE(sileht): topic and server_name must be unique
         # to be able to run all tests in parallel
         self.topic = topic or str(uuid.uuid4())
-        self.names = names or [f"server_{i}_{str(uuid.uuid4())[:8]}"
-                               for i in range(3)]
+        self.names = names or [
+            f"server_{i}_{str(uuid.uuid4())[:8]}" for i in range(3)
+        ]
         self.exchange = exchange
         self.targets = [self._target(server=n) for n in self.names]
         self.use_fanout_ctrl = use_fanout_ctrl
@@ -169,9 +189,13 @@ class RpcServerGroupFixture(fixtures.Fixture):
         ctrl = None
         if self.use_fanout_ctrl:
             ctrl = self._target(fanout=True)
-        server = RpcServerFixture(self.conf, self.url, target,
-                                  endpoint=self.endpoint,
-                                  ctrl_target=ctrl)
+        server = RpcServerFixture(
+            self.conf,
+            self.url,
+            target,
+            endpoint=self.endpoint,
+            ctrl_target=ctrl,
+        )
         return server
 
     def client(self, server=None, cast=False):
@@ -186,8 +210,7 @@ class RpcServerGroupFixture(fixtures.Fixture):
                 raise ValueError(f"Invalid value for server: {server!r}")
 
         transport = self.useFixture(RPCTransportFixture(self.conf, self.url))
-        client = ClientStub(transport.transport, target, cast=cast,
-                            timeout=5)
+        client = ClientStub(transport.transport, target, cast=cast, timeout=5)
         transport.wait()
         return client
 
@@ -226,15 +249,23 @@ class RpcCast(RpcCall):
 
 
 class ClientStub:
-    def __init__(self, transport, target, cast=False, name=None,
-                 transport_options=None, **kwargs):
+    def __init__(
+        self,
+        transport,
+        target,
+        cast=False,
+        name=None,
+        transport_options=None,
+        **kwargs,
+    ):
         self.name = name or "functional-tests"
         self.cast = cast
         self.client = oslo_messaging.get_rpc_client(
             transport=transport,
             target=target,
             transport_options=transport_options,
-            **kwargs)
+            **kwargs,
+        )
 
     def __getattr__(self, name):
         context = {"application": self.name}
@@ -272,6 +303,7 @@ class IsValidDistributionOf:
     sub-list, and must appear in that sub-list in the same order with
     respect to any other items as in the original list.
     """
+
     def __init__(self, original):
         self.original = original
 
@@ -311,8 +343,9 @@ class SkipIfNoTransportURL(test_utils.BaseTestCase):
         if not (self.rpc_url or self.notify_url):
             self.skipTest("No transport url configured")
 
-        transport_url = oslo_messaging.TransportURL.parse(conf,
-                                                          self.notify_url)
+        transport_url = oslo_messaging.TransportURL.parse(
+            conf, self.notify_url
+        )
 
         kafka_options.register_opts(conf, transport_url)
 
@@ -332,8 +365,9 @@ class NotificationFixture(fixtures.Fixture):
         targets = [oslo_messaging.Target(topic=t) for t in self.topics]
         # add a special topic for internal notifications
         targets.append(oslo_messaging.Target(topic=self.name))
-        transport = self.useFixture(NotificationTransportFixture(self.conf,
-                                                                 self.url))
+        transport = self.useFixture(
+            NotificationTransportFixture(self.conf, self.url)
+        )
         self.server = self._get_server(transport, targets)
         self._ctrl = self.notifier('internal', topics=[self.name])
         self._start()
@@ -345,9 +379,8 @@ class NotificationFixture(fixtures.Fixture):
 
     def _get_server(self, transport, targets):
         return oslo_messaging.get_notification_listener(
-            transport.transport,
-            targets,
-            [self], 'eventlet')
+            transport.transport, targets, [self], 'eventlet'
+        )
 
     def _start(self):
         self.thread = test_utils.ServerThreadHelper(self.server)
@@ -360,12 +393,15 @@ class NotificationFixture(fixtures.Fixture):
             raise Exception("Server did not shutdown properly")
 
     def notifier(self, publisher, topics=None):
-        transport = self.useFixture(NotificationTransportFixture(self.conf,
-                                                                 self.url))
-        n = notifier.Notifier(transport.transport,
-                              publisher,
-                              driver='messaging',
-                              topics=topics or self.topics)
+        transport = self.useFixture(
+            NotificationTransportFixture(self.conf, self.url)
+        )
+        n = notifier.Notifier(
+            transport.transport,
+            publisher,
+            driver='messaging',
+            topics=topics or self.topics,
+        )
         transport.wait()
         return n
 
@@ -410,9 +446,11 @@ class BatchNotificationFixture(NotificationFixture):
         return oslo_messaging.get_batch_notification_listener(
             transport.transport,
             targets,
-            [self], 'eventlet',
+            [self],
+            'eventlet',
             batch_timeout=self.batch_timeout,
-            batch_size=self.batch_size)
+            batch_size=self.batch_size,
+        )
 
     def debug(self, messages):
         self.events.put(['debug', messages])

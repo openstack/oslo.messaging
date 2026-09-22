@@ -34,18 +34,20 @@ load_tests = testscenarios.load_tests_apply_scenarios
 
 
 class ServerSetupMixin:
-
     class Server:
-        def __init__(self, transport, topic, server, endpoint, serializer,
-                     exchange):
+        def __init__(
+            self, transport, topic, server, endpoint, serializer, exchange
+        ):
             self.controller = ServerSetupMixin.ServerController()
-            target = oslo_messaging.Target(topic=topic, server=server,
-                                           exchange=exchange)
-            self.server = oslo_messaging.get_rpc_server(transport,
-                                                        target,
-                                                        [endpoint,
-                                                         self.controller],
-                                                        serializer=serializer)
+            target = oslo_messaging.Target(
+                topic=topic, server=server, exchange=exchange
+            )
+            self.server = oslo_messaging.get_rpc_server(
+                transport,
+                target,
+                [endpoint, self.controller],
+                serializer=serializer,
+            )
 
         def wait(self):
             # Wait for the executor to process the stop message, indicating all
@@ -68,7 +70,6 @@ class ServerSetupMixin:
             self.stopped.set()
 
     class TestSerializer:
-
         def serialize_entity(self, ctxt, entity):
             return ('s' + entity) if entity else entity
 
@@ -84,14 +85,17 @@ class ServerSetupMixin:
     def __init__(self):
         self.serializer = self.TestSerializer()
 
-    def _setup_server(self, transport, endpoint, topic=None, server=None,
-                      exchange=None):
-        server = self.Server(transport,
-                             topic=topic or 'testtopic',
-                             server=server or 'testserver',
-                             endpoint=endpoint,
-                             serializer=self.serializer,
-                             exchange=exchange)
+    def _setup_server(
+        self, transport, endpoint, topic=None, server=None, exchange=None
+    ):
+        server = self.Server(
+            transport,
+            topic=topic or 'testtopic',
+            server=server or 'testserver',
+            endpoint=endpoint,
+            serializer=self.serializer,
+            exchange=exchange,
+        )
 
         server.start()
         return server
@@ -102,12 +106,12 @@ class ServerSetupMixin:
 
     def _setup_client(self, transport, topic='testtopic', exchange=None):
         target = oslo_messaging.Target(topic=topic, exchange=exchange)
-        return oslo_messaging.get_rpc_client(transport, target=target,
-                                             serializer=self.serializer)
+        return oslo_messaging.get_rpc_client(
+            transport, target=target, serializer=self.serializer
+        )
 
 
 class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
-
     def __init__(self, *args):
         super().__init__(*args)
         ServerSetupMixin.__init__(self)
@@ -116,9 +120,12 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         super().setUp(conf=cfg.ConfigOpts())
         # FakeExchangeManager uses a class-level exchanges mapping; "reset" it
         # before tests assert amount of items stored
-        self.useFixture(fixtures.MonkeyPatch(
-            'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
-            new_value={}))
+        self.useFixture(
+            fixtures.MonkeyPatch(
+                'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
+                new_value={},
+            )
+        )
 
     def test_constructor(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
@@ -127,12 +134,14 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         serializer = object()
         access_policy = dispatcher.DefaultRPCAccessPolicy
 
-        server = oslo_messaging.get_rpc_server(transport,
-                                               target,
-                                               endpoints,
-                                               serializer=serializer,
-                                               access_policy=access_policy,
-                                               executor='threading')
+        server = oslo_messaging.get_rpc_server(
+            transport,
+            target,
+            endpoints,
+            serializer=serializer,
+            access_policy=access_policy,
+            executor='threading',
+        )
         self.assertIs(server.conf, self.conf)
         self.assertIs(server.transport, transport)
         self.assertIsInstance(server.dispatcher, oslo_messaging.RPCDispatcher)
@@ -149,34 +158,43 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         access_policy = dispatcher.DefaultRPCAccessPolicy
 
         warnings.simplefilter("always", DeprecationWarning)
-        server = oslo_messaging.get_rpc_server(transport,
-                                               target,
-                                               endpoints,
-                                               serializer=serializer,
-                                               access_policy=access_policy,
-                                               executor='eventlet')
+        server = oslo_messaging.get_rpc_server(
+            transport,
+            target,
+            endpoints,
+            serializer=serializer,
+            access_policy=access_policy,
+            executor='eventlet',
+        )
         self.assertIs(server.conf, self.conf)
         self.assertIs(server.transport, transport)
         self.assertIsInstance(server.dispatcher, oslo_messaging.RPCDispatcher)
         self.assertIs(server.dispatcher.endpoints, endpoints)
         self.assertIs(server.dispatcher.serializer, serializer)
         self.assertEqual('eventlet', server.executor_type)
-        self.assertEqual([
-            mock.call(
-                "Using the 'executor' argument is deprecated: "
-                "the eventlet executor is now deprecated. "
-                "Threading will be the only execution model available.",
-                category=DeprecationWarning, stacklevel=3),
-            mock.call(
-                "Eventlet usages are deprecated and the removal "
-                "of Eventlet from OpenStack is planned, for this "
-                "reason the Eventlet executor is deprecated. "
-                "Start migrating your stack to the threading executor. "
-                "Please also start considering removing your internal "
-                "Eventlet usages. in version '2025.1' and will be "
-                "removed in version '2026.1'",
-                category=DeprecationWarning, stacklevel=3)
-        ], warn.mock_calls)
+        self.assertEqual(
+            [
+                mock.call(
+                    "Using the 'executor' argument is deprecated: "
+                    "the eventlet executor is now deprecated. "
+                    "Threading will be the only execution model available.",
+                    category=DeprecationWarning,
+                    stacklevel=3,
+                ),
+                mock.call(
+                    "Eventlet usages are deprecated and the removal "
+                    "of Eventlet from OpenStack is planned, for this "
+                    "reason the Eventlet executor is deprecated. "
+                    "Start migrating your stack to the threading executor. "
+                    "Please also start considering removing your internal "
+                    "Eventlet usages. in version '2025.1' and will be "
+                    "removed in version '2026.1'",
+                    category=DeprecationWarning,
+                    stacklevel=3,
+                ),
+            ],
+            warn.mock_calls,
+        )
 
     def test_constructor_with_unrecognized_executor(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
@@ -193,7 +211,8 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             endpoints=endpoints,
             serializer=serializer,
             access_policy=access_policy,
-            executor='boom')
+            executor='boom',
+        )
 
     def test_server_wait_method(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
@@ -211,8 +230,9 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             def __init__(self, *args, **kwargs):
                 super().__init__()
 
-        server = oslo_messaging.get_rpc_server(transport, target, endpoints,
-                                               serializer=serializer)
+        server = oslo_messaging.get_rpc_server(
+            transport, target, endpoints, serializer=serializer
+        )
         # Mocking executor
         server._executor_cls = MagicMockIgnoreArgs
         server._create_listener = MagicMockIgnoreArgs()
@@ -231,9 +251,8 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
         server = oslo_messaging.get_rpc_server(
-            transport,
-            oslo_messaging.Target(topic='testtopic'),
-            [])
+            transport, oslo_messaging.Target(topic='testtopic'), []
+        )
         try:
             server.start()
         except Exception as ex:
@@ -339,10 +358,12 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         # NOTE(milan): using a separate transport instance for each the client
         # and the server to be able to check independent transport instances
         # can communicate over same exchange&topic
-        transport_srv = oslo_messaging.get_rpc_transport(self.conf,
-                                                         url='fake:')
-        transport_cli = oslo_messaging.get_rpc_transport(self.conf,
-                                                         url='fake:')
+        transport_srv = oslo_messaging.get_rpc_transport(
+            self.conf, url='fake:'
+        )
+        transport_cli = oslo_messaging.get_rpc_transport(
+            self.conf, url='fake:'
+        )
 
         class TestEndpoint:
             def ping(self, ctxt, arg):
@@ -390,10 +411,9 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
 
-        self.assertEqual('dsdsb',
-                         client.call({'dsa': 'b'},
-                                     'ctxt_check',
-                                     key='a'))
+        self.assertEqual(
+            'dsdsb', client.call({'dsa': 'b'}, 'ctxt_check', key='a')
+        )
 
         self._stop_server(client, server_thread)
 
@@ -408,19 +428,25 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         errors = []
 
         def stub_debug(msg, *a, **kw):
-            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+            if a and len(a) == 1 and isinstance(a[0], dict) and a[0]:
                 a = a[0]
             debugs.append(str(msg) % a)
 
         def stub_error(msg, *a, **kw):
-            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+            if a and len(a) == 1 and isinstance(a[0], dict) and a[0]:
                 a = a[0]
             errors.append(str(msg) % a)
 
-        self.useFixture(fixtures.MockPatchObject(
-            rpc_server_module.LOG, 'debug', stub_debug))
-        self.useFixture(fixtures.MockPatchObject(
-            rpc_server_module.LOG, 'error', stub_error))
+        self.useFixture(
+            fixtures.MockPatchObject(
+                rpc_server_module.LOG, 'debug', stub_debug
+            )
+        )
+        self.useFixture(
+            fixtures.MockPatchObject(
+                rpc_server_module.LOG, 'error', stub_error
+            )
+        )
 
         server_thread = self._setup_server(transport, TestEndpoint())
         client = self._setup_client(transport)
@@ -444,19 +470,25 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         errors = []
 
         def stub_debug(msg, *a, **kw):
-            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+            if a and len(a) == 1 and isinstance(a[0], dict) and a[0]:
                 a = a[0]
             debugs.append(str(msg) % a)
 
         def stub_error(msg, *a, **kw):
-            if (a and len(a) == 1 and isinstance(a[0], dict) and a[0]):
+            if a and len(a) == 1 and isinstance(a[0], dict) and a[0]:
                 a = a[0]
             errors.append(str(msg) % a)
 
-        self.useFixture(fixtures.MockPatchObject(
-            rpc_server_module.LOG, 'debug', stub_debug))
-        self.useFixture(fixtures.MockPatchObject(
-            rpc_server_module.LOG, 'error', stub_error))
+        self.useFixture(
+            fixtures.MockPatchObject(
+                rpc_server_module.LOG, 'debug', stub_debug
+            )
+        )
+        self.useFixture(
+            fixtures.MockPatchObject(
+                rpc_server_module.LOG, 'error', stub_error
+            )
+        )
 
         class TestEndpoint:
             @oslo_messaging.expected_exceptions(ValueError)
@@ -485,16 +517,17 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         endpoints = [object()]
         serializer = object()
 
-        oslo_messaging.get_rpc_server(transport, target,
-                                      endpoints, serializer=serializer)
+        oslo_messaging.get_rpc_server(
+            transport, target, endpoints, serializer=serializer
+        )
         log.warning.assert_called_once_with(
             "Using notification transport for RPC. Please use "
             "get_rpc_transport to obtain an RPC transport "
-            "instance.")
+            "instance."
+        )
 
 
 class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
-
     _exchanges = [
         ('same_exchange', dict(exchange1=None, exchange2=None)),
         ('diff_exchange', dict(exchange1='x1', exchange2='x2')),
@@ -521,24 +554,30 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
     ]
 
     _endpoints = [
-        ('one_endpoint',
-         dict(multi_endpoints=False,
-              expect1=['ds1', 'ds2'],
-              expect2=['ds1', 'ds2'])),
-        ('two_endpoints',
-         dict(multi_endpoints=True,
-              expect1=['ds1'],
-              expect2=['ds2'])),
+        (
+            'one_endpoint',
+            dict(
+                multi_endpoints=False,
+                expect1=['ds1', 'ds2'],
+                expect2=['ds1', 'ds2'],
+            ),
+        ),
+        (
+            'two_endpoints',
+            dict(multi_endpoints=True, expect1=['ds1'], expect2=['ds2']),
+        ),
     ]
 
     @classmethod
     def generate_scenarios(cls):
-        cls.scenarios = testscenarios.multiply_scenarios(cls._exchanges,
-                                                         cls._topics,
-                                                         cls._server,
-                                                         cls._fanout,
-                                                         cls._method,
-                                                         cls._endpoints)
+        cls.scenarios = testscenarios.multiply_scenarios(
+            cls._exchanges,
+            cls._topics,
+            cls._server,
+            cls._fanout,
+            cls._method,
+            cls._endpoints,
+        )
 
         # fanout call not supported
         def filter_fanout_call(scenario):
@@ -574,8 +613,7 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
             single_exchange = params['exchange1'] == params['exchange2']
             single_topic = params['topic1'] == params['topic2']
             if single_topic and single_exchange and params['multi_endpoints']:
-                params['expect_either'] = (params['expect1'] +
-                                           params['expect2'])
+                params['expect_either'] = params['expect1'] + params['expect2']
                 params['expect1'] = params['expect2'] = []
             else:
                 params['expect_either'] = []
@@ -592,16 +630,19 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
 
     def setUp(self):
         super().setUp(conf=cfg.ConfigOpts())
-        self.useFixture(fixtures.MonkeyPatch(
-            'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
-            new_value={}))
+        self.useFixture(
+            fixtures.MonkeyPatch(
+                'oslo_messaging._drivers.impl_fake.FakeExchangeManager._exchanges',
+                new_value={},
+            )
+        )
 
     def test_multiple_servers(self):
-        transport1 = oslo_messaging.get_rpc_transport(self.conf,
-                                                      url='fake:')
+        transport1 = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
         if self.exchange1 != self.exchange2:
-            transport2 = oslo_messaging.get_rpc_transport(self.conf,
-                                                          url='fake:')
+            transport2 = oslo_messaging.get_rpc_transport(
+                self.conf, url='fake:'
+            )
         else:
             transport2 = transport1
 
@@ -620,19 +661,27 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         else:
             endpoint1 = endpoint2 = TestEndpoint()
 
-        server1 = self._setup_server(transport1, endpoint1,
-                                     topic=self.topic1,
-                                     exchange=self.exchange1,
-                                     server=self.server1)
-        server2 = self._setup_server(transport2, endpoint2,
-                                     topic=self.topic2,
-                                     exchange=self.exchange2,
-                                     server=self.server2)
+        server1 = self._setup_server(
+            transport1,
+            endpoint1,
+            topic=self.topic1,
+            exchange=self.exchange1,
+            server=self.server1,
+        )
+        server2 = self._setup_server(
+            transport2,
+            endpoint2,
+            topic=self.topic2,
+            exchange=self.exchange2,
+            server=self.server2,
+        )
 
-        client1 = self._setup_client(transport1, topic=self.topic1,
-                                     exchange=self.exchange1)
-        client2 = self._setup_client(transport2, topic=self.topic2,
-                                     exchange=self.exchange2)
+        client1 = self._setup_client(
+            transport1, topic=self.topic1, exchange=self.exchange1
+        )
+        client2 = self._setup_client(
+            transport2, topic=self.topic2, exchange=self.exchange2
+        )
 
         client1 = client1.prepare(server=self.server1)
         client2 = client2.prepare(server=self.server2)
@@ -647,10 +696,18 @@ class TestMultipleServers(test_utils.BaseTestCase, ServerSetupMixin):
         (client1.call if self.call1 else client1.cast)({}, 'ping', arg='1')
         (client2.call if self.call2 else client2.cast)({}, 'ping', arg='2')
 
-        self._stop_server(client1.prepare(fanout=None),
-                          server1, topic=self.topic1, exchange=self.exchange1)
-        self._stop_server(client2.prepare(fanout=None),
-                          server2, topic=self.topic2, exchange=self.exchange2)
+        self._stop_server(
+            client1.prepare(fanout=None),
+            server1,
+            topic=self.topic1,
+            exchange=self.exchange1,
+        )
+        self._stop_server(
+            client2.prepare(fanout=None),
+            server2,
+            topic=self.topic2,
+            exchange=self.exchange2,
+        )
 
         def check(pings, expect):
             self.assertEqual(len(expect), len(pings))
@@ -675,6 +732,7 @@ class TestServerLocking(test_utils.BaseTestCase):
             def method(self, *args, **kwargs):
                 with self._lock:
                     self._calls.append(name)
+
             return method
 
         executors = []
@@ -924,8 +982,9 @@ class TestServerLocking(test_utils.BaseTestCase):
         # Test that we will eventually timeout when passing the timeout option
         # if a preceding condition is not satisfied.
 
-        self.assertRaises(server_module.TaskTimeout,
-                          self.server.stop, timeout=1)
+        self.assertRaises(
+            server_module.TaskTimeout, self.server.stop, timeout=1
+        )
 
     def test_timeout_running(self):
         # Test that we will eventually timeout if we're waiting for another
@@ -940,6 +999,7 @@ class TestServerLocking(test_utils.BaseTestCase):
         def slow_shutdown(wait):
             shutdown_called.set()
             eventlet.sleep(10)
+
         self.executors[0].shutdown = slow_shutdown
 
         # Call wait in a new thread
@@ -949,8 +1009,9 @@ class TestServerLocking(test_utils.BaseTestCase):
         shutdown_called.wait()
 
         # Call wait again in the main thread with a timeout
-        self.assertRaises(server_module.TaskTimeout,
-                          self.server.wait, timeout=1)
+        self.assertRaises(
+            server_module.TaskTimeout, self.server.wait, timeout=1
+        )
         thread.kill()
 
     @mock.patch.object(server_module, 'LOG')
@@ -959,15 +1020,15 @@ class TestServerLocking(test_utils.BaseTestCase):
         # caller gave log_after=1
 
         # Call stop without calling start.
-        self.assertRaises(server_module.TaskTimeout,
-                          self.server.stop, log_after=0, timeout=2)
+        self.assertRaises(
+            server_module.TaskTimeout, self.server.stop, log_after=0, timeout=2
+        )
 
         # We timed out. Ensure we didn't log anything.
         self.assertFalse(mock_log.warning.called)
 
 
 class TestRPCExposeDecorator(test_utils.BaseTestCase):
-
     def foo(self):
         pass
 
