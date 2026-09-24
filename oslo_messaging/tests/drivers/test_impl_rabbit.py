@@ -179,7 +179,7 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
         ('no_ssl', dict(options=dict(), expected=False)),
         (
             'no_ssl_with_options',
-            dict(options=dict(ssl_version='TLSv1'), expected=False),
+            dict(options=dict(ssl_ca_file='foobar'), expected=False),
         ),
         ('just_ssl', dict(options=dict(ssl=True), expected=True)),
         (
@@ -187,13 +187,11 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
             dict(
                 options=dict(
                     ssl=True,
-                    ssl_version='TLSv1',
                     ssl_key_file='foo',
                     ssl_cert_file='bar',
                     ssl_ca_file='foobar',
                 ),
                 expected=dict(
-                    ssl_version=3,
                     keyfile='foo',
                     certfile='bar',
                     ca_certs='foobar',
@@ -203,6 +201,21 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
             ),
         ),
     ]
+    if hasattr(ssl, 'PROTOCOL_SSLv23'):
+        scenarios.append(
+            (
+                'ssl_with_ssl_version',
+                dict(
+                    options=dict(
+                        ssl=True,
+                        ssl_version='SSLv23',
+                    ),
+                    expected=dict(
+                        ssl_version=ssl.PROTOCOL_SSLv23,
+                    ),
+                ),
+            ),
+        )
 
     @mock.patch(
         'oslo_messaging._drivers.impl_rabbit.Connection.ensure_connection'

@@ -1047,12 +1047,11 @@ class Connection:
             self._q_manager = None
 
     # FIXME(markmc): use oslo sslutils when it is available as a library
-    _SSL_PROTOCOLS = {
-        "tlsv1": ssl.PROTOCOL_TLSv1,
-        "sslv23": ssl.PROTOCOL_SSLv23,
-    }
+    _SSL_PROTOCOLS = {}
 
     _OPTIONAL_PROTOCOLS = {
+        'tlsv1': 'PROTOCOL_TLSv1',
+        'sslv23': 'PROTOCOL_SSLv23',
         'sslv2': 'PROTOCOL_SSLv2',
         'sslv3': 'PROTOCOL_SSLv3',
         'tlsv1_1': 'PROTOCOL_TLSv1_1',
