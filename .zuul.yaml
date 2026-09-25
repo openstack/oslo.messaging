@@ -91,6 +91,11 @@
       - release-notes-jobs-python3
     check:
       jobs:
+        # TODO(tkajinam): remove this once we get python 3.15 wheel published
+        # for confluent-kafka
+        # https://github.com/confluentinc/confluent-kafka-python/issues/2299
+        - openstack-tox-py315:
+            voting: false
         - oslo.messaging-tox-py311-func-scenario01
         - oslo.messaging-tox-py311-func-scenario02:
             voting: false
@@ -103,5 +108,7 @@
             voting: false
     gate:
       jobs:
+        - openstack-tox-py315:
+            voting: false
         - oslo.messaging-tox-py311-func-scenario01
         - oslo.messaging-src-dsvm-full-rabbit
