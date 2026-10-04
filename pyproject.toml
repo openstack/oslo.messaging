@@ -75,6 +75,20 @@ routing = "oslo_messaging.notify._impl_routing:RoutingDriver"
 [tool.setuptools.packages.find]
 include = ["oslo_messaging*"]
 
+[tool.coverage.run]
+source = [
+    "oslo_messaging"
+]
+branch = true
+parallel = true
+omit = [
+    "oslo_messaging/tests/*"
+]
+
+[tool.coverage.report]
+ignore_errors = true
+show_missing = true
+
 [tool.ruff]
 line-length = 79
 

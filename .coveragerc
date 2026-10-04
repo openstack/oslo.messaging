@@ -1,7 +1,0 @@
-[run]
-branch = True
-source = oslo_messaging
-omit = oslo_messaging/tests/*
-
-[report]
-ignore_errors = True
