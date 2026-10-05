@@ -1,0 +1,8 @@
+---
+features:
+  - |
+    The RabbitMQ driver can now limit minimum TLS version and maximum TLS
+    version it accepts, using the following options.
+
+    - ``[oslo_messaging_rabbit] tls_maximum_version``
+    - ``[oslo_messaging_rabbit] tls_minimum_version``

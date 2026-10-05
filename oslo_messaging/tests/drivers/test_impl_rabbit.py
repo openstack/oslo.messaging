@@ -200,6 +200,20 @@ class TestRabbitDriverLoadSSL(test_utils.BaseTestCase):
                 ),
             ),
         ),
+        (
+            'ssl_with_versions',
+            dict(
+                options=dict(
+                    ssl=True,
+                    tls_maximum_version='1.3',
+                    tls_minimum_version='1.2',
+                ),
+                expected=dict(
+                    tls_maximum_version=ssl.TLSVersion.TLSv1_3,
+                    tls_minimum_version=ssl.TLSVersion.TLSv1_2,
+                ),
+            ),
+        ),
     ]
     if hasattr(ssl, 'PROTOCOL_SSLv23'):
         scenarios.append(
