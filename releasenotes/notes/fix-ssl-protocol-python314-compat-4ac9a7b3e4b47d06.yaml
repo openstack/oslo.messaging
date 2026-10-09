@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Made the RabbitMQ driver resilient to the removal of deprecated SSL
+    protocol constants. ``ssl.PROTOCOL_TLSv1`` and ``ssl.PROTOCOL_SSLv23``
+    were referenced directly at class load time; these constants have been
+    deprecated since Python 3.10 and are candidates for removal in a future
+    CPython release, which would break importing the driver outright, just as
+    the already-removed ``ssl.PROTOCOL_SSLv2`` and ``ssl.PROTOCOL_SSLv3``
+    would. All SSL protocol constants are now resolved via ``getattr`` with a
+    graceful fallback, consistent with how the other optional protocols were
+    already handled.
+    `LP#2167003 <https://bugs.launchpad.net/oslo.messaging/+bug/2167003>`_
