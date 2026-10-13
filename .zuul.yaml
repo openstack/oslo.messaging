@@ -6,6 +6,9 @@
     vars:
       tox_envlist: py311-func-scenario01
       bindep_profile: rabbit
+      tox_environment:
+        # pifpaf removes its data dir on exit; keep the broker log.
+        RABBITMQ_LOGS: "{{ ansible_user_dir }}/zuul-output/logs/rabbitmq.log"
 
 - job:
     name: oslo.messaging-tox-py311-func-scenario02
@@ -13,6 +16,9 @@
     vars:
       tox_envlist: py311-func-scenario02
       bindep_profile: rabbit kafka
+      tox_environment:
+        # pifpaf removes its data dir on exit; keep the broker log.
+        RABBITMQ_LOGS: "{{ ansible_user_dir }}/zuul-output/logs/rabbitmq.log"
 
 # Begin v3 native jobs
 # See https://docs.openstack.org/devstack/latest/
