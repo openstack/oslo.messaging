@@ -502,6 +502,41 @@ class TestRabbitPublisher(test_utils.BaseTestCase):
                 )
 
 
+class TestQuorumQueueWarning(test_utils.BaseTestCase):
+    def _warnings(self, **overrides):
+        self.config(group='oslo_messaging_rabbit', **overrides)
+        with mock.patch.object(rabbit_driver.LOG, 'warning') as warning:
+            transport = oslo_messaging.get_transport(
+                self.conf, 'kombu+memory:////'
+            )
+            self.addCleanup(transport.cleanup)
+        return [c.args[0] % c.args[1:] for c in warning.call_args_list]
+
+    def test_defaults_warn(self):
+        (msg,) = self._warnings()
+        self.assertIn(
+            '(rabbit_quorum_queue and rabbit_transient_quorum_queue set to '
+            'False)',
+            msg,
+        )
+        self.assertIn('RabbitMQ 4.3.0', msg)
+
+    def test_durable_classic_queues_warn_without_rabbitmq_note(self):
+        (msg,) = self._warnings(
+            rabbit_transient_quorum_queue=True, amqp_durable_queues=True
+        )
+        self.assertIn('(rabbit_quorum_queue set to False)', msg)
+        self.assertNotIn('RabbitMQ 4.3.0', msg)
+
+    def test_quorum_enabled_no_warning(self):
+        self.assertEqual(
+            [],
+            self._warnings(
+                rabbit_quorum_queue=True, rabbit_transient_quorum_queue=True
+            ),
+        )
+
+
 class TestRabbitConsume(test_utils.BaseTestCase):
     def test_consume_timeout(self):
         transport = oslo_messaging.get_transport(

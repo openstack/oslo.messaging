@@ -1,0 +1,22 @@
+---
+deprecations:
+  - |
+    The ``[oslo_messaging_rabbit] rabbit_quorum_queue`` and
+    ``[oslo_messaging_rabbit] rabbit_transient_quorum_queue`` options will
+    default to ``True`` in a future release. The RabbitMQ driver now logs a
+    warning when either of them is ``False``.
+
+    With these options disabled the driver declares transient (non-durable)
+    non-exclusive queues, which `RabbitMQ 4.3.0
+    <https://github.com/rabbitmq/rabbitmq-server/releases/tag/v4.3.0>`__ and
+    later refuse to create by default. Deployments on RabbitMQ 4.3.0 or later
+    should enable both options.
+
+    Existing queues and exchanges are not converted when the options are
+    enabled. Remove them before the services restart with quorum queues, for
+    example by stopping the services and recreating the RabbitMQ virtual
+    host. Services sharing exchanges or queues must use the same settings.
+    ``rabbit_ha_queues = True`` and ``amqp_auto_delete = True`` are not
+    compatible with quorum queues, and on RabbitMQ releases older than 4.0
+    every quorum queue reserves file handles on the broker, so make sure its
+    file descriptor limit is high enough.

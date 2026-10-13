@@ -214,7 +214,10 @@ rabbit_opts = [
         'in other words the HA queues should be disabled. '
         'Quorum queues are also durable by default so the '
         'amqp_durable_queues option is ignored when this option is '
-        'enabled.',
+        'enabled. When disabled, the RPC and notification queues are '
+        'non-durable non-exclusive queues (unless amqp_durable_queues is '
+        'set), which RabbitMQ 4.3.0 and later refuse to create by '
+        'default. This option will default to True in a future release.',
     ),
     cfg.BoolOpt(
         'rabbit_transient_quorum_queue',
@@ -222,7 +225,10 @@ rabbit_opts = [
         help='Use quorum queues for transients queues in RabbitMQ. '
         'Enabling this option will then make sure those queues are '
         'also using quorum kind of rabbit queues, which are HA by '
-        'default.',
+        'default. When disabled, the reply and fanout queues are '
+        'non-durable non-exclusive queues, which RabbitMQ 4.3.0 and '
+        'later refuse to create by default. This option will default '
+        'to True in a future release.',
     ),
     cfg.IntOpt(
         'rabbit_quorum_delivery_limit',
@@ -2006,6 +2012,31 @@ class Connection:
         )
 
 
+def _warn_quorum_disabled(driver_conf):
+    disabled = [
+        name
+        for name in ('rabbit_quorum_queue', 'rabbit_transient_quorum_queue')
+        if not getattr(driver_conf, name)
+    ]
+    if not disabled:
+        return
+    # Without quorum, these declare transient non-exclusive queues.
+    transient = not driver_conf.rabbit_transient_quorum_queue or not (
+        driver_conf.rabbit_quorum_queue or driver_conf.amqp_durable_queues
+    )
+    LOG.warning(
+        'Quorum queues are disabled (%s set to False). '
+        'rabbit_quorum_queue and rabbit_transient_quorum_queue will default '
+        'to True in a future release, which needs the existing queues and '
+        'exchanges to be removed first.%s',
+        ' and '.join(disabled),
+        ' RabbitMQ 4.3.0 and later refuse to create the transient '
+        'non-exclusive queues this configuration declares.'
+        if transient
+        else '',
+    )
+
+
 class RabbitDriver(amqpdriver.AMQPDriverBase):
     """RabbitMQ Driver
 
@@ -2045,6 +2076,8 @@ class RabbitDriver(amqpdriver.AMQPDriverBase):
                 f"or equal to conn_pool_min_size: {min_size}"
             )
         ttl = conf.oslo_messaging_rabbit.conn_pool_ttl
+
+        _warn_quorum_disabled(conf.oslo_messaging_rabbit)
 
         connection_pool = pool.ConnectionPool(
             conf, max_size, min_size, ttl, url, Connection
