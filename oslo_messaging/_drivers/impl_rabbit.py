@@ -65,12 +65,12 @@ rabbit_opts = [
     cfg.IntOpt(
         'conn_pool_min_size',
         default=2,
-        help='The pool size limit for connections expiration policy',
+        help='The pool size limit for connections expiration policy.',
     ),
     cfg.IntOpt(
         'conn_pool_ttl',
         default=1200,
-        help='The time-to-live in sec of idle connections in the pool',
+        help='The time-to-live in sec of idle connections in the pool.',
     ),
     cfg.BoolOpt('ssl', default=False, help='Connect over SSL.'),
     cfg.StrOpt(
@@ -230,8 +230,8 @@ rabbit_opts = [
         help='Each time a message is redelivered to a consumer, '
         'a counter is incremented. Once the redelivery count '
         'exceeds the delivery limit the message gets dropped '
-        'or dead-lettered (if a DLX exchange has been configured) '
-        'Used only when rabbit_quorum_queue is enabled, '
+        'or dead-lettered (if a DLX exchange has been configured). '
+        'Used only when rabbit_quorum_queue is enabled. '
         'Default 0 which means dont set a limit.',
     ),
     cfg.IntOpt(
@@ -241,7 +241,7 @@ rabbit_opts = [
         'if a quorum queue grows in length it can put memory '
         'pressure on a cluster. This option can limit the number '
         'of messages in the quorum queue. '
-        'Used only when rabbit_quorum_queue is enabled, '
+        'Used only when rabbit_quorum_queue is enabled. '
         'Default 0 which means dont set a limit.',
     ),
     cfg.IntOpt(
@@ -251,7 +251,7 @@ rabbit_opts = [
         'if a quorum queue grows in length it can put memory '
         'pressure on a cluster. This option can limit the number '
         'of memory bytes used by the quorum queue. '
-        'Used only when rabbit_quorum_queue is enabled, '
+        'Used only when rabbit_quorum_queue is enabled. '
         'Default 0 which means dont set a limit.',
     ),
     cfg.IntOpt(
@@ -272,7 +272,7 @@ rabbit_opts = [
         'duration itself. So the oldest data in the stream queue '
         'will be discarded from it once reaching TTL '
         'Setting to 0 will disable x-max-age for stream which '
-        'make stream grow indefinitely filling up the diskspace',
+        'make stream grow indefinitely filling up the diskspace.',
     ),
     cfg.IntOpt(
         'rabbit_qos_prefetch_count',
@@ -305,19 +305,19 @@ rabbit_opts = [
         'MessageUndeliverable exception will be used to loop for a '
         'timeout to lets a chance to sender to recover.'
         'This flag is deprecated and it will not be possible to '
-        'deactivate this functionality anymore',
+        'deactivate this functionality anymore.',
     ),
     cfg.BoolOpt(
         'enable_cancel_on_failover',
         default=False,
         help="Enable x-cancel-on-ha-failover flag so that "
         "rabbitmq server will cancel and notify consumers"
-        "when queue is down",
+        "when queue is down.",
     ),
     cfg.BoolOpt(
         'use_queue_manager',
         default=False,
-        help='Should we use consistant queue names or random ones',
+        help='Should we use consistant queue names or random ones.',
     ),
     cfg.StrOpt(
         'hostname',
@@ -330,7 +330,7 @@ rabbit_opts = [
         'processname',
         sample_default='nova-api',
         default=os.path.basename(sys.argv[0]),
-        help='Process name used by queue manager',
+        help='Process name used by queue manager.',
     ),
     cfg.BoolOpt(
         'rabbit_stream_fanout',
