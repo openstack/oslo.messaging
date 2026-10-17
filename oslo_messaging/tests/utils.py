@@ -24,6 +24,7 @@ import threading
 from oslo_config import cfg
 from oslo_context.context import RequestContext
 from oslo_utils import eventletutils
+from oslo_utils import importutils
 from oslotest import base
 
 
@@ -42,6 +43,10 @@ class BaseTestCase(base.BaseTestCase):
 
         self.conf.project = 'project'
         self.conf.prog = 'prog'
+
+    def _require_library(self, lib_name):
+        if not importutils.try_import(lib_name):
+            self.skipTest(f'{lib_name} is not available')
 
     def config(self, **kw):
         """Override some configuration values.
