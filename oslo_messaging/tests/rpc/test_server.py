@@ -463,6 +463,34 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
 
         self._stop_server(client, server_thread)
 
+    def test_base_exception_gets_a_reply(self):
+        # Rather than leaving its caller to time out, and then it goes on.
+        class Stop(BaseException):
+            pass
+
+        class TestEndpoint:
+            def ping(self, ctxt, arg):
+                raise Stop(arg)
+
+        transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
+        server = oslo_messaging.get_rpc_server(
+            transport,
+            oslo_messaging.Target(topic='t', server='s'),
+            [TestEndpoint()],
+        )
+        message = mock.Mock(
+            ctxt={},
+            message={'method': 'ping', 'args': {'arg': 'foo'}},
+            msg_id='1',
+            client_timeout=None,
+        )
+        with mock.patch.object(rpc_server_module.LOG, 'exception') as log:
+            self.assertRaises(Stop, server._process_incoming, [message])
+        failure = message.reply.call_args.kwargs['failure']
+        self.assertIsInstance(failure[1], Stop)
+        # The executor would not report it.
+        log.assert_called_once()
+
     def test_expected_failure(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
