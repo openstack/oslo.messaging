@@ -171,26 +171,7 @@ class RPCServer(msg_server.MessageHandlingServer):
             LOG.exception("Can not acknowledge message. Skip processing")
             return
 
-        with tracing.trace_receive(self.conf, message):
-            failure = None
-            try:
-                res = self.dispatcher.dispatch(message)
-            except rpc_dispatcher.ExpectedException as e:
-                # current sys.exc_info() content can be overridden
-                # by another exception raised by a log handler during
-                # LOG.debug(). So keep a copy and delete it later.
-                failure = e.exc_info
-                LOG.debug('Expected exception during message handling (%s)', e)
-            except rpc_dispatcher.NoSuchMethod as e:
-                failure = sys.exc_info()
-                if e.method.endswith('_ignore_errors'):
-                    LOG.debug('Method %s not found', e.method)
-                else:
-                    LOG.exception('Exception during message handling')
-            except Exception:
-                failure = sys.exc_info()
-                LOG.exception('Exception during message handling')
-
+        def reply(res, failure):
             try:
                 if failure is None:
                     message.reply(res)
@@ -225,6 +206,38 @@ class RPCServer(msg_server.MessageHandlingServer):
                 )
             except Exception:
                 LOG.exception("Can not send reply for message")
+
+        with tracing.trace_receive(self.conf, message):
+            res = failure = None
+            try:
+                res = self.dispatcher.dispatch(message)
+            except rpc_dispatcher.ExpectedException as e:
+                # current sys.exc_info() content can be overridden
+                # by another exception raised by a log handler during
+                # LOG.debug(). So keep a copy and delete it later.
+                failure = e.exc_info
+                LOG.debug('Expected exception during message handling (%s)', e)
+            except rpc_dispatcher.NoSuchMethod as e:
+                failure = sys.exc_info()
+                if e.method.endswith('_ignore_errors'):
+                    LOG.debug('Method %s not found', e.method)
+                else:
+                    LOG.exception('Exception during message handling')
+            except Exception:
+                failure = sys.exc_info()
+                LOG.exception('Exception during message handling')
+            except BaseException:
+                # Such as SystemExit, or another exception that inherits
+                # BaseException directly: the caller still gets a reply, and
+                # the driver can let go of the message, before the exception
+                # goes on. The executor keeps it in a future that nothing
+                # reads, so log it here.
+                LOG.exception('Exception during message handling')
+                reply(None, sys.exc_info())
+                raise
+
+            try:
+                reply(res, failure)
             finally:
                 # NOTE(dhellmann): Remove circular object reference
                 # between the current stack frame and the traceback in
