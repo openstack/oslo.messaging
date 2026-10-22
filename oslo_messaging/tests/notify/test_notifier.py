@@ -302,6 +302,7 @@ class TestMessagingNotifierRetry(test_utils.BaseTestCase):
         configures a non reachable message bus. The expectation that after the
         configured number of retries the driver gives up the message sending.
         """
+        self._require_library('confluent_kafka')
 
         self.config(
             driver=["messagingv2"],

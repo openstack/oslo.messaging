@@ -15,11 +15,14 @@
 import testscenarios
 from unittest import mock
 
-from confluent_kafka import KafkaException
-
 import oslo_messaging
-from oslo_messaging._drivers import impl_kafka as kafka_driver
 from oslo_messaging.tests import utils as test_utils
+
+try:
+    from confluent_kafka import KafkaException
+    from oslo_messaging._drivers import impl_kafka as kafka_driver
+except ImportError:
+    KafkaException = kafka_driver = None
 
 load_tests = testscenarios.load_tests_apply_scenarios
 
@@ -27,6 +30,7 @@ load_tests = testscenarios.load_tests_apply_scenarios
 class TestKafkaDriverLoad(test_utils.BaseTestCase):
     def setUp(self):
         super().setUp()
+        self._require_library('confluent_kafka')
         self.messaging_conf.transport_url = 'kafka:/'
 
     def test_driver_load(self):
@@ -125,6 +129,7 @@ class TestKafkaTransportURL(test_utils.BaseTestCase):
 
     def setUp(self):
         super().setUp()
+        self._require_library('confluent_kafka')
         self.messaging_conf.transport_url = 'kafka:/'
 
     def test_transport_url(self):
@@ -146,6 +151,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
 
     def setUp(self):
         super().setUp()
+        self._require_library('confluent_kafka')
         self.messaging_conf.transport_url = 'kafka:/'
         transport = oslo_messaging.get_notification_transport(self.conf)
         self.driver = transport._driver
@@ -256,6 +262,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
 class TestKafkaConnection(test_utils.BaseTestCase):
     def setUp(self):
         super().setUp()
+        self._require_library('confluent_kafka')
         self.messaging_conf.transport_url = 'kafka:/'
         transport = oslo_messaging.get_notification_transport(self.conf)
         self.driver = transport._driver
