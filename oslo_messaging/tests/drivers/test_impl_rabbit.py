@@ -1403,11 +1403,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             mock_callback,
             retry=4,
         )
-        # TODO(stephenfin): Remove when we drop support for kombu < 5.2.4
-        expected = 5
-        if kombu.VERSION < (5, 2, 4):
-            expected = 6
-        self.assertEqual(expected, mock_callback.call_count)
+        self.assertEqual(5, mock_callback.call_count)
 
     def test_ensure_one_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
@@ -1417,11 +1413,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             mock_callback,
             retry=1,
         )
-        # TODO(stephenfin): Remove when we drop support for kombu < 5.2.4
-        expected = 2
-        if kombu.VERSION < (5, 2, 4):
-            expected = 3
-        self.assertEqual(expected, mock_callback.call_count)
+        self.assertEqual(2, mock_callback.call_count)
 
     def test_ensure_no_retry(self):
         mock_callback = mock.Mock(side_effect=IOError)
@@ -1431,11 +1423,7 @@ class RpcKombuHATestCase(test_utils.BaseTestCase):
             mock_callback,
             retry=0,
         )
-        # TODO(stephenfin): Remove when we drop support for kombu < 5.2.4
-        expected = 1
-        if kombu.VERSION < (5, 2, 4):
-            expected = 2
-        self.assertEqual(expected, mock_callback.call_count)
+        self.assertEqual(1, mock_callback.call_count)
 
 
 class ConnectionLockTestCase(test_utils.BaseTestCase):
