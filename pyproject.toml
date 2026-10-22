@@ -33,6 +33,10 @@ Homepage = "https://docs.openstack.org/oslo.messaging"
 Repository = "https://opendev.org/openstack/oslo.messaging"
 
 [project.optional-dependencies]
+eventlet = [
+    "eventlet>=0.23.0", # MIT
+    "greenlet>=0.4.15", # MIT
+]
 # package dependencies for optional (non-rabbitmq) messaging drivers.
 # projects can test-depend on oslo.messaging[<drivers>]
 # e.g.: oslo.messaging[kafka]
