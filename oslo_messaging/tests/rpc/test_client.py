@@ -929,3 +929,20 @@ class TestClientMetrics(test_utils.BaseTestCase):
                 },
                 labels,
             )
+
+
+class TestPrivateConfig(test_utils.BaseTestCase):
+    """RPC client of a transport created with its own ConfigOpts."""
+
+    def test_cast(self):
+        conf = cfg.ConfigOpts()
+        conf([])
+        transport = oslo_messaging.get_rpc_transport(conf, url='fake:')
+        self.addCleanup(transport.cleanup)
+        client = oslo_messaging.get_rpc_client(
+            transport, oslo_messaging.Target(topic='topic')
+        )
+
+        # FIXME: the metrics and tracing options are only registered in
+        # cfg.CONF (bug 1980652)
+        self.assertRaises(cfg.NoSuchOptError, client.cast, {}, 'foo')
