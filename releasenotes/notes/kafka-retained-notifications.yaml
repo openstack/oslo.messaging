@@ -1,0 +1,13 @@
+---
+fixes:
+  - |
+    Kafka notification listeners now receive retained notifications when their
+    consumer group has no valid committed offset. Previously, listeners could
+    skip notifications published before partition assignment. Listener startup
+    also no longer polls and discards a notification before dispatch begins.
+upgrade:
+  - |
+    Kafka consumer groups without a valid committed offset start at the
+    earliest retained notification instead of the end of the log. New groups
+    can therefore receive older notifications still retained by Kafka. Groups
+    with valid committed offsets continue to resume from those offsets.

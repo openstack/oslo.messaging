@@ -443,6 +443,44 @@ class NotifyTestCase(utils.SkipIfNoTransportURL):
         self.assertEqual('Hello World!', event[2])
         self.assertEqual('abc', event[3])
 
+    def test_kafka_backlog_and_committed_offset(self):
+        if not self.notify_url.startswith('kafka://'):
+            self.skipTest('Kafka consumer offset regression')
+        topic = 'backlog-' + str(uuid.uuid4())
+        self.conf.set_override(
+            'consumer_group', topic, group='oslo_messaging_kafka'
+        )
+
+        # Flush each notification to the broker before starting a listener.
+        # Reuse the group to check that restart resumes its committed offset.
+        for payload in ('before-first-listener', 'before-restarted-listener'):
+            transport = oslo_messaging.get_notification_transport(
+                self.conf, self.notify_url
+            )
+            try:
+                notifier = oslo_messaging.Notifier(
+                    transport,
+                    'backlog-test',
+                    driver='messaging',
+                    topics=[topic],
+                )
+                notifier.info({}, 'backlog', payload)
+            finally:
+                transport.cleanup()
+
+            listener = utils.NotificationFixture(
+                self.conf, self.notify_url, [topic]
+            )
+            listener.setUp()
+            try:
+                event = listener.events.get(timeout=10)
+                self.assertEqual(
+                    ['info', 'backlog', payload, 'backlog-test'], event
+                )
+                self.assertEqual([], listener.get_events(timeout=0.5))
+            finally:
+                listener.cleanUp()
+
     def test_multiple_topics(self):
         get_timeout = 1
         if self.notify_url.startswith("kafka://"):
