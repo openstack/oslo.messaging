@@ -512,11 +512,9 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
             client_timeout=None,
         )
 
-        # FIXME: the tracing options are only registered in cfg.CONF
-        # (bug 1980652)
-        self.assertRaises(
-            cfg.NoSuchOptError, server._process_incoming, [message]
-        )
+        server._process_incoming([message])
+
+        message.reply.assert_called_once_with('pong')
 
     def test_expected_failure(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')

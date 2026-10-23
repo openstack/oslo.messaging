@@ -58,6 +58,14 @@ oslo_messaging_tracing = [
 cfg.CONF.register_opts(oslo_messaging_tracing, group='oslo_messaging_tracing')
 
 
+def register_opts(conf):
+    """Register the tracing options in the configuration of a transport.
+
+    The configuration of a transport is not always cfg.CONF.
+    """
+    conf.register_opts(oslo_messaging_tracing, group='oslo_messaging_tracing')
+
+
 _TRACER = None
 
 

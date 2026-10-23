@@ -13,9 +13,11 @@
 #    under the License.
 
 __all__ = [
+    'register_opts',
     'trace_send',
     'trace_receive',
 ]
 
+from .client import register_opts
 from .client import trace_send
 from .client import trace_receive

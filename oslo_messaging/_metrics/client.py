@@ -67,6 +67,14 @@ oslo_messaging_metrics = [
 cfg.CONF.register_opts(oslo_messaging_metrics, group='oslo_messaging_metrics')
 
 
+def register_opts(conf):
+    """Register the metrics options in the configuration of a transport.
+
+    The configuration of a transport is not always cfg.CONF.
+    """
+    conf.register_opts(oslo_messaging_metrics, group='oslo_messaging_metrics')
+
+
 class MetricsCollectorClient:
     def __init__(self, conf):
         self.conf = conf.oslo_messaging_metrics
