@@ -75,29 +75,34 @@ rabbit_opts = [
     cfg.BoolOpt('ssl', default=False, help='Connect over SSL.'),
     cfg.StrOpt(
         'ssl_version',
-        default='',
         deprecated_for_removal=True,
         deprecated_reason='TLS version negotiation is now handled '
-        'automatically by py-amqp via '
-        'ssl.SSLContext.',
+        'automatically by py-amqp via ssl.SSLContext.',
         help='SSL version to use (valid only if SSL enabled). '
         'Valid values are TLSv1 and SSLv23. SSLv2, SSLv3, '
         'TLSv1_1, and TLSv1_2 may be available on some '
         'distributions.',
     ),
     cfg.StrOpt(
+        'tls_minimum_version',
+        choices=('1.2', '1.3'),
+        help='The lowest supported TLS version',
+    ),
+    cfg.StrOpt(
+        'tls_maximum_version',
+        choices=('1.2', '1.3'),
+        help='The highest supported TLS version',
+    ),
+    cfg.StrOpt(
         'ssl_key_file',
-        default='',
         help='SSL key file (valid only if SSL enabled).',
     ),
     cfg.StrOpt(
         'ssl_cert_file',
-        default='',
         help='SSL cert file (valid only if SSL enabled).',
     ),
     cfg.StrOpt(
         'ssl_ca_file',
-        default='',
         help='SSL certification authority file (valid only if SSL enabled).',
     ),
     cfg.BoolOpt(
@@ -892,12 +897,13 @@ class Connection:
 
         self.direct_mandatory_flag = driver_conf.direct_mandatory_flag
 
-        if self.ssl:
-            self.ssl_version = driver_conf.ssl_version
-            self.ssl_key_file = driver_conf.ssl_key_file
-            self.ssl_cert_file = driver_conf.ssl_cert_file
-            self.ssl_ca_file = driver_conf.ssl_ca_file
-            self.ssl_server_hostname = self._get_ssl_server_hostname(url)
+        self.ssl_version = driver_conf.ssl_version
+        self.tls_minimum_version = driver_conf.tls_minimum_version
+        self.tls_maximum_version = driver_conf.tls_maximum_version
+        self.ssl_key_file = driver_conf.ssl_key_file
+        self.ssl_cert_file = driver_conf.ssl_cert_file
+        self.ssl_ca_file = driver_conf.ssl_ca_file
+        self.ssl_server_hostname = self._get_ssl_server_hostname(url)
 
         self._url = ''
         if url.hosts:
@@ -1119,6 +1125,11 @@ class Connection:
             url.virtual_host or '',
         )
 
+    _TLS_VERSIONS = {
+        '1.2': ssl.TLSVersion.TLSv1_2,
+        '1.3': ssl.TLSVersion.TLSv1_3,
+    }
+
     def _fetch_ssl_params(self):
         """Handles fetching what ssl params should be used for the connection
         (if any).
@@ -1141,6 +1152,15 @@ class Connection:
                 # future with this?
                 ssl_params['cert_reqs'] = ssl.CERT_REQUIRED
                 ssl_params['server_hostname'] = self.ssl_server_hostname
+            if self.tls_maximum_version:
+                ssl_params['tls_maximum_version'] = self._TLS_VERSIONS[
+                    self.tls_maximum_version
+                ]
+            if self.tls_minimum_version:
+                ssl_params['tls_minimum_version'] = self._TLS_VERSIONS[
+                    self.tls_minimum_version
+                ]
+
             return ssl_params or True
         return False
 
