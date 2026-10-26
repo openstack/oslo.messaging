@@ -54,6 +54,7 @@ tracing-grpc = [
 
 [project.scripts]
 oslo-messaging-send-notification = "oslo_messaging.notify.notifier:_send_notification"
+oslo-messaging-listen-notification = "oslo_messaging.notify.listener:_listen_notification"
 
 [project.entry-points."oslo.messaging.drivers"]
 rabbit = "oslo_messaging._drivers.impl_rabbit:RabbitDriver"
