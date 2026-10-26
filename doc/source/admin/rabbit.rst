@@ -225,11 +225,14 @@ option will be used for both RPC and notifications backends.
 Note about Quorum and Stream queues
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Recent RabbitMQ releases (3.8 and above) introduced ``Quorum`` and ``Stream``
-queue types which are going to replace the ``classic`` HA queues.
+RabbitMQ 3.8 introduced the ``Quorum`` queue type and RabbitMQ 3.9 the
+``Stream`` queue type, which replace the ``classic`` HA queues. RabbitMQ 4.0
+removed classic queue mirroring, and RabbitMQ 4.3.0 refuses to create
+transient (non-durable) non-exclusive queues by default.
 
-It's highly recommended that you switch whenever possible to ``quorum`` and
-``stream`` queues because classic HA queues are going to be deprecated.
+``rabbit_quorum_queue`` and ``rabbit_transient_quorum_queue`` will default to
+``True`` in a future release. Until then the driver logs a warning when either
+is disabled.
 
 The recommended options are the following:
 
@@ -238,6 +241,14 @@ The recommended options are the following:
     rabbit_transient_quorum_queue = True
     use_queue_manager = True
     rabbit_stream_fanout = True
+    rabbit_qos_prefetch_count = 1
+
+``use_queue_manager`` keeps the reply and fanout queue names stable across
+service restarts, so quorum queues are reused rather than created with a new
+name on every start. It requires ``[oslo_concurrency] lock_path`` (or the
+``OSLO_LOCK_PATH`` environment variable) to be set.
+``rabbit_stream_fanout`` requires ``rabbit_qos_prefetch_count`` to be greater
+than 0.
 
 Driver Options
 ~~~~~~~~~~~~~~
