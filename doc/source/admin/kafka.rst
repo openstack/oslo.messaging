@@ -79,6 +79,11 @@ the Kafka driver and all listeners will be assigned to that
 group and the messages will effectively be load balanced across the
 competing listener instances.
 
+A consumer group without a valid committed offset starts at the earliest retained
+notification. This includes notifications published before its listener starts.
+Groups with valid committed offsets resume from them when listeners restart.
+Kafka's retention settings determine how long notifications remain available.
+
 Synchronous Commit
 ~~~~~~~~~~~~~~~~~~
 

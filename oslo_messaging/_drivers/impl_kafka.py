@@ -257,7 +257,8 @@ class ConsumerConnection(Connection):
             'ssl.key.location': self.ssl_client_key_file,
             'ssl.key.password': self.ssl_client_key_password,
             'enable.partition.eof': False,
-            'default.topic.config': {'auto.offset.reset': 'latest'},
+            # New groups must consume notifications sent before they join.
+            'default.topic.config': {'auto.offset.reset': 'earliest'},
         }
         LOG.debug("Subscribing to %s as %s", topics, (group or self.group_id))
         self.consumer = confluent_kafka.Consumer(conf)
@@ -382,11 +383,6 @@ class KafkaListener(base.PollStyleListener):
         self._stopped = eventletutils.Event()
         self.conn = conn
         self.incoming_queue = []
-
-        # FIXME(sileht): We do a first poll to ensure we topics are created
-        # This is a workaround mainly for functional tests, in real life
-        # this is fine if topics are not created synchroneously
-        self.poll(5)
 
     @base.batch_poll_helper
     def poll(self, timeout=None):

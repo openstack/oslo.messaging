@@ -12,8 +12,10 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-import testscenarios
 from unittest import mock
+
+from oslo_serialization import jsonutils
+import testscenarios
 
 import oslo_messaging
 from oslo_messaging.tests import utils as test_utils
@@ -247,7 +249,7 @@ class TestKafkaDriver(test_utils.BaseTestCase):
                     'ssl.certificate.location': '',
                     'ssl.key.location': '',
                     'ssl.key.password': '',
-                    'default.topic.config': {'auto.offset.reset': 'latest'},
+                    'default.topic.config': {'auto.offset.reset': 'earliest'},
                 }
             )
 
@@ -277,3 +279,24 @@ class TestKafkaConnection(test_utils.BaseTestCase):
                 10,
             )
             assert producer.call_count == 1
+
+
+class TestKafkaListener(test_utils.BaseTestCase):
+    def setUp(self):
+        super().setUp()
+        self._require_library('confluent_kafka')
+
+    def test_delivers_message_available_before_listener_starts(self):
+        message = kafka_driver.pack_message({'user': 'test'}, {'value': 42})
+        conn = mock.Mock()
+        conn.consume.side_effect = [
+            [jsonutils.dumps(message)],
+            kafka_driver.driver_common.Timeout(),
+        ]
+
+        listener = kafka_driver.KafkaListener(conn)
+        incoming = listener.poll(timeout=0)
+
+        self.assertEqual(1, len(incoming))
+        self.assertEqual({'user': 'test'}, incoming[0].ctxt)
+        self.assertEqual({'value': 42}, incoming[0].message)
