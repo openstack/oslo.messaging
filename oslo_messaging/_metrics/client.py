@@ -64,7 +64,6 @@ oslo_messaging_metrics = [
         ' be restarted at the next metrics queueing time',
     ),
 ]
-cfg.CONF.register_opts(oslo_messaging_metrics, group='oslo_messaging_metrics')
 
 
 def register_opts(conf):

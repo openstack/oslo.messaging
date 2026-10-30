@@ -1,0 +1,8 @@
+---
+upgrade:
+  - |
+    The ``[oslo_messaging_metrics]`` and ``[oslo_messaging_tracing]`` options
+    are no longer registered in ``cfg.CONF`` when oslo.messaging is imported,
+    only in the configuration of the transport when an RPC client or server is
+    created. Code reading or overriding these options in ``cfg.CONF`` before
+    must register them first. They are now listed by ``oslo-config-generator``.
