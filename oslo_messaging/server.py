@@ -25,7 +25,7 @@ import traceback
 
 import debtcollector
 from oslo_config import cfg
-from oslo_service import service
+from oslo_service.backend import base as service_base
 from oslo_utils import eventletutils
 from oslo_utils import timeutils
 from stevedore import driver
@@ -313,7 +313,7 @@ def ordered(after=None, reset_after=None):
 
 
 class MessageHandlingServer(
-    service.ServiceBase, _OrderedTaskRunner, metaclass=abc.ABCMeta
+    service_base.ServiceBase, _OrderedTaskRunner, metaclass=abc.ABCMeta
 ):
     """Server for handling messages.
 

@@ -1,0 +1,11 @@
+---
+fixes:
+  - |
+    Importing ``oslo.messaging`` no longer initializes an ``oslo.service``
+    backend. Message handling servers use the backend-independent service
+    base class, allowing applications to import messaging before selecting
+    a service backend.
+upgrade:
+  - |
+    The minimum required version of ``oslo.service`` is now 4.2.0, which
+    provides the backend-independent service base class.
