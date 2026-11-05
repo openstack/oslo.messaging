@@ -15,6 +15,7 @@ __all__ = [
     'MetricsCollectorClient',
     'get_collector',
     'measure_metrics',
+    'register_opts',
 ]
 
 from .client import *

@@ -1,0 +1,9 @@
+---
+fixes:
+  - |
+    RPC clients and servers no longer fail with ``NoSuchOptError`` on every
+    message when their transport is created with its own ``ConfigOpts``
+    instead of ``cfg.CONF``: the ``[oslo_messaging_metrics]`` and
+    ``[oslo_messaging_tracing]`` options are now registered in the
+    configuration of the transport. See `bug 1980652
+    <https://bugs.launchpad.net/oslo.messaging/+bug/1980652>`__.

@@ -502,6 +502,8 @@ class RPCClient(_BaseCallContext):
         )
 
         self.conf.register_opts(_client_opts)
+        metrics.register_opts(self.conf)
+        tracing.register_opts(self.conf)
 
     def prepare(
         self,

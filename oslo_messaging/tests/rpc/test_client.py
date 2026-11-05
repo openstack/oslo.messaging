@@ -943,6 +943,4 @@ class TestPrivateConfig(test_utils.BaseTestCase):
             transport, oslo_messaging.Target(topic='topic')
         )
 
-        # FIXME: the metrics and tracing options are only registered in
-        # cfg.CONF (bug 1980652)
-        self.assertRaises(cfg.NoSuchOptError, client.cast, {}, 'foo')
+        client.cast({}, 'foo')

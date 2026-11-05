@@ -142,6 +142,7 @@ LOG = logging.getLogger(__name__)
 class RPCServer(msg_server.MessageHandlingServer):
     def __init__(self, transport, target, dispatcher, executor=None):
         super().__init__(transport, dispatcher, executor)
+        tracing.register_opts(self.conf)
         if not isinstance(transport, msg_transport.RPCTransport):
             LOG.warning(
                 "Using notification transport for RPC. Please use "
