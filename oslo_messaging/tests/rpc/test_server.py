@@ -491,6 +491,33 @@ class TestRPCServer(test_utils.BaseTestCase, ServerSetupMixin):
         # The executor would not report it.
         log.assert_called_once()
 
+    def test_private_config(self):
+        class TestEndpoint:
+            def ping(self, ctxt):
+                return 'pong'
+
+        conf = cfg.ConfigOpts()
+        conf([])
+        transport = oslo_messaging.get_rpc_transport(conf, url='fake:')
+        self.addCleanup(transport.cleanup)
+        server = oslo_messaging.get_rpc_server(
+            transport,
+            oslo_messaging.Target(topic='t', server='s'),
+            [TestEndpoint()],
+        )
+        message = mock.Mock(
+            ctxt={},
+            message={'method': 'ping', 'args': {}},
+            msg_id='1',
+            client_timeout=None,
+        )
+
+        # FIXME: the tracing options are only registered in cfg.CONF
+        # (bug 1980652)
+        self.assertRaises(
+            cfg.NoSuchOptError, server._process_incoming, [message]
+        )
+
     def test_expected_failure(self):
         transport = oslo_messaging.get_rpc_transport(self.conf, url='fake:')
 
