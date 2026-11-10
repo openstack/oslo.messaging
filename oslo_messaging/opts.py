@@ -18,6 +18,8 @@ import itertools
 from oslo_messaging._drivers import amqp
 from oslo_messaging._drivers import impl_rabbit
 from oslo_messaging._drivers.kafka_driver import kafka_options
+from oslo_messaging._metrics import client as metrics
+from oslo_messaging._tracing import client as tracing
 from oslo_messaging.notify import notifier
 from oslo_messaging.rpc import client
 from oslo_messaging.rpc import dispatcher
@@ -41,6 +43,8 @@ _opts = [
         list(itertools.chain(amqp.amqp_opts, impl_rabbit.rabbit_opts)),
     ),
     ('oslo_messaging_kafka', kafka_options.KAFKA_OPTS),
+    ('oslo_messaging_metrics', metrics.oslo_messaging_metrics),
+    ('oslo_messaging_tracing', tracing.oslo_messaging_tracing),
 ]
 
 

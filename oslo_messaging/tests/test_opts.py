@@ -29,13 +29,15 @@ from oslo_messaging.tests import utils as test_utils
 @testtools.skipIf(opts is None, "Options not importable")
 class OptsTestCase(test_utils.BaseTestCase):
     def _test_list_opts(self, result):
-        self.assertEqual(4, len(result))
+        self.assertEqual(6, len(result))
 
         groups = [group for (group, _) in result]
         self.assertIn(None, groups)
         self.assertIn('oslo_messaging_notifications', groups)
         self.assertIn('oslo_messaging_rabbit', groups)
         self.assertIn('oslo_messaging_kafka', groups)
+        self.assertIn('oslo_messaging_metrics', groups)
+        self.assertIn('oslo_messaging_tracing', groups)
 
     def test_list_opts(self):
         self._test_list_opts(opts.list_opts())

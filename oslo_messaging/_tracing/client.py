@@ -55,7 +55,6 @@ oslo_messaging_tracing = [
         'gRPC protocol.',
     ),
 ]
-cfg.CONF.register_opts(oslo_messaging_tracing, group='oslo_messaging_tracing')
 
 
 def register_opts(conf):
